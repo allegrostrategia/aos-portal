@@ -47,9 +47,11 @@ From Step 1 onward, every step follows the same pattern as #7: describe what's b
 - ✅ `pairings` + `pairing_participants` + `pairing_availability` — one pairing per member per month, enforced
 - ✅ `member_profiles` — the directory, full-text searchable on name/title/bio only
 
+**Auth: done and confirmed live.** Login, password reset, the invitation landing route and route protection are deployed at `aos.allegrostrategia.com` and a real sign-in reaches Piazza. Admin rows seeded.
+
 **Still to do in Step 1:**
-- Supabase Auth wiring for login (no self-signup — members are created by admin, Step 8)
-- Bootstrap Nina's admin row by hand once her auth user exists — `create_member()` needs an existing admin, so the first one can't come through it (instructions at the top of the members migration)
+- **Test the invitation flow end to end** — the only auth path never exercised, and the one onboarding depends on. Needs the Supabase email templates repointed at `/auth/confirm` first (README → Auth); the defaults will look like they work and then drop people back at the login screen
+- Set minimum password length to 8 in Supabase, to match what the form promises
 - Swap the placeholder `get_my_role()` / `is_portal_admin()` bodies for Nina's real Allegro Portal SQL
 - Hot seat tables (Step 6) — the monthly challenge belongs there, deliberately not on `weekly_submissions`
 - Chat tables (Step 11)
