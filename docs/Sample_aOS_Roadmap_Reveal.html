@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sadie's aOS Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#073C8C; --orange:#FF6625; --gold:#FFD551; --sky:#A4D3EB;
+    --blush:#FFB29E; --offwhite:#F3F5FD; --offwhite-2:#E3E9F9;
+    --ink:#073C8C; --ink-soft:#5E6F91;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--offwhite);}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;}
+
+  /* nav */
+  nav{background:var(--navy);padding:16px 0;position:sticky;top:0;z-index:10;}
+  nav .wrap{display:flex;justify-content:space-between;align-items:center;}
+  .navmark{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;color:var(--gold);font-size:18px;}
+  .navlabel{font-size:12px;color:var(--sky);letter-spacing:0.04em;}
+
+  /* hero */
+  .hero{background:linear-gradient(180deg,#0B4AA8,#073C8C);color:#fff;padding:70px 0 60px;text-align:center;}
+  .pill{display:inline-block;background:rgba(255,213,81,0.15);color:var(--gold);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:22px;font-weight:600;}
+  .hero h1{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:44px;margin-bottom:10px;}
+  .hero p{color:var(--sky);font-size:15px;}
+  .hero-meta{display:flex;justify-content:center;gap:36px;margin-top:34px;flex-wrap:wrap;}
+  .hero-meta div{text-align:center;}
+  .hero-meta .k{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--sky);opacity:0.8;}
+  .hero-meta .v{font-family:'JetBrains Mono',monospace;font-size:15px;margin-top:4px;color:#fff;}
+
+  /* diagnosis */
+  .section{padding:60px 0;}
+  .section-title{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;text-align:center;margin-bottom:8px;}
+  .section-sub{text-align:center;color:var(--ink-soft);font-size:13.5px;margin-bottom:40px;}
+  .diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .diag-card{background:#fff;border-radius:6px;padding:24px 26px;}
+  .diag-card h3{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--orange);margin-bottom:10px;font-weight:700;}
+  .diag-card p{font-size:14px;line-height:1.65;color:var(--ink);}
+  .diag-card.quote{background:var(--navy);color:#fff;grid-column:span 2;}
+  .diag-card.quote h3{color:var(--gold);}
+  .diag-card.quote p{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;color:#fff;}
+
+  /* three priorities */
+  .priorities{background:var(--offwhite-2);}
+  .p-card{display:flex;gap:20px;background:#fff;border-radius:6px;padding:24px 26px;margin-bottom:14px;align-items:flex-start;}
+  .p-num{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--orange);flex:0 0 40px;}
+  .p-title{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:18px;margin-bottom:6px;}
+  .p-body{font-size:13.5px;color:var(--ink-soft);line-height:1.6;}
+
+  /* roadmap route */
+  .roadmap-panel{background:linear-gradient(180deg,#0B4AA8,#073C8C);border-radius:8px;padding:44px 34px;color:#fff;}
+  .roadmap-panel .section-title, .roadmap-panel .section-sub{color:#fff;}
+  .roadmap-panel .section-sub{color:var(--sky);}
+  svg.route{width:100%;height:190px;}
+  .station-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:24px;}
+  .st-card{background:rgba(255,255,255,0.06);border-radius:6px;padding:16px;text-align:center;}
+  .st-card.current{background:rgba(255,102,37,0.18);border:1px solid var(--orange);}
+  .st-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sky);}
+  .st-name{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:15px;margin:4px 0;}
+  .st-focus{font-size:11.5px;color:var(--sky);opacity:0.85;}
+
+  /* cta */
+  .cta{background:var(--gold);text-align:center;padding:50px 0;}
+  .cta h2{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:26px;color:var(--navy);margin-bottom:12px;}
+  .cta p{color:var(--navy);font-size:14px;margin-bottom:24px;}
+  .cta a{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;padding:14px 32px;border-radius:4px;font-weight:600;font-size:14px;}
+
+  footer{text-align:center;padding:26px 0;font-size:11px;color:var(--ink-soft);}
+
+  @media (max-width:720px){
+    .diag-grid{grid-template-columns:1fr;}
+    .diag-card.quote{grid-column:span 1;}
+    .station-row{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap"><span class="navmark">a<span style="font-style:normal;">OS</span></span><span class="navlabel">Sadie Whitlock · Your Roadmap</span></div></nav>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="pill">Prepared by Nina</div>
+    <h1>Welcome to aOS, Sadie.</h1>
+    <p>Your roadmap, built from your audit and your first call.</p>
+    <div class="hero-meta">
+      <div><div class="k">Prepared</div><div class="v">1 Sep 2026</div></div>
+      <div><div class="k">Baseline</div><div class="v">31 hrs/wk on admin</div></div>
+      <div><div class="k">Starts</div><div class="v">Mon, week 1</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="wrap">
+    <div class="section-title">The honest picture</div>
+    <div class="section-sub">What your audit and our call actually showed</div>
+    <div class="diag-grid">
+      <div class="diag-card quote">
+        <h3>In your words</h3>
+        <p>"I'm doing everything myself, and I still don't know if it's actually working."</p>
+      </div>
+      <div class="diag-card">
+        <h3>What's working</h3>
+        <p>Client delivery is strong and consistent — your Client Sessions hours reflect real, valued work, not a drain.</p>
+      </div>
+      <div class="diag-card">
+        <h3>What's not working</h3>
+        <p>Enquiry follow-up is entirely manual, and content is eating hours with no system behind it.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section priorities">
+  <div class="wrap">
+    <div class="section-title">Your first three priorities</div>
+    <div class="section-sub">Where La Strada starts, and why</div>
+    <div class="p-card">
+      <div class="p-num">01</div>
+      <div><div class="p-title">Rebuild your enquiry follow-up</div><div class="p-body">7.5 hrs a week are going into manual replies. This is your first hot seat build.</div></div>
+    </div>
+    <div class="p-card">
+      <div class="p-num">02</div>
+      <div><div class="p-title">Batch your content</div><div class="p-body">Content is currently reactive, no system. Second priority once follow-up is live.</div></div>
+    </div>
+    <div class="p-card">
+      <div class="p-num">03</div>
+      <div><div class="p-title">Get eyes on your numbers monthly</div><div class="p-body">You don't currently check revenue or conversion regularly. Third priority, ongoing.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="wrap roadmap-panel">
+    <div class="section-title">Your road</div>
+    <div class="section-sub">La Strada — where you're starting, and what's ahead</div>
+    <svg class="route" viewBox="0 0 700 160">
+      <path d="M20 130 C 120 60, 220 140, 340 90 S 560 30, 680 70" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+      <path d="M20 130 C 120 60, 220 140, 300 100" fill="none" stroke="#FF6625" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="20" cy="130" r="8" fill="#073C8C" stroke="#fff" stroke-width="2"/>
+      <circle cx="300" cy="100" r="11" fill="#FF6625"/>
+      <circle cx="300" cy="100" r="17" fill="none" stroke="#FF6625" stroke-width="2" opacity="0.5"/>
+      <circle cx="470" cy="88" r="7" fill="#fff" opacity="0.7"/>
+      <circle cx="680" cy="70" r="7" fill="#fff" opacity="0.7"/>
+    </svg>
+    <div class="station-row">
+      <div class="st-card"><div class="st-num">Done</div><div class="st-name">Grand Hotel Riposo</div><div class="st-focus">Audit & onboarding</div></div>
+      <div class="st-card current"><div class="st-num">You are here</div><div class="st-name">Piazza Caffè</div><div class="st-focus">Enquiry follow-up</div></div>
+      <div class="st-card"><div class="st-num">Next</div><div class="st-name">Cinema Allegro</div><div class="st-focus">Content batching</div></div>
+      <div class="st-card"><div class="st-num">Then</div><div class="st-name">Banco Allegro</div><div class="st-focus">Monthly numbers</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="cta">
+  <h2>Your journey starts on La Strada.</h2>
+  <p>Log in to see your live roadmap, book your first hot seat, and start this week's log.</p>
+  <a href="#">Enter aOS →</a>
+</div>
+
+<footer>Confidential · Prepared for Sadie Whitlock · September 2026 · Allegro Strategia</footer>
+
+</body>
+</html>
