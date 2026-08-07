@@ -101,6 +101,28 @@ await rejects("create_member refuses without contract signed", () =>
     `select public.create_member('${BOB}','bob@test','Bob', now(), null)`)),
   "Payment and signed contract");
 
+// Mirrors exactly how the admin invite action calls this over PostgREST: named
+// parameters, p_join_date and p_contract_term_end_date omitted so their defaults
+// apply. A renamed or reordered parameter breaks the app but not the SQL, so it
+// would otherwise only surface the first time someone sends a real invitation.
+await check("create_member accepts the named parameters the app sends", async () => {
+  const id = "44444444-4444-4444-4444-444444444444";
+  await db.exec(`insert into auth.users (id, email) values ('${id}', 'carla@test')`);
+  const r = await as(ADMIN, () => db.query(`
+    select (public.create_member(
+      p_user_id => '${id}',
+      p_email => 'carla@test',
+      p_full_name => 'Carla',
+      p_payment_confirmed_at => now(),
+      p_contract_signed_at => now(),
+      p_contract_term_months => 6::smallint
+    )).contract_term_end_date::text as d`));
+  // Default join date is today, so the term should end six months out.
+  const expected = new Date();
+  expected.setMonth(expected.getMonth() + 6);
+  return r.rows[0].d === expected.toISOString().slice(0, 10);
+});
+
 console.log("\n— access isolation —");
 
 await check("member reads own row", async () =>
@@ -110,8 +132,13 @@ await check("member cannot see other members' rows", async () =>
   (await as(ALICE, () => db.query(
     `select count(*)::int c from public.members where id = '${ADMIN}'`))).rows[0].c === 0);
 
-await check("admin sees all members", async () =>
-  (await as(ADMIN, () => db.query(`select count(*)::int c from public.members`))).rows[0].c === 2);
+await check("admin sees all members", async () => {
+  // Compared against the true row count rather than a literal, so adding a
+  // member to a test above doesn't silently break this one.
+  const all = (await db.query(`select count(*)::int c from public.members`)).rows[0].c;
+  const seen = (await as(ADMIN, () => db.query(`select count(*)::int c from public.members`))).rows[0].c;
+  return seen === all && all > 1;
+});
 
 await rejects("member cannot promote themselves to admin", () =>
   as(ALICE, () => db.query(`update public.members set role='admin' where id='${ALICE}'`)),

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { requireMember } from "@/lib/auth/member";
 import { signOut } from "@/lib/auth/actions";
 
@@ -21,6 +23,14 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           <p className="font-display text-xl italic text-navy">aOS</p>
 
           <div className="flex items-center gap-4">
+            {member.role === "admin" ? (
+              <Link
+                href="/admin/members"
+                className="text-sm text-navy/70 underline underline-offset-4 transition hover:text-navy"
+              >
+                Admin
+              </Link>
+            ) : null}
             <span className="hidden text-sm text-navy/70 sm:inline">
               {member.full_name}
             </span>
