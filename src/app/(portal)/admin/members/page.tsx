@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { requireAdmin } from "@/lib/auth/member";
+import { checkInviteReadiness } from "@/lib/admin/diagnostics";
 import { createClient } from "@/lib/supabase/server";
 import type { Member } from "@/lib/supabase/types";
 import { InviteForm } from "./invite-form";
@@ -38,6 +39,7 @@ export default async function AdminMembersPage() {
 
   const members = (data ?? []) as Member[];
   const today = new Date().toISOString().slice(0, 10);
+  const readiness = await checkInviteReadiness();
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:py-14">
@@ -57,6 +59,27 @@ export default async function AdminMembersPage() {
             Sends an invitation email and creates their record. This is what
             starts onboarding.
           </p>
+
+          {/* Shown only when something would stop an invitation working — no
+              point decorating a healthy page with green ticks. */}
+          {readiness.some((check) => !check.ok) ? (
+            <div className="mb-5 rounded-md border border-orange/30 bg-blush/20 p-3">
+              <p className="text-sm font-medium text-navy">
+                Invitations aren&rsquo;t ready yet
+              </p>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {readiness
+                  .filter((check) => !check.ok)
+                  .map((check) => (
+                    <li key={check.label} className="text-xs text-navy/80">
+                      <span className="font-medium">{check.label}:</span>{" "}
+                      {check.detail}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+
           <InviteForm today={today} />
         </section>
 
