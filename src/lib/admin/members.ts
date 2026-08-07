@@ -81,6 +81,20 @@ export async function inviteMember(
         error: `${email} already has an account. If they're rejoining, use their existing record rather than inviting them again.`,
       };
     }
+
+    // Supabase's built-in email service is a testing convenience: a couple of
+    // messages an hour, and only to addresses on the Supabase organisation.
+    // Inviting an actual member therefore fails here until custom SMTP is
+    // configured. Observed behaviour is that no auth user is created when the
+    // send fails, so the address stays invitable — worth re-checking if that
+    // ever changes, because a stranded auth user can't be re-invited.
+    if (/sending|smtp|email/i.test(error.message)) {
+      return {
+        error:
+          "Supabase couldn't send the email. This is almost always the built-in email service, which only delivers to addresses on your Supabase organisation and allows a couple of messages an hour. Configure custom SMTP under Project Settings → Authentication. No account was created, so this address can be invited again once sending works.",
+      };
+    }
+
     return { error: `Couldn't send the invitation: ${error.message}` };
   }
 
