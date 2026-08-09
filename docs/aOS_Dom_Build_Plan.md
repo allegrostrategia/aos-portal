@@ -54,7 +54,8 @@ From Step 1 onward, every step follows the same pattern as #7: describe what's b
 **Still to do in Step 1:**
 - Set minimum password length to 8 in Supabase, to match what the form promises
 - Swap the placeholder `get_my_role()` / `is_portal_admin()` bodies for Nina's real Allegro Portal SQL
-- Housekeeping: `hello@allegrocaptures.co.uk` has an auth user but no member row, so it lands on `/no-access`; Nina's own row was hand-seeded so has no `contract_term_end_date` and won't appear in "coming up for recommit" queries
+- Housekeeping: `hello@allegrocaptures.co.uk` has an auth user but no member row, so it lands on `/no-access`
+- Recommit queries must filter `role = 'member'`, not on `contract_term_end_date` being set — admin rows are seeded by hand and legitimately have no contract (documented as column comments in the schema)
 - Deliverability: no SPF on the root domain (DMARC passes via the `send.` subdomain, but the bare domain is spoofable); new-domain reputation means invitations may land in spam until it warms up
 - Hot seat tables (Step 6) — the monthly challenge belongs there, deliberately not on `weekly_submissions`
 - Chat tables (Step 11)
