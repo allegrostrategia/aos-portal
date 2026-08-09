@@ -20,7 +20,17 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-navy/10 bg-white/60">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-3">
-          <p className="font-display text-xl italic text-navy">aOS</p>
+          <div className="flex items-baseline gap-5">
+            <Link href="/piazza" className="font-display text-xl italic text-navy">
+              aOS
+            </Link>
+            <Link
+              href="/stations"
+              className="text-sm text-navy/70 transition hover:text-navy"
+            >
+              Stations
+            </Link>
+          </div>
 
           <div className="flex items-center gap-4">
             {member.role === "admin" ? (
