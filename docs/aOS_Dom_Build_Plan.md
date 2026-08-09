@@ -49,10 +49,13 @@ From Step 1 onward, every step follows the same pattern as #7: describe what's b
 
 **Auth: done and confirmed live.** Login, password reset, the invitation landing route and route protection are deployed at `aos.allegrostrategia.com` and a real sign-in reaches Piazza. Admin rows seeded.
 
+**Invitation flow: done and proven end to end** (9 Aug 2026). Admin invite → email → `/auth/confirm` → set password → Piazza, landing as `onboarding`. Requires custom SMTP: Supabase's built-in email service only delivers to addresses on the Supabase organisation, so it can never invite a real member. Resend is configured against `allegrostrategia.com` (DKIM + `send.` MX/SPF verified), sending as `noreply@allegrostrategia.com`.
+
 **Still to do in Step 1:**
-- **Test the invitation flow end to end** — the only auth path never exercised, and the one onboarding depends on. Needs the Supabase email templates repointed at `/auth/confirm` first (README → Auth); the defaults will look like they work and then drop people back at the login screen
 - Set minimum password length to 8 in Supabase, to match what the form promises
 - Swap the placeholder `get_my_role()` / `is_portal_admin()` bodies for Nina's real Allegro Portal SQL
+- Housekeeping: `hello@allegrocaptures.co.uk` has an auth user but no member row, so it lands on `/no-access`; Nina's own row was hand-seeded so has no `contract_term_end_date` and won't appear in "coming up for recommit" queries
+- Deliverability: no SPF on the root domain (DMARC passes via the `send.` subdomain, but the bare domain is spoofable); new-domain reputation means invitations may land in spam until it warms up
 - Hot seat tables (Step 6) — the monthly challenge belongs there, deliberately not on `weekly_submissions`
 - Chat tables (Step 11)
 
