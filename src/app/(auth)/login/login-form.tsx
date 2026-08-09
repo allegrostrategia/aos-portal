@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { signIn, type AuthFormState } from "@/lib/auth/actions";
-import { Field, FormMessage, SubmitButton } from "@/components/form";
+import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 
 export function LoginForm({
   next,

@@ -10,16 +10,16 @@ export const metadata: Metadata = {
 export default function ForgotPasswordPage() {
   return (
     <>
-      <h1 className="font-display mb-1 text-2xl italic text-navy">
+      <h1 className="font-display mb-1 text-title text-navy italic">
         Reset your password
       </h1>
-      <p className="mb-6 text-sm text-navy/70">
+      <p className="mb-6 text-small text-navy/70">
         We&rsquo;ll email you a link to set a new one.
       </p>
 
       <ForgotPasswordForm />
 
-      <p className="mt-5 text-center text-sm text-navy/70">
+      <p className="mt-5 text-center text-small text-navy/70">
         <Link
           href="/login"
           className="underline decoration-orange decoration-2 underline-offset-4 hover:text-navy"

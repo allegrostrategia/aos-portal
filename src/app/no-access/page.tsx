@@ -23,14 +23,14 @@ export default async function NoAccessPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-5 py-10 sm:py-16">
       <div className="w-full max-w-md text-center">
-        <p className="font-mono text-[0.7rem] tracking-[0.25em] text-orange uppercase">
+        <p className="font-mono text-eyebrow text-orange uppercase">
           Allegro Strategia
         </p>
-        <h1 className="font-display mt-3 text-3xl italic text-navy">
+        <h1 className="font-display mt-3 text-title text-navy italic">
           {cancelled ? "Your membership has ended" : "Your account isn’t ready yet"}
         </h1>
 
-        <p className="mt-4 text-sm text-navy/70">
+        <p className="mt-4 text-small text-navy/70">
           {cancelled ? (
             <>
               Nothing has been deleted — your logs, your roadmap and everything in
@@ -46,7 +46,7 @@ export default async function NoAccessPage() {
           )}
         </p>
 
-        <p className="mt-4 text-sm text-navy/70">
+        <p className="mt-4 text-small text-navy/70">
           Email{" "}
           <a
             href="mailto:hello@allegrostrategia.com"
@@ -60,7 +60,7 @@ export default async function NoAccessPage() {
         <form action={signOut} className="mt-8">
           <button
             type="submit"
-            className="text-sm text-navy/60 underline underline-offset-4 transition hover:text-navy"
+            className="text-small text-navy/60 underline underline-offset-4 transition hover:text-navy"
           >
             Sign out
           </button>

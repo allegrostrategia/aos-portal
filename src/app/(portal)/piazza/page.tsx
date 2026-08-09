@@ -1,22 +1,35 @@
 import type { Metadata } from "next";
 
 import { getCurrentMember } from "@/lib/auth/member";
+import { Card, Eyebrow, Stat } from "@/components/ui/card";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Piazza — aOS",
 };
 
-const GREETING_DATE = new Intl.DateTimeFormat("en-GB", {
+const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
   day: "numeric",
   month: "long",
 });
 
+const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", {
+  month: "long",
+  year: "numeric",
+});
+
+const FULL_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
 /**
- * Placeholder. The real Piazza — hours reclaimed, the proof cluster, this week's
- * log, the mini La Strada map, the draw card — is Step 4. This exists so there's
- * somewhere to land after signing in, and so the status tiering is visible while
- * the rest gets built.
+ * Placeholder. The real Piazza — the proof cluster, this week's log, the mini La
+ * Strada map, the draw card, today's priorities — is Step 4. This exists so
+ * there's somewhere to land after signing in, now dressed in the design system
+ * so Step 4 starts from the right vocabulary rather than reinventing it.
  */
 export default async function PiazzaPage() {
   // Non-null: the portal layout has already run requireMember().
@@ -25,56 +38,46 @@ export default async function PiazzaPage() {
   const firstName = member.full_name.split(" ")[0];
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:py-14">
-      <p className="font-mono text-xs tracking-widest text-navy/50 uppercase">
-        {GREETING_DATE.format(new Date())}
-      </p>
-      <h1 className="font-display mt-2 text-4xl italic text-navy sm:text-5xl">
+    <main className="flex-1 py-8 sm:py-10">
+      <Eyebrow>{LONG_DATE.format(new Date())}</Eyebrow>
+      <h1 className="font-display mt-2 text-display text-navy italic">
         Buongiorno, {firstName}
       </h1>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <section className="rounded-lg border border-navy/10 bg-white/60 p-5">
-          <p className="font-mono text-xs tracking-widest text-navy/50 uppercase">
-            Your stage
-          </p>
-          <p className="font-display mt-2 text-2xl italic text-navy">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2">
+        <Card>
+          <Eyebrow>Your stage</Eyebrow>
+          <p className="font-display mt-2 text-heading text-navy italic">
             {member.status === "onboarding" ? "Onboarding" : "Active"}
           </p>
-          <p className="mt-2 text-sm text-navy/70">
+          <p className="mt-2 text-small text-navy/70">
             {member.status === "onboarding"
               ? "Time tracking, your audit and the member directory are open to you now. The full library, hot seat and peer pairing unlock once you’re active."
               : "Everything is open to you — the full library, hot seat and peer pairing."}
           </p>
-        </section>
+          <ButtonLink href="/stations" size="sm" className="mt-4">
+            Walk La Strada
+          </ButtonLink>
+        </Card>
 
-        <section className="rounded-lg border border-navy/10 bg-white/60 p-5">
-          <p className="font-mono text-xs tracking-widest text-navy/50 uppercase">
-            Member since
-          </p>
-          <p className="font-mono mt-2 text-2xl text-navy">
-            {new Intl.DateTimeFormat("en-GB", {
-              month: "long",
-              year: "numeric",
-            }).format(new Date(member.join_date))}
-          </p>
-          {member.contract_term_end_date ? (
-            <p className="mt-2 text-sm text-navy/70">
-              Your first six months run to{" "}
-              {new Intl.DateTimeFormat("en-GB", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              }).format(new Date(member.contract_term_end_date))}
-              .
-            </p>
-          ) : null}
-        </section>
+        <Card>
+          <Stat
+            label="Member since"
+            value={MONTH_YEAR.format(new Date(member.join_date))}
+            detail={
+              member.contract_term_end_date
+                ? `Your first six months run to ${FULL_DATE.format(
+                    new Date(member.contract_term_end_date),
+                  )}.`
+                : undefined
+            }
+          />
+        </Card>
       </div>
 
-      <p className="mt-8 text-sm text-navy/50">
-        Piazza proper arrives in Step 4 — this is the landing point while auth gets
-        wired up.
+      <p className="mt-8 text-small text-navy/50">
+        Piazza proper — hours reclaimed, this week&rsquo;s log, your challenge and
+        the map — arrives in Step 4.
       </p>
     </main>
   );

@@ -30,10 +30,10 @@ export default async function SetPasswordPage() {
 
   return (
     <>
-      <h1 className="font-display mb-1 text-2xl italic text-navy">
+      <h1 className="font-display mb-1 text-title text-navy italic">
         Choose a password
       </h1>
-      <p className="mb-6 text-sm text-navy/70">
+      <p className="mb-6 text-small text-navy/70">
         Signed in as {user.email}. Pick something you&rsquo;ll remember — this is
         how you&rsquo;ll get back in.
       </p>

@@ -36,6 +36,60 @@
   --font-display: var(--font-cormorant), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /*
+   * Type scale.
+   *
+   * Fluid rather than breakpoint-stepped: each size interpolates with the
+   * viewport, so a heading is right on a phone and right on a laptop without a
+   * separate `sm:` size at every call site. That matters here more than usual —
+   * mobile and desktop are both first-class (standing rule 1), and a scale that
+   * needs remembering at each use is a scale that drifts.
+   *
+   * The largest sizes are meant for Cormorant italic, which runs small for its
+   * point size and carries the display voice.
+   */
+  --text-display: clamp(2.25rem, 1.6rem + 2.8vw, 3.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.01em;
+
+  --text-title: clamp(1.75rem, 1.45rem + 1.4vw, 2.25rem);
+  --text-title--line-height: 1.15;
+
+  --text-heading: 1.25rem;
+  --text-heading--line-height: 1.3;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+
+  /* The mono uppercase label used above headings throughout. */
+  --text-eyebrow: 0.7rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.22em;
+}
+
+/*
+ * One focus style everywhere, defined once. Orange is the accent and reads
+ * clearly against both the off-white ground and navy fills.
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--aos-orange);
+    outline-offset: 2px;
+  }
+
+  /* Inputs get a ring instead, since an outline sits awkwardly on a filled box. */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+  }
 }
 
 body {

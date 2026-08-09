@@ -25,14 +25,14 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <>
-      <h1 className="font-display mb-1 text-2xl italic text-navy">Bentornato</h1>
-      <p className="mb-6 text-sm text-navy/70">
+      <h1 className="font-display mb-1 text-title text-navy italic">Bentornato</h1>
+      <p className="mb-6 text-small text-navy/70">
         Sign in to pick up where you left off.
       </p>
 
       <LoginForm next={next} initialError={initialError} />
 
-      <p className="mt-5 text-center text-sm text-navy/70">
+      <p className="mt-5 text-center text-small text-navy/70">
         <Link
           href="/forgot-password"
           className="underline decoration-orange decoration-2 underline-offset-4 hover:text-navy"
@@ -43,7 +43,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
       {/* No signup link, deliberately: membership starts with a conversation and
           a signed contract, and Nina creates the account by hand. */}
-      <p className="mt-6 border-t border-navy/10 pt-5 text-center text-xs text-navy/60">
+      <p className="mt-6 border-t border-navy/10 pt-5 text-center text-caption text-navy/60">
         aOS is invitation only. If you&rsquo;ve joined and haven&rsquo;t received
         your invitation, email{" "}
         <a

@@ -10,10 +10,10 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Link href="/login" className="inline-block">
-            <p className="font-mono text-[0.7rem] tracking-[0.25em] text-orange uppercase">
+            <p className="font-mono text-eyebrow text-orange uppercase">
               Allegro Strategia
             </p>
-            <p className="font-display mt-1 text-4xl italic text-navy">aOS</p>
+            <p className="font-display mt-1 text-display text-navy italic">aOS</p>
           </Link>
         </div>
 
