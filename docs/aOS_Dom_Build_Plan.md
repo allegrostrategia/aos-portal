@@ -72,9 +72,10 @@ Welcome session (video + `watched_at` gate) → audit form → weekly time track
 
 **Done:** the onboarding sequence at `/onboarding` — welcome session with its gate, the audit form and scoring, the itinerary, the directory listing, and the admin-accessible view of submitted audit data per member (§1). Access tiering was already in place from Steps 1–2. Cadence dates and audit scoring have unit tests (`npm run test:unit`).
 
+**Timer: done.** The floating global timer lives in the portal shell, so it's available from every screen and from day one of onboarding (§1). Live start/stop against the ten fixed categories, manual entries marked as such, today's entries with delete, and this week's total against the 10-hour threshold at `/time` and on Piazza. Built as the weekly log's engine, so Step 5 extends it rather than rewriting it.
+
 **Still to do:**
-- **The time-tracking timer** — the one substantial piece left. It's shared with Step 5, so it makes sense to build it as the weekly log's engine rather than an onboarding-only version
-- **Priming content** (§1) — one short piece per week on the check-in screen, which doesn't exist until the timer does
+- **Priming content** (§1) — one short piece per week on the check-in screen. Needs the weekly submission screen, which is Step 5
 - Nina's real audit questions — the set in `src/lib/onboarding/audit-questions.ts` is placeholder copy written to the right shape; swapping it in means editing that one file
 - The welcome session recording
 - Headshot upload for directory listings — needs a Supabase storage bucket

@@ -7,6 +7,8 @@ import {
   PortalNavSidebar,
   type NavItem,
 } from "@/components/portal-nav";
+import { FloatingTimer } from "@/components/timer/floating-timer";
+import { getRunningEntry, getTimeCategories } from "@/lib/timer/queries";
 
 /**
  * The authenticated shell.
@@ -18,6 +20,13 @@ import {
 export default async function PortalLayout({ children }: LayoutProps<"/">) {
   const member = await requireMember();
 
+  // Time tracking is open from day one, onboarding included (§1), so the timer
+  // is part of the shell rather than something that appears later.
+  const [categories, running] = await Promise.all([
+    getTimeCategories(),
+    getRunningEntry(),
+  ]);
+
   // Only destinations that exist. Piazza Sociale and Archivio join as they're
   // built — a nav item that 404s is worse than one that isn't there yet.
   const items: NavItem[] = [
@@ -27,6 +36,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     ...(member.status === "onboarding"
       ? [{ href: "/onboarding", label: "First weeks" }]
       : []),
+    { href: "/time", label: "Your log" },
     { href: "/stations", label: "La Strada" },
     ...(member.role === "admin"
       ? [{ href: "/admin/members", label: "Admin" }]
@@ -68,6 +78,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
         </div>
       </div>
 
+      <FloatingTimer categories={categories} running={running} />
       <PortalNavBottom items={items} />
     </div>
   );
