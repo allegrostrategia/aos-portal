@@ -10,6 +10,21 @@
 export type MemberStatus = "onboarding" | "active" | "cancelled";
 export type MemberRole = "member" | "admin";
 
+/** V/L/S/P. Secondary tags for the recommendation engine, never the navigation. */
+export type Bucket = "visibility" | "launch" | "systems_delivery" | "profit";
+
+export type AuditOccasion = "onboarding" | "recommit";
+
+export interface MemberProfile {
+  member_id: string;
+  display_name: string;
+  title: string | null;
+  bio: string | null;
+  headshot_path: string | null;
+  links: { label: string; url: string }[];
+  completed_at: string | null;
+}
+
 export interface Member {
   id: string;
   email: string;

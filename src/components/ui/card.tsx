@@ -12,7 +12,7 @@ export function Card({
   className = "",
   children,
 }: {
-  as?: "section" | "article" | "div" | "li";
+  as?: "section" | "article" | "div" | "li" | "fieldset";
   padded?: boolean;
   className?: string;
   children: React.ReactNode;

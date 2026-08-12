@@ -55,8 +55,14 @@ export default async function PiazzaPage() {
               ? "Time tracking, your audit and the member directory are open to you now. The full library, hot seat and peer pairing unlock once you’re active."
               : "Everything is open to you — the full library, hot seat and peer pairing."}
           </p>
-          <ButtonLink href="/stations" size="sm" className="mt-4">
-            Walk La Strada
+          <ButtonLink
+            href={member.status === "onboarding" ? "/onboarding" : "/stations"}
+            size="sm"
+            className="mt-4"
+          >
+            {member.status === "onboarding"
+              ? "Your first weeks"
+              : "Walk La Strada"}
           </ButtonLink>
         </Card>
 

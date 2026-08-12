@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { checkInviteReadiness } from "@/lib/admin/diagnostics";
@@ -91,10 +92,11 @@ export default async function AdminMembersPage() {
           ) : (
             <ul className="flex flex-col gap-2">
               {members.map((member) => (
-                <li
-                  key={member.id}
-                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border border-navy/10 bg-white/60 px-4 py-3"
-                >
+                <li key={member.id}>
+                  <Link
+                    href={`/admin/members/${member.id}`}
+                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border border-navy/10 bg-white/60 px-4 py-3 transition hover:border-navy/25"
+                  >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-navy">
                       {member.full_name}
@@ -115,6 +117,7 @@ export default async function AdminMembersPage() {
                       joined {DATE.format(new Date(member.join_date))}
                     </p>
                   </div>
+                  </Link>
                 </li>
               ))}
             </ul>

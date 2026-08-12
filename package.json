@@ -11,7 +11,9 @@
     "db:push": "supabase db push",
     "db:link": "supabase link",
     "db:diff": "supabase db diff",
-    "db:bundle": "node scripts/bundle-migrations.mjs"
+    "db:bundle": "node scripts/bundle-migrations.mjs",
+    "test:unit": "node --test \"src/**/*.test.ts\"",
+    "test": "npm run test:unit && npm run test:db"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

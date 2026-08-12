@@ -22,6 +22,11 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
   // built — a nav item that 404s is worse than one that isn't there yet.
   const items: NavItem[] = [
     { href: "/piazza", label: "Piazza" },
+    // Onboarding members get the sequence up front; it drops out of the nav once
+    // they're active and there's nothing left to do there.
+    ...(member.status === "onboarding"
+      ? [{ href: "/onboarding", label: "First weeks" }]
+      : []),
     { href: "/stations", label: "La Strada" },
     ...(member.role === "admin"
       ? [{ href: "/admin/members", label: "Admin" }]

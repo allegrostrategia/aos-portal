@@ -1,0 +1,214 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { requireAdmin } from "@/lib/auth/member";
+import { createClient } from "@/lib/supabase/server";
+import { AUDIT_QUESTIONS } from "@/lib/onboarding/audit-questions";
+import { buildItinerary } from "@/lib/onboarding/cadence";
+import type { Member } from "@/lib/supabase/types";
+import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Member — aOS admin",
+};
+
+const DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+const WEEK = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
+
+type AuditRow = {
+  id: string;
+  occasion: string;
+  submitted_at: string | null;
+  answers: Record<string, string>;
+  scores: { station?: Record<string, number>; bucket?: Record<string, number> };
+  weakest_station_slug: string | null;
+  weakest_bucket: string | null;
+};
+
+/**
+ * §1: "Needs an admin-accessible view — Nina/team can see submitted data per
+ * client." This is the prep sheet for the 1:1 — the answers as given, the
+ * diagnosis they produce, and the dates the member has been told to expect.
+ */
+export default async function AdminMemberPage({
+  params,
+}: PageProps<"/admin/members/[id]">) {
+  await requireAdmin();
+  const { id } = await params;
+
+  const supabase = await createClient();
+
+  const [{ data: memberRow }, { data: auditRows }, { data: stationRows }] =
+    await Promise.all([
+      supabase.from("members").select("*").eq("id", id).maybeSingle(),
+      supabase
+        .from("member_audits")
+        .select("*")
+        .eq("member_id", id)
+        .order("submitted_at", { ascending: false, nullsFirst: false }),
+      supabase.from("stations").select("slug, name"),
+    ]);
+
+  const member = memberRow as Member | null;
+  if (!member) notFound();
+
+  const audits = (auditRows ?? []) as AuditRow[];
+  const stationName = Object.fromEntries(
+    ((stationRows ?? []) as { slug: string; name: string }[]).map((s) => [
+      s.slug,
+      s.name,
+    ]),
+  );
+
+  const itinerary = member.onboarding_start_date
+    ? buildItinerary(member.onboarding_start_date)
+    : null;
+
+  return (
+    <main className="flex-1 py-8 sm:py-10">
+      <p className="mb-4">
+        <Link
+          href="/admin/members"
+          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+        >
+          ← All members
+        </Link>
+      </p>
+
+      <PageHeader
+        eyebrow="Admin"
+        title={member.full_name}
+        intro={member.email}
+      />
+
+      <div className="grid gap-5 sm:grid-cols-3">
+        <Card>
+          <Eyebrow>Status</Eyebrow>
+          <p className="mt-2 text-body text-navy">
+            {member.status}
+            {member.role === "admin" ? (
+              <span className="ml-2">
+                <Badge tone="gold">Admin</Badge>
+              </span>
+            ) : null}
+          </p>
+        </Card>
+        <Card>
+          <Stat
+            label="Joined"
+            value={DATE.format(new Date(member.join_date))}
+            detail={
+              member.contract_term_end_date
+                ? `Term ends ${DATE.format(new Date(member.contract_term_end_date))}`
+                : "No contract term — hand-seeded row"
+            }
+          />
+        </Card>
+        <Card>
+          <Eyebrow>Confirmations</Eyebrow>
+          <p className="mt-2 text-small text-navy/80">
+            Payment: {member.payment_confirmed_at ? "✓" : "—"}
+            <br />
+            Contract: {member.contract_signed_at ? "✓" : "—"}
+            <br />
+            Welcome session: {member.welcome_session_watched_at ? "✓" : "—"}
+          </p>
+        </Card>
+      </div>
+
+      {itinerary ? (
+        <Card className="mt-5">
+          <Eyebrow>Their itinerary — what they&rsquo;ve been told to expect</Eyebrow>
+          <ul className="font-mono mt-3 flex flex-wrap gap-x-8 gap-y-2 text-small text-navy/80">
+            <li>Tracking I · w/c {WEEK.format(new Date(itinerary.trackingWeekOne))}</li>
+            <li>Tracking II · w/c {WEEK.format(new Date(itinerary.trackingWeekTwo))}</li>
+            <li>1:1 · w/c {WEEK.format(new Date(itinerary.oneToOneWeek))}</li>
+            <li>Hot seat · w/c {WEEK.format(new Date(itinerary.firstHotSeatWeek))}</li>
+          </ul>
+          {itinerary.joinedOffCycle ? (
+            <p className="mt-3 text-small text-orange">
+              Joined outside week 2 — these dates were shown to them as
+              indicative.
+            </p>
+          ) : null}
+        </Card>
+      ) : null}
+
+      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+        Audits
+      </h2>
+
+      {audits.length === 0 ? (
+        <Card>
+          <p className="text-small text-navy/70">Nothing submitted yet.</p>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-5">
+          {audits.map((audit) => (
+            <Card key={audit.id}>
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <Eyebrow tone="accent">{audit.occasion}</Eyebrow>
+                <p className="font-mono text-caption text-navy/50">
+                  {audit.submitted_at
+                    ? DATE.format(new Date(audit.submitted_at))
+                    : "in progress"}
+                </p>
+              </div>
+
+              <p className="mt-3 text-body text-navy">
+                Weakest:{" "}
+                <strong className="font-medium">
+                  {audit.weakest_station_slug
+                    ? (stationName[audit.weakest_station_slug] ??
+                      audit.weakest_station_slug)
+                    : "—"}
+                </strong>
+                {audit.weakest_bucket ? (
+                  <span className="text-navy/60">
+                    {" "}
+                    · {audit.weakest_bucket.replace("_", " & ")}
+                  </span>
+                ) : null}
+              </p>
+
+              <ul className="mt-4 flex flex-col gap-3">
+                {AUDIT_QUESTIONS.map((question) => {
+                  const answer = audit.answers?.[question.id];
+                  const option = question.options.find(
+                    (o) => o.value === answer,
+                  );
+
+                  return (
+                    <li
+                      key={question.id}
+                      className="border-t border-navy/10 pt-3 first:border-t-0 first:pt-0"
+                    >
+                      <p className="text-small text-navy/60">
+                        {stationName[question.stationSlug] ?? question.stationSlug}{" "}
+                        — {question.prompt}
+                      </p>
+                      <p className="mt-1 text-small text-navy">
+                        {option ? option.label : "—"}
+                        {option ? (
+                          <span className="font-mono ml-2 text-caption text-navy/50">
+                            {option.score}/3
+                          </span>
+                        ) : null}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
