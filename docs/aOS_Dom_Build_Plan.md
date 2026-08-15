@@ -129,16 +129,12 @@ Auto-compile from hot seat builds, manual SOP addition, the AI-assisted SOP gene
 
 Personal hours-reclaimed counter, milestone path, monthly draw mechanics, collective community goal.
 
-**Hours reclaimed — the spec, proposed and pending Nina's full sign-off:**
-- Generated **per handover pack entry**, estimated by Nina at write-up — the same AI-drafts-then-Nina-confirms moment as the write-up itself. Never member self-report
-- **Recurring, not one-off.** A build has a weekly hours-saved rate that accrues every week
-- **Accrues only for weeks the member actually submitted their log**, so the counter reinforces the same habit the draw does
-- **Multiple active builds stack.** Two live automations at 5 and 3 hrs/week reclaim 8 hrs every submitted week, added together — not just the most recent build's rate
-- **Milestones are 50 / 100 / 250 / 500** — real thresholds, not placeholders
+**Hours reclaimed is now fully specified in the Build Brief, §2** — rate per handover pack entry, stacking, accrual gated on a qualifying 10-hour week, dated rate history, append-only weekly ledger, milestones at 50/100/250/500. Read it there rather than duplicating it here.
 
-Open questions before building against it:
-- Does a "submitted log" mean any signed-off log, or a **complete** week (10 hours, the draw's bar)? They're different, and the second is what makes the counter reinforce the draw. Recommend the 10-hour threshold
-- Can a build stop accruing — a member abandons the automation — and can Nina revise a rate after the fact? Determines whether the rate lives on the handover pack entry or in a dated history
+Two things that spec implies for the build, worth knowing before Step 10 starts:
+
+- **The weekly ledger needs a scheduler.** "Each qualifying week writes a discrete entry" means something has to run after each week closes, check the 10-hour threshold, and append. That's the same missing scheduler the Step 5 reminders need — so it's one piece of infrastructure serving both. It must be idempotent and backfillable (unique on member + week), or a failed run silently costs members hours they earned.
+- **Retiring a rate depends on the two-week check-in, which isn't specified anywhere.** §2 calls it "already the moment 'what worked, what didn't' gets captured", but it appears nowhere else in the brief — §5 covers hot seat prep, the call and replays; §8 covers the write-up. Until it exists, nothing ever closes an `effective_until`, so rates accrue forever and the counter only inflates. Needs defining: when it happens, where it lives, what it captures.
 
 *Full detail: scattered across Piazza/Weekly Log sections of the Build Brief — the gamification mockups earlier in this project are the visual reference.*
 

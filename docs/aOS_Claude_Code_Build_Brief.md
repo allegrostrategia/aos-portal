@@ -68,6 +68,7 @@ A member's access is different during onboarding than once active — enforced b
 - **Time-tracking discussion channel** — a space to talk through what they're noticing in their own numbers. Not onboarding-only; stays live once active too, just most valuable during the quiet onboarding weeks specifically
 - **A small starter set of trainings** — same for every onboarding member, not diagnostic-matched (that logic doesn't exist yet). Draft set: *Looking at the data in your business*, a finance tracker/pricing calculator tool, *Income generating activities*, *Task management basics*. Needs Nina's sign-off against the full list.
 - **A handful of hand-picked "trailer" replays** — real past hot seat builds, visible specifically to onboarding members, so the quiet weeks show proof of what's coming rather than nothing at all
+- **As built (Step 2):** the full station list itself is visible but greyed during onboarding, not hidden — same "show proof of what's coming" reasoning as the trailer replays. **Grand Hotel Riposo stays fully open**, since that's where onboarding activity actually happens.
 
 **Locked until `status = active` (week 1 of the following month):**
 - The full, diagnostic-matched training library
@@ -129,6 +130,22 @@ Personal hours-reclaimed counter, the milestone path, and the collective communi
 - Personal hours reclaimed — the big number
 - Milestone progress — compact on Piazza: current position + distance to next unlock as a single line (e.g. "62 hrs · 38 to your next unlock"), click-through to the full illustrated path view
 - Collective community goal — same big-number treatment, smaller, placed right alongside
+
+### Hours reclaimed — the actual definition
+Flagged during Step 4 as never having one, despite being the product's headline metric. Fully resolved now:
+
+- **Generated per handover pack entry, as a weekly rate** (e.g. "saves 5 hrs/week"), not a one-off figure.
+- **Estimated at hot seat prep, from the member's own tracked category hours** — same "AI drafts, Nina confirms" moment as the write-up itself, not a member self-report. Claude reasons from the relevant category's logged hours (and any notes on those entries) to draft a plausible weekly-hours-saved figure; Nina confirms or adjusts before it's locked.
+- **Recurring and stacking.** Every active build's weekly rate adds to a running total — a member with two live automations at 5 and 3 hrs/week is reclaiming 8 hrs every week they submit their log, on top of whatever's already banked from earlier builds. This is the "distance travelled" mechanic from Officina Vespa's concept, taken literally: distance accumulates from every trip, not just the most recent one.
+- **Accrual is gated on submission.** The running total only grows for weeks the member actually submits their log — reinforcing the same weekly habit the draw already incentivises, not a separate parallel mechanic.
+- **Milestones stay 50 / 100 / 250 / 500 as real thresholds**, not placeholder numbers. Roughly paced so a member with 2-3 active builds hits their first milestone within about two months, and reaches 500 only after genuinely sustained membership.
+- **Schema addition:** an optional `notes` field on individual time entries — not required, so it never adds friction to daily logging — giving the AI-prep step something concrete to spot recurring patterns from when estimating a build's likely hours-saved rate. **As built (Step 5):** the `note` column already existed for manual entries; the timer itself gained two optional entry points — on the start form (skippable, sits below the required category) and as a disclosure on each logged entry afterward (the more useful of the two, since what an hour turned into is only known once it's over). The daily motion stays "pick category, press Start" either way.
+
+**Fully resolved (Step 10 spec):**
+- **Qualifying week = the same 10-hour threshold as draw eligibility.** One bar, one meaning — a member either showed up that week or didn't, and both the draw and the accrual read the same signal. Two different definitions of "showed up" in the same product would be needless complexity and confusing to explain.
+- **Multiple active builds stack, not replace.** A member with two live automations at 5 and 3 hrs/week reclaims 8 hrs every qualifying week — sum the active rates, multiply by qualifying weeks.
+- **Rates are revisable, but already-accrued hours never retroactively shrink.** Built as a dated rate history per handover pack entry (`effective_from` / `effective_until`), not a single mutable field — retiring a build or correcting an estimate closes the old period and opens a new one, rather than overwriting history. The running total itself is an append-only weekly ledger (same pattern as `member_status_events` and `roadmap_history`), not a live recalculation — each qualifying week writes a discrete entry using whatever rate was in effect that week.
+- **Retiring a build's rate is a natural extension of the two-week check-in**, not a new workflow — that's already the moment "what worked, what didn't" gets captured, and the obvious trigger for Nina to notice a build's stopped running.
 
 ### The monthly draw
 A compact card: entry status, this month's prize, the draw date. Click-through opens the full raffle-ticket view. Not shown fully expanded on the homepage — same "compact + click-through" pattern as milestones.
