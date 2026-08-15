@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { firstMondayOfMonth } from "@/lib/onboarding/cadence";
+import { pickUpcomingSession } from "./upcoming";
 
 export type HotSeatSession = {
   id: string;
@@ -26,35 +26,29 @@ export type HotSeatSubmission = {
 /**
  * The session a member is heading towards.
  *
- * The hot seat is week 1 of every month (§1), so "the next one" is this month's
- * if it hasn't happened, otherwise next month's. Looked up by month rather than
- * by `scheduled_for`, because the exact slot may not be set yet and a session
- * without a time is still the session everyone is preparing for.
+ * Fetches the candidates and lets `pickUpcomingSession` decide, rather than
+ * encoding the choice in a WHERE clause. The first version did the latter and
+ * got it wrong invisibly — see the note in upcoming.ts.
  */
 export async function getUpcomingSession(): Promise<HotSeatSession | null> {
   const supabase = await createClient();
 
-  const today = new Date().toISOString().slice(0, 10);
-  const thisMonth = `${today.slice(0, 7)}-01`;
-
-  // If this month's hot seat week has already passed, look to next month.
-  const hotSeatWeek = firstMondayOfMonth(today);
-  const fromMonth =
-    today > hotSeatWeek
-      ? new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 1))
-          .toISOString()
-          .slice(0, 10)
-      : thisMonth;
+  // From the start of last month, so a session still within its grace window is
+  // among the candidates. The choosing is done in one tested place.
+  const now = new Date();
+  const from = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+  )
+    .toISOString()
+    .slice(0, 10);
 
   const { data } = await supabase
     .from("hot_seat_sessions")
     .select("id, session_month, scheduled_for, zoom_url")
-    .gte("session_month", fromMonth)
-    .order("session_month")
-    .limit(1)
-    .maybeSingle();
+    .gte("session_month", from)
+    .order("session_month");
 
-  return (data as HotSeatSession | null) ?? null;
+  return pickUpcomingSession((data ?? []) as HotSeatSession[], now);
 }
 
 export async function getMySubmission(
