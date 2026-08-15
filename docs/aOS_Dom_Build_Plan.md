@@ -134,7 +134,13 @@ Personal hours-reclaimed counter, milestone path, monthly draw mechanics, collec
 Two things that spec implies for the build, worth knowing before Step 10 starts:
 
 - **The weekly ledger needs a scheduler.** "Each qualifying week writes a discrete entry" means something has to run after each week closes, check the 10-hour threshold, and append. That's the same missing scheduler the Step 5 reminders need — so it's one piece of infrastructure serving both. It must be idempotent and backfillable (unique on member + week), or a failed run silently costs members hours they earned.
-- **Retiring a rate depends on the two-week check-in, which isn't specified anywhere.** §2 calls it "already the moment 'what worked, what didn't' gets captured", but it appears nowhere else in the brief — §5 covers hot seat prep, the call and replays; §8 covers the write-up. Until it exists, nothing ever closes an `effective_until`, so rates accrue forever and the counter only inflates. Needs defining: when it happens, where it lives, what it captures.
+- **Retiring a rate depends on the two-week check-in.** Proposed definition (pending Nina): fires two weeks after each specific build, in portal chat; the member posts what worked and what didn't, tagged to that build; Nina reviews and decides whether to retire the rate — same member-reports, Nina-decides pattern as elsewhere. Responses double as testimonial material. Non-response defaults to keep accruing, never auto-retire: retiring needs evidence, not silence.
+
+  Four consequences for the build:
+  - **It depends on chat, which is Step 11 — after Step 10.** The counter itself ships fine without it; the *retirement* half can't. Either Step 10 lands knowing rates won't close yet, or the check-in gets a simpler home than chat for its first version
+  - **Tagging has to be in the chat schema from the start.** A message needs to reference a `handover_pack` entry, or linking responses to builds is a retrofit across every message already written
+  - **The scheduler now has two shapes, not one.** The weekly ledger and the reminders are calendar-driven; check-ins fire on a per-build offset. A generic due-jobs table (what, for whom, due when, done when) serves all three; three separate crons wouldn't
+  - **Testimonial reuse needs explicit consent, not implied by posting.** A member writing candidly in a members-only chat hasn't agreed to appear on a sales page. Worth a consent flag on the response rather than a blanket assumption — cheaper to ask at the point of writing than to go back later
 
 *Full detail: scattered across Piazza/Weekly Log sections of the Build Brief — the gamification mockups earlier in this project are the visual reference.*
 
