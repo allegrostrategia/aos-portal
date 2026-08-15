@@ -104,6 +104,10 @@ Built on a shared `due_jobs` table and a daily Vercel cron at 08:00 UTC, serving
 
 ## Step 6 — Hot seat
 
+**Done:** the schema, the member submission flow at `/hot-seat`, admin session scheduling, the prep-and-confirm sheet, the Friday touchpoint view, and both reminder tracks.
+
+**Still to do:** Claude drafting the scoped suggestion at prep (needs `ANTHROPIC_API_KEY`) — the prep sheet already has the panel it renders into. Pod-splitting past 12 attendees stays deferred per §5.
+
 Submission form, Claude API integration for AI-drafted build suggestions, Nina's confirm-during-prep workflow, Zoom link, reminder tracks.
 
 *Full detail: Build Brief, Section 5. Pod-splitting logic past 12 attendees is still undecided — build for a single group for now, this can be added later without disrupting anything else.*
