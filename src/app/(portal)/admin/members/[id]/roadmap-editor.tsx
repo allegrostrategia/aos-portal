@@ -25,6 +25,8 @@ const INPUT =
  */
 export function RoadmapEditor({
   memberId,
+  memberName,
+  memberEmail,
   stations,
   initialPhases,
   initialFocus,
@@ -32,6 +34,8 @@ export function RoadmapEditor({
   isPublished,
 }: {
   memberId: string;
+  memberName: string;
+  memberEmail: string;
   stations: { slug: string; name: string }[];
   initialPhases: EditorPhase[];
   initialFocus: string;
@@ -58,6 +62,20 @@ export function RoadmapEditor({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="member_id" value={memberId} />
       <input type="hidden" name="phases" value={JSON.stringify(phases)} />
+
+      {/* Whose roadmap this is, stated where the work happens rather than only
+          in the page title. Two members with similar names one row apart in a
+          list is all it takes to publish someone else's plan to them, and the
+          admin's own name at the top of the page is not a loud enough signal. */}
+      <div className="rounded-xl border-2 border-orange/40 bg-blush/15 px-5 py-3">
+        <p className="text-body text-navy">
+          You are editing{" "}
+          <strong className="font-medium">{memberName}&rsquo;s</strong> roadmap
+        </p>
+        <p className="font-mono mt-0.5 text-caption text-navy/60">
+          {memberEmail}
+        </p>
+      </div>
 
       <Card>
         <Eyebrow>This month&rsquo;s focus</Eyebrow>

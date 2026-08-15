@@ -28,6 +28,7 @@ export default async function AuditPage() {
     supabase
       .from("member_audits")
       .select("id, submitted_at")
+      .eq("member_id", member.id)
       .eq("occasion", "onboarding")
       .not("submitted_at", "is", null)
       .limit(1)

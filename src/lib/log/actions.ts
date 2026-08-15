@@ -42,6 +42,7 @@ export async function submitWeeklyLog(
   const { data: existing } = await supabase
     .from("weekly_submissions")
     .select("id, submitted_at")
+    .eq("member_id", member.id)
     .eq("week_start_date", weekStart)
     .maybeSingle();
 

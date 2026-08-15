@@ -24,7 +24,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
   // is part of the shell rather than something that appears later.
   const [categories, running] = await Promise.all([
     getTimeCategories(),
-    getRunningEntry(),
+    getRunningEntry(member.id),
   ]);
 
   // Only destinations that exist. Piazza Sociale and Archivio join as they're

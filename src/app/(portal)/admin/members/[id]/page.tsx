@@ -168,7 +168,11 @@ export default async function AdminMemberPage({
       ) : null}
 
       <div className="mt-5">
-        <StatusActions memberId={member.id} status={member.status} />
+        <StatusActions
+          memberId={member.id}
+          memberName={member.full_name}
+          status={member.status}
+        />
       </div>
 
       <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
@@ -183,6 +187,8 @@ export default async function AdminMemberPage({
       </p>
       <RoadmapEditor
         memberId={member.id}
+        memberName={member.full_name}
+        memberEmail={member.email}
         stations={stations}
         initialPhases={editorPhases}
         initialFocus={roadmap?.current_focus ?? ""}

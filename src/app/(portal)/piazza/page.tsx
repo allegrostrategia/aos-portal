@@ -37,7 +37,7 @@ export default async function PiazzaPage() {
   // Non-null: the portal layout has already run requireMember().
   const member = (await getCurrentMember())!;
   // §3: Piazza shows the timer shortcut and today's logged time at a glance.
-  const week = await getThisWeekTotal();
+  const week = await getThisWeekTotal(member.id);
 
   const firstName = member.full_name.split(" ")[0];
 

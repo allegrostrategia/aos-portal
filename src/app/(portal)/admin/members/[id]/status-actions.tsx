@@ -22,9 +22,11 @@ import { FormMessage } from "@/components/ui/form";
  */
 export function StatusActions({
   memberId,
+  memberName,
   status,
 }: {
   memberId: string;
+  memberName: string;
   status: MemberStatus;
 }) {
   const [activateState, activate] = useActionState<MemberActionState, FormData>(
@@ -55,7 +57,7 @@ export function StatusActions({
               draw. Done at week 1 of the month after they joined.
             </p>
             <Button type="submit" size="sm" className="self-start">
-              Activate
+              Activate {memberName}
             </Button>
           </form>
         ) : null}
@@ -69,14 +71,14 @@ export function StatusActions({
               stays theirs.
             </p>
             <Button type="submit" size="sm" className="self-start">
-              Reinstate into onboarding
+              Reinstate {memberName} into onboarding
             </Button>
           </form>
         ) : (
           <form action={cancel} className="flex flex-col gap-2 border-t border-navy/10 pt-4">
             <input type="hidden" name="member_id" value={memberId} />
             <label htmlFor="cancel_note" className="text-small font-medium text-navy">
-              Cancel membership
+              Cancel {memberName}&rsquo;s membership
             </label>
             <p className="text-small text-navy/70">
               Revokes access. Nothing is deleted — their logs, roadmap and
@@ -95,7 +97,7 @@ export function StatusActions({
               size="sm"
               className="self-start"
             >
-              Cancel membership
+              Cancel {memberName}&rsquo;s membership
             </Button>
           </form>
         )}

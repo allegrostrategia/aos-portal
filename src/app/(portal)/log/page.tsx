@@ -60,12 +60,12 @@ export default async function WeeklyLogPage() {
     submission,
   ] = await Promise.all([
     getTimeCategories(),
-    getTodayEntries(),
-    getThisWeekTotal(),
-    getRunningEntry(),
-    getWeekCategoryTotals(weekStart),
-    getRoadmapItems(),
-    getWeeklySubmission(weekStart),
+    getTodayEntries(member.id),
+    getThisWeekTotal(member.id),
+    getRunningEntry(member.id),
+    getWeekCategoryTotals(member.id, weekStart),
+    getRoadmapItems(member.id),
+    getWeeklySubmission(member.id, weekStart),
   ]);
 
   const priming = primingForWeek(member.onboarding_start_date, today);

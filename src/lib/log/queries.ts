@@ -29,12 +29,14 @@ export function currentWeekStart(): string {
 }
 
 export async function getWeeklySubmission(
+  memberId: string,
   weekStart: string,
 ): Promise<WeeklySubmission | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("weekly_submissions")
     .select("*")
+    .eq("member_id", memberId)
     .eq("week_start_date", weekStart)
     .maybeSingle();
 
@@ -48,6 +50,7 @@ export async function getWeeklySubmission(
  * rows — a view per grouping would be more machinery than the problem needs.
  */
 export async function getWeekCategoryTotals(
+  memberId: string,
   weekStart: string,
 ): Promise<CategoryTotal[]> {
   const supabase = await createClient();
@@ -58,6 +61,7 @@ export async function getWeekCategoryTotals(
     supabase
       .from("time_entries")
       .select("category_slug, duration_minutes")
+      .eq("member_id", memberId)
       .gte("started_at", `${weekStart}T00:00:00Z`)
       .lt("started_at", `${weekEnd}T00:00:00Z`)
       .not("ended_at", "is", null),
@@ -92,12 +96,13 @@ export async function getWeekCategoryTotals(
  * onboarding weeks 2–3 there simply isn't one (§4), and the log falls back to
  * the free-response box on its own.
  */
-export async function getRoadmapItems(): Promise<RoadmapItem[]> {
+export async function getRoadmapItems(memberId: string): Promise<RoadmapItem[]> {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("roadmap")
     .select("phases")
+    .eq("member_id", memberId)
     .eq("is_current", true)
     .not("confirmed_at", "is", null)
     .maybeSingle();

@@ -40,6 +40,7 @@ export async function getOnboardingProgress(
     supabase
       .from("member_audits")
       .select("id")
+      .eq("member_id", member.id)
       .eq("occasion", "onboarding")
       .not("submitted_at", "is", null)
       .limit(1)
