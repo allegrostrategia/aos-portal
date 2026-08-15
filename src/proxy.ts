@@ -23,8 +23,16 @@ import { env } from "@/lib/env";
  * requireMember(). This is a filter; that's the gate.
  */
 
-/** Reachable with no session at all. */
-const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth"];
+/**
+ * Reachable with no session at all.
+ *
+ * `/api` is here because route handlers authenticate themselves — the cron
+ * endpoint checks CRON_SECRET, for instance — and because redirecting a
+ * non-browser client to an HTML login page is the wrong answer anyway: it wants
+ * a 401, not a 307 to a form it can't fill in. Anything added under /api must do
+ * its own auth; the proxy will not do it for you.
+ */
+const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth", "/api"];
 
 /**
  * Needs a session but NOT a member record: an invited member setting their first

@@ -93,8 +93,11 @@ Timer against the ten fixed categories, roadmap actions-taken checklist + free t
 
 **Done:** `/log` — the weekly check-in, one submission doing three jobs (§4). This week's tracked total against the 10-hour threshold, a breakdown by category, today's entries with manual add, the roadmap actions-taken checklist, the free-response box, and sign-off. Submitting is final: RLS only permits edits while `submitted_at` is null, so a dated entry stays what it said. The onboarding priming content (§1) lives here too, which closes the last item of Step 3. `/time` redirects here — the daily and weekly views were one screen doing the same job twice.
 
-**Still to do:**
-- **The reminder cadence** (§4) — mid-week nudge only if meaningfully behind pace, end-of-week only if still short, and no daily "did you log today" ping. Needs a scheduler and email delivery; Resend is already configured for auth, so it's the scheduling half that's missing
+**Reminder cadence: done.** Mid-week (Wednesday) nudge only if meaningfully behind — under 4 hours against a pro-rata pace of about 4h20m — and an end-of-week (Friday) one only if the week still won't count. Five days a week are silent, which a test asserts, because §4's "no daily ping" is a promise about the product's tone rather than a preference.
+
+Built on a shared `due_jobs` table and a daily Vercel cron at 08:00 UTC, serving all three consumers (reminders now, the hours ledger and build check-ins later). Planning is idempotent via `dedupe_key`; the runner picks up everything due **on or before** today, so a missed day is caught up rather than lost. Reminder conditions are re-checked at run time, so a queued nudge can't go stale if the member logs time in between.
+
+**Needs setting in Vercel before it can deliver:** `RESEND_API_KEY`, `CRON_SECRET`, and `EMAIL_FROM`. The endpoint refuses to run without `CRON_SECRET` rather than running unauthenticated.
 - The actions-taken checklist has nothing to check against until roadmaps exist (Step 4 / the 1:1). It degrades to the free-response box on its own, which is what §4 describes for onboarding weeks 2–3 anyway
 
 *Full detail: Build Brief, Section 4.*
