@@ -228,6 +228,68 @@ await rejects("a member cannot have two current roadmaps", () =>
     `insert into public.roadmap (member_id, reason) values ('${ALICE}','monthly_repoint')`)),
   "duplicate key");
 
+console.log("\n— hot seat —");
+
+const DANA = "55555555-5555-5555-5555-555555555555";
+await db.exec(`insert into auth.users (id, email) values ('${DANA}', 'dana@test')`);
+await as(ADMIN, () => db.query(`select public.create_member('${DANA}','dana@test','Dana')`));
+
+const SESSION = (await as(ADMIN, () => db.query(
+  `insert into public.hot_seat_sessions (session_month, scheduled_for, zoom_url)
+   values ('2026-04-01', '2026-04-07 14:00Z', 'https://zoom.example/aos')
+   returning id`))).rows[0].id;
+
+await check("everyone with access sees the session, onboarding included", async () =>
+  (await as(DANA, () => db.query(
+    `select count(*)::int c from public.hot_seat_sessions`))).rows[0].c === 1);
+
+await rejects("an onboarding member cannot submit — hot seat is locked until active", () =>
+  as(DANA, () => db.query(
+    `insert into public.hot_seat_submissions (session_id, member_id, challenge)
+     values ('${SESSION}','${DANA}','Something')`)),
+  "row-level security");
+
+await check("an active member can submit", async () => {
+  await as(ALICE, () => db.query(
+    `insert into public.hot_seat_submissions (session_id, member_id, challenge, submitted_at)
+     values ('${SESSION}','${ALICE}','Automate enquiry follow-up', now())`));
+  const r = await as(ALICE, () => db.query(
+    `select count(*)::int c from public.hot_seat_submissions`));
+  return r.rows[0].c === 1;
+});
+
+await check("a member can revise their own submission before Nina confirms", async () => {
+  await as(ALICE, () => db.query(
+    `update public.hot_seat_submissions set already_tried = 'Zapier, badly' where member_id = '${ALICE}'`));
+  const r = await as(ALICE, () => db.query(
+    `select already_tried from public.hot_seat_submissions where member_id='${ALICE}'`));
+  return r.rows[0].already_tried === "Zapier, badly";
+});
+
+await check("a member cannot see another member's submission", async () =>
+  (await as(DANA, () => db.query(
+    `select count(*)::int c from public.hot_seat_submissions`))).rows[0].c === 0);
+
+await as(ADMIN, () => db.query(
+  `update public.hot_seat_submissions
+   set confirmed_challenge = 'Build the follow-up sequence', confirmed_at = now(), drafted_by = 'nina'
+   where member_id = '${ALICE}'`));
+
+await check("once confirmed, the member's own edit changes nothing", async () => {
+  // No error — the UPDATE policy simply matches no rows, which is how RLS
+  // refuses a write. The locked challenge is what goes into the room, so a
+  // member rewriting it afterwards would desync the session from Nina's prep.
+  await as(ALICE, () => db.query(
+    `update public.hot_seat_submissions set challenge = 'Something else' where member_id='${ALICE}'`));
+  const r = await as(ADMIN, () => db.query(
+    `select challenge from public.hot_seat_submissions where member_id='${ALICE}'`));
+  return r.rows[0].challenge === "Automate enquiry follow-up";
+});
+
+await check("admin sees every submission for the session", async () =>
+  (await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.hot_seat_submissions where session_id='${SESSION}'`))).rows[0].c === 1);
+
 console.log("\n— cancellation and rejoining —");
 
 await as(ADMIN, () => db.query(
