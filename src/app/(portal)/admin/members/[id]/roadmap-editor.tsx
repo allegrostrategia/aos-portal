@@ -32,6 +32,7 @@ export function RoadmapEditor({
   initialFocus,
   initialFocusStation,
   isPublished,
+  hasHadHotSeat,
 }: {
   memberId: string;
   memberName: string;
@@ -41,6 +42,8 @@ export function RoadmapEditor({
   initialFocus: string;
   initialFocusStation: string;
   isPublished: boolean;
+  /** Distinguishes "no build this month" from "never had one" in the empty state. */
+  hasHadHotSeat: boolean;
 }) {
   const [state, formAction] = useActionState<RoadmapState, FormData>(
     saveRoadmap,
@@ -77,51 +80,39 @@ export function RoadmapEditor({
         </p>
       </div>
 
+      {/* Read-only, deliberately (§4). "Current focus" is the hot seat build —
+          the one thing, drawn from real tracked time and set by that flow's own
+          prep-and-confirm. The roadmap is the separate, self-paced track from
+          the 1:1. Typing it here would let a stated goal masquerade as something
+          the data actually showed. */}
       <Card>
-        <Eyebrow>This month&rsquo;s focus</Eyebrow>
-        <p className="mt-2 mb-3 text-small text-navy/70">
-          The station is the place; the focus is the specific named thing being
-          built. Two pieces of information, not one.
-        </p>
+        <Eyebrow>This month&rsquo;s focus — the hot seat build</Eyebrow>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="current_focus"
-              className="text-small font-medium text-navy"
-            >
-              Current focus
-            </label>
-            <input
-              id="current_focus"
-              name="current_focus"
-              defaultValue={initialFocus}
-              placeholder="Automate your enquiry follow-up"
-              className={`mt-1.5 ${INPUT}`}
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="current_focus_station"
-              className="text-small font-medium text-navy"
-            >
-              Focus station
-            </label>
-            <select
-              id="current_focus_station"
-              name="current_focus_station"
-              defaultValue={initialFocusStation}
-              className={`mt-1.5 ${INPUT}`}
-            >
-              <option value="">None yet</option>
-              {stations.map((station) => (
-                <option key={station.slug} value={station.slug}>
-                  {station.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {initialFocus ? (
+          <>
+            <p className="font-display mt-2 text-heading text-navy italic">
+              {initialFocus}
+            </p>
+            {initialFocusStation ? (
+              <p className="mt-1 text-small text-navy/70">
+                {stations.find((s) => s.slug === initialFocusStation)?.name ??
+                  initialFocusStation}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-2 text-small text-navy/70">
+            {hasHadHotSeat
+              ? "No build confirmed for this month yet."
+              : "Their first hot seat hasn’t happened yet."}
+          </p>
+        )}
+
+        <p className="mt-3 text-caption text-navy/60">
+          Set through the hot seat&rsquo;s prep and confirm, from their tracked
+          time — not edited here. The roadmap below is the separate, self-paced
+          track.
+        </p>
       </Card>
 
       {phases.map((phase, phaseIndex) => (

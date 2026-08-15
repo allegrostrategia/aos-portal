@@ -156,6 +156,10 @@ Two things that spec implies for the build, worth knowing before Step 10 starts:
 
 ## Step 11 — Peer pairing, chat, member directory
 
+**Confirmed requirement: portal chat must support voice messages, not just text.** Recording, sending and playback of audio within chat. Nina's Friday/Monday touchpoint depends on it — she responds by voice note before 9am Monday (§4) — so it's load-bearing rather than a nice-to-have. Needs a Supabase storage bucket for the audio, which is the same missing piece as directory headshots.
+
+Chat also needs to reference a `handover_pack` entry from day one, so two-week check-in responses can be tagged to the build they're about (§2). Retrofitting that across existing messages would be painful.
+
 Availability submission (folded into the weekly rhythm), rotation matching, the day-7 flag to Nina, portal chat in Piazza Sociale (general, wins, time-tracking discussion, DMs — this is also "Telegram day"), the member directory (searchable by name/title/bio).
 
 *Full detail: Build Brief, Sections 9–10.*

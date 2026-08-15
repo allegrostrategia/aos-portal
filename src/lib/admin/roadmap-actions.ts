@@ -23,6 +23,11 @@ export type RoadmapPhaseInput = {
  * file. La Strada is one shared template for everyone; this row is what makes it
  * personal on load.
  *
+ * The roadmap is the self-paced track from the 1:1 — stated goals, phases,
+ * trainings. It is NOT "the one thing": that's the monthly hot seat build, drawn
+ * from real tracked time, and it owns `current_focus` through its own
+ * prep-and-confirm. Easy to conflate, and §4 is explicit that they're separate.
+ *
  * Item ids are generated here and kept stable across edits, because
  * `weekly_submissions.actions_taken` keys off them. Re-ordering phases or
  * rewording an item must not detach the ticks a member has already made against
@@ -36,8 +41,6 @@ export async function saveRoadmap(
   const admin = await requireAdmin();
 
   const memberId = String(formData.get("member_id") ?? "");
-  const currentFocus = String(formData.get("current_focus") ?? "").trim();
-  const focusStation = String(formData.get("current_focus_station") ?? "").trim();
   const publish = formData.get("intent") === "publish";
   const raw = String(formData.get("phases") ?? "[]");
 
@@ -70,7 +73,7 @@ export async function saveRoadmap(
   // it survive an edit. New or reworded items get a fresh id.
   const { data: existingRow } = await supabase
     .from("roadmap")
-    .select("phases")
+    .select("phases, current_focus, current_focus_station_slug")
     .eq("member_id", memberId)
     .eq("is_current", true)
     .maybeSingle();
@@ -113,8 +116,13 @@ export async function saveRoadmap(
   const { error } = await supabase.from("roadmap").insert({
     member_id: memberId,
     phases: phasesJson,
-    current_focus: currentFocus || null,
-    current_focus_station_slug: focusStation || null,
+    // Carried forward, never taken from this form. "Current focus" is the hot
+    // seat build — set by that flow's own prep-and-confirm (§4) — and the
+    // roadmap is the separate, self-paced track. Re-pointing a roadmap creates a
+    // new row, so without this the month's build would be wiped by an edit that
+    // had nothing to do with it.
+    current_focus: existingRow?.current_focus ?? null,
+    current_focus_station_slug: existingRow?.current_focus_station_slug ?? null,
     reason,
     // Written by hand in the admin panel. When Claude drafts these, this becomes
     // 'claude' on the draft and stays 'nina' whenever she edits it.

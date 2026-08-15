@@ -257,6 +257,20 @@ Light touch, not daily:
 
 No daily "did you log today" ping — avoids noise, matches the calm tone set everywhere else in this build.
 
+### The Friday/Monday touchpoint (new, confirmed)
+A lighter, more frequent check-in than the monthly hot seat or the 2-week check-in — for help with whatever a member's stuck on with their "one thing" (the build in progress, separate from their independent roadmap work).
+
+- **Friday:** member submits a question via the existing "Anything else this week" free-text box on the weekly log — no new form needed
+- **Monday, before 9am:** Nina responds — live in portal chat, during the existing one-hour Monday window (the same slot already speced as the boundaried strategy chat), not a separate queue
+- **Resolved:** portal chat needs to support voice messages, not just text. Real feature requirement for Step 11, not a nice-to-have — recording, sending, and playback of audio messages within chat.
+
+### Roadmap vs. "the one thing" — a real distinction, not the same content
+Two genuinely separate tracks, easy to conflate:
+- **The roadmap** (phases, trainings) — based on stated goals at the 1:1, self-paced, independent work
+- **"The one thing"** (the monthly automation/process) — based on real tracked time data, built together with Nina at the hot seat
+
+**Resolved:** "Current focus" is about the hot seat build specifically, not the roadmap generally. It becomes **read-only on the roadmap editor**, populated only through the hot seat's own prep-and-confirm process (Claude drafts from tracked data, Nina confirms) — not typed directly during the 1:1. **Needs a defined empty state** for active members who haven't had their first hot seat yet — something honest like "Your first hot seat hasn't happened yet," matching the same pattern already used elsewhere (e.g. the pre-roadmap placeholder on the itinerary), not a blank or broken-looking field.
+
 ---
 
 ## 5. Hot seat

@@ -51,6 +51,7 @@ export default async function AdminMemberPage({
     { data: auditRows },
     { data: stationRows },
     { data: roadmapRow },
+    { data: pastHotSeat },
   ] = await Promise.all([
     supabase.from("members").select("*").eq("id", id).maybeSingle(),
     supabase
@@ -64,6 +65,13 @@ export default async function AdminMemberPage({
       .select("phases, current_focus, current_focus_station_slug, confirmed_at")
       .eq("member_id", id)
       .eq("is_current", true)
+      .maybeSingle(),
+    supabase
+      .from("hot_seat_submissions")
+      .select("id")
+      .eq("member_id", id)
+      .not("confirmed_at", "is", null)
+      .limit(1)
       .maybeSingle(),
   ]);
 
@@ -194,6 +202,7 @@ export default async function AdminMemberPage({
         initialFocus={roadmap?.current_focus ?? ""}
         initialFocusStation={roadmap?.current_focus_station_slug ?? ""}
         isPublished={Boolean(roadmap?.confirmed_at)}
+        hasHadHotSeat={Boolean(pastHotSeat)}
       />
 
       <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
