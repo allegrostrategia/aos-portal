@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { requireMember } from "@/lib/auth/member";
-import { deleteEntry } from "@/lib/timer/actions";
+import { deleteEntry, updateEntryNote } from "@/lib/timer/actions";
 import {
   COMPLETE_WEEK_MINUTES,
   getRunningEntry,
@@ -172,43 +172,84 @@ export default async function WeeklyLogPage() {
           {entries.map((entry) => (
             <li
               key={entry.id}
-              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border border-navy/10 bg-white/60 px-4 py-3"
+              className="rounded-lg border border-navy/10 bg-white/60 px-4 py-3"
             >
-              <div className="min-w-0">
-                <p className="text-body text-navy">
-                  {labelFor(entry.category_slug)}
-                  {entry.source === "manual" ? (
-                    <span className="font-mono ml-2 text-eyebrow text-navy/40 uppercase">
-                      added later
-                    </span>
-                  ) : null}
-                </p>
-                <p className="font-mono text-caption text-navy/50">
-                  {TIME.format(new Date(entry.started_at))}
-                  {entry.ended_at
-                    ? `–${TIME.format(new Date(entry.ended_at))}`
-                    : " · running"}
-                  {entry.note ? ` · ${entry.note}` : ""}
-                </p>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <div className="min-w-0">
+                  <p className="text-body text-navy">
+                    {labelFor(entry.category_slug)}
+                    {entry.source === "manual" ? (
+                      <span className="font-mono ml-2 text-eyebrow text-navy/40 uppercase">
+                        added later
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="font-mono text-caption text-navy/50">
+                    {TIME.format(new Date(entry.started_at))}
+                    {entry.ended_at
+                      ? `–${TIME.format(new Date(entry.ended_at))}`
+                      : " · running"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <span className="font-mono text-small text-navy tabular-nums">
+                    {entry.ended_at
+                      ? formatMinutes(entry.duration_minutes ?? 0)
+                      : "—"}
+                  </span>
+                  <form action={deleteEntry}>
+                    <input type="hidden" name="id" value={entry.id} />
+                    <button
+                      type="submit"
+                      className="text-caption text-navy/40 underline underline-offset-4 transition hover:text-navy"
+                      aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-small text-navy tabular-nums">
-                  {entry.ended_at
-                    ? formatMinutes(entry.duration_minutes ?? 0)
-                    : "—"}
-                </span>
-                <form action={deleteEntry}>
+              {/* A plain <details> rather than a client component: no JavaScript
+                  to load, works before hydration, and keeps the note as
+                  genuinely optional furniture rather than something the row is
+                  built around. */}
+              <details className="group mt-1">
+                <summary className="cursor-pointer list-none text-caption text-navy/50 transition hover:text-navy">
+                  {entry.note ? (
+                    <span className="text-navy/70 italic">{entry.note}</span>
+                  ) : (
+                    <span className="underline underline-offset-4">
+                      Add a note
+                    </span>
+                  )}
+                </summary>
+
+                <form
+                  action={updateEntryNote}
+                  className="mt-2 flex flex-wrap items-center gap-2"
+                >
                   <input type="hidden" name="id" value={entry.id} />
+                  <label htmlFor={`note-${entry.id}`} className="sr-only">
+                    Note for this entry
+                  </label>
+                  <input
+                    id={`note-${entry.id}`}
+                    name="note"
+                    type="text"
+                    defaultValue={entry.note ?? ""}
+                    placeholder="What specifically were you doing?"
+                    className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-1.5 text-small text-navy placeholder:text-navy/40"
+                  />
                   <button
                     type="submit"
-                    className="text-caption text-navy/40 underline underline-offset-4 transition hover:text-navy"
-                    aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
+                    className="rounded-md border border-navy/20 px-3 py-1.5 text-small text-navy transition hover:border-navy/40"
                   >
-                    Delete
+                    Save
                   </button>
                 </form>
-              </div>
+              </details>
             </li>
           ))}
         </ul>

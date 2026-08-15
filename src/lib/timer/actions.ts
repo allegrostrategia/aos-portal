@@ -59,6 +59,7 @@ async function stopRunning(): Promise<void> {
 export async function startTimer(formData: FormData): Promise<void> {
   const member = await requireMember();
   const categorySlug = String(formData.get("category_slug") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
 
   if (!categorySlug) return;
 
@@ -69,8 +70,39 @@ export async function startTimer(formData: FormData): Promise<void> {
     member_id: member.id,
     category_slug: categorySlug,
     started_at: nowIso(),
+    note: note || null,
     source: "timer",
   });
+
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Add or change the note on an entry.
+ *
+ * Separate from starting the timer on purpose: the note is optional and must
+ * stay that way, and the moment you're about to start work is the worst moment
+ * to ask anyone to describe it. This lets a member annotate afterwards, when
+ * they know what the hour actually turned into.
+ *
+ * The notes are what gives the hot seat's AI-prep step something concrete to
+ * read — "Client Sessions, 6 hours" is a category, "rewriting the same
+ * onboarding email for the fourth time" is a build waiting to happen.
+ */
+export async function updateEntryNote(formData: FormData): Promise<void> {
+  await requireMember();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const note = String(formData.get("note") ?? "").trim();
+
+  const supabase = await createClient();
+  // RLS confines this to the member's own entries.
+  await supabase
+    .from("time_entries")
+    .update({ note: note || null })
+    .eq("id", id);
 
   revalidatePath("/", "layout");
 }

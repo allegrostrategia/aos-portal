@@ -96,41 +96,57 @@ export function FloatingTimer({
           // Collapse on submit rather than syncing from `running` in an effect —
           // so stopping a timer later doesn't spring the picker back open.
           onSubmit={() => setPicking(false)}
-          className="pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-xl border border-navy/15 bg-white/95 p-2 shadow-lg backdrop-blur"
+          className="pointer-events-auto w-full max-w-md rounded-xl border border-navy/15 bg-white/95 p-2 shadow-lg backdrop-blur"
         >
-          <label htmlFor="category_slug" className="sr-only">
-            What are you working on?
-          </label>
-          <select
-            id="category_slug"
-            name="category_slug"
-            defaultValue=""
-            required
-            className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-2 text-body text-navy"
-          >
-            <option value="" disabled>
+          <div className="flex items-center gap-2">
+            <label htmlFor="category_slug" className="sr-only">
               What are you working on?
-            </option>
-            {categories.map((category) => (
-              <option key={category.slug} value={category.slug}>
-                {category.label}
+            </label>
+            <select
+              id="category_slug"
+              name="category_slug"
+              defaultValue=""
+              required
+              className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-2 text-body text-navy"
+            >
+              <option value="" disabled>
+                What are you working on?
               </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-md bg-navy px-4 py-2 text-small font-medium text-white transition hover:bg-navy/90"
-          >
-            Start
-          </button>
-          <button
-            type="button"
-            onClick={() => setPicking(false)}
-            className="px-2 text-small text-navy/60 transition hover:text-navy"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+              {categories.map((category) => (
+                <option key={category.slug} value={category.slug}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-md bg-navy px-4 py-2 text-small font-medium text-white transition hover:bg-navy/90"
+            >
+              Start
+            </button>
+            <button
+              type="button"
+              onClick={() => setPicking(false)}
+              className="px-2 text-small text-navy/60 transition hover:text-navy"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Optional, and second — the category is the required choice. Anyone
+              who wants to start and get on with it presses Start and never
+              touches this; it can be filled in afterwards on the log. */}
+          <label htmlFor="timer_note" className="sr-only">
+            What specifically? Optional.
+          </label>
+          <input
+            id="timer_note"
+            name="note"
+            type="text"
+            placeholder="What specifically? (optional)"
+            className="mt-2 w-full rounded-md border border-navy/10 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40"
+          />
         </form>
       ) : (
         <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-navy/15 bg-white/90 p-1 shadow-lg backdrop-blur">

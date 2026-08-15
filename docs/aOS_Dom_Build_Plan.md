@@ -129,6 +129,17 @@ Auto-compile from hot seat builds, manual SOP addition, the AI-assisted SOP gene
 
 Personal hours-reclaimed counter, milestone path, monthly draw mechanics, collective community goal.
 
+**Hours reclaimed — the spec, proposed and pending Nina's full sign-off:**
+- Generated **per handover pack entry**, estimated by Nina at write-up — the same AI-drafts-then-Nina-confirms moment as the write-up itself. Never member self-report
+- **Recurring, not one-off.** A build has a weekly hours-saved rate that accrues every week
+- **Accrues only for weeks the member actually submitted their log**, so the counter reinforces the same habit the draw does
+- **Multiple active builds stack.** Two live automations at 5 and 3 hrs/week reclaim 8 hrs every submitted week, added together — not just the most recent build's rate
+- **Milestones are 50 / 100 / 250 / 500** — real thresholds, not placeholders
+
+Open questions before building against it:
+- Does a "submitted log" mean any signed-off log, or a **complete** week (10 hours, the draw's bar)? They're different, and the second is what makes the counter reinforce the draw. Recommend the 10-hour threshold
+- Can a build stop accruing — a member abandons the automation — and can Nina revise a rate after the fact? Determines whether the rate lives on the handover pack entry or in a dated history
+
 *Full detail: scattered across Piazza/Weekly Log sections of the Build Brief — the gamification mockups earlier in this project are the visual reference.*
 
 ## Step 11 — Peer pairing, chat, member directory
