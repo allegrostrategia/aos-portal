@@ -37,9 +37,15 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
       ? [{ href: "/onboarding", label: "First weeks" }]
       : []),
     { href: "/log", label: "Your log" },
+    // Visible to onboarding members too — §1 keeps the session itself in view so
+    // the quiet weeks show what's coming; only submitting is gated.
+    { href: "/hot-seat", label: "Hot seat" },
     { href: "/stations", label: "La Strada" },
     ...(member.role === "admin"
-      ? [{ href: "/admin/members", label: "Admin" }]
+      ? [
+          { href: "/admin/members", label: "Admin" },
+          { href: "/admin/hot-seat", label: "Sessions" },
+        ]
       : []),
   ];
 
