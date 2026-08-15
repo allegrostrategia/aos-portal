@@ -36,6 +36,26 @@ await db.exec(`
   grant usage on schema public to authenticated;
   create or replace function auth.uid() returns uuid language sql stable
     as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+
+  -- Minimal stand-in for Supabase Storage, so the bucket policies apply here and
+  -- can be exercised. foldername() mirrors Supabase's: the path segments MINUS
+  -- the filename, so 'abc/photo.jpg' yields {abc} and [1] is the owner's id.
+  create schema storage;
+  create table storage.objects (
+    id uuid primary key default gen_random_uuid(),
+    bucket_id text not null,
+    name text not null,
+    owner uuid
+  );
+  alter table storage.objects enable row level security;
+  create function storage.foldername(name text) returns text[]
+    language plpgsql immutable as $fn$
+    declare parts text[];
+    begin
+      select string_to_array(name, '/') into parts;
+      return parts[1:array_length(parts, 1) - 1];
+    end
+    $fn$;
 `);
 
 for (const f of (await readdir(MIGRATIONS)).filter((f) => f.endsWith(".sql")).sort()) {
@@ -45,6 +65,8 @@ for (const f of (await readdir(MIGRATIONS)).filter((f) => f.endsWith(".sql")).so
 await db.exec(`
   grant all on all tables in schema public to authenticated;
   grant all on all sequences in schema public to authenticated;
+  grant usage on schema storage to authenticated;
+  grant all on storage.objects to authenticated;
 `);
 
 const ADMIN = "11111111-1111-1111-1111-111111111111";
@@ -388,6 +410,71 @@ await check("a member sees their own pairing", async () =>
 
 await check("a member sees who their partner is", async () =>
   (await as(BOB, () => db.query(`select count(*)::int c from public.pairing_participants`))).rows[0].c === 2);
+
+console.log("\n— storage buckets —");
+
+// Alice is cancelled by this point in the run; Bob is active.
+await check("a member uploads a headshot into their own folder", async () => {
+  await as(BOB, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('headshots','${BOB}/me.jpg')`));
+  const r = await as(BOB, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='headshots'`));
+  return r.rows[0].c === 1;
+});
+
+await rejects("a member cannot upload into someone else's folder", () =>
+  as(BOB, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('headshots','${ADMIN}/sneaky.jpg')`)),
+  "row-level security");
+
+await check("headshots are readable by anyone with portal access", async () =>
+  (await as(ADMIN, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='headshots'`))).rows[0].c === 1);
+
+// Alice was rejoined earlier in the run, so she is onboarding — which is exactly
+// the case §1 says SHOULD see the directory. Cancel Dana to test the real gate.
+await check("an onboarding member CAN read headshots — the directory is open from day one", async () =>
+  (await as(DANA, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='headshots'`))).rows[0].c === 1);
+
+await check("a cancelled member cannot read headshots", async () => {
+  await as(ADMIN, () => db.query(`select public.cancel_member('${DANA}')`));
+  const r = await as(DANA, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='headshots'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a voice message is readable by its sender", async () => {
+  await as(BOB, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('voice-messages','${BOB}/note.webm')`));
+  const r = await as(BOB, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='voice-messages'`));
+  return r.rows[0].c === 1;
+});
+
+await check("an admin can read any voice message", async () =>
+  (await as(ADMIN, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='voice-messages'`))).rows[0].c === 1);
+
+await check("another member cannot read someone else's voice message", async () => {
+  // The gap this documents: a RECIPIENT is another member, so as specified they
+  // cannot hear a note sent to them. Needs a recipient clause once chat exists.
+  const r = await as(ALICE, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='voice-messages'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a sent voice message cannot be overwritten", async () => {
+  // No UPDATE policy exists for members on this bucket. RLS refuses an UPDATE by
+  // matching no rows rather than raising — so this asserts the value is
+  // unchanged. A test expecting an exception would pass against a policy that
+  // did nothing at all.
+  await as(BOB, () => db.query(
+    `update storage.objects set name='${BOB}/replaced.webm' where bucket_id='voice-messages'`));
+  const r = await as(ADMIN, () => db.query(
+    `select name from storage.objects where bucket_id='voice-messages'`));
+  return r.rows[0].name === `${BOB}/note.webm`;
+});
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
