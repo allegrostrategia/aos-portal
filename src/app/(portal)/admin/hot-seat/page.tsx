@@ -75,29 +75,34 @@ export default async function AdminHotSeatPage() {
                 ).length;
 
                 return (
-                  <Card as="li" key={session.id}>
-                    <div className="flex flex-wrap items-baseline justify-between gap-3">
-                      <Link
-                        href={`/admin/hot-seat/${session.id}`}
-                        className="font-display text-heading text-navy italic underline decoration-orange decoration-2 underline-offset-4"
-                      >
-                        {MONTH.format(new Date(session.session_month))}
-                      </Link>
-                      <p className="font-mono text-caption text-navy/60">
-                        {submitted} submitted · {confirmed} prepped
+                  <Card as="li" key={session.id} padded={false}>
+                    {/* The whole card is the target, matching the member list.
+                        A single underlined heading inside a large card reads as
+                        decoration, not as the way through. */}
+                    <Link
+                      href={`/admin/hot-seat/${session.id}`}
+                      className="block p-5 transition hover:bg-white/40 sm:p-6"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-3">
+                        <p className="font-display text-heading text-navy italic">
+                          {MONTH.format(new Date(session.session_month))}
+                        </p>
+                        <p className="font-mono text-caption text-navy/60">
+                          {submitted} submitted · {confirmed} prepped
+                        </p>
+                      </div>
+                      <p className="mt-1 text-small text-navy/70">
+                        {session.scheduled_for
+                          ? WHEN.format(new Date(session.scheduled_for))
+                          : "Time not set"}
+                        {session.zoom_url ? " · link set" : " · no link yet"}
                       </p>
-                    </div>
-                    <p className="mt-1 text-small text-navy/70">
-                      {session.scheduled_for
-                        ? WHEN.format(new Date(session.scheduled_for))
-                        : "Time not set"}
-                      {session.zoom_url ? " · link set" : " · no link yet"}
-                    </p>
-                    {submitted > confirmed ? (
-                      <p className="mt-2 text-small text-orange">
-                        {submitted - confirmed} still to prep.
+                      <p className="mt-3 text-small text-navy underline decoration-orange decoration-2 underline-offset-4">
+                        {submitted > confirmed
+                          ? `Prep ${submitted - confirmed} submission${submitted - confirmed === 1 ? "" : "s"} →`
+                          : "Open prep sheet →"}
                       </p>
-                    ) : null}
+                    </Link>
                   </Card>
                 );
               })}
