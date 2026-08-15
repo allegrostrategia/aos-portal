@@ -76,7 +76,7 @@ export function WeeklyLogForm({
           name="other_activity"
           rows={5}
           defaultValue={defaultOtherActivity}
-          hint="What happened outside the plan — the thing that took over, the thing that worked, the thing you'd do differently."
+          hint="What happened outside the plan — and anything you're stuck on. Nina reads these and answers on Monday morning, so a question here is the quickest way to get one."
         />
       </Card>
 

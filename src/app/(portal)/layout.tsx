@@ -45,6 +45,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
       ? [
           { href: "/admin/members", label: "Admin" },
           { href: "/admin/hot-seat", label: "Sessions" },
+          { href: "/admin/touchpoint", label: "Friday" },
         ]
       : []),
   ];
