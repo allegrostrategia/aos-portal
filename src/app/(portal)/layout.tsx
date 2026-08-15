@@ -36,7 +36,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     ...(member.status === "onboarding"
       ? [{ href: "/onboarding", label: "First weeks" }]
       : []),
-    { href: "/time", label: "Your log" },
+    { href: "/log", label: "Your log" },
     { href: "/stations", label: "La Strada" },
     ...(member.role === "admin"
       ? [{ href: "/admin/members", label: "Admin" }]

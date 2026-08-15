@@ -142,7 +142,7 @@ export function FloatingTimer({
             Start timer
           </button>
           <Link
-            href="/time"
+            href="/log"
             className="rounded-full px-3 py-2 text-small text-navy/60 transition hover:bg-navy/5 hover:text-navy"
           >
             Log

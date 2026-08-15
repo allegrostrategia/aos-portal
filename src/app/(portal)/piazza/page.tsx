@@ -80,7 +80,7 @@ export default async function PiazzaPage() {
               ? "Ten hours in — this week counts."
               : "Ten hours makes a week count. Start the timer when you begin something."}
           </p>
-          <ButtonLink href="/time" size="sm" variant="secondary" className="mt-4">
+          <ButtonLink href="/log" size="sm" variant="secondary" className="mt-4">
             Your log
           </ButtonLink>
         </Card>

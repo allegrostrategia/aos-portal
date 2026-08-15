@@ -75,7 +75,6 @@ Welcome session (video + `watched_at` gate) → audit form → weekly time track
 **Timer: done.** The floating global timer lives in the portal shell, so it's available from every screen and from day one of onboarding (§1). Live start/stop against the ten fixed categories, manual entries marked as such, today's entries with delete, and this week's total against the 10-hour threshold at `/time` and on Piazza. Built as the weekly log's engine, so Step 5 extends it rather than rewriting it.
 
 **Still to do:**
-- **Priming content** (§1) — one short piece per week on the check-in screen. Needs the weekly submission screen, which is Step 5
 - Nina's real audit questions — the set in `src/lib/onboarding/audit-questions.ts` is placeholder copy written to the right shape; swapping it in means editing that one file
 - The welcome session recording
 - Headshot upload for directory listings — needs a Supabase storage bucket
@@ -91,6 +90,12 @@ Piazza dashboard with all confirmed widgets (hours reclaimed, monthly plan, focu
 ## Step 5 — Weekly log
 
 Timer against the ten fixed categories, roadmap actions-taken checklist + free text, reminder cadence.
+
+**Done:** `/log` — the weekly check-in, one submission doing three jobs (§4). This week's tracked total against the 10-hour threshold, a breakdown by category, today's entries with manual add, the roadmap actions-taken checklist, the free-response box, and sign-off. Submitting is final: RLS only permits edits while `submitted_at` is null, so a dated entry stays what it said. The onboarding priming content (§1) lives here too, which closes the last item of Step 3. `/time` redirects here — the daily and weekly views were one screen doing the same job twice.
+
+**Still to do:**
+- **The reminder cadence** (§4) — mid-week nudge only if meaningfully behind pace, end-of-week only if still short, and no daily "did you log today" ping. Needs a scheduler and email delivery; Resend is already configured for auth, so it's the scheduling half that's missing
+- The actions-taken checklist has nothing to check against until roadmaps exist (Step 4 / the 1:1). It degrades to the free-response box on its own, which is what §4 describes for onboarding weeks 2–3 anyway
 
 *Full detail: Build Brief, Section 4.*
 
