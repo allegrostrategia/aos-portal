@@ -118,6 +118,13 @@ Content upload/tagging in admin, the shared station template, each station skinn
 
 One unified panel: content management, onboarding audit visibility, hot seat challenge review, running the monthly draw, general member/roadmap visibility.
 
+**Partly built, pulled forward because nothing else could be exercised without it:**
+- ✅ Create/invite a member, and the member list
+- ✅ Per-member view: audit answers and diagnosis, their itinerary, confirmations
+- ✅ **Lifecycle controls** — activate (onboarding → active, the week-1 move), cancel, reinstate. `activate_member()` joins the other three as a database function, so all four lifecycle moves keep their rules in one place
+- ✅ **Roadmap editor** — phases, items, this month's focus and focus station; save as draft or publish. Item ids are preserved across edits so a member's existing weekly-log ticks don't detach when a phase is re-ordered or an item reworded
+- Still to do: content upload and tagging, hot seat challenge review, running the monthly draw
+
 **Plus "create new member" — not just viewing existing ones.** Since member creation is manual (Step 0 #10), this form is the actual onboarding trigger: confirm payment and signed contract, invite the email address, create the record, sequence starts. Worth building this ahead of the rest of the panel — nobody can be onboarded without it, so it blocks any real end-to-end test of Step 3.
 
 *Full detail: Build Brief, Section 7.*

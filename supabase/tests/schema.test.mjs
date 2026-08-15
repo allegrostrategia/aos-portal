@@ -160,7 +160,22 @@ await db.exec(`
 await check("onboarding member sees only the starter set", async () =>
   (await as(ALICE, () => db.query(`select count(*)::int c from public.training_content`))).rows[0].c === 1);
 
-await as(ADMIN, () => db.query(`update public.members set status='active' where id='${ALICE}'`));
+await rejects("a member cannot activate themselves", () =>
+  as(ALICE, () => db.query(`select public.activate_member('${ALICE}')`)),
+  "Only an admin");
+
+await check("admin activates an onboarding member", async () =>
+  (await as(ADMIN, () => db.query(
+    `select (public.activate_member('${ALICE}')).status`))).rows[0].status === "active");
+
+await rejects("activating an already-active member is refused", () =>
+  as(ADMIN, () => db.query(`select public.activate_member('${ALICE}')`)),
+  "only an onboarding member can be activated");
+
+await check("activation is recorded in the status history", async () =>
+  (await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.member_status_events
+     where to_status='active' and from_status='onboarding'`))).rows[0].c === 1);
 
 await check("active member sees the full published library", async () =>
   (await as(ALICE, () => db.query(`select count(*)::int c from public.training_content`))).rows[0].c === 2);

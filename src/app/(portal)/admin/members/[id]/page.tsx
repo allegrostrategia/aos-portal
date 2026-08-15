@@ -8,6 +8,8 @@ import { AUDIT_QUESTIONS } from "@/lib/onboarding/audit-questions";
 import { buildItinerary } from "@/lib/onboarding/cadence";
 import type { Member } from "@/lib/supabase/types";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
+import { StatusActions } from "./status-actions";
+import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
 
 export const metadata: Metadata = {
   title: "Member — aOS admin",
@@ -44,16 +46,26 @@ export default async function AdminMemberPage({
 
   const supabase = await createClient();
 
-  const [{ data: memberRow }, { data: auditRows }, { data: stationRows }] =
-    await Promise.all([
-      supabase.from("members").select("*").eq("id", id).maybeSingle(),
-      supabase
-        .from("member_audits")
-        .select("*")
-        .eq("member_id", id)
-        .order("submitted_at", { ascending: false, nullsFirst: false }),
-      supabase.from("stations").select("slug, name"),
-    ]);
+  const [
+    { data: memberRow },
+    { data: auditRows },
+    { data: stationRows },
+    { data: roadmapRow },
+  ] = await Promise.all([
+    supabase.from("members").select("*").eq("id", id).maybeSingle(),
+    supabase
+      .from("member_audits")
+      .select("*")
+      .eq("member_id", id)
+      .order("submitted_at", { ascending: false, nullsFirst: false }),
+    supabase.from("stations").select("slug, name").order("sort_order"),
+    supabase
+      .from("roadmap")
+      .select("phases, current_focus, current_focus_station_slug, confirmed_at")
+      .eq("member_id", id)
+      .eq("is_current", true)
+      .maybeSingle(),
+  ]);
 
   const member = memberRow as Member | null;
   if (!member) notFound();
@@ -65,6 +77,21 @@ export default async function AdminMemberPage({
       s.name,
     ]),
   );
+
+  const roadmap = roadmapRow as {
+    phases: { title?: string; station_slug?: string | null; items?: { label?: string }[] }[];
+    current_focus: string | null;
+    current_focus_station_slug: string | null;
+    confirmed_at: string | null;
+  } | null;
+
+  const editorPhases: EditorPhase[] = (roadmap?.phases ?? []).map((phase) => ({
+    title: phase.title ?? "",
+    stationSlug: phase.station_slug ?? null,
+    items: (phase.items ?? []).map((item) => item.label ?? "").filter(Boolean),
+  }));
+
+  const stations = (stationRows ?? []) as { slug: string; name: string }[];
 
   const itinerary = member.onboarding_start_date
     ? buildItinerary(member.onboarding_start_date)
@@ -139,6 +166,29 @@ export default async function AdminMemberPage({
           ) : null}
         </Card>
       ) : null}
+
+      <div className="mt-5">
+        <StatusActions memberId={member.id} status={member.status} />
+      </div>
+
+      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+        Roadmap
+      </h2>
+      <p className="mb-3 text-small text-navy/70">
+        {roadmap
+          ? roadmap.confirmed_at
+            ? "Published — this is what they see on Piazza and in their weekly log."
+            : "Draft — not visible to them yet."
+          : "No roadmap yet. This is what comes out of the week-four 1:1."}
+      </p>
+      <RoadmapEditor
+        memberId={member.id}
+        stations={stations}
+        initialPhases={editorPhases}
+        initialFocus={roadmap?.current_focus ?? ""}
+        initialFocusStation={roadmap?.current_focus_station_slug ?? ""}
+        isPublished={Boolean(roadmap?.confirmed_at)}
+      />
 
       <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
         Audits
