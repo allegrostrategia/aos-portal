@@ -326,23 +326,33 @@ async function runHotSeatReminder(
         `Submit here: ${base}/hot-seat`,
       ],
     },
+    // Goes to everyone active, submitted or not — so it can't assume a
+    // submission is in. Branched rather than written vaguely enough to cover
+    // both, which would have meant saying nothing true to either.
     hot_seat_attend_1d: {
       subject: "Hot seat tomorrow",
-      body: [
-        `${firstName},`,
-        `The hot seat is ${when}.`,
-        `Nothing to prepare beyond what you've already sent. Bring the thing itself if it's on a screen — half the value is looking at the actual thing rather than a description of it.`,
-        session.zoom_url
-          ? `Join here: ${session.zoom_url}`
-          : `Details: ${base}/hot-seat`,
-      ],
+      body: hasSubmitted
+        ? [
+            `${firstName},`,
+            `The hot seat is ${when}.`,
+            `Nothing more to prepare. Nina reads your submission alongside your tracked hours beforehand and comes with a direction already drafted — the live part is confirming that and building it, rather than working out what to build.`,
+            session.zoom_url
+              ? `Join here: ${session.zoom_url}`
+              : `Details: ${base}/hot-seat`,
+          ]
+        : [
+            `${firstName},`,
+            `The hot seat is ${when}, and yours hasn't come in.`,
+            `There's still time. A submission is what lets Nina arrive with a direction already drafted, so the session goes on building rather than on working out what to build.`,
+            `Submit here: ${base}/hot-seat`,
+          ],
     },
     hot_seat_attend_am: {
       subject: "Hot seat today",
       body: [
         `${firstName},`,
-        `Today, ${when}. Your submission is in and Nina has it in front of her.`,
-        `Come with the thing open if you can. The live part is confirming the direction and building against it, so the more real the starting point, the further you get.`,
+        `Today, ${when}.`,
+        `Nina has your submission and your tracked hours, and comes with a direction drafted from them. Your few minutes go on confirming that and building it — not on explaining where you're up to.`,
         session.zoom_url
           ? `Join here: ${session.zoom_url}`
           : `Details: ${base}/hot-seat`,
