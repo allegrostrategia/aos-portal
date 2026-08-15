@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { firstMondayOfMonth } from "@/lib/onboarding/cadence";
 import { formatSessionTime, wallClockToUtc } from "@/lib/time-zone";
 
@@ -37,6 +38,18 @@ export async function saveSession(
 
   const supabase = await createClient();
 
+  // What the time was before this save, so a change can be detected.
+  const { data: before } = await supabase
+    .from("hot_seat_sessions")
+    .select("id, scheduled_for")
+    .eq("session_month", sessionMonth)
+    .maybeSingle();
+
+  const previous = before as { id: string; scheduled_for: string | null } | null;
+  const newInstant = scheduledFor ? wallClockToUtc(scheduledFor).toISOString() : null;
+  const timeChanged =
+    Boolean(previous) && previous?.scheduled_for !== newInstant;
+
   const { error } = await supabase.from("hot_seat_sessions").upsert(
     {
       session_month: sessionMonth,
@@ -53,12 +66,30 @@ export async function saveSession(
     return { error: `Couldn't save the session: ${error.message}` };
   }
 
+  // Moving a session invalidates every reminder already sent about it: members
+  // are holding a time that is no longer true, and nothing else would correct
+  // them. Clearing the jobs lets the scheduler plan and send them again against
+  // the new date.
+  //
+  // Safe to delete rather than archive — due_jobs is operational plumbing, and
+  // the record of what a member was told is the email itself, not this row.
+  if (timeChanged && previous) {
+    const admin = createAdminClient();
+    await admin
+      .from("due_jobs")
+      .delete()
+      .like("kind", "hot_seat_%")
+      .like("dedupe_key", `%:${previous.id}`);
+  }
+
   revalidatePath("/", "layout");
 
   const week = firstMondayOfMonth(sessionMonth);
   return {
     notice: scheduledFor
-      ? `Saved for ${formatSessionTime(wallClockToUtc(scheduledFor))} — UK time, which is what members see.`
+      ? `Saved for ${formatSessionTime(wallClockToUtc(scheduledFor))} — UK time, which is what members see.${
+          timeChanged ? " The time moved, so reminders will go out again against the new date." : ""
+        }`
       : `Saved. Week one that month begins ${week}; members see "time to be confirmed" until you set one.`,
   };
 }
