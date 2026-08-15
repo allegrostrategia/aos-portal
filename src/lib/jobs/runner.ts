@@ -145,18 +145,18 @@ async function runReminder(
           subject: "Your week so far",
           body: [
             `${firstName},`,
-            `You're at ${formatMinutes(logged)} logged this week. Ten hours makes the week count.`,
-            `Nothing to fill in — just start the timer when you begin something, and stop it when you're done.`,
-            logUrl,
+            `You're at ${formatMinutes(logged)} logged this week. Ten hours is what makes a week count.`,
+            `Nothing to fill in and nothing to write up — start the timer when you begin something, stop it when you're done. The point isn't the total; it's that your roadmap gets built from where the time actually went rather than where you think it went.`,
+            `Your log: ${logUrl}`,
           ],
         }
       : {
-          subject: `${formatMinutes(short)} off this week's log`,
+          subject: `${formatMinutes(short)} off a complete week`,
           body: [
             `${firstName},`,
-            `You're ${formatMinutes(short)} short of a complete week — still time to stay in this month's draw.`,
-            `If you've done the hours and not logged them, you can add them after the fact.`,
-            logUrl,
+            `You're ${formatMinutes(short)} short of ten hours, so this week won't count yet — and complete weeks are what put you in the monthly draw.`,
+            `If you've done the hours and just haven't logged them, you can add them after the fact. Reconstructed is worth less than tracked, but it's worth a great deal more than nothing.`,
+            `Your log: ${logUrl}`,
           ],
         };
 
@@ -294,31 +294,36 @@ async function runHotSeatReminder(
     ? formatSessionTime(session.scheduled_for)
     : "week one";
 
+  // Copy carries the same voice as the product: plain, warm, no hype, and
+  // always saying what the thing is for rather than only that it exists. A
+  // reminder that reads like a calendar alert teaches people to ignore it.
   const copy: Record<HotSeatReminderKind, { subject: string; body: string[] }> = {
     hot_seat_submit_7d: {
-      subject: "Hot seat in a week",
+      subject: "The hot seat is a week away",
       body: [
         `${firstName},`,
-        `The next hot seat is ${when}. Three questions to answer beforehand — what you're stuck on, what you've already tried, and what "done" would look like.`,
-        `That last one is what makes five minutes enough to build something rather than just talk about it.`,
-        `${base}/hot-seat`,
+        `The next hot seat is ${when}. One hour, everyone together, and whoever turns up gets worked on live.`,
+        `There are three questions to answer beforehand: what you're stuck on, what you've already tried, and what "done" would look like by the end of your slot.`,
+        `That last one does most of the work. Five minutes is enough to build one specific thing and not enough to decide what that thing should be — so arriving with it named is the difference between building and talking.`,
+        `Submit here: ${base}/hot-seat`,
       ],
     },
     hot_seat_submit_2d: {
-      subject: "Two days to submit",
+      subject: "Two days until the hot seat",
       body: [
         `${firstName},`,
-        `The hot seat is ${when} and you haven't submitted yet. It takes a few minutes, and it's what lets Nina arrive already knowing what you're working on.`,
-        `${base}/hot-seat`,
+        `The hot seat is ${when} and yours hasn't come in yet.`,
+        `It takes a few minutes. Nina reads it alongside your tracked hours beforehand, so she arrives already knowing where your month went and what you want out of it — which is what makes a short slot worth having.`,
+        `Submit here: ${base}/hot-seat`,
       ],
     },
     hot_seat_submit_final: {
-      subject: "Hot seat today",
+      subject: "Hot seat today — still time to submit",
       body: [
         `${firstName},`,
-        `Today's hot seat is ${when}, and there's still time to submit.`,
-        `You're welcome either way — but without a submission it gets built live from scratch, which is a slower use of your five minutes than arriving with Nina already prepped.`,
-        `${base}/hot-seat`,
+        `Today's session is ${when}, and there's still time to get yours in.`,
+        `You're welcome either way — nobody is turned away for not submitting. But without one it gets worked out from scratch in the room, and that's a slower use of your five minutes than arriving with Nina already prepped.`,
+        `Submit here: ${base}/hot-seat`,
       ],
     },
     hot_seat_attend_1d: {
@@ -326,15 +331,21 @@ async function runHotSeatReminder(
       body: [
         `${firstName},`,
         `The hot seat is ${when}.`,
-        session.zoom_url ? `Join here: ${session.zoom_url}` : `${base}/hot-seat`,
+        `Nothing to prepare beyond what you've already sent. Bring the thing itself if it's on a screen — half the value is looking at the actual thing rather than a description of it.`,
+        session.zoom_url
+          ? `Join here: ${session.zoom_url}`
+          : `Details: ${base}/hot-seat`,
       ],
     },
     hot_seat_attend_am: {
       subject: "Hot seat today",
       body: [
         `${firstName},`,
-        `Today at ${when}. Your submission is in and Nina has it.`,
-        session.zoom_url ? `Join here: ${session.zoom_url}` : `${base}/hot-seat`,
+        `Today, ${when}. Your submission is in and Nina has it in front of her.`,
+        `Come with the thing open if you can. The live part is confirming the direction and building against it, so the more real the starting point, the further you get.`,
+        session.zoom_url
+          ? `Join here: ${session.zoom_url}`
+          : `Details: ${base}/hot-seat`,
       ],
     },
   };
