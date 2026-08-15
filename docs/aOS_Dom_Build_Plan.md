@@ -137,10 +137,10 @@ Two things that spec implies for the build, worth knowing before Step 10 starts:
 - **Retiring a rate depends on the two-week check-in.** Proposed definition (pending Nina): fires two weeks after each specific build, in portal chat; the member posts what worked and what didn't, tagged to that build; Nina reviews and decides whether to retire the rate — same member-reports, Nina-decides pattern as elsewhere. Responses double as testimonial material. Non-response defaults to keep accruing, never auto-retire: retiring needs evidence, not silence.
 
   Four consequences for the build:
-  - **It depends on chat, which is Step 11 — after Step 10.** The counter itself ships fine without it; the *retirement* half can't. Either Step 10 lands knowing rates won't close yet, or the check-in gets a simpler home than chat for its first version
+  - **It depends on chat, which is Step 11 — after Step 10. Resolved: not a gap.** The counter ships fine without it and rates simply can't close until chat exists — which is the existing "retiring needs evidence, not silence" default running for longer, not a workaround to engineer around. No interim home for the check-in, and no special case in Step 10
   - **Tagging has to be in the chat schema from the start.** A message needs to reference a `handover_pack` entry, or linking responses to builds is a retrofit across every message already written
   - **The scheduler now has two shapes, not one.** The weekly ledger and the reminders are calendar-driven; check-ins fire on a per-build offset. A generic due-jobs table (what, for whom, due when, done when) serves all three; three separate crons wouldn't
-  - **Testimonial reuse needs explicit consent, not implied by posting.** A member writing candidly in a members-only chat hasn't agreed to appear on a sales page. Worth a consent flag on the response rather than a blanket assumption — cheaper to ask at the point of writing than to go back later
+  - **Testimonial reuse is opt-in, at the point of writing.** A toggle on the check-in response, **off by default and never required to submit** — a member can post their update without ever consenting to reuse. Consent is per response rather than a blanket account setting, so agreeing once doesn't sign away everything afterwards. Protects the candour that makes the responses worth reading to Nina in the first place, whether or not anyone opts in
 
 *Full detail: scattered across Piazza/Weekly Log sections of the Build Brief — the gamification mockups earlier in this project are the visual reference.*
 
