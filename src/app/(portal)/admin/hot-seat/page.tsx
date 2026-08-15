@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
@@ -76,9 +77,12 @@ export default async function AdminHotSeatPage() {
                 return (
                   <Card as="li" key={session.id}>
                     <div className="flex flex-wrap items-baseline justify-between gap-3">
-                      <p className="font-display text-heading text-navy italic">
+                      <Link
+                        href={`/admin/hot-seat/${session.id}`}
+                        className="font-display text-heading text-navy italic underline decoration-orange decoration-2 underline-offset-4"
+                      >
                         {MONTH.format(new Date(session.session_month))}
-                      </p>
+                      </Link>
                       <p className="font-mono text-caption text-navy/60">
                         {submitted} submitted · {confirmed} prepped
                       </p>

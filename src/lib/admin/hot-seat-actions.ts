@@ -58,3 +58,45 @@ export async function saveSession(
       : `Saved. Week one that month begins ${week}; members see "time to be confirmed" until you set one.`,
   };
 }
+
+/**
+ * Lock a member's challenge for the session (§3, §5).
+ *
+ * This is the "Nina confirms" half. `drafted_by` records whether she took the
+ * drafted suggestion as written or changed it — which is the only way to find
+ * out whether the drafting is actually saving her anything, and worth knowing
+ * before more of the product is built on the same pattern.
+ */
+export async function confirmChallenge(
+  _prev: SessionState,
+  formData: FormData,
+): Promise<SessionState> {
+  const admin = await requireAdmin();
+
+  const submissionId = String(formData.get("submission_id") ?? "");
+  const confirmed = String(formData.get("confirmed_challenge") ?? "").trim();
+  const suggested = String(formData.get("suggested_challenge") ?? "").trim();
+
+  if (!submissionId) return { error: "No submission given." };
+  if (!confirmed) {
+    return { error: "The confirmed challenge is what goes into the room — it can't be blank." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("hot_seat_submissions")
+    .update({
+      confirmed_challenge: confirmed,
+      confirmed_at: new Date().toISOString(),
+      confirmed_by: admin.id,
+      // Taken as drafted, or adjusted. Compared on the text rather than tracked
+      // by a checkbox, so it can't drift from what actually happened.
+      drafted_by: suggested && confirmed === suggested ? "claude" : "nina",
+    })
+    .eq("id", submissionId);
+
+  if (error) return { error: `Couldn't confirm: ${error.message}` };
+
+  revalidatePath("/", "layout");
+  return { notice: "Locked. That's what goes into the session, and onto their Piazza." };
+}
