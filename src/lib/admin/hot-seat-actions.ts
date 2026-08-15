@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { firstMondayOfMonth } from "@/lib/onboarding/cadence";
+import { formatSessionTime, wallClockToUtc } from "@/lib/time-zone";
 
 export type SessionState = { error?: string; notice?: string } | null;
 
@@ -39,7 +40,10 @@ export async function saveSession(
   const { error } = await supabase.from("hot_seat_sessions").upsert(
     {
       session_month: sessionMonth,
-      scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null,
+      // The form gives a wall clock with no offset. Interpreted in UK time,
+      // not the server's — a UTC server would otherwise read 23:00 UK as
+      // 23:00 UTC and file the session an hour late.
+      scheduled_for: scheduledFor ? wallClockToUtc(scheduledFor).toISOString() : null,
       zoom_url: zoomUrl || null,
     },
     { onConflict: "session_month" },
@@ -54,7 +58,7 @@ export async function saveSession(
   const week = firstMondayOfMonth(sessionMonth);
   return {
     notice: scheduledFor
-      ? "Saved — members can see the time and the link."
+      ? `Saved for ${formatSessionTime(wallClockToUtc(scheduledFor))} — UK time, which is what members see.`
       : `Saved. Week one that month begins ${week}; members see "time to be confirmed" until you set one.`,
   };
 }

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireMember } from "@/lib/auth/member";
 import { getMySubmission, getUpcomingSession } from "@/lib/hot-seat/queries";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { formatSessionTime } from "@/lib/time-zone";
 import { SubmissionForm } from "./submission-form";
 
 export const metadata: Metadata = {
@@ -10,13 +11,6 @@ export const metadata: Metadata = {
 };
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
-const WHEN = new Intl.DateTimeFormat("en-GB", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /**
  * The hot seat (§5).
@@ -59,7 +53,7 @@ export default async function HotSeatPage() {
             <Eyebrow>When</Eyebrow>
             <p className="font-display mt-2 text-heading text-navy italic">
               {session.scheduled_for
-                ? WHEN.format(new Date(session.scheduled_for))
+                ? formatSessionTime(session.scheduled_for)
                 : "Week one — time to be confirmed"}
             </p>
             {session.zoom_url ? (

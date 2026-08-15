@@ -4,6 +4,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { formatSessionTimeShort } from "@/lib/time-zone";
 import { SessionForm } from "./session-form";
 
 export const metadata: Metadata = {
@@ -11,13 +12,6 @@ export const metadata: Metadata = {
 };
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
-const WHEN = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 type SessionRow = {
   id: string;
@@ -93,7 +87,7 @@ export default async function AdminHotSeatPage() {
                       </div>
                       <p className="mt-1 text-small text-navy/70">
                         {session.scheduled_for
-                          ? WHEN.format(new Date(session.scheduled_for))
+                          ? formatSessionTimeShort(session.scheduled_for)
                           : "Time not set"}
                         {session.zoom_url ? " · link set" : " · no link yet"}
                       </p>

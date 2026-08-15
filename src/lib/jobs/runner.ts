@@ -11,6 +11,7 @@ import {
   type ReminderKind,
 } from "./reminders";
 import { formatMinutes } from "@/lib/timer/format";
+import { formatSessionTime } from "@/lib/time-zone";
 import {
   daysBetween,
   kindsForDaysUntil,
@@ -290,14 +291,7 @@ async function runHotSeatReminder(
   const firstName = member.full_name.split(" ")[0];
   const base = env.siteUrl ?? "https://aos.allegrostrategia.com";
   const when = session.scheduled_for
-    ? new Intl.DateTimeFormat("en-GB", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Europe/London",
-      }).format(new Date(session.scheduled_for))
+    ? formatSessionTime(session.scheduled_for)
     : "week one";
 
   const copy: Record<HotSeatReminderKind, { subject: string; body: string[] }> = {
