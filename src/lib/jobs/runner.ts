@@ -10,8 +10,8 @@ import {
   shouldSendReminder,
   type ReminderKind,
 } from "./reminders";
-import { formatMinutes } from "@/lib/timer/format";
 import { formatSessionTime } from "@/lib/time-zone";
+import { hotSeatCopy, renderEmail, weeklyLogCopy } from "./copy";
 import {
   daysBetween,
   kindsForDaysUntil,
@@ -139,31 +139,17 @@ async function runReminder(
   const short = remainingMinutes(logged);
   const logUrl = `${env.siteUrl ?? "https://aos.allegrostrategia.com"}/log`;
 
-  const copy =
-    job.kind === "log_reminder_midweek"
-      ? {
-          subject: "Your week so far",
-          body: [
-            `${firstName},`,
-            `You're at ${formatMinutes(logged)} logged this week. Ten hours is what makes a week count.`,
-            `Nothing to fill in and nothing to write up — start the timer when you begin something, stop it when you're done. The point isn't the total; it's that your roadmap gets built from where the time actually went rather than where you think it went.`,
-            `Your log: ${logUrl}`,
-          ],
-        }
-      : {
-          subject: `${formatMinutes(short)} off a complete week`,
-          body: [
-            `${firstName},`,
-            `You're ${formatMinutes(short)} short of ten hours, so this week won't count yet — and complete weeks are what put you in the monthly draw.`,
-            `If you've done the hours and just haven't logged them, you can add them after the fact. Reconstructed is worth less than tracked, but it's worth a great deal more than nothing.`,
-            `Your log: ${logUrl}`,
-          ],
-        };
+  const copy = weeklyLogCopy(job.kind, {
+    firstName,
+    loggedMinutes: logged,
+    shortBy: short,
+    logUrl,
+  });
 
   const result = await sendEmail({
     to: member.email,
     subject: copy.subject,
-    text: copy.body.join("\n\n"),
+    text: renderEmail(copy),
   });
 
   if (!result.ok) {
@@ -294,77 +280,18 @@ async function runHotSeatReminder(
     ? formatSessionTime(session.scheduled_for)
     : "week one";
 
-  // Copy carries the same voice as the product: plain, warm, no hype, and
-  // always saying what the thing is for rather than only that it exists. A
-  // reminder that reads like a calendar alert teaches people to ignore it.
-  const copy: Record<HotSeatReminderKind, { subject: string; body: string[] }> = {
-    hot_seat_submit_7d: {
-      subject: "The hot seat is a week away",
-      body: [
-        `${firstName},`,
-        `The next hot seat is ${when}. One hour, everyone together, and whoever turns up gets worked on live.`,
-        `There are three questions to answer beforehand: what you're stuck on, what you've already tried, and what "done" would look like by the end of your slot.`,
-        `That last one does most of the work. Five minutes is enough to build one specific thing and not enough to decide what that thing should be — so arriving with it named is the difference between building and talking.`,
-        `Submit here: ${base}/hot-seat`,
-      ],
-    },
-    hot_seat_submit_2d: {
-      subject: "Two days until the hot seat",
-      body: [
-        `${firstName},`,
-        `The hot seat is ${when} and yours hasn't come in yet.`,
-        `It takes a few minutes. Nina reads it alongside your tracked hours beforehand, so she arrives already knowing where your month went and what you want out of it — which is what makes a short slot worth having.`,
-        `Submit here: ${base}/hot-seat`,
-      ],
-    },
-    hot_seat_submit_final: {
-      subject: "Hot seat today — still time to submit",
-      body: [
-        `${firstName},`,
-        `Today's session is ${when}, and there's still time to get yours in.`,
-        `You're welcome either way — nobody is turned away for not submitting. But without one it gets worked out from scratch in the room, and that's a slower use of your five minutes than arriving with Nina already prepped.`,
-        `Submit here: ${base}/hot-seat`,
-      ],
-    },
-    // Goes to everyone active, submitted or not — so it can't assume a
-    // submission is in. Branched rather than written vaguely enough to cover
-    // both, which would have meant saying nothing true to either.
-    hot_seat_attend_1d: {
-      subject: "Hot seat tomorrow",
-      body: hasSubmitted
-        ? [
-            `${firstName},`,
-            `The hot seat is ${when}.`,
-            `Nothing more to prepare. Nina reads your submission alongside your tracked hours beforehand and comes with a direction already drafted — the live part is confirming that and building it, rather than working out what to build.`,
-            session.zoom_url
-              ? `Join here: ${session.zoom_url}`
-              : `Details: ${base}/hot-seat`,
-          ]
-        : [
-            `${firstName},`,
-            `The hot seat is ${when}, and yours hasn't come in.`,
-            `There's still time. A submission is what lets Nina arrive with a direction already drafted, so the session goes on building rather than on working out what to build.`,
-            `Submit here: ${base}/hot-seat`,
-          ],
-    },
-    hot_seat_attend_am: {
-      subject: "Hot seat today",
-      body: [
-        `${firstName},`,
-        `Today, ${when}.`,
-        `Nina has your submission and your tracked hours, and comes with a direction drafted from them. Your few minutes go on confirming that and building it — not on explaining where you're up to.`,
-        session.zoom_url
-          ? `Join here: ${session.zoom_url}`
-          : `Details: ${base}/hot-seat`,
-      ],
-    },
-  };
+  const message = hotSeatCopy(job.kind, {
+    firstName,
+    when,
+    zoomUrl: session.zoom_url,
+    baseUrl: base,
+    hasSubmitted,
+  });
 
-  const message = copy[job.kind];
   const result = await sendEmail({
     to: member.email,
     subject: message.subject,
-    text: message.body.join("\n\n"),
+    text: renderEmail(message),
   });
 
   if (!result.ok) {
