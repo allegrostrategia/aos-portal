@@ -83,6 +83,12 @@ Welcome session (video + `watched_at` gate) → audit form → weekly time track
 
 ## Step 4 — Piazza and La Strada
 
+**Piazza: built, with the widgets whose data exists.** Greeting and date, this week's log with its FATTO stamp and progress to ten hours, "Continue your journey" as a deep link into the focus station, this month's build from the hot seat, the next session with add-to-calendar (.ics), and the current roadmap phase's items.
+
+Omitted rather than shown empty, each waiting on something real: hours reclaimed, milestones and the community goal need the Step 10 ledger; the buddy card needs pairing (Step 11); the draw card needs a draw to exist; the mini map needs the coastline artwork, which is still not in the repo.
+
+**La Strada's metro map: still blocked on the artwork.** `/stations` is the list underneath it and works; the map itself, with pan/zoom and visited/not-visited state, needs the coastline art listed as done in Step 0 but never added.
+
 Piazza dashboard with all confirmed widgets (hours reclaimed, monthly plan, focus station + challenge, next hot seat, Telegram day, buddy, timer shortcut, draw card, community goal). La Strada as the full metro-map SVG, free-roam navigation, visited/not-visited state.
 
 *Full detail: Build Brief, Sections 2–3.*
