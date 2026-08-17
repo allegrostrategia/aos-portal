@@ -90,3 +90,46 @@ export async function saveContent(
       : "Saved as a draft — members can't see it until it's published.",
   };
 }
+
+/**
+ * Publish or unpublish, without touching anything else.
+ *
+ * The everyday correction: something went out too early, or a training is being
+ * re-recorded. Unpublishing hides it from members and keeps the row, its tags
+ * and its slug — so putting it back is one click rather than retyping the lot.
+ */
+export async function togglePublished(formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  const publish = formData.get("publish") === "true";
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("training_content")
+    .update({ published_at: publish ? new Date().toISOString() : null })
+    .eq("id", id);
+
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Remove a piece of content outright.
+ *
+ * Genuinely deletes, unlike everything touching member data — this is Nina's own
+ * material, not somebody's record of their work, so a duplicate or a mistyped
+ * entry is worth removing rather than keeping forever. Unpublishing is the
+ * gentler option and the one to reach for when a member might have seen it.
+ */
+export async function deleteContent(formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase.from("training_content").delete().eq("id", id);
+
+  revalidatePath("/", "layout");
+}

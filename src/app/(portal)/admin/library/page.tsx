@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
@@ -9,12 +10,17 @@ import {
   getAllContent,
 } from "@/lib/library/queries";
 import { Badge, Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { deleteContent, togglePublished } from "@/lib/admin/library-actions";
 import { ContentForm } from "./content-form";
 
 export const metadata: Metadata = { title: "Library — aOS admin" };
 
-export default async function AdminLibraryPage() {
+export default async function AdminLibraryPage({
+  searchParams,
+}: PageProps<"/admin/library">) {
   await requireAdmin();
+  const params = await searchParams;
+  const editId = typeof params.edit === "string" ? params.edit : undefined;
 
   const supabase = await createClient();
   const [{ data: stationRows }, content] = await Promise.all([
@@ -23,6 +29,7 @@ export default async function AdminLibraryPage() {
   ]);
 
   const stations = (stationRows ?? []) as { slug: string; name: string }[];
+  const editing = editId ? (content.find((c) => c.id === editId) ?? null) : null;
   const stationName = Object.fromEntries(stations.map((s) => [s.slug, s.name]));
 
   const byStation = content.reduce<Record<string, typeof content>>(
@@ -44,9 +51,9 @@ export default async function AdminLibraryPage() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start">
         <section>
           <h2 className="font-display mb-3 text-heading text-navy italic">
-            Add content
+            {editing ? "Edit content" : "Add content"}
           </h2>
-          <ContentForm stations={stations} />
+          <ContentForm stations={stations} editing={editing} />
         </section>
 
         <section>
@@ -92,6 +99,48 @@ export default async function AdminLibraryPage() {
                             : ""}
                           {item.bucket ? ` · ${item.bucket.replace("_", " & ")}` : ""}
                         </p>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-4">
+                          <Link
+                            href={`/admin/library?edit=${item.id}`}
+                            className="text-caption text-navy underline decoration-orange decoration-2 underline-offset-4"
+                          >
+                            Edit
+                          </Link>
+
+                          <form action={togglePublished}>
+                            <input type="hidden" name="id" value={item.id} />
+                            <input
+                              type="hidden"
+                              name="publish"
+                              value={item.published_at ? "false" : "true"}
+                            />
+                            <button
+                              type="submit"
+                              className="text-caption text-navy/70 underline underline-offset-4 transition hover:text-navy"
+                            >
+                              {item.published_at ? "Unpublish" : "Publish"}
+                            </button>
+                          </form>
+
+                          {/* Two steps, no JavaScript. Deleting content is rare
+                              and irreversible; unpublishing is the everyday
+                              correction and sits first for that reason. */}
+                          <details className="inline">
+                            <summary className="cursor-pointer list-none text-caption text-navy/40 transition hover:text-navy">
+                              Remove
+                            </summary>
+                            <form action={deleteContent} className="mt-2">
+                              <input type="hidden" name="id" value={item.id} />
+                              <button
+                                type="submit"
+                                className="rounded-md border border-orange/40 px-2 py-1 text-caption text-navy transition hover:bg-blush/20"
+                              >
+                                Delete &ldquo;{item.title}&rdquo; permanently
+                              </button>
+                            </form>
+                          </details>
+                        </div>
                       </li>
                     ))}
                   </ul>
