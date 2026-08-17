@@ -122,9 +122,11 @@ Submission form, Claude API integration for AI-drafted build suggestions, Nina's
 
 **Done:** admin content management at `/admin/library` with the full §6 tagging set (station, bucket, sub-category, job, kind, format, ★ hot-seat-buildable, onboarding starter set, publish), and the member-facing content list inside each station — grouped so replays and audio drops read distinctly from formal trainings, with a format badge shown before anyone clicks in.
 
+**Also done:** the private `training-content` bucket with **no member policy at all**, and serving through `/api/content/[id]`, which mints a short-lived signed URL only after `training_content`'s own RLS confirms the item exists *for that member*. Viewer at `/library/[slug]` — video and audio streamed with the download control removed, PDFs in an embedded viewer.
+
 **Still to do:**
-- **A private storage bucket for the assets**, plus signed-URL serving. §11's export rules only hold if the files are private: video streamed with no download link exposed, PDFs in an embedded viewer, audio streamed. `asset_path` is currently a text field with nowhere to point
-- Playback itself — the viewer/player per format, once the bucket exists
+- **Upload from the admin panel.** `asset_path` is typed by hand; the file has to be put in the bucket through Supabase's dashboard first
+- **Spreadsheets are the one exception to §11 and need Nina's call.** A finance tracker or pricing calculator is useless if it can't be opened in the member's own business, so it downloads. Everything else streams. Worth confirming that's intended rather than a gap
 - Nina's actual content, which needs re-recording per `Training_Library_Grouping.md`
 
 Content upload/tagging in admin, the shared station template, each station skinned with its image, content-type badges, non-exportable protection on formal content (streaming/embedded viewer, no download links), replay uploads marked distinctly, the weekly Nina audio drop in Cinema Allegro.

@@ -476,5 +476,24 @@ await check("a sent voice message cannot be overwritten", async () => {
   return r.rows[0].name === `${BOB}/note.webm`;
 });
 
+await check("training content files are unreadable by members, by design", async () => {
+  // §11: no member policy on this bucket at all. Reads go through the app,
+  // which mints a signed URL after checking the member may see that item — so a
+  // SELECT policy here would quietly reopen what the rule closes.
+  await db.exec(
+    `insert into storage.objects (bucket_id, name) values ('training-content','lesson-one.mp4')`,
+  );
+  const asMember = await as(BOB, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='training-content'`));
+  const asAdmin = await as(ADMIN, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='training-content'`));
+  return asMember.rows[0].c === 0 && asAdmin.rows[0].c === 1;
+});
+
+await rejects("a member cannot upload into the training bucket", () =>
+  as(BOB, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('training-content','${BOB}/mine.mp4')`)),
+  "row-level security");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
