@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { StationShell } from "@/components/station-shell";
+import { ContentList } from "@/components/content-list";
+import { getStationContent } from "@/lib/library/queries";
 
 type Station = {
   slug: string;
@@ -51,9 +53,16 @@ export default async function StationPage({
 
   if (!station) notFound();
 
+  // RLS tiers this: an onboarding member gets the starter set and trailer
+  // replays, an active member gets everything published (§1, §6).
+  const content = await getStationContent(slug);
+
   return (
     <StationShell
       station={station}
+      recommendedTraining={
+        station.holds_training_content ? <ContentList items={content} /> : undefined
+      }
       whyThisMatters={
         station.holds_training_content ? (
           <p>

@@ -120,6 +120,13 @@ Submission form, Claude API integration for AI-drafted build suggestions, Nina's
 
 ## Step 7 — Training library and stations
 
+**Done:** admin content management at `/admin/library` with the full §6 tagging set (station, bucket, sub-category, job, kind, format, ★ hot-seat-buildable, onboarding starter set, publish), and the member-facing content list inside each station — grouped so replays and audio drops read distinctly from formal trainings, with a format badge shown before anyone clicks in.
+
+**Still to do:**
+- **A private storage bucket for the assets**, plus signed-URL serving. §11's export rules only hold if the files are private: video streamed with no download link exposed, PDFs in an embedded viewer, audio streamed. `asset_path` is currently a text field with nowhere to point
+- Playback itself — the viewer/player per format, once the bucket exists
+- Nina's actual content, which needs re-recording per `Training_Library_Grouping.md`
+
 Content upload/tagging in admin, the shared station template, each station skinned with its image, content-type badges, non-exportable protection on formal content (streaming/embedded viewer, no download links), replay uploads marked distinctly, the weekly Nina audio drop in Cinema Allegro.
 
 *Full detail: Build Brief, Section 6; full content and station mapping in `Training_Library_Grouping.md`.*

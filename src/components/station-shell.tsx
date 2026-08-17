@@ -79,10 +79,13 @@ export function StationShell({
           </Card>
         ) : null}
 
-        {/* 4. Recommended training */}
+        {/* 4. Recommended training — §11's slot, filled for now with everything
+            in the room. "Recommended for you" proper is a Piazza card (§6), so
+            calling a complete list that here would be a promise this doesn't
+            keep yet. Ordering by the diagnostic comes later. */}
         {recommendedTraining ? (
           <Card className="lg:col-span-2">
-            <Eyebrow>Recommended for you</Eyebrow>
+            <Eyebrow>In this room</Eyebrow>
             <div className="mt-3">{recommendedTraining}</div>
           </Card>
         ) : null}
