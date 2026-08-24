@@ -65,3 +65,9 @@ There's currently a `src/app/favicon.ico` left over from the scaffold. Adding
 `icon.svg` alongside it is fine — browsers prefer the SVG — but delete the
 scaffold one when the real mark lands, or the old Next.js logo will keep
 appearing in some browsers.
+
+## The La Strada map — `public/illustrations/la-strada-map.png`
+
+The aerial view of the town. Station positions are percentages of this image, in
+`src/lib/map/positions.ts` — so replacing the artwork means re-checking those,
+and cropping it differently means re-placing every station.
