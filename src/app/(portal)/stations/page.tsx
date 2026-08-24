@@ -4,6 +4,8 @@ import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { StationCard, type StationCardStation } from "@/components/station-card";
 import { PageHeader } from "@/components/ui/card";
+import { LaStradaMap } from "@/components/map/la-strada-map";
+import { getVisitedStations } from "@/lib/map/queries";
 
 export const metadata: Metadata = {
   title: "La Strada — aOS",
@@ -32,6 +34,7 @@ export default async function StationsPage() {
 
   const stations = (data ?? []) as StationCardStation[];
   const isActive = member.status === "active";
+  const visited = await getVisitedStations(member.id);
 
   return (
     <main className="flex-1 py-8 sm:py-10">
@@ -45,6 +48,19 @@ export default async function StationsPage() {
         }
       />
 
+      <LaStradaMap
+        locked={!isActive}
+        stations={stations.map((station) => ({
+          slug: station.slug,
+          name: station.name,
+          visited: visited.has(station.slug),
+        }))}
+      />
+
+      <h2 className="font-display mt-10 mb-3 text-heading text-navy italic">
+        Every room
+      </h2>
+
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {stations.map((station) => (
           <StationCard
@@ -55,9 +71,7 @@ export default async function StationsPage() {
         ))}
       </div>
 
-      <p className="mt-8 text-small text-navy/50">
-        The full map, with the route between these, arrives in Step 4.
-      </p>
+
     </main>
   );
 }

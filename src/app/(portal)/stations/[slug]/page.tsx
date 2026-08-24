@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { StationShell } from "@/components/station-shell";
 import { ContentList } from "@/components/content-list";
 import { getStationContent } from "@/lib/library/queries";
+import { recordStationVisit } from "@/lib/map/actions";
 
 type Station = {
   slug: string;
@@ -56,6 +57,10 @@ export default async function StationPage({
   // RLS tiers this: an onboarding member gets the starter set and trailer
   // replays, an active member gets everything published (§1, §6).
   const content = await getStationContent(slug);
+
+  // Marks the map. Not awaited into anything the page renders — a lost tally is
+  // better than a station that fails to open.
+  await recordStationVisit(slug);
 
   return (
     <StationShell

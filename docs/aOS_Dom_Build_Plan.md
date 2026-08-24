@@ -87,7 +87,11 @@ Welcome session (video + `watched_at` gate) → audit form → weekly time track
 
 Omitted rather than shown empty, each waiting on something real: hours reclaimed, milestones and the community goal need the Step 10 ledger; the buddy card needs pairing (Step 11); the draw card needs a draw to exist; the mini map needs the coastline artwork, which is still not in the repo.
 
-**La Strada's metro map: still blocked on the artwork.** `/stations` is the list underneath it and works; the map itself, with pan/zoom and visited/not-visited state, needs the coastline art listed as done in Step 0 but never added.
+**La Strada's map: built.** The town from above at `/stations`, with the eleven stations placed on it and visited/not-visited as the only state (§3). Positions are percentages of the artwork in `src/lib/map/positions.ts`, with tests asserting every station is placed, none overlap, and nothing sits in the open piazza. Piazza carries a preview only, never the full map.
+
+Pan is native scrolling and zoom is three buttons, rather than a custom gesture layer — that works identically on a phone, a trackpad, a mouse wheel and arrow keys, and can't be got subtly wrong. Pinch-to-zoom could be layered on later if it's missed.
+
+Visits are recorded when a station page renders, via `record_station_visit()`, so arriving by deep link from "Continue your journey" counts the same as clicking a marker.
 
 Piazza dashboard with all confirmed widgets (hours reclaimed, monthly plan, focus station + challenge, next hot seat, Telegram day, buddy, timer shortcut, draw card, community goal). La Strada as the full metro-map SVG, free-roam navigation, visited/not-visited state.
 

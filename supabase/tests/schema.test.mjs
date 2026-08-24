@@ -495,5 +495,38 @@ await rejects("a member cannot upload into the training bucket", () =>
     `insert into storage.objects (bucket_id, name) values ('training-content','${BOB}/mine.mp4')`)),
   "row-level security");
 
+console.log("\n— station visits —");
+
+await check("recording a visit creates it, then increments", async () => {
+  await as(BOB, () => db.query(`select public.record_station_visit('terrazza')`));
+  await as(BOB, () => db.query(`select public.record_station_visit('terrazza')`));
+  const r = await as(BOB, () => db.query(
+    `select visit_count, first_visited_at = last_visited_at as same_moment
+     from public.station_visits where station_slug='terrazza'`));
+  // Counted twice, and the first visit is preserved rather than overwritten.
+  return r.rows[0].visit_count === 2 && r.rows[0].same_moment === false;
+});
+
+await check("a member sees only their own visits", async () => {
+  const r = await as(DANA, () => db.query(
+    `select count(*)::int c from public.station_visits`));
+  return r.rows[0].c === 0;
+});
+
+await check("a member cannot fabricate a visit", async () => {
+  // No INSERT policy: RLS refuses by matching nothing, so this asserts the row
+  // is absent rather than expecting a throw.
+  try {
+    await as(BOB, () => db.query(
+      `insert into public.station_visits (member_id, station_slug)
+       values ('${BOB}','archivio')`));
+  } catch {
+    // Either outcome is fine; what matters is the row not existing.
+  }
+  const r = await as(BOB, () => db.query(
+    `select count(*)::int c from public.station_visits where station_slug='archivio'`));
+  return r.rows[0].c === 0;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

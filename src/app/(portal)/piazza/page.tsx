@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
@@ -27,9 +28,12 @@ const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
  *
  * Widgets whose data doesn't exist yet are omitted rather than shown empty. The
  * proof cluster and milestones need the hours-reclaimed ledger (Step 10), the
- * buddy card needs pairing (Step 11), the draw card needs a draw to exist, and
- * the mini map needs the coastline artwork. An empty widget takes the same room
- * as a full one and says less.
+ * buddy card needs pairing (Step 11), and the draw card needs a draw to exist.
+ * An empty widget takes the same room as a full one and says less.
+ *
+ * The map appears only as a preview (§3): Piazza should never show the full
+ * thing, so La Strada stays somewhere members visit rather than get routed
+ * through on every login.
  */
 export default async function PiazzaPage() {
   // Non-null: the portal layout has already run requireMember().
@@ -202,13 +206,30 @@ export default async function PiazzaPage() {
         ) : null}
       </div>
 
+      <Link
+        href="/stations"
+        className="group mt-5 block overflow-hidden rounded-xl border border-navy/10 bg-sky/10 transition hover:border-navy/25"
+      >
+        <div className="relative aspect-[21/9]">
+          <Image
+            src="/illustrations/la-strada-map.png"
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 60rem, 100vw"
+            className="object-cover object-center transition duration-500 group-hover:scale-[1.02]"
+          />
+        </div>
+        <div className="flex items-baseline justify-between gap-3 px-5 py-3">
+          <p className="font-display text-heading text-navy italic">La Strada</p>
+          <p className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4">
+            Open the map
+          </p>
+        </div>
+      </Link>
+
       <p className="mt-8 text-small text-navy/50">
         Hours reclaimed, your milestones and the monthly draw arrive with the
-        first builds.{" "}
-        <Link href="/stations" className="underline underline-offset-4">
-          La Strada
-        </Link>{" "}
-        is walkable in the meantime.
+        first builds.
       </p>
     </main>
   );
