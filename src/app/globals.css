@@ -16,6 +16,11 @@
   --aos-lemon: #f8e6a0;
   --aos-off-white: #f3f5fd;
 
+  /* Map-only. The palette has no deep red; this one is picked to sit with the
+     terracotta roofs in the La Strada artwork rather than fight them, and is
+     used for the Profit line and nothing else. */
+  --aos-deep-red: #9e3b2f;
+
   --background: var(--aos-off-white);
   --foreground: var(--aos-navy);
 }
@@ -31,6 +36,7 @@
   --color-blush: var(--aos-blush);
   --color-lemon: var(--aos-lemon);
   --color-off-white: var(--aos-off-white);
+  --color-deep-red: var(--aos-deep-red);
 
   /* Display = Cormorant Garamond, body/UI = Inter, numbers/data = JetBrains Mono */
   --font-display: var(--font-cormorant), Georgia, serif;

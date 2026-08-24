@@ -89,6 +89,8 @@ Omitted rather than shown empty, each waiting on something real: hours reclaimed
 
 **La Strada's map: built.** The town from above at `/stations`, with the eleven stations placed on it and visited/not-visited as the only state (§3). Positions are percentages of the artwork in `src/lib/map/positions.ts`, with tests asserting every station is placed, none overlap, and nothing sits in the open piazza. Piazza carries a preview only, never the full map.
 
+Stations carry a photo thumbnail from the same eleven images the station cards use, ringed in their line colour and greyscale until visited. Coloured lines group them by bucket — gold Systems & Delivery, deep red Profit, sky Visibility, orange Launches, and Your Story unlined. That grouping lives in `src/lib/map/lines.ts` rather than the database: it groups *stations* for the eye, while `training_content.bucket` tags *trainings* for the recommendation engine, and "Your Story" has no bucket behind it at all.
+
 Pan is native scrolling and zoom is three buttons, rather than a custom gesture layer — that works identically on a phone, a trackpad, a mouse wheel and arrow keys, and can't be got subtly wrong. Pinch-to-zoom could be layered on later if it's missed.
 
 Visits are recorded when a station page renders, via `record_station_visit()`, so arriving by deep link from "Continue your journey" counts the same as clicking a marker.
