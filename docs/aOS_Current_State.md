@@ -1,7 +1,7 @@
 # aOS — current state (31 August 2026)
 *If this chat ever needs to hand off to a fresh one: drop in this file plus `CLAUDE.md`, the Build Brief, the Training Library doc, and whatever the latest Dom Build Plan looks like (that file is now owned by Claude Code directly, not maintained here). This document is the "where we actually left off," not the full spec.*
 
-**Important:** this file needs to actually be committed into `docs/` in the repo, not just exist in this chat — a fresh Claude Code session has no way to find it otherwise. If you're reading this because a session went looking for it and couldn't find it, that's exactly the gap this note is fixing.
+**Now committed into `docs/` in the repo** (31 Aug), which is what makes it findable at all — for a while it existed only in chat, and a fresh session that went looking for it couldn't find it and reconstructed state from git log instead. Keep it committed, and keep it updated in the same commit as the work it describes.
 
 ## What's genuinely built and live, right now
 - **Infrastructure:** Supabase, GitHub, Vercel, all connected, `aos.allegrostrategia.com` live.
@@ -12,16 +12,20 @@
 - **Step 5 (weekly log/timer):** Done. Server-derived elapsed time, category tracking, optional notes field, reminder cadence live via the `due_jobs` scheduler.
 - **Step 6 (hot seat):** Done, fully. Scheduling, submission, prep-and-confirm, both reminder tracks (submission + attendance), Friday touchpoint view, reminder preview page (no need to send real email to check copy). Two real bugs found and fixed: a timezone split between storage and display, and reminders not auto-resetting when a session's rescheduled.
 - **Step 7 (training library):** Done. Admin content management with full tagging, station pages showing content grouped by kind, private `training-content` bucket with no member-level policy at all (everything routes through a signed-URL endpoint that checks RLS directly), viewer with streaming/embedded playback. Spreadsheets are the one agreed exception — they download, everything else streams.
+- **Admin content upload (31 Aug):** Done, tested end to end against live storage — real video uploaded, published, played back as a member. The file goes browser-straight-to-storage via a signed upload URL, because a Server Action body is capped at a few MB on Vercel and the trainings are videos; the server only decides who may upload and where it lands, so nothing can be written outside a station prefix. Format is read from the file's extension (browsers disagree about MIME types for .m4a and .csv), and replacing or deleting content now removes the old object rather than stranding it. §11 unchanged: bucket still has no member policy, reads still only through `/api/content/[id]`.
+- **Video player sizing (31 Aug):** Player sizes itself to the video's real aspect ratio rather than letting width win unconditionally — a phone-recorded 1080x1920 training was rendering full-column-width and ~1365 tall, off the bottom of the screen. Confirmed on mobile and desktop.
 - **Admin lifecycle controls:** Activate/cancel/reinstate, roadmap editor with preserved item IDs, current focus correctly read-only (populated only via hot seat confirm).
 
 ## What's built but not yet delivered/wired
 - **Reminders and hot seat emails work end to end** — genuinely tested today with real delivery to a real inbox. `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM` are confirmed set in Vercel. (A fresh Claude Code session guessed these were unset on 31 Aug — that was wrong, it has no way to actually see Vercel's dashboard. Trust the tested reality over a session's inference here.)
 
 ## Genuinely still open, in priority order
-1. **Admin content upload** — biggest live friction. `asset_path` is currently typed by hand; files go into the bucket manually via Supabase's own dashboard first. Signed-upload architecture already agreed (browser uploads straight to storage, server only issues permission) — just not built yet.
-2. **`ANTHROPIC_API_KEY`** — still not added to Vercel. Blocks the Claude-drafted hot seat suggestion; the prep sheet already has the panel waiting for it.
-3. **Rest of Step 8** — hot seat challenge review refinements, running the monthly draw.
-4. **Steps 9-13** — handover pack + AI SOP generator, gamification/hours-reclaimed ledger, chat (including voice messages)/peer pairing/directory, the roadmap reveal generator, final polish. None started.
+1. **`ANTHROPIC_API_KEY`** — still not added to Vercel. Blocks the Claude-drafted hot seat suggestion; the prep sheet already has the panel waiting for it.
+2. **Rest of Step 8** — hot seat challenge review refinements, running the monthly draw.
+3. **Steps 9-13** — handover pack + AI SOP generator, gamification/hours-reclaimed ledger, chat (including voice messages)/peer pairing/directory, the roadmap reveal generator, final polish. None started.
+
+## Known, unfixed, and will look alarming
+- **`npm run test:db` shows 64 passed, 1 failed on some days.** `create_member accepts the named parameters the app sends` computes its expected date in JS with `setMonth(+6)`, which overflows where Postgres clamps: run on 31 Aug, JS says 2027-03-03 and Postgres correctly says 2027-02-28. **The test is wrong, not the schema.** It only fails on days whose day-of-month doesn't exist six months later — the 29th to 31st of Aug, Oct, Dec, Mar, May, Jul — and passes on its own the next day, which is the worst version of a flaky test. Fix is to do the date arithmetic the way Postgres does rather than trusting `setMonth`.
 
 ## Two decisions waiting on Nina specifically
 - The two-week check-in's full definition (fires per-build, in chat, member reports, Nina decides on retiring the rate) — needed before Step 10's ledger can close a rate properly.
@@ -39,6 +43,8 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 6. Timezone split between how session times were stored vs displayed (storage read UTC, one display path read UTC, emails pinned London — fixed by pinning everything to one shared module)
 7. Reminders not auto-invalidating when a session's rescheduled — fixed by clearing `due_jobs` for that session whenever its time changes
 8. Vercel deploys not triggering automatically from git push (happened twice) — worked around via manual deployment trigger from a specific commit SHA
+9. Video player assuming landscape — vertical phone-recorded video rendered full-column-width and taller than the viewport, controls off-screen. Fixed by bounding both axes and letting the file's own aspect ratio decide, rather than storing dimensions
+10. Work reported as "done" while sitting uncommitted in the working tree — the deployed site was correctly serving older code and looked like a bug in the feature. **Building it and shipping it are two separate things; say which one has actually happened**
 
 ## Environment variables confirmed set in Vercel
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **Still needed:** `ANTHROPIC_API_KEY`.
@@ -50,5 +56,7 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 - Confirming Resend deliverability isn't landing in spam long-term
 
 ## Right now, exactly
-Steps 1-7 are done. Next real piece of work: the admin content upload feature, then either finishing Step 8 or moving into Step 9 (handover pack + SOP generator).
+Steps 1-7 are done, and admin content upload — the thing that was blocking Nina loading real content — is built, tested against live storage and pushed. The library is now usable end to end without touching Supabase's dashboard.
+
+Next real piece of work: either finish Step 8 (hot seat challenge review, running the monthly draw) or move into Step 9 (handover pack + AI SOP generator). Adding `ANTHROPIC_API_KEY` to Vercel is the cheapest unblock available and lights up the hot seat prep panel that's already built and waiting.
 

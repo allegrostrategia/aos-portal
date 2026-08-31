@@ -83,10 +83,28 @@ export default async function ContentPage({
           </p>
         </Card>
       ) : item.format === "video" ? (
+        // Bounded on both axes, sized by neither.
+        //
+        // `w-full` alone lets width win unconditionally: a phone-recorded
+        // 1080x1920 training renders the full column wide and around 1365 tall,
+        // running off the bottom of the screen with its controls somewhere past
+        // it. Vertical video isn't an edge case here — plenty of this content
+        // gets recorded on a phone.
+        //
+        // Auto width inside a max-width and a max-height instead, so the browser
+        // fits the video to whichever constraint binds first and keeps its real
+        // aspect ratio doing it. Landscape still fills the column; portrait comes
+        // out tall and narrow, inside the viewport. The file already knows its
+        // own shape, so nothing needs storing or measuring.
+        //
+        // Deliberately not a flex child: flex resolves the main size first and
+        // then clamps the cross size, so `max-h` would cap the box without
+        // narrowing it and letterbox the video inside exactly the oversized
+        // frame this is removing. Block layout applies both constraints together.
         <video
           controls
           controlsList="nodownload"
-          className="w-full rounded-xl border border-navy/10 bg-navy/5"
+          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-xl border border-navy/10 bg-navy/5"
           src={src}
         />
       ) : item.format === "audio" ? (
