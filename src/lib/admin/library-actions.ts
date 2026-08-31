@@ -4,16 +4,28 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
+import { slugify } from "@/lib/library/assets";
 
 export type LibraryState = { error?: string; notice?: string } | null;
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
+/**
+ * Drop a file from the bucket once nothing points at it.
+ *
+ * Not a contradiction of the never-delete rule: that protects a member's record
+ * of their own work. This is Nina's own material, and the row it belonged to has
+ * either gone or moved on to a different file. Left alone, every re-record would
+ * strand its predecessor in the bucket forever, and the storage bill would be
+ * the only thing that ever noticed.
+ *
+ * Best-effort on purpose — a failed cleanup leaves a stray file, which is much
+ * cheaper than failing the save that already succeeded.
+ */
+async function removeAsset(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  path: string | null,
+): Promise<void> {
+  if (!path) return;
+  await supabase.storage.from("training-content").remove([path]);
 }
 
 /**
@@ -72,6 +84,18 @@ export async function saveContent(
 
   const supabase = await createClient();
 
+  const previousAssetPath = id
+    ? (
+        (
+          await supabase
+            .from("training_content")
+            .select("asset_path")
+            .eq("id", id)
+            .maybeSingle()
+        ).data as { asset_path: string | null } | null
+      )?.asset_path ?? null
+    : null;
+
   const { error } = id
     ? await supabase.from("training_content").update(payload).eq("id", id)
     : await supabase.from("training_content").insert(payload);
@@ -81,6 +105,12 @@ export async function saveContent(
       return { error: `Something already uses the slug "${payload.slug}".` };
     }
     return { error: `Couldn't save: ${error.message}` };
+  }
+
+  // Only after the row is safely saved: if the update had failed, the old file
+  // is still the live one.
+  if (previousAssetPath && previousAssetPath !== payload.asset_path) {
+    await removeAsset(supabase, previousAssetPath);
   }
 
   revalidatePath("/", "layout");
@@ -129,7 +159,17 @@ export async function deleteContent(formData: FormData): Promise<void> {
   if (!id) return;
 
   const supabase = await createClient();
-  await supabase.from("training_content").delete().eq("id", id);
+
+  const { data } = await supabase
+    .from("training_content")
+    .select("asset_path")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await supabase.from("training_content").delete().eq("id", id);
+  if (error) return;
+
+  await removeAsset(supabase, (data as { asset_path: string | null } | null)?.asset_path ?? null);
 
   revalidatePath("/", "layout");
 }

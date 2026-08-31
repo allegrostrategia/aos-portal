@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { saveContent, type LibraryState } from "@/lib/admin/library-actions";
 import { Checkbox, Field, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
 import { Card, Eyebrow } from "@/components/ui/card";
+import type { ContentFormat } from "@/lib/library/assets";
 import type { TrainingContent } from "@/lib/library/queries";
+import { AssetField } from "./asset-field";
 
 const SELECT =
   "w-full rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy";
@@ -15,20 +17,19 @@ function Select({
   name,
   options,
   hint,
-  defaultValue = "",
-}: {
+  ...props
+}: React.ComponentProps<"select"> & {
   label: string;
   name: string;
   options: { value: string; label: string }[];
   hint?: string;
-  defaultValue?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={name} className="text-small font-medium text-navy">
         {label}
       </label>
-      <select id={name} name={name} defaultValue={defaultValue} className={SELECT}>
+      <select id={name} name={name} className={SELECT} {...props}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -51,6 +52,15 @@ export function ContentForm({
     saveContent,
     null,
   );
+
+  // Station and format are controlled because the file picker reads one and
+  // writes the other: the station decides where the upload is filed, and the
+  // uploaded file decides the format badge members see.
+  const [stationSlug, setStationSlug] = useState(editing?.station_slug ?? "");
+  const [format, setFormat] = useState<ContentFormat>(
+    editing?.format ?? "video",
+  );
+  const [uploading, setUploading] = useState(false);
 
   // `key` remounts the form when the edited item changes, so defaultValues are
   // re-applied. Without it, switching from one item to another would leave the
@@ -92,7 +102,8 @@ export function ContentForm({
           <Select
             label="Station"
             name="station_slug"
-            defaultValue={editing?.station_slug ?? ""}
+            value={stationSlug}
+            onChange={(event) => setStationSlug(event.target.value)}
             hint="Exactly one. This is how members browse — the bucket below is a tag, not a home."
             options={[
               { value: "", label: "Choose a station" },
@@ -146,6 +157,12 @@ export function ContentForm({
       <Card>
         <Eyebrow>Format</Eyebrow>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <AssetField
+            stationSlug={stationSlug}
+            defaultPath={editing?.asset_path ?? null}
+            onFormatDetected={setFormat}
+            onUploadingChange={setUploading}
+          />
           <Select
             label="Kind"
             name="kind"
@@ -160,21 +177,15 @@ export function ContentForm({
           <Select
             label="File type"
             name="format"
-            defaultValue={editing?.format ?? "video"}
-            hint="Shown as a badge, so nobody opens a spreadsheet expecting a video."
+            value={format}
+            onChange={(event) => setFormat(event.target.value as ContentFormat)}
+            hint="Set from the file when one is uploaded — change it only if that read it wrong."
             options={[
               { value: "video", label: "Video" },
               { value: "pdf", label: "PDF" },
               { value: "audio", label: "Audio" },
               { value: "spreadsheet", label: "Spreadsheet" },
             ]}
-          />
-          <Field
-            label="Asset path"
-            name="asset_path"
-            required={false}
-            defaultValue={editing?.asset_path ?? ""}
-            hint="Where the file lives. Serve via signed URL — never a public link."
           />
           <Field
             label="Duration (minutes)"
@@ -205,7 +216,12 @@ export function ContentForm({
 
       <FormMessage error={state?.error} notice={state?.notice} />
 
-      <SubmitButton full={false}>{editing ? "Save changes" : "Add content"}</SubmitButton>
+      {/* Saving mid-upload would store a path whose file isn't there yet, and
+          the record would look fine while failing for the first member to open
+          it. */}
+      <SubmitButton full={false} disabled={uploading}>
+        {uploading ? "Waiting for the upload…" : editing ? "Save changes" : "Add content"}
+      </SubmitButton>
     </form>
   );
 }

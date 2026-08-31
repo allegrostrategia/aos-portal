@@ -117,14 +117,22 @@ export function Checkbox({
 export function SubmitButton({
   children,
   full = true,
+  disabled = false,
 }: {
   children: React.ReactNode;
   full?: boolean;
+  // For work the form is waiting on that `useFormStatus` can't see — a file
+  // still uploading, say. Submitting is blocked, not just discouraged.
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending} className={full ? "w-full" : ""}>
+    <Button
+      type="submit"
+      disabled={pending || disabled}
+      className={full ? "w-full" : ""}
+    >
       {pending ? "One moment…" : children}
     </Button>
   );
