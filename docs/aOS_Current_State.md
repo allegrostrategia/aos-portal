@@ -20,12 +20,23 @@
 - **Reminders and hot seat emails work end to end** — genuinely tested today with real delivery to a real inbox. `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM` are confirmed set in Vercel. (A fresh Claude Code session guessed these were unset on 31 Aug — that was wrong, it has no way to actually see Vercel's dashboard. Trust the tested reality over a session's inference here.)
 
 ## Genuinely still open, in priority order
-1. **`ANTHROPIC_API_KEY`** — still not added to Vercel. Blocks the Claude-drafted hot seat suggestion; the prep sheet already has the panel waiting for it.
-2. **Rest of Step 8** — hot seat challenge review refinements, running the monthly draw.
-3. **Steps 9-13** — handover pack + AI SOP generator, gamification/hours-reclaimed ledger, chat (including voice messages)/peer pairing/directory, the roadmap reveal generator, final polish. None started.
+1. **Rest of Step 8** — hot seat challenge review refinements, running the monthly draw. The unblocked next piece of work.
+2. **Steps 9-13** — handover pack + AI SOP generator, gamification/hours-reclaimed ledger, chat (including voice messages)/peer pairing/directory, the roadmap reveal generator, final polish. None started.
 
 ## Known, unfixed, and will look alarming
 - **`npm run test:db` shows 64 passed, 1 failed on some days.** `create_member accepts the named parameters the app sends` computes its expected date in JS with `setMonth(+6)`, which overflows where Postgres clamps: run on 31 Aug, JS says 2027-03-03 and Postgres correctly says 2027-02-28. **The test is wrong, not the schema.** It only fails on days whose day-of-month doesn't exist six months later — the 29th to 31st of Aug, Oct, Dec, Mar, May, Jul — and passes on its own the next day, which is the worst version of a flaky test. Fix is to do the date arithmetic the way Postgres does rather than trusting `setMonth`.
+
+## AI drafting is under review — do not wire it (1 Sep)
+**Nina is reconsidering whether to use AI drafting at all. `ANTHROPIC_API_KEY` is deliberately not set, and must not be wired until she decides.**
+
+The hot seat prep panel stays exactly as it is — empty, with Nina confirming manually. That is the proven working state from 31 Aug's testing, **not an unfinished feature**: a session that "fixes" the empty panel by wiring a Claude call is undoing a live decision.
+
+The question is broader than the hot seat and reaches three places, so it's worth having her full view before any of them are built rather than deciding it three times:
+- The hot seat prep suggestion (panel built, waiting)
+- Step 9's AI SOP generator
+- Step 12's roadmap reveal document generator
+
+Note this is a question about *whether* AI is used in these spots, not about the "AI drafts, human confirms" rule — that rule governs how it works if it's used, and stands either way.
 
 ## Two decisions waiting on Nina specifically
 - The two-week check-in's full definition (fires per-build, in chat, member reports, Nina decides on retiring the rate) — needed before Step 10's ledger can close a rate properly.
@@ -47,7 +58,7 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 10. Work reported as "done" while sitting uncommitted in the working tree — the deployed site was correctly serving older code and looked like a bug in the feature. **Building it and shipping it are two separate things; say which one has actually happened**
 
 ## Environment variables confirmed set in Vercel
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **Still needed:** `ANTHROPIC_API_KEY`.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` deliberately unset** pending Nina's decision on AI drafting — see the section above before adding it.
 
 ## Nina's outstanding action items (unchanged, still real)
 - The actual multiple-choice audit questions and answers
@@ -58,5 +69,7 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 ## Right now, exactly
 Steps 1-7 are done, and admin content upload — the thing that was blocking Nina loading real content — is built, tested against live storage and pushed. The library is now usable end to end without touching Supabase's dashboard.
 
-Next real piece of work: either finish Step 8 (hot seat challenge review, running the monthly draw) or move into Step 9 (handover pack + AI SOP generator). Adding `ANTHROPIC_API_KEY` to Vercel is the cheapest unblock available and lights up the hot seat prep panel that's already built and waiting.
+Next real piece of work: finish Step 8 — hot seat challenge review, running the monthly draw. Neither touches AI drafting, so neither waits on Nina.
+
+Step 9 is only partly available: the handover pack itself and manual SOP addition are fine, the AI SOP generator is not. Worth taking Step 8 first rather than starting Step 9 and stopping halfway through it.
 
