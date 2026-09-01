@@ -13,7 +13,33 @@ export type PrepSubmission = {
   suggested_challenge: string | null;
   confirmed_challenge: string | null;
   confirmed_at: string | null;
+  attended: boolean | null;
   members: { full_name: string; email: string } | null;
+};
+
+/**
+ * One row of the prep sheet: a member, and their submission if they made one.
+ *
+ * Everyone who could be in the room, not everyone who filled in the form. §5's
+ * fallback — "if nobody submits, work from whatever their tracked data shows as
+ * the biggest time-block" — is impossible to act on otherwise, because a member
+ * who never submits has no row to prep against.
+ */
+export type PrepRow = {
+  memberId: string;
+  fullName: string;
+  email: string;
+  submissionId: string | null;
+  challenge: string | null;
+  alreadyTried: string | null;
+  doneLooksLike: string | null;
+  submittedAt: string | null;
+  suggestedChallenge: string | null;
+  confirmedChallenge: string | null;
+  confirmedAt: string | null;
+  attended: boolean | null;
+  /** Cancelled since the session, but their record of it stands. */
+  stillActive: boolean;
 };
 
 export type MemberMonthTime = {
@@ -37,12 +63,92 @@ export async function getSessionSubmissions(
   const { data } = await supabase
     .from("hot_seat_submissions")
     .select(
-      "id, member_id, challenge, already_tried, done_looks_like, submitted_at, suggested_challenge, confirmed_challenge, confirmed_at, members(full_name, email)",
+      "id, member_id, challenge, already_tried, done_looks_like, submitted_at, suggested_challenge, confirmed_challenge, confirmed_at, attended, members(full_name, email)",
     )
     .eq("session_id", sessionId)
     .order("submitted_at", { ascending: true, nullsFirst: false });
 
   return (data ?? []) as unknown as PrepSubmission[];
+}
+
+/**
+ * The prep sheet: every active member, with their submission if there is one.
+ *
+ * Built from two queries and merged here rather than a join, because the shape
+ * wanted is "all members, some with submissions" and PostgREST embeds the other
+ * way round. Anyone who submitted and has since been cancelled is kept — they
+ * were in that session, and cancellation never removes a record (rule 6).
+ */
+export async function getSessionPrep(sessionId: string): Promise<PrepRow[]> {
+  const supabase = await createClient();
+
+  const [{ data: memberRows }, submissions] = await Promise.all([
+    supabase
+      .from("members")
+      .select("id, full_name, email")
+      .eq("role", "member")
+      .eq("status", "active")
+      .order("full_name"),
+    getSessionSubmissions(sessionId),
+  ]);
+
+  const byMember = new Map(submissions.map((s) => [s.member_id, s]));
+  const active = (memberRows ?? []) as {
+    id: string;
+    full_name: string;
+    email: string;
+  }[];
+
+  const toRow = (
+    memberId: string,
+    fullName: string,
+    email: string,
+    stillActive: boolean,
+  ): PrepRow => {
+    const submission = byMember.get(memberId);
+    return {
+      memberId,
+      fullName,
+      email,
+      submissionId: submission?.id ?? null,
+      challenge: submission?.challenge ?? null,
+      alreadyTried: submission?.already_tried ?? null,
+      doneLooksLike: submission?.done_looks_like ?? null,
+      submittedAt: submission?.submitted_at ?? null,
+      suggestedChallenge: submission?.suggested_challenge ?? null,
+      confirmedChallenge: submission?.confirmed_challenge ?? null,
+      confirmedAt: submission?.confirmed_at ?? null,
+      attended: submission?.attended ?? null,
+      stillActive,
+    };
+  };
+
+  const rows = active.map((m) => toRow(m.id, m.full_name, m.email, true));
+
+  const activeIds = new Set(active.map((m) => m.id));
+  for (const submission of submissions) {
+    if (activeIds.has(submission.member_id)) continue;
+    rows.push(
+      toRow(
+        submission.member_id,
+        submission.members?.full_name ?? "Former member",
+        submission.members?.email ?? "",
+        false,
+      ),
+    );
+  }
+
+  // Whoever did the work first, then the rest by name. Nina prepping in order
+  // reads the considered answers while she's freshest.
+  return rows.sort((a, b) => {
+    if (Boolean(a.submittedAt) !== Boolean(b.submittedAt)) {
+      return a.submittedAt ? -1 : 1;
+    }
+    if (a.submittedAt && b.submittedAt) {
+      return a.submittedAt.localeCompare(b.submittedAt);
+    }
+    return a.fullName.localeCompare(b.fullName);
+  });
 }
 
 /**

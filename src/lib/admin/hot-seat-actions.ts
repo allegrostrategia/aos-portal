@@ -109,29 +109,130 @@ export async function confirmChallenge(
   const admin = await requireAdmin();
 
   const submissionId = String(formData.get("submission_id") ?? "");
+  const sessionId = String(formData.get("session_id") ?? "");
+  const memberId = String(formData.get("member_id") ?? "");
   const confirmed = String(formData.get("confirmed_challenge") ?? "").trim();
   const suggested = String(formData.get("suggested_challenge") ?? "").trim();
 
-  if (!submissionId) return { error: "No submission given." };
+  if (!submissionId && !(sessionId && memberId)) {
+    return { error: "No submission given." };
+  }
   if (!confirmed) {
     return { error: "The confirmed challenge is what goes into the room — it can't be blank." };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("hot_seat_submissions")
-    .update({
-      confirmed_challenge: confirmed,
-      confirmed_at: new Date().toISOString(),
-      confirmed_by: admin.id,
-      // Taken as drafted, or adjusted. Compared on the text rather than tracked
-      // by a checkbox, so it can't drift from what actually happened.
-      drafted_by: suggested && confirmed === suggested ? "claude" : "nina",
-    })
-    .eq("id", submissionId);
+
+  const fields = {
+    confirmed_challenge: confirmed,
+    confirmed_at: new Date().toISOString(),
+    confirmed_by: admin.id,
+    // Taken as drafted, or adjusted. Compared on the text rather than tracked
+    // by a checkbox, so it can't drift from what actually happened.
+    drafted_by: suggested && confirmed === suggested ? "claude" : "nina",
+  };
+
+  // A member who never submitted has no row at all, and §5 still expects them to
+  // get a challenge — worked out from their tracked time instead of their words.
+  // Creating the row here is what makes that possible; the alternative is a
+  // prep sheet that can only prep the people who already did the work.
+  const { error } = submissionId
+    ? await supabase
+        .from("hot_seat_submissions")
+        .update(fields)
+        .eq("id", submissionId)
+    : await supabase
+        .from("hot_seat_submissions")
+        .insert({ session_id: sessionId, member_id: memberId, ...fields });
 
   if (error) return { error: `Couldn't confirm: ${error.message}` };
 
   revalidatePath("/", "layout");
   return { notice: "Locked. That's what goes into the session, and onto their Piazza." };
+}
+
+/**
+ * Who was actually in the room (§5).
+ *
+ * Recorded after the call rather than inferred: attendance is not the same as
+ * submitting, and the whole point of the fixed group slot is that showing up is
+ * the commitment. `attended` stays null until Nina says either way, so "not
+ * marked yet" and "didn't come" never collapse into the same thing — the
+ * distinction matters for a member whose session simply hasn't happened.
+ *
+ * Marks against a submission if there is one, and creates the row if there
+ * isn't: somebody can turn up without having submitted, which is exactly the
+ * case worth being able to record.
+ */
+export async function setAttendance(
+  _prev: SessionState,
+  formData: FormData,
+): Promise<SessionState> {
+  await requireAdmin();
+
+  const submissionId = String(formData.get("submission_id") ?? "");
+  const sessionId = String(formData.get("session_id") ?? "");
+  const memberId = String(formData.get("member_id") ?? "");
+  const value = String(formData.get("attended") ?? "");
+
+  if (!submissionId && !(sessionId && memberId)) {
+    return { error: "No member given." };
+  }
+
+  const attended = value === "yes" ? true : value === "no" ? false : null;
+
+  const supabase = await createClient();
+  const { error } = submissionId
+    ? await supabase
+        .from("hot_seat_submissions")
+        .update({ attended })
+        .eq("id", submissionId)
+    : await supabase
+        .from("hot_seat_submissions")
+        .insert({ session_id: sessionId, member_id: memberId, attended });
+
+  if (error) return { error: `Couldn't record that: ${error.message}` };
+
+  revalidatePath("/", "layout");
+  return {
+    notice:
+      attended === null
+        ? "Cleared."
+        : attended
+          ? "Marked as there."
+          : "Marked as absent.",
+  };
+}
+
+/**
+ * Where the clipped replay ended up (§5).
+ *
+ * Its own action rather than a field on the schedule form, which upserts the
+ * whole session: adding it there would wipe the note every time the time or the
+ * Zoom link changed, and it would be lost silently at the moment Nina was doing
+ * something unrelated.
+ *
+ * Producing the clip is a manual step after the call, so this is deliberately
+ * just a note — the replay itself becomes library content through the library.
+ */
+export async function saveReplayNote(
+  _prev: SessionState,
+  formData: FormData,
+): Promise<SessionState> {
+  await requireAdmin();
+
+  const sessionId = String(formData.get("session_id") ?? "");
+  const note = String(formData.get("replay_note") ?? "").trim();
+  if (!sessionId) return { error: "No session given." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("hot_seat_sessions")
+    .update({ replay_note: note || null })
+    .eq("id", sessionId);
+
+  if (error) return { error: `Couldn't save that: ${error.message}` };
+
+  revalidatePath("/", "layout");
+  return { notice: note ? "Saved." : "Cleared." };
 }

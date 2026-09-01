@@ -17,6 +17,9 @@
 - **Admin lifecycle controls:** Activate/cancel/reinstate, roadmap editor with preserved item IDs, current focus correctly read-only (populated only via hot seat confirm).
 
 ## Built, not yet run against the live database
+- **Hot seat challenge review (1 Sep):** Completes Step 8. The prep sheet now lists **every active member, not every submission** — a member who never submitted had no row and so couldn't be prepped at all, which made §5's own fallback ("work from whatever their tracked data shows as the biggest time-block") unreachable for exactly the people it was written for. Locking a challenge creates their row. Their biggest time block is surfaced as evidence rather than written up as a suggestion: nothing here generates text, which matters while AI drafting is on hold. Attendance recording and the replay note also added — both were columns nothing wrote. 13 action tests.
+
+  **Ships a migration** (`20260901171500_draw_excludes_admins.sql`) — see the admin-in-the-draw bug below. Needs applying the same way as the last one.
 - **Monthly draw, admin side (1 Sep):** `/admin/draw` — set up a draw, see every active member's count against the bar, lock the entrant list, draw the winner. Rules live in the database (`weeks_in_month`, `draw_eligibility`, `open_draw_entries`, `draw_winner`) rather than the panel, same as `activate_member`. **"A full month" is computed, not assumed** — four or five Mondays depending on the month, so a five-week month genuinely needs five complete weeks. Locking entries records `complete_weeks` on the entry, so editing time later can't change who was in a past draw, and `drawn_at is null` sits inside the UPDATE so a double-click can't produce a second winner. 18 new schema tests.
 
   **Migration applied to live on 1 Sep by pasting the single file into the SQL editor**, after `db push` couldn't authenticate (see bug 11). `migration repair` still owed for `20260901104500` — the schema is correct, but the CLI's history table doesn't know it, so the next `db push` will see it as pending. Harmless to re-run (all `create or replace` and grants), but worth clearing before a migration that isn't.
@@ -29,7 +32,7 @@
 - **Reminders and hot seat emails work end to end** — genuinely tested today with real delivery to a real inbox. `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM` are confirmed set in Vercel. (A fresh Claude Code session guessed these were unset on 31 Aug — that was wrong, it has no way to actually see Vercel's dashboard. Trust the tested reality over a session's inference here.)
 
 ## Genuinely still open, in priority order
-1. **Rest of Step 8** — hot seat challenge review refinements. The monthly draw is built (above) and needs `db:push` plus a run-through on live.
+1. **Step 8 is complete** — content upload, the monthly draw and the hot seat challenge review are all built. Two migrations are waiting to be applied to live, and the whole of Step 8 needs a run-through there.
 2. **Steps 9-13** — handover pack + AI SOP generator, gamification/hours-reclaimed ledger, chat (including voice messages)/peer pairing/directory, the roadmap reveal generator, final polish. None started.
 
 ## Known, unfixed, and will look alarming
@@ -70,7 +73,8 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 10. Work reported as "done" while sitting uncommitted in the working tree — the deployed site was correctly serving older code and looked like a bug in the feature. **Building it and shipping it are two separate things; say which one has actually happened**
 11. Session pooler rejecting three freshly-reset passwords with `28P01` — the pooler username must be `postgres.<ref>`, not `postgres`, and a bare `postgres` fails as a *password* error. Cost an afternoon. Now written up in the README's connection section
 12. `npm run db:bundle` nearly pasted over a live schema — it emits **every** migration, which is a bootstrap tool, not a way to apply one pending migration. For a single migration, paste that one file and repair only its version. Also in the README now
-13. A flaky test hiding behind `&&` — `recording a visit creates it, then increments` asserted two `now()` calls differ, but `now()` is the transaction clock and PGlite takes it from JS, so fast calls share a millisecond. It failed **6 runs in 12 on untouched code** while being quoted as "83 passing" off lucky single runs, and its position in `test:db` meant a coin-toss failure stopped the action suite running at all. Now asserts what the behaviour actually is
+13. **The admin is also an active member** — `draw_eligibility()` and the new hot seat prep sheet both filtered on `status = 'active'` alone, which put Nina on her own prep sheet every month and in the hat for a prize she gives away. `role = 'member'` is the distinction, as `lib/jobs/runner.ts` already had it. Caught by a test, not by looking
+14. A flaky test hiding behind `&&` — `recording a visit creates it, then increments` asserted two `now()` calls differ, but `now()` is the transaction clock and PGlite takes it from JS, so fast calls share a millisecond. It failed **6 runs in 12 on untouched code** while being quoted as "83 passing" off lucky single runs, and its position in `test:db` meant a coin-toss failure stopped the action suite running at all. Now asserts what the behaviour actually is
 
 ## Environment variables confirmed set in Vercel
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` deliberately unset** pending Nina's decision on AI drafting — see the section above before adding it.
@@ -84,7 +88,7 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 ## Right now, exactly
 Steps 1-7 are done, and admin content upload — the thing that was blocking Nina loading real content — is built, tested against live storage and pushed. The library is now usable end to end without touching Supabase's dashboard.
 
-Next real piece of work: the hot seat challenge review, which is the last of Step 8. The monthly draw is built and waiting on `db:push` and a live run-through. Neither touches AI drafting, so neither waits on Nina.
+Step 8 is done. Next real piece of work is Step 9 — the handover pack, which is available; its AI SOP generator is not, pending Nina's decision. Worth deciding whether to start Step 9 knowing half of it is blocked, or take Step 10's hours-reclaimed ledger instead, which is fully unblocked and is what the whole "one real thing built live" promise is measured by.
 
 Step 9 is only partly available: the handover pack itself and manual SOP addition are fine, the AI SOP generator is not. Worth taking Step 8 first rather than starting Step 9 and stopping halfway through it.
 

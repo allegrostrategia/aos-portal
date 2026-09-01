@@ -13,6 +13,47 @@
  * client that ignores policies.
  */
 
+/**
+ * Split a PostgREST select list on top-level commas, so `members(a, b)` survives
+ * as one part rather than being torn in half.
+ */
+function splitColumns(columns) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const char of columns) {
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (char === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+/**
+ * A one-level embed — `members(full_name, email)` — as a json subquery.
+ *
+ * The foreign key is guessed the way PostgREST's own convention reads: the
+ * related table `members` is reached through `member_id` on the base table.
+ * That covers every embed in this codebase. Anything it can't reach fails in
+ * SQL with the column named, which is a better outcome than a fixture quietly
+ * returning nulls and a test passing for the wrong reason.
+ */
+function embedSql(relation, columns) {
+  const foreignKey = `${relation.replace(/s$/, "")}_id`;
+  const selected = splitColumns(columns).map((c) => quoteIdent(c)).join(", ");
+  return (
+    `(select row_to_json(e) from (select ${selected} ` +
+    `from public.${quoteIdent(relation)} where id = base.${quoteIdent(foreignKey)}) e) ` +
+    `as ${quoteIdent(relation)}`
+  );
+}
+
 function quoteIdent(name) {
   if (!/^[a-z_][a-z0-9_]*$/i.test(name)) throw new Error(`Unsafe identifier: ${name}`);
   return `"${name}"`;
@@ -39,6 +80,8 @@ export function createShimClient(db, uid) {
       head: false,
       single: null,
       insert: null,
+      update: null,
+      order: [],
     };
 
     async function execute() {
@@ -50,6 +93,16 @@ export function createShimClient(db, uid) {
         })
         .join(" and ");
       const whereSql = where ? ` where ${where}` : "";
+      const orderSql = state.order.length
+        ? ` order by ${state.order
+            .map(
+              ([column, ascending, nullsFirst]) =>
+                `${quoteIdent(column)} ${ascending ? "asc" : "desc"} nulls ${
+                  nullsFirst ? "first" : "last"
+                }`,
+            )
+            .join(", ")}`
+        : "";
 
       try {
         if (state.insert) {
@@ -67,6 +120,23 @@ export function createShimClient(db, uid) {
           return { data: null, error: null };
         }
 
+        if (state.update) {
+          const assignments = Object.keys(state.update).map((c) => {
+            params.push(state.update[c]);
+            return `${quoteIdent(c)} = $${params.length}`;
+          });
+          // Filters were pushed first, so their placeholders still line up.
+          const updateWhere = state.filters
+            .map(([column], i) => `${quoteIdent(column)} = $${i + 1}`)
+            .join(" and ");
+          await run(
+            `update public.${quoteIdent(state.table)} set ${assignments.join(", ")}` +
+              (updateWhere ? ` where ${updateWhere}` : ""),
+            params,
+          );
+          return { data: null, error: null };
+        }
+
         if (state.head && state.count) {
           const r = await run(
             `select count(*)::int as count from public.${quoteIdent(state.table)}${whereSql}`,
@@ -75,17 +145,15 @@ export function createShimClient(db, uid) {
           return { data: null, count: r.rows[0].count, error: null };
         }
 
-        // `select("*, relation(col)")` is PostgREST embedding, which this
-        // fixture does not do. Nothing under test needs it; if something starts
-        // to, that's a real gap and should stop the run rather than pass.
-        if (state.columns.includes("(")) {
-          throw new Error(
-            `Shim does not implement embedded selects: ${state.columns}`,
-          );
-        }
+        const selected = splitColumns(state.columns)
+          .map((part) => {
+            const embed = /^(\w+)\((.+)\)$/.exec(part);
+            return embed ? embedSql(embed[1], embed[2]) : part;
+          })
+          .join(", ");
 
         const r = await run(
-          `select ${state.columns} from public.${quoteIdent(state.table)}${whereSql}`,
+          `select ${selected} from public.${quoteIdent(state.table)} base${whereSql}${orderSql}`,
           params,
         );
         if (state.single === "maybe") {
@@ -106,6 +174,18 @@ export function createShimClient(db, uid) {
       },
       insert(values) {
         state.insert = values;
+        return api;
+      },
+      update(values) {
+        state.update = values;
+        return api;
+      },
+      order(column, options = {}) {
+        state.order.push([
+          column,
+          options.ascending ?? true,
+          options.nullsFirst ?? false,
+        ]);
         return api;
       },
       eq(column, value) {

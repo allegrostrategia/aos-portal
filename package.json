@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:db": "node supabase/tests/schema.test.mjs && node --test supabase/tests/draw-actions.test.mjs",
+    "test:db": "node supabase/tests/schema.test.mjs && node --test supabase/tests/draw-actions.test.mjs supabase/tests/hot-seat-actions.test.mjs",
     "db:push": "supabase db push",
     "db:link": "supabase link",
     "db:diff": "supabase db diff",

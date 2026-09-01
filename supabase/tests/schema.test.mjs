@@ -545,6 +545,16 @@ await check("eligibility lists active members only — no onboarding, no cancell
   return r.rows[0].c === 0;
 });
 
+await check("the admin running the draw is not in it", async () => {
+  // Nina's row is `status = 'active'` like everyone else's; `role` is what
+  // separates her. Filtering on status alone put her in the hat for a prize
+  // she's giving away.
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.draw_eligibility('2026-02-01'::date)
+     where member_id='${ADMIN}'`));
+  return r.rows[0].c === 0;
+});
+
 await rejects("a member cannot read the eligibility list", () =>
   as(BOB, () => db.query(`select * from public.draw_eligibility('2026-02-01'::date)`)),
   "Only an admin");
