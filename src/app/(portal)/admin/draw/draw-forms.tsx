@@ -37,9 +37,11 @@ export function NewDrawForm({ defaultMonth }: { defaultMonth: string }) {
 export function DrawControls({
   drawId,
   entrants,
+  eligible,
 }: {
   drawId: string;
   entrants: number;
+  eligible: number;
 }) {
   const [state, formAction] = useActionState<DrawState, FormData>(
     runDrawStep,
@@ -50,18 +52,35 @@ export function DrawControls({
     <form action={formAction} className="mt-4 flex flex-col gap-3">
       <input type="hidden" name="draw_id" value={drawId} />
 
+      {/* Three states, not two. "No entrants" and "nobody has qualified" look
+          identical in the data and mean opposite things to whoever is running
+          the draw — one is a step not taken yet, the other is a month that
+          hasn't earned anyone a ticket. Collapsing them produced a button that
+          told Nina to do the thing she had just done. */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" name="intent" value="open" variant="secondary" size="sm">
-          {entrants === 0 ? "Open entries" : "Re-check for new entrants"}
-        </Button>
-
         {entrants > 0 ? (
-          <Button type="submit" name="intent" value="draw" size="sm">
-            Draw the winner
+          <>
+            <Button type="submit" name="intent" value="draw" size="sm">
+              Draw the winner
+            </Button>
+            <Button
+              type="submit"
+              name="intent"
+              value="open"
+              variant="secondary"
+              size="sm"
+            >
+              Re-check for new entrants
+            </Button>
+          </>
+        ) : eligible > 0 ? (
+          <Button type="submit" name="intent" value="open" variant="secondary" size="sm">
+            Lock in {eligible} {eligible === 1 ? "entrant" : "entrants"}
           </Button>
         ) : (
           <span className="text-caption text-navy/50">
-            Nobody entered yet — open entries first.
+            Nobody has completed the whole month, so there&rsquo;s nobody to
+            enter. Nothing to do here until someone does.
           </span>
         )}
       </div>

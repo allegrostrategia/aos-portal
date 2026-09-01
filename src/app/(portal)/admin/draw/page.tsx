@@ -188,7 +188,11 @@ export default async function AdminDrawPage() {
                           </details>
                         ) : null}
 
-                        <DrawControls drawId={draw.id} entrants={entrants} />
+                        <DrawControls
+                          drawId={draw.id}
+                          entrants={entrants}
+                          eligible={eligible}
+                        />
                       </>
                     )}
                   </Card>

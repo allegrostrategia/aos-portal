@@ -17,57 +17,9 @@
  * views (15+) — but it's a difference to remember if a push ever fails on
  * something that passed here.
  */
-import { PGlite } from "@electric-sql/pglite";
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { createTestDatabase, asMember } from "./pglite.mjs";
 
-const MIGRATIONS = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "migrations",
-);
-const db = await new PGlite();
-
-await db.exec(`
-  create schema if not exists auth;
-  create table auth.users (id uuid primary key default gen_random_uuid(), email text);
-  create role authenticated;
-  grant usage on schema public to authenticated;
-  create or replace function auth.uid() returns uuid language sql stable
-    as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-
-  -- Minimal stand-in for Supabase Storage, so the bucket policies apply here and
-  -- can be exercised. foldername() mirrors Supabase's: the path segments MINUS
-  -- the filename, so 'abc/photo.jpg' yields {abc} and [1] is the owner's id.
-  create schema storage;
-  create table storage.objects (
-    id uuid primary key default gen_random_uuid(),
-    bucket_id text not null,
-    name text not null,
-    owner uuid
-  );
-  alter table storage.objects enable row level security;
-  create function storage.foldername(name text) returns text[]
-    language plpgsql immutable as $fn$
-    declare parts text[];
-    begin
-      select string_to_array(name, '/') into parts;
-      return parts[1:array_length(parts, 1) - 1];
-    end
-    $fn$;
-`);
-
-for (const f of (await readdir(MIGRATIONS)).filter((f) => f.endsWith(".sql")).sort()) {
-  await db.exec(await readFile(path.join(MIGRATIONS, f), "utf8"));
-}
-// Supabase grants these automatically via default privileges; mirror that here.
-await db.exec(`
-  grant all on all tables in schema public to authenticated;
-  grant all on all sequences in schema public to authenticated;
-  grant usage on schema storage to authenticated;
-  grant all on storage.objects to authenticated;
-`);
+const db = await createTestDatabase();
 
 const ADMIN = "11111111-1111-1111-1111-111111111111";
 const ALICE = "22222222-2222-2222-2222-222222222222";
@@ -85,10 +37,7 @@ await db.exec(`
 `);
 
 let pass = 0, fail = 0;
-async function as(uid, fn) {
-  await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub', '${uid}', false);`);
-  try { return await fn(); } finally { await db.exec(`reset role;`); }
-}
+const as = (uid, fn) => asMember(db, uid, fn);
 async function check(name, fn) {
   try { const r = await fn(); if (r === true) { pass++; console.log(`  ok   ${name}`); }
         else { fail++; console.log(`  FAIL ${name} — got ${JSON.stringify(r)}`); } }
@@ -498,13 +447,26 @@ await rejects("a member cannot upload into the training bucket", () =>
 console.log("\n— station visits —");
 
 await check("recording a visit creates it, then increments", async () => {
-  await as(BOB, () => db.query(`select public.record_station_visit('terrazza')`));
-  await as(BOB, () => db.query(`select public.record_station_visit('terrazza')`));
-  const r = await as(BOB, () => db.query(
-    `select visit_count, first_visited_at = last_visited_at as same_moment
+  const read = () => as(BOB, () => db.query(
+    `select visit_count, first_visited_at, last_visited_at
      from public.station_visits where station_slug='terrazza'`));
-  // Counted twice, and the first visit is preserved rather than overwritten.
-  return r.rows[0].visit_count === 2 && r.rows[0].same_moment === false;
+
+  await as(BOB, () => db.query(`select public.record_station_visit('terrazza')`));
+  const first = (await read()).rows[0];
+  await as(BOB, () => db.query(`select public.record_station_visit('terrazza')`));
+  const second = (await read()).rows[0];
+
+  // Counted twice, and the first visit preserved rather than overwritten.
+  //
+  // Asserted as "first_visited_at did not change" rather than "the two
+  // timestamps differ". now() is the transaction clock and PGlite takes it from
+  // JS, so two fast calls legitimately land on the same millisecond — the
+  // previous version of this failed about four runs in ten for that reason,
+  // which is a coin toss wearing the costume of a test.
+  return first.visit_count === 1
+    && second.visit_count === 2
+    && String(second.first_visited_at) === String(first.first_visited_at)
+    && second.last_visited_at >= second.first_visited_at;
 });
 
 await check("a member sees only their own visits", async () => {

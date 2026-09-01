@@ -85,11 +85,24 @@ export async function runDrawStep(
 
     const added = Number(data ?? 0);
     revalidatePath("/admin/draw");
+
+    if (added > 0) {
+      return { notice: `${added} ${added === 1 ? "member" : "members"} entered.` };
+    }
+
+    // Nothing added has two very different meanings, and saying the wrong one
+    // sends Nina looking for a bug: either everyone eligible was already in, or
+    // nobody cleared the bar this month. Ask which.
+    const { count } = await supabase
+      .from("draw_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("draw_id", drawId);
+
     return {
       notice:
-        added === 0
+        (count ?? 0) > 0
           ? "Nobody new — everyone eligible was already entered."
-          : `${added} ${added === 1 ? "member" : "members"} entered.`,
+          : "Nobody completed the whole month, so there's nobody to enter yet.",
     };
   }
 
