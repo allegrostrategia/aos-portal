@@ -92,10 +92,60 @@ fails from any IPv4-only network — that's the likely cause if it suddenly stop
 resolving. And `db push` prints a Docker warning about caching the migrations
 catalog; it's cosmetic, the push has already succeeded by then.
 
-If the direct connection is ever unavailable, `npm run db:bundle` concatenates
-every migration in order into `supabase/.temp/bundle.sql` to paste into the SQL
-editor. That bypasses the migration history table, so follow it with
-`npx supabase migration repair --status applied <version>` for each one.
+#### If you're on IPv4, use the pooler — and change the username
+
+The direct host being IPv6-only means most networks need the session pooler
+instead. **Its username is not `postgres`.** Supavisor works out which project
+you're connecting to from the username, so it must carry the ref:
+
+```bash
+npm run db:push -- --db-url "postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres" --dry-run
+```
+
+Connect as bare `postgres` and it can't resolve the tenant, so it fails at
+authentication with `password authentication failed for user "postgres"`
+(SQLSTATE `28P01`) — **the same error a wrong password gives**. That cost an
+afternoon on 1 Sep: three password resets, three identical failures, because the
+password was never the thing being rejected.
+
+Port **5432** (session mode), not 6543 — transaction mode doesn't hold a session
+across statements and migrations need advisory locks. Copy the whole string from
+the dashboard's *Session pooler* tab rather than assembling it; the region in the
+host varies.
+
+Two more things that produce auth failures rather than honest errors:
+percent-encode symbols in the password (`@` → `%40`, `#` → `%23`, `/` → `%2F`),
+or the URL splits at the wrong place. And the CLI does **not** read
+`SUPABASE_DB_PASSWORD` for `--db-url` — passing it that way sends `undefined` and
+fails with `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`,
+which at least tells you it never reached the server.
+
+Running `select 1` in the SQL editor proves nothing either way here: it goes
+through the dashboard's own connection and never checks your `postgres`
+password. It tells you the project isn't paused, and no more.
+
+#### Fallback: pasting SQL by hand
+
+`npm run db:bundle` concatenates **every** migration in order into
+`supabase/.temp/bundle.sql`. That is a bootstrap tool for an empty project, not
+a way to apply one pending migration — pasting it into a project that already has
+migrations applied re-runs `create table` on tables that exist and re-inserts the
+reference-data seeds (the eleven stations, the ten time categories). It aborts
+part-way with a confusing error, and any seed that landed first has to be
+unpicked.
+
+**To apply a single pending migration, paste that one file:**
+
+```bash
+pbcopy < supabase/migrations/<version>_<name>.sql
+npx supabase migration repair --status applied <version>   # one version, not all of them
+```
+
+Either route bypasses the CLI's migration history table, which is what `repair`
+puts right. If `repair` can't connect either, it's safe to defer: the schema is
+already correct, and the only cost is the next `db push` seeing that migration as
+pending. Harmless for a migration that is idempotent (`create or replace`,
+`grant`), not harmless for one that isn't — so don't let it accumulate.
 
 ## Layout
 

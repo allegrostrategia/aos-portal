@@ -19,7 +19,9 @@
 ## Built, not yet run against the live database
 - **Monthly draw, admin side (1 Sep):** `/admin/draw` — set up a draw, see every active member's count against the bar, lock the entrant list, draw the winner. Rules live in the database (`weeks_in_month`, `draw_eligibility`, `open_draw_entries`, `draw_winner`) rather than the panel, same as `activate_member`. **"A full month" is computed, not assumed** — four or five Mondays depending on the month, so a five-week month genuinely needs five complete weeks. Locking entries records `complete_weeks` on the entry, so editing time later can't change who was in a past draw, and `drawn_at is null` sits inside the UPDATE so a double-click can't produce a second winner. 18 new schema tests.
 
-  **This ships a migration, so `npm run db:push` is required — a Vercel deploy alone won't create the functions and the page will fail on live.** Run `npm run test:db` first, per CLAUDE.md.
+  **Migration applied to live on 1 Sep by pasting the single file into the SQL editor**, after `db push` couldn't authenticate (see bug 11). `migration repair` still owed for `20260901104500` — the schema is correct, but the CLI's history table doesn't know it, so the next `db push` will see it as pending. Harmless to re-run (all `create or replace` and grants), but worth clearing before a migration that isn't.
+
+  **Verified by 11 tests driving the real Server Actions**, not just the SQL underneath — the Supabase client is translated onto PGlite with RLS still applied, so nothing in `src/` knows it's under test. That found two empty-state bugs the schema tests couldn't: with nobody eligible, the panel claimed everyone was already entered, and told Nina to open entries she had just opened. Still unproven: the page's own rendering, and anything that would show up only as drift between the pasted migration and the repo.
 
   Also closed a pre-existing leak while in here: `complete_weeks_in_month` was `security definer` with a member-id argument and no access check, so any signed-in member could ask it about anyone else. Now "yourself, or an admin".
 
@@ -66,6 +68,9 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 8. Vercel deploys not triggering automatically from git push (happened twice) — worked around via manual deployment trigger from a specific commit SHA
 9. Video player assuming landscape — vertical phone-recorded video rendered full-column-width and taller than the viewport, controls off-screen. Fixed by bounding both axes and letting the file's own aspect ratio decide, rather than storing dimensions
 10. Work reported as "done" while sitting uncommitted in the working tree — the deployed site was correctly serving older code and looked like a bug in the feature. **Building it and shipping it are two separate things; say which one has actually happened**
+11. Session pooler rejecting three freshly-reset passwords with `28P01` — the pooler username must be `postgres.<ref>`, not `postgres`, and a bare `postgres` fails as a *password* error. Cost an afternoon. Now written up in the README's connection section
+12. `npm run db:bundle` nearly pasted over a live schema — it emits **every** migration, which is a bootstrap tool, not a way to apply one pending migration. For a single migration, paste that one file and repair only its version. Also in the README now
+13. A flaky test hiding behind `&&` — `recording a visit creates it, then increments` asserted two `now()` calls differ, but `now()` is the transaction clock and PGlite takes it from JS, so fast calls share a millisecond. It failed **6 runs in 12 on untouched code** while being quoted as "83 passing" off lucky single runs, and its position in `test:db` meant a coin-toss failure stopped the action suite running at all. Now asserts what the behaviour actually is
 
 ## Environment variables confirmed set in Vercel
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` deliberately unset** pending Nina's decision on AI drafting — see the section above before adding it.
