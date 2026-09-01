@@ -528,5 +528,119 @@ await check("a member cannot fabricate a visit", async () => {
   return r.rows[0].c === 0;
 });
 
+console.log("\n— monthly draw —");
+
+// February 2026 has exactly four Mondays; March has five. Both are asserted,
+// because "a full month" being four weeks is the assumption that would quietly
+// hand out an entry for a five-week month somebody didn't complete.
+await check("weeks_in_month counts the Mondays — four in Feb 2026", async () =>
+  (await as(ADMIN, () => db.query(
+    `select public.weeks_in_month('2026-02-01'::date) w`))).rows[0].w === 4);
+
+await check("weeks_in_month — five in Mar 2026", async () =>
+  (await as(ADMIN, () => db.query(
+    `select public.weeks_in_month('2026-03-01'::date) w`))).rows[0].w === 5);
+
+// Bob is active by this point; Alice has rejoined and is back to onboarding.
+// One 11-hour entry in each of February's four weeks clears the 10-hour bar.
+await as(BOB, () => db.query(`
+  insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
+    ('${BOB}','client-sessions','2026-02-02 09:00Z','2026-02-02 20:00Z'),
+    ('${BOB}','client-sessions','2026-02-09 09:00Z','2026-02-09 20:00Z'),
+    ('${BOB}','client-sessions','2026-02-16 09:00Z','2026-02-16 20:00Z'),
+    ('${BOB}','client-sessions','2026-02-23 09:00Z','2026-02-23 20:00Z')`));
+
+await check("a member reads their own completed weeks", async () =>
+  (await as(BOB, () => db.query(
+    `select public.complete_weeks_in_month('${BOB}','2026-02-01'::date) c`))).rows[0].c === 4);
+
+await rejects("a member cannot read someone else's completed weeks", () =>
+  as(ALICE, () => db.query(
+    `select public.complete_weeks_in_month('${BOB}','2026-02-01'::date)`)),
+  "Only an admin");
+
+await check("eligibility: four of four weeks puts Bob in", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select complete_weeks, weeks_required, is_eligible
+     from public.draw_eligibility('2026-02-01'::date) where member_id='${BOB}'`));
+  const row = r.rows[0];
+  return row.complete_weeks === 4 && row.weeks_required === 4 && row.is_eligible === true;
+});
+
+await check("eligibility: the same four weeks are NOT a full March", async () => {
+  // Bob logged nothing in March, so this is really asserting the bar moves with
+  // the month rather than being a fixed four.
+  const r = await as(ADMIN, () => db.query(
+    `select weeks_required, is_eligible
+     from public.draw_eligibility('2026-03-01'::date) where member_id='${BOB}'`));
+  return r.rows[0].weeks_required === 5 && r.rows[0].is_eligible === false;
+});
+
+await check("eligibility lists active members only — no onboarding, no cancelled", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.draw_eligibility('2026-02-01'::date)
+     where member_id='${ALICE}'`));
+  return r.rows[0].c === 0;
+});
+
+await rejects("a member cannot read the eligibility list", () =>
+  as(BOB, () => db.query(`select * from public.draw_eligibility('2026-02-01'::date)`)),
+  "Only an admin");
+
+await as(ADMIN, () => db.query(`
+  insert into public.draws (id, draw_month, prize, draw_date) values
+    ('55555555-5555-5555-5555-555555555555','2026-02-01','A year of Canva Pro','2026-03-03'),
+    ('66666666-6666-6666-6666-666666666666','2026-03-01','Nothing yet','2026-04-03')`));
+
+const FEB_DRAW = "55555555-5555-5555-5555-555555555555";
+const MAR_DRAW = "66666666-6666-6666-6666-666666666666";
+
+await check("opening entries enters the eligible members", async () =>
+  (await as(ADMIN, () => db.query(
+    `select public.open_draw_entries('${FEB_DRAW}') n`))).rows[0].n === 1);
+
+await check("the entry records the weeks that earned it", async () =>
+  (await as(ADMIN, () => db.query(
+    `select complete_weeks c from public.draw_entries
+     where draw_id='${FEB_DRAW}' and member_id='${BOB}'`))).rows[0].c === 4);
+
+await check("opening entries again adds nobody twice", async () =>
+  (await as(ADMIN, () => db.query(
+    `select public.open_draw_entries('${FEB_DRAW}') n`))).rows[0].n === 0);
+
+await rejects("a member cannot open entries", () =>
+  as(BOB, () => db.query(`select public.open_draw_entries('${FEB_DRAW}')`)),
+  "Only an admin");
+
+await rejects("a draw nobody entered refuses to pick a winner", () =>
+  as(ADMIN, () => db.query(`select public.draw_winner('${MAR_DRAW}')`)),
+  "Nobody is entered");
+
+await check("drawing picks a winner from the entrants", async () =>
+  (await as(ADMIN, () => db.query(
+    `select (public.draw_winner('${FEB_DRAW}')).winner_member_id w`))).rows[0].w === BOB);
+
+// The one that actually matters: a retried request must not produce a second,
+// different winner.
+await rejects("a drawn draw cannot be drawn again", () =>
+  as(ADMIN, () => db.query(`select public.draw_winner('${FEB_DRAW}')`)),
+  "already has a winner");
+
+await rejects("entries cannot be reopened after the draw", () =>
+  as(ADMIN, () => db.query(`select public.open_draw_entries('${FEB_DRAW}')`)),
+  "already been drawn");
+
+await check("a member sees their own entry, not the entrant list", async () => {
+  const mine = await as(BOB, () => db.query(
+    `select count(*)::int c from public.draw_entries`));
+  const theirs = await as(ALICE, () => db.query(
+    `select count(*)::int c from public.draw_entries`));
+  return mine.rows[0].c === 1 && theirs.rows[0].c === 0;
+});
+
+await check("the draw itself is visible to members — prize and date are furniture", async () =>
+  (await as(BOB, () => db.query(
+    `select count(*)::int c from public.draws`))).rows[0].c === 2);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

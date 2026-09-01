@@ -103,3 +103,39 @@ export function formatSessionTime(instant: Date | string): string {
 export function formatSessionTimeShort(instant: Date | string): string {
   return SHORT.format(typeof instant === "string" ? new Date(instant) : instant);
 }
+
+/**
+ * Calendar dates — `draw_month`, `draw_date`, `contract_term_end_date`.
+ *
+ * These are `date` columns, not instants, and the difference matters. Postgres
+ * hands them over as "2026-02-01", which parses as UTC midnight; formatting that
+ * in any zone behind UTC renders 31 January.
+ *
+ * So these two pin to UTC rather than APP_TIME_ZONE, which looks like a
+ * contradiction of everything above and isn't: there is no instant here to
+ * convert, only a date to render as written. Europe/London is never behind UTC,
+ * so using it would happen to work — and relying on that coincidence is how the
+ * timezone bug in the hot seat started.
+ */
+const CALENDAR_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const CALENDAR_MONTH = new Intl.DateTimeFormat("en-GB", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** "3 March 2026" — a date as written, never shifted. */
+export function formatCalendarDate(date: string): string {
+  return CALENDAR_DATE.format(new Date(`${date.slice(0, 10)}T00:00:00Z`));
+}
+
+/** "February 2026" — the month a draw belongs to. */
+export function formatCalendarMonth(date: string): string {
+  return CALENDAR_MONTH.format(new Date(`${date.slice(0, 10)}T00:00:00Z`));
+}

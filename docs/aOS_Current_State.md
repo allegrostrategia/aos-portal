@@ -16,15 +16,25 @@
 - **Video player sizing (31 Aug):** Player sizes itself to the video's real aspect ratio rather than letting width win unconditionally — a phone-recorded 1080x1920 training was rendering full-column-width and ~1365 tall, off the bottom of the screen. Confirmed on mobile and desktop.
 - **Admin lifecycle controls:** Activate/cancel/reinstate, roadmap editor with preserved item IDs, current focus correctly read-only (populated only via hot seat confirm).
 
+## Built, not yet run against the live database
+- **Monthly draw, admin side (1 Sep):** `/admin/draw` — set up a draw, see every active member's count against the bar, lock the entrant list, draw the winner. Rules live in the database (`weeks_in_month`, `draw_eligibility`, `open_draw_entries`, `draw_winner`) rather than the panel, same as `activate_member`. **"A full month" is computed, not assumed** — four or five Mondays depending on the month, so a five-week month genuinely needs five complete weeks. Locking entries records `complete_weeks` on the entry, so editing time later can't change who was in a past draw, and `drawn_at is null` sits inside the UPDATE so a double-click can't produce a second winner. 18 new schema tests.
+
+  **This ships a migration, so `npm run db:push` is required — a Vercel deploy alone won't create the functions and the page will fail on live.** Run `npm run test:db` first, per CLAUDE.md.
+
+  Also closed a pre-existing leak while in here: `complete_weeks_in_month` was `security definer` with a member-id argument and no access check, so any signed-in member could ask it about anyone else. Now "yourself, or an admin".
+
 ## What's built but not yet delivered/wired
 - **Reminders and hot seat emails work end to end** — genuinely tested today with real delivery to a real inbox. `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM` are confirmed set in Vercel. (A fresh Claude Code session guessed these were unset on 31 Aug — that was wrong, it has no way to actually see Vercel's dashboard. Trust the tested reality over a session's inference here.)
 
 ## Genuinely still open, in priority order
-1. **Rest of Step 8** — hot seat challenge review refinements, running the monthly draw. The unblocked next piece of work.
+1. **Rest of Step 8** — hot seat challenge review refinements. The monthly draw is built (above) and needs `db:push` plus a run-through on live.
 2. **Steps 9-13** — handover pack + AI SOP generator, gamification/hours-reclaimed ledger, chat (including voice messages)/peer pairing/directory, the roadmap reveal generator, final polish. None started.
 
 ## Known, unfixed, and will look alarming
 - **`npm run test:db` shows 64 passed, 1 failed on some days.** `create_member accepts the named parameters the app sends` computes its expected date in JS with `setMonth(+6)`, which overflows where Postgres clamps: run on 31 Aug, JS says 2027-03-03 and Postgres correctly says 2027-02-28. **The test is wrong, not the schema.** It only fails on days whose day-of-month doesn't exist six months later — the 29th to 31st of Aug, Oct, Dec, Mar, May, Jul — and passes on its own the next day, which is the worst version of a flaky test. Fix is to do the date arithmetic the way Postgres does rather than trusting `setMonth`.
+
+## Deliberately not built yet, so it doesn't read as missed
+- **The member-facing draw card** (Piazza compact card + raffle-ticket click-through, §2) is Step 10 with the rest of gamification, not part of the admin work done on 1 Sep. Note it needs something the current RLS doesn't give it: members can read `draws`, but `winner_member_id` is only a uuid to them, and RLS stops a member resolving another member's name. Showing "X won" needs a deliberate decision about exposing winner names, not just a query.
 
 ## AI drafting is under review — do not wire it (1 Sep)
 **Nina is reconsidering whether to use AI drafting at all. `ANTHROPIC_API_KEY` is deliberately not set, and must not be wired until she decides.**
@@ -69,7 +79,7 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 ## Right now, exactly
 Steps 1-7 are done, and admin content upload — the thing that was blocking Nina loading real content — is built, tested against live storage and pushed. The library is now usable end to end without touching Supabase's dashboard.
 
-Next real piece of work: finish Step 8 — hot seat challenge review, running the monthly draw. Neither touches AI drafting, so neither waits on Nina.
+Next real piece of work: the hot seat challenge review, which is the last of Step 8. The monthly draw is built and waiting on `db:push` and a live run-through. Neither touches AI drafting, so neither waits on Nina.
 
 Step 9 is only partly available: the handover pack itself and manual SOP addition are fine, the AI SOP generator is not. Worth taking Step 8 first rather than starting Step 9 and stopping halfway through it.
 
