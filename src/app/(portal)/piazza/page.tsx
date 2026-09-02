@@ -12,6 +12,7 @@ import { getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { formatSessionTime } from "@/lib/time-zone";
 import { Card, Eyebrow } from "@/components/ui/card";
+import { InstallPrompt } from "@/components/install-prompt";
 import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Piazza — aOS" };
@@ -238,6 +239,8 @@ export default async function PiazzaPage() {
           </p>
         </div>
       </Link>
+
+      <InstallPrompt />
 
       {hours.total > 0 ? (
         /* The proof cluster (§2): the number, and how far to the next
