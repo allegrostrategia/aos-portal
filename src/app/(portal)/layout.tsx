@@ -41,6 +41,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     // the quiet weeks show what's coming; only submitting is gated.
     { href: "/hot-seat", label: "Hot seat" },
     { href: "/stations", label: "La Strada" },
+    { href: "/sociale", label: "Sociale" },
     ...(member.role === "admin"
       ? [
           { href: "/admin/members", label: "Admin" },
