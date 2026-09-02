@@ -18,8 +18,32 @@ export type ChatMessage = {
   voice_seconds: number | null;
   handover_pack_id: string | null;
   created_at: string;
-  members: { full_name: string } | null;
+  authorName: string;
 };
+
+/**
+ * Names for a set of members.
+ *
+ * Through `display_names()` rather than a join to `members`, whose rows are
+ * readable only by their owner — joining it silently returns null for everybody
+ * else, which is how chat ended up labelling half its messages "A member".
+ */
+export async function resolveNames(
+  memberIds: string[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  const unique = [...new Set(memberIds)];
+  if (unique.length === 0) return names;
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("display_names", { p_member_ids: unique });
+
+  for (const row of (data ?? []) as { member_id: string; display_name: string }[]) {
+    if (row.display_name) names.set(row.member_id, row.display_name);
+  }
+
+  return names;
+}
 
 /**
  * The channels a member can reach.
@@ -70,13 +94,21 @@ export async function getMessages(
   const { data } = await supabase
     .from("chat_messages")
     .select(
-      "id, member_id, body, voice_path, voice_seconds, handover_pack_id, created_at, members(full_name)",
+      "id, member_id, body, voice_path, voice_seconds, handover_pack_id, created_at",
     )
     .eq("channel_id", channelId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return ((data ?? []) as unknown as ChatMessage[]).reverse();
+  const rows = ((data ?? []) as Omit<ChatMessage, "authorName">[]).reverse();
+  const names = await resolveNames(rows.map((r) => r.member_id));
+
+  return rows.map((row) => ({
+    ...row,
+    // "A member" is the honest answer for someone who has since been removed,
+    // not the everyday case it had become.
+    authorName: names.get(row.member_id) ?? "A member",
+  }));
 }
 
 /** Who the other person is, for naming a direct channel in the UI. */
@@ -90,16 +122,16 @@ export async function getDirectPartners(
   const supabase = await createClient();
   const { data } = await supabase
     .from("chat_participants")
-    .select("channel_id, member_id, members(full_name)")
+    .select("channel_id, member_id")
     .in("channel_id", channelIds);
 
-  for (const row of (data ?? []) as unknown as {
-    channel_id: string;
-    member_id: string;
-    members: { full_name: string } | null;
-  }[]) {
-    if (row.member_id === meId) continue;
-    names.set(row.channel_id, row.members?.full_name ?? "A member");
+  const rows = ((data ?? []) as { channel_id: string; member_id: string }[])
+    .filter((row) => row.member_id !== meId);
+
+  const byMember = await resolveNames(rows.map((r) => r.member_id));
+
+  for (const row of rows) {
+    names.set(row.channel_id, byMember.get(row.member_id) ?? "A member");
   }
 
   return names;

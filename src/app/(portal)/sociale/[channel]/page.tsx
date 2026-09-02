@@ -68,7 +68,7 @@ export default async function ChannelPage({
                 <div key={message.id} className={mine ? "sm:pl-10" : "sm:pr-10"}>
                   <div className="flex items-baseline gap-2">
                     <p className="text-small font-medium text-navy">
-                      {mine ? "You" : (message.members?.full_name ?? "A member")}
+                      {mine ? "You" : message.authorName}
                     </p>
                     <p className="font-mono text-caption text-navy/40">
                       {formatSessionTimeShort(message.created_at)}

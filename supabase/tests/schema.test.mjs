@@ -1062,5 +1062,48 @@ await check("nobody signed in can write to the job queue, admins included", asyn
   return r.rows[0].c === 0;
 });
 
+console.log("\n— display names —");
+
+await check("a member can resolve another member's name", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select display_name from public.display_names(array['${FRAN}']::uuid[])`));
+  return r.rows[0]?.display_name === "Fran Doyle";
+});
+
+// The actual bug: Nina is an admin with no directory listing, so a name read
+// from member_profiles alone finds nothing and the UI says "A member".
+await check("an admin with no directory listing still has a name", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select display_name from public.display_names(array['${ADMIN}']::uuid[])`));
+  return r.rows[0]?.display_name === "Nina";
+});
+
+await check("a completed directory listing wins over the account name", async () => {
+  await as(FRAN, () => db.query(`
+    insert into public.member_profiles (member_id, display_name, completed_at)
+    values ('${FRAN}', 'Fran at Doyle & Co', now())`));
+  const r = await as(ERIN, () => db.query(
+    `select display_name from public.display_names(array['${FRAN}']::uuid[])`));
+  return r.rows[0]?.display_name === "Fran at Doyle & Co";
+});
+
+await check("names are all it returns — the rest of the row stays private", async () => {
+  // The reason this is a function and not a policy: RLS is row-level, so
+  // letting members read each other's names would hand over email, status,
+  // join date and contract terms with it.
+  const direct = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.members where id='${FRAN}'`));
+  const cols = await as(ERIN, () => db.query(
+    `select count(*)::int c from information_schema.columns
+     where table_name='display_names'`));
+  return direct.rows[0].c === 0 && cols.rows[0].c === 0;
+});
+
+await check("a cancelled member resolves nobody", async () => {
+  const r = await as(DANA, () => db.query(
+    `select count(*)::int c from public.display_names(array['${FRAN}']::uuid[])`));
+  return r.rows[0].c === 0;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
