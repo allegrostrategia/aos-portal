@@ -614,5 +614,222 @@ await check("the draw itself is visible to members — prize and date are furnit
   (await as(BOB, () => db.query(
     `select count(*)::int c from public.draws`))).rows[0].c === 2);
 
+console.log("\n— hours reclaimed —");
+
+// A member of their own: Alice has been cancelled and rejoined, Dana was
+// cancelled for the storage tests, and Bob's February is spoken for by the draw.
+// Accrual needs someone with a clean history and live portal access.
+const ERIN = "99999999-9999-9999-9999-999999999999";
+const ERIN_WEEK = "2026-05-04"; // a Monday
+
+await db.exec(`insert into auth.users (id, email) values ('${ERIN}', 'erin@test')`);
+await as(ADMIN, () => db.query(
+  `select public.create_member('${ERIN}','erin@test','Erin Vale', now(), now())`));
+await as(ADMIN, () => db.query(`select public.activate_member('${ERIN}')`));
+
+await as(ADMIN, () => db.query(`
+  insert into public.handover_pack (id, member_id, title, source)
+  values ('77777777-7777-7777-7777-777777777777','${ERIN}','Enquiry follow-up','hot_seat'),
+         ('88888888-8888-8888-8888-888888888888','${ERIN}','Invoice chasing','hot_seat')`));
+
+const FOLLOW_UP = "77777777-7777-7777-7777-777777777777";
+const INVOICES = "88888888-8888-8888-8888-888888888888";
+
+await check("setting a rate opens a period that is still running", async () => {
+  await as(ADMIN, () => db.query(
+    `select public.set_build_rate('${FOLLOW_UP}', 5, '2026-05-01'::date, null)`));
+  const r = await as(ADMIN, () => db.query(
+    `select hours_per_week::float h, effective_until from public.handover_pack_rates
+     where handover_pack_id='${FOLLOW_UP}'`));
+  return r.rows.length === 1 && r.rows[0].h === 5 && r.rows[0].effective_until === null;
+});
+
+await rejects("a member cannot decide what their own build is worth", () =>
+  as(ERIN, () => db.query(
+    `select public.set_build_rate('${FOLLOW_UP}', 99, '2026-05-01'::date, null)`)),
+  "Only an admin");
+
+await check("a same-day correction edits the period rather than splitting it", async () => {
+  await as(ADMIN, () => db.query(
+    `select public.set_build_rate('${FOLLOW_UP}', 4, '2026-05-01'::date, null)`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c, max(hours_per_week)::float h from public.handover_pack_rates
+     where handover_pack_id='${FOLLOW_UP}'`));
+  return r.rows[0].c === 1 && r.rows[0].h === 4;
+});
+
+await check("a week under ten hours earns nothing at all", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${ERIN}','client-sessions','${ERIN_WEEK} 09:00Z','${ERIN_WEEK} 14:00Z')`));
+  await as(ERIN, () => db.query(`
+    insert into public.weekly_submissions (member_id, week_start_date, submitted_at)
+    values ('${ERIN}','${ERIN_WEEK}', now())`));
+
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','${ERIN_WEEK}'::date) h`));
+  const ledger = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.hours_ledger where member_id='${ERIN}'`));
+  return r.rows[0].h === null && ledger.rows[0].c === 0;
+});
+
+await check("ten hours and a submitted log earns the active rate", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${ERIN}','sales-calls','2026-05-05 09:00Z','2026-05-05 15:00Z')`));
+
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','${ERIN_WEEK}'::date)::float h`));
+  return r.rows[0].h === 4;
+});
+
+await check("running it again changes nothing — safe to re-run and backfill", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','${ERIN_WEEK}'::date)::float h`));
+  const ledger = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.hours_ledger where member_id='${ERIN}'`));
+  return r.rows[0].h === 4 && ledger.rows[0].c === 1;
+});
+
+await check("the week records what the number was made of", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select breakdown from public.hours_ledger
+     where member_id='${ERIN}' and week_start_date='${ERIN_WEEK}'`));
+  const breakdown = r.rows[0].breakdown;
+  return breakdown.length === 1 && breakdown[0].title === "Enquiry follow-up";
+});
+
+await check("a second build stacks rather than replacing the first", async () => {
+  await as(ADMIN, () => db.query(
+    `select public.set_build_rate('${INVOICES}', 3, '2026-05-01'::date, null)`));
+  // A different qualifying week, since the first is already banked.
+  await as(ERIN, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
+      ('${ERIN}','client-sessions','2026-05-11 09:00Z','2026-05-11 17:00Z'),
+      ('${ERIN}','sales-calls',    '2026-05-12 09:00Z','2026-05-12 12:00Z')`));
+  await as(ERIN, () => db.query(`
+    insert into public.weekly_submissions (member_id, week_start_date, submitted_at)
+    values ('${ERIN}','2026-05-11', now())`));
+
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','2026-05-11'::date)::float h`));
+  return r.rows[0].h === 7;
+});
+
+await rejects("a build cannot have two rates running at once", () =>
+  as(ADMIN, () => db.query(`
+    insert into public.handover_pack_rates (handover_pack_id, hours_per_week, effective_from)
+    values ('${FOLLOW_UP}', 9, '2026-06-01')`)),
+  "duplicate key");
+
+await check("revising a rate closes the old period instead of overwriting it", async () => {
+  await as(ADMIN, () => db.query(
+    `select public.set_build_rate('${FOLLOW_UP}', 2, '2026-06-01'::date, 'Halved after review')`));
+  const r = await as(ADMIN, () => db.query(
+    `select hours_per_week::float h, effective_from::text f, effective_until::text u
+     from public.handover_pack_rates where handover_pack_id='${FOLLOW_UP}'
+     order by effective_from`));
+  return r.rows.length === 2
+    && r.rows[0].h === 4 && r.rows[0].u === "2026-06-01"
+    && r.rows[1].h === 2 && r.rows[1].u === null;
+});
+
+// The promise §2 makes explicitly: already-accrued hours never shrink.
+await check("a week already banked keeps its old rate after a revision", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select hours::float h from public.hours_ledger
+     where member_id='${ERIN}' and week_start_date='${ERIN_WEEK}'`));
+  return r.rows[0].h === 4;
+});
+
+await check("retiring a build stops it earning and takes nothing back", async () => {
+  const before = await as(ADMIN, () => db.query(
+    `select coalesce(sum(hours),0)::float t from public.hours_ledger where member_id='${ERIN}'`));
+
+  await as(ADMIN, () => db.query(
+    `select public.retire_build_rate('${INVOICES}', '2026-07-01'::date)`));
+
+  const after = await as(ADMIN, () => db.query(
+    `select coalesce(sum(hours),0)::float t from public.hours_ledger where member_id='${ERIN}'`));
+  const open = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.handover_pack_rates
+     where handover_pack_id='${INVOICES}' and effective_until is null`));
+
+  return after.rows[0].t === before.rows[0].t && open.rows[0].c === 0;
+});
+
+await check("a rate that starts after the week doesn't count towards it", async () => {
+  // FOLLOW_UP dropped to 2 from 1 June; INVOICES retired from 1 July. A third
+  // build starts earning in September — deliberately after the week under test,
+  // because otherwise the retired-and-superseded rates alone would carry this
+  // and it would pass without the start date being consulted at all.
+  await as(ADMIN, () => db.query(`
+    insert into public.handover_pack (id, member_id, title, source)
+    values ('12121212-1212-1212-1212-121212121212','${ERIN}','Not yet running','hot_seat')`));
+  await as(ADMIN, () => db.query(
+    `select public.set_build_rate('12121212-1212-1212-1212-121212121212', 6, '2026-09-01'::date, null)`));
+
+  await as(ERIN, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
+      ('${ERIN}','client-sessions','2026-08-03 09:00Z','2026-08-03 20:00Z')`));
+  await as(ERIN, () => db.query(`
+    insert into public.weekly_submissions (member_id, week_start_date, submitted_at)
+    values ('${ERIN}','2026-08-03', now())`));
+
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','2026-08-03'::date)::float h`));
+  // 2, not 8: September's build hasn't started earning yet.
+  return r.rows[0].h === 2;
+});
+
+await check("...and does count once its start date has passed", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
+      ('${ERIN}','client-sessions','2026-09-07 09:00Z','2026-09-07 20:00Z')`));
+  await as(ERIN, () => db.query(`
+    insert into public.weekly_submissions (member_id, week_start_date, submitted_at)
+    values ('${ERIN}','2026-09-07', now())`));
+
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','2026-09-07'::date)::float h`));
+  return r.rows[0].h === 8;
+});
+
+await check("ten hours without submitting the log earns nothing", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
+      ('${ERIN}','client-sessions','2026-08-10 09:00Z','2026-08-10 20:00Z')`));
+  // No weekly_submissions row at all.
+  const r = await as(ADMIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','2026-08-10'::date) h`));
+  return r.rows[0].h === null;
+});
+
+await check("a member sees their own ledger and nobody else's", async () => {
+  const mine = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.hours_ledger`));
+  const theirs = await as(BOB, () => db.query(
+    `select count(*)::int c from public.hours_ledger`));
+  return mine.rows[0].c > 0 && theirs.rows[0].c === 0;
+});
+
+await check("a member cannot write to the ledger", async () => {
+  try {
+    await as(ERIN, () => db.query(`
+      insert into public.hours_ledger (member_id, week_start_date, hours)
+      values ('${ERIN}','2026-09-07', 999)`));
+  } catch {
+    // Either outcome is fine; what matters is the row not existing.
+  }
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.hours_ledger where hours = 999`));
+  return r.rows[0].c === 0;
+});
+
+await rejects("a member cannot accrue their own hours", () =>
+  as(ERIN, () => db.query(
+    `select public.accrue_hours_for_week('${ERIN}','2026-08-03'::date)`)),
+  "Only an admin");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

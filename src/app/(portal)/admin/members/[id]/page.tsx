@@ -10,6 +10,9 @@ import type { Member } from "@/lib/supabase/types";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { StatusActions } from "./status-actions";
 import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
+import { getMemberBuilds } from "@/lib/hours/queries";
+import { formatHours } from "@/lib/hours/milestones";
+import { AddBuildForm, RateControls } from "./build-forms";
 
 export const metadata: Metadata = {
   title: "Member — aOS admin",
@@ -104,6 +107,13 @@ export default async function AdminMemberPage({
   const itinerary = member.onboarding_start_date
     ? buildItinerary(member.onboarding_start_date)
     : null;
+
+  const builds = await getMemberBuilds(id);
+  const today = new Date().toISOString().slice(0, 10);
+  const weeklyRate = builds.reduce(
+    (sum, build) => sum + (build.current?.hours_per_week ?? 0),
+    0,
+  );
 
   return (
     <main className="flex-1 py-8 sm:py-10">
@@ -274,6 +284,79 @@ export default async function AdminMemberPage({
           ))}
         </div>
       )}
+      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+        Builds and what they&rsquo;re worth
+      </h2>
+
+      {/* The rate half of the hours-reclaimed ledger (§2). Adding a build here
+          is a small piece of Step 9's territory, built because Step 10 cannot
+          function without it — nothing accrues until a build with a rate
+          exists. The handover pack proper is still Step 9. */}
+      <Card>
+        <p className="text-small text-navy/70">
+          {weeklyRate > 0 ? (
+            <>
+              Currently earning{" "}
+              <span className="font-mono text-navy">{formatHours(weeklyRate)} hrs</span>{" "}
+              in every qualifying week — ten hours logged and the log submitted.
+            </>
+          ) : (
+            "Nothing earning yet. A build starts adding hours from the first qualifying week after its start date."
+          )}
+        </p>
+      </Card>
+
+      <Card className="mt-4">
+        <Eyebrow>Add a build</Eyebrow>
+        <div className="mt-3">
+          <AddBuildForm memberId={id} today={today} />
+        </div>
+      </Card>
+
+      {builds.length > 0 ? (
+        <ul className="mt-4 flex flex-col gap-4">
+          {builds.map((build) => (
+            <Card as="li" key={build.id}>
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <p className="font-medium text-navy">{build.title}</p>
+                {build.current ? (
+                  <span className="font-mono text-small text-navy">
+                    {formatHours(build.current.hours_per_week)} hrs/week
+                  </span>
+                ) : (
+                  <span className="text-caption text-navy/50">Retired</span>
+                )}
+              </div>
+
+              {build.rates.length > 0 ? (
+                <ul className="mt-2 flex flex-col gap-1">
+                  {build.rates.map((rate) => (
+                    <li
+                      key={rate.id}
+                      className="flex items-baseline justify-between gap-3 text-caption text-navy/60"
+                    >
+                      <span>
+                        {rate.effective_from} →{" "}
+                        {rate.effective_until ?? "still running"}
+                      </span>
+                      <span className="font-mono">
+                        {formatHours(rate.hours_per_week)} hrs
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <RateControls
+                packId={build.id}
+                today={today}
+                isRunning={Boolean(build.current)}
+              />
+            </Card>
+          ))}
+        </ul>
+      ) : null}
+
     </main>
   );
 }

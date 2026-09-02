@@ -8,6 +8,8 @@ import { formatMinutes, weekProgress } from "@/lib/timer/format";
 import { currentWeekStart, getWeeklySubmission } from "@/lib/log/queries";
 import { getCurrentChallenge, getUpcomingSession } from "@/lib/hot-seat/queries";
 import { getPiazzaRoadmap } from "@/lib/piazza/queries";
+import { getMemberHours } from "@/lib/hours/queries";
+import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { formatSessionTime } from "@/lib/time-zone";
 import { Card, Eyebrow } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
@@ -27,9 +29,16 @@ const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
  * overwhelming — which is as much about what isn't here as what is.
  *
  * Widgets whose data doesn't exist yet are omitted rather than shown empty. The
- * proof cluster and milestones need the hours-reclaimed ledger (Step 10), the
  * buddy card needs pairing (Step 11), and the draw card needs a draw to exist.
- * An empty widget takes the same room as a full one and says less.
+ * An empty widget takes the same room as a full one and says less — which is why
+ * the proof cluster appears only once there are hours in the ledger: "0 hrs
+ * reclaimed" is a worse thing to greet somebody with every morning than nothing
+ * at all, and in their first weeks it is also just true and unhelpful.
+ *
+ * The community goal from §2 is deliberately absent. The brief asks for the
+ * collective number beside the personal one but never says what it counts
+ * towards, and a made-up target shown as if it meant something is worse than
+ * waiting for a real one.
  *
  * The map appears only as a preview (§3): Piazza should never show the full
  * thing, so La Strada stays somewhere members visit rather than get routed
@@ -52,6 +61,9 @@ export default async function PiazzaPage() {
   const signedOff = Boolean(submission?.submitted_at);
   const progress = weekProgress(week.loggedMinutes, COMPLETE_WEEK_MINUTES);
   const onboarding = member.status === "onboarding";
+
+  const hours = await getMemberHours(member.id);
+  const milestone = milestoneProgress(hours.total);
 
   return (
     <main className="flex-1 py-8 sm:py-10">
@@ -227,10 +239,44 @@ export default async function PiazzaPage() {
         </div>
       </Link>
 
-      <p className="mt-8 text-small text-navy/50">
-        Hours reclaimed, your milestones and the monthly draw arrive with the
-        first builds.
-      </p>
+      {hours.total > 0 ? (
+        /* The proof cluster (§2): the number, and how far to the next
+           threshold. One block rather than three widgets, because milestones
+           are thresholds of the same number rather than a separate idea. */
+        <Card className="mt-5 bg-sky/15">
+          <Eyebrow>Hours reclaimed</Eyebrow>
+          <p className="font-mono mt-1 text-title text-navy">
+            {formatHours(hours.total)}
+          </p>
+
+          <div className="mt-3">
+            <div className="h-1.5 overflow-hidden rounded-full bg-navy/10">
+              <div
+                className="h-full rounded-full bg-orange"
+                style={{ width: `${Math.round(milestone.fraction * 100)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-small text-navy/70">
+              {milestone.next === null
+                ? "Every milestone passed."
+                : `${milestone.toNext} to your next unlock at ${milestone.next}.`}
+            </p>
+          </div>
+
+          {hours.weeklyRate > 0 ? (
+            <p className="mt-3 text-caption text-navy/60">
+              Your builds add{" "}
+              <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
+              every week you log ten hours and submit.
+            </p>
+          ) : null}
+        </Card>
+      ) : (
+        <p className="mt-8 text-small text-navy/50">
+          Hours reclaimed, your milestones and the monthly draw arrive with the
+          first builds.
+        </p>
+      )}
     </main>
   );
 }

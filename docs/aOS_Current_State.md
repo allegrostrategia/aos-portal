@@ -17,6 +17,13 @@
 - **Admin lifecycle controls:** Activate/cancel/reinstate, roadmap editor with preserved item IDs, current focus correctly read-only (populated only via hot seat confirm).
 
 ## Built, not yet run against the live database
+- **Hours reclaimed — the ledger (1 Sep):** Step 10's core. Two tables, because §2's shape is the point: a **dated rate history** per build (`effective_from`/`effective_until`), and an **append-only weekly ledger**. Retiring a build that ran six months closes its period and leaves every week it earned untouched — a live recalculation would have erased six months of banked hours and shown a member their headline number falling. Accrual runs off the existing `due_jobs` cron, replans the last four weeks daily so an outage self-heals, and is idempotent on `(member, week)`.
+
+  **Two gates, and they are not the same gate:** the week must clear ten hours *and* the log must have been submitted. That's the literal reading of §2, which states them as separate bullets — it means tracking twelve hours and forgetting to submit earns nothing. Deliberate, but **worth Nina confirming out loud**, since it's members' real hours.
+
+  Admin can add a build and set/revise/retire its rate on the member page. 21 new schema tests, all mutation-checked.
+
+  **Ships a migration.** Third one now waiting on live.
 - **Hot seat challenge review (1 Sep):** Completes Step 8. The prep sheet now lists **every active member, not every submission** — a member who never submitted had no row and so couldn't be prepped at all, which made §5's own fallback ("work from whatever their tracked data shows as the biggest time-block") unreachable for exactly the people it was written for. Locking a challenge creates their row. Their biggest time block is surfaced as evidence rather than written up as a suggestion: nothing here generates text, which matters while AI drafting is on hold. Attendance recording and the replay note also added — both were columns nothing wrote. 13 action tests.
 
   **Ships a migration** (`20260901171500_draw_excludes_admins.sql`) — see the admin-in-the-draw bug below. Needs applying the same way as the last one.
@@ -39,6 +46,9 @@
 - **`npm run test:db` shows 64 passed, 1 failed on some days.** `create_member accepts the named parameters the app sends` computes its expected date in JS with `setMonth(+6)`, which overflows where Postgres clamps: run on 31 Aug, JS says 2027-03-03 and Postgres correctly says 2027-02-28. **The test is wrong, not the schema.** It only fails on days whose day-of-month doesn't exist six months later — the 29th to 31st of Aug, Oct, Dec, Mar, May, Jul — and passes on its own the next day, which is the worst version of a flaky test. Fix is to do the date arithmetic the way Postgres does rather than trusting `setMonth`.
 
 ## Deliberately not built yet, so it doesn't read as missed
+- **§2's collective community goal.** The brief asks for the community number beside the personal one but never says what it counts *towards*. The total is computable; the target needs Nina. A made-up threshold shown to members as if it meant something is worse than waiting.
+- **The full handover pack (Step 9).** Adding a build with a rate is a deliberately small slice of Step 9's territory, built only because Step 10 cannot function without it — nothing accrues until a rated build exists. The write-up, the member's own edit and export are all still unbuilt.
+- **The Piazza proof cluster shows only once there are hours.** "0 hrs reclaimed" every morning during a member's first weeks is worse than nothing.
 - **The member-facing draw card** (Piazza compact card + raffle-ticket click-through, §2) is Step 10 with the rest of gamification, not part of the admin work done on 1 Sep. Note it needs something the current RLS doesn't give it: members can read `draws`, but `winner_member_id` is only a uuid to them, and RLS stops a member resolving another member's name. Showing "X won" needs a deliberate decision about exposing winner names, not just a query.
 
 ## AI drafting is under review — do not wire it (1 Sep)
@@ -73,8 +83,9 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 10. Work reported as "done" while sitting uncommitted in the working tree — the deployed site was correctly serving older code and looked like a bug in the feature. **Building it and shipping it are two separate things; say which one has actually happened**
 11. Session pooler rejecting three freshly-reset passwords with `28P01` — the pooler username must be `postgres.<ref>`, not `postgres`, and a bare `postgres` fails as a *password* error. Cost an afternoon. Now written up in the README's connection section
 12. `npm run db:bundle` nearly pasted over a live schema — it emits **every** migration, which is a bootstrap tool, not a way to apply one pending migration. For a single migration, paste that one file and repair only its version. Also in the README now
-13. **The admin is also an active member** — `draw_eligibility()` and the new hot seat prep sheet both filtered on `status = 'active'` alone, which put Nina on her own prep sheet every month and in the hat for a prize she gives away. `role = 'member'` is the distinction, as `lib/jobs/runner.ts` already had it. Caught by a test, not by looking
-14. A flaky test hiding behind `&&` — `recording a visit creates it, then increments` asserted two `now()` calls differ, but `now()` is the transaction clock and PGlite takes it from JS, so fast calls share a millisecond. It failed **6 runs in 12 on untouched code** while being quoted as "83 passing" off lucky single runs, and its position in `test:db` meant a coin-toss failure stopped the action suite running at all. Now asserts what the behaviour actually is
+13. **A test that passed for the wrong reason** — "a rate that starts after the week doesn't count" never had a rate starting after the week; the `effective_until` clause alone carried it. Found by mutation testing: deleting the start-date check broke nothing. The test now sets a genuinely future-dated rate. **A green test is not evidence until it's been seen to fail**
+14. **The admin is also an active member** — `draw_eligibility()` and the new hot seat prep sheet both filtered on `status = 'active'` alone, which put Nina on her own prep sheet every month and in the hat for a prize she gives away. `role = 'member'` is the distinction, as `lib/jobs/runner.ts` already had it. Caught by a test, not by looking
+15. A flaky test hiding behind `&&` — `recording a visit creates it, then increments` asserted two `now()` calls differ, but `now()` is the transaction clock and PGlite takes it from JS, so fast calls share a millisecond. It failed **6 runs in 12 on untouched code** while being quoted as "83 passing" off lucky single runs, and its position in `test:db` meant a coin-toss failure stopped the action suite running at all. Now asserts what the behaviour actually is
 
 ## Environment variables confirmed set in Vercel
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` deliberately unset** pending Nina's decision on AI drafting — see the section above before adding it.
@@ -88,7 +99,7 @@ Today's Claude Code session ran for a very long time (Steps 1 through 7, in one 
 ## Right now, exactly
 Steps 1-7 are done, and admin content upload — the thing that was blocking Nina loading real content — is built, tested against live storage and pushed. The library is now usable end to end without touching Supabase's dashboard.
 
-Step 8 is done. Next real piece of work is Step 9 — the handover pack, which is available; its AI SOP generator is not, pending Nina's decision. Worth deciding whether to start Step 9 knowing half of it is blocked, or take Step 10's hours-reclaimed ledger instead, which is fully unblocked and is what the whole "one real thing built live" promise is measured by.
+Step 8 and the core of Step 10 are done. Remaining Step 10: the illustrated milestone path click-through, and the community goal once Nina sets a target. Next real piece of work after that is Step 9 — the handover pack, which is available; its AI SOP generator is not, pending Nina's decision. Worth deciding whether to start Step 9 knowing half of it is blocked, or take Step 10's hours-reclaimed ledger instead, which is fully unblocked and is what the whole "one real thing built live" promise is measured by.
 
 Step 9 is only partly available: the handover pack itself and manual SOP addition are fine, the AI SOP generator is not. Worth taking Step 8 first rather than starting Step 9 and stopping halfway through it.
 

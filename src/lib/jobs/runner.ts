@@ -302,6 +302,88 @@ async function runHotSeatReminder(
   return "sent";
 }
 
+/**
+ * Queue the hours-reclaimed ledger for weeks that have closed (§2, Step 10).
+ *
+ * Plans the last four completed weeks every day, not just the most recent one.
+ * Planning is idempotent through `dedupe_key`, so re-planning a week already
+ * queued or already done costs nothing — and it means a cron outage of up to a
+ * month heals itself on the next run rather than needing a manual backfill. The
+ * build plan is explicit that a failed run must not silently cost members hours
+ * they earned, and this is how that promise is kept.
+ *
+ * Members only. Admin rows are `status = 'active'` too, and Nina does not accrue
+ * hours from builds she ran for other people.
+ */
+const LEDGER_WEEKS_BACK = 4;
+
+async function planHoursLedger(today: string): Promise<number> {
+  const admin = createAdminClient();
+
+  const { data: memberRows } = await admin
+    .from("members")
+    .select("id")
+    .eq("role", "member")
+    .eq("status", "active");
+
+  const members = (memberRows ?? []) as { id: string }[];
+  if (members.length === 0) return 0;
+
+  // The week containing `today` hasn't closed yet, so the most recent closed
+  // week is the one before it.
+  const thisMonday = mondayOf(today);
+  const weeks = Array.from({ length: LEDGER_WEEKS_BACK }, (_, i) =>
+    addDays(thisMonday, -7 * (i + 1)),
+  );
+
+  const rows = members.flatMap((member) =>
+    weeks.map((weekStart) => ({
+      kind: "hours_ledger_week" as const,
+      member_id: member.id,
+      // Runnable from the Monday the week closed; `lte` in the runner picks up
+      // anything older that never ran.
+      due_on: addDays(weekStart, 7),
+      dedupe_key: `hours_ledger_week:${member.id}:${weekStart}`,
+      payload: { week_start: weekStart },
+    })),
+  );
+
+  const { data: inserted } = await admin
+    .from("due_jobs")
+    .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
+    .select("id");
+
+  return (inserted ?? []).length;
+}
+
+/**
+ * Write one week into the ledger.
+ *
+ * All the deciding happens in `accrue_hours_for_week()` — whether the week
+ * qualified, what the active rates were, and the uniqueness that makes a repeat
+ * call harmless. This just reports which way it went, so a week that didn't
+ * qualify is recorded as skipped rather than failed: not qualifying is a normal
+ * outcome, not an error.
+ */
+async function runHoursLedger(
+  admin: ReturnType<typeof createAdminClient>,
+  job: { member_id: string; payload: { week_start?: string } },
+): Promise<"sent" | "skipped" | "failed"> {
+  const weekStart = job.payload.week_start;
+  if (!weekStart) return "failed";
+
+  const { data, error } = await admin.rpc("accrue_hours_for_week", {
+    p_member_id: job.member_id,
+    p_week_start: weekStart,
+  });
+
+  if (error) throw new Error(error.message);
+
+  // Null means the week didn't qualify — under ten hours, or the log was never
+  // submitted. Nothing to do, and nothing wrong.
+  return data === null ? "skipped" : "sent";
+}
+
 export async function runDueJobs(today: string): Promise<RunSummary> {
   const summary: RunSummary = {
     planned: 0,
@@ -319,7 +401,9 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
   }
 
   summary.planned =
-    (await planReminders(today)) + (await planHotSeatReminders(today));
+    (await planReminders(today)) +
+    (await planHotSeatReminders(today)) +
+    (await planHoursLedger(today));
 
   const admin = createAdminClient();
 
@@ -361,10 +445,12 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
           ...job,
           kind: job.kind as HotSeatReminderKind,
         });
+      } else if (job.kind === "hours_ledger_week") {
+        outcome = await runHoursLedger(admin, job);
       } else {
-        // hours_ledger_week and build_check_in have no handler yet (Steps 10
-        // and 11). Left pending rather than marked done, so they run when their
-        // handler lands instead of being silently consumed now.
+        // build_check_in has no handler yet (Step 11). Left pending rather than
+        // marked done, so it runs when its handler lands instead of being
+        // silently consumed now.
         summary.skipped += 1;
         continue;
       }
