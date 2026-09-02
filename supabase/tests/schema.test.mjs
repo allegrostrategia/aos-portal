@@ -831,5 +831,160 @@ await rejects("a member cannot accrue their own hours", () =>
     `select public.accrue_hours_for_week('${ERIN}','2026-08-03'::date)`)),
   "Only an admin");
 
+console.log("\n— chat —");
+
+// ERIN is active with builds already in her handover pack, so check-in messages
+// have something real to be tagged to. FRAN is a second active member for DMs.
+const FRAN = "13131313-1313-1313-1313-131313131313";
+await db.exec(`insert into auth.users (id, email) values ('${FRAN}', 'fran@test')`);
+await as(ADMIN, () => db.query(
+  `select public.create_member('${FRAN}','fran@test','Fran Doyle', now(), now())`));
+await as(ADMIN, () => db.query(`select public.activate_member('${FRAN}')`));
+
+const generalId = async () => (await as(ERIN, () => db.query(
+  `select id from public.chat_channels where slug='general'`))).rows[0].id;
+
+await check("the three open channels are seeded and visible to members", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select slug from public.chat_channels where kind='group' order by sort_order`));
+  return r.rows.map((x) => x.slug).join(",") === "general,wins,time-tracking";
+});
+
+await check("an onboarding member can reach chat — it isn't locked until active", async () => {
+  // ALICE was rejoined earlier and is back in onboarding. §1 locks the library,
+  // hot seat, pairing and the draw; Piazza Sociale is open from day one.
+  const r = await as(ALICE, () => db.query(
+    `select count(*)::int c from public.chat_channels where kind='group'`));
+  return r.rows[0].c === 3;
+});
+
+await check("a cancelled member reaches nothing", async () => {
+  const r = await as(DANA, () => db.query(
+    `select count(*)::int c from public.chat_channels`));
+  return r.rows[0].c === 0;
+});
+
+await check("a member posts to an open channel", async () => {
+  const id = await generalId();
+  await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${id}','${ERIN}','Morning all')`));
+  const r = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.chat_messages where channel_id='${id}'`));
+  return r.rows[0].c === 1;
+});
+
+await rejects("a member cannot post as somebody else", async () => {
+  const id = await generalId();
+  return as(FRAN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${id}','${ERIN}','Not me')`));
+}, "row-level security");
+
+await rejects("a message must actually say something", async () => {
+  const id = await generalId();
+  return as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${id}','${ERIN}','   ')`));
+}, "chat_messages_has_content");
+
+await rejects("a voice message without a duration is refused", async () => {
+  const id = await generalId();
+  return as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, voice_path)
+     values ('${id}','${ERIN}','${ERIN}/note.webm')`));
+}, "chat_messages_voice_is_complete");
+
+await check("a voice message with a duration is fine, with no text at all", async () => {
+  const id = await generalId();
+  await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, voice_path, voice_seconds)
+     values ('${id}','${ERIN}','${ERIN}/note.webm', 42)`));
+  const r = await as(ERIN, () => db.query(
+    `select voice_seconds from public.chat_messages where voice_path='${ERIN}/note.webm'`));
+  return r.rows[0].voice_seconds === 42;
+});
+
+await check("a sent message cannot be edited, even by its author", async () => {
+  try {
+    await as(ERIN, () => db.query(
+      `update public.chat_messages set body='rewritten' where member_id='${ERIN}'`));
+  } catch {
+    // No update policy: RLS may refuse outright or simply match nothing.
+  }
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_messages where body='rewritten'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a check-in response is tagged to the build it's about", async () => {
+  const id = await generalId();
+  await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body, handover_pack_id)
+     values ('${id}','${ERIN}','Two weeks in, it is holding up','${FOLLOW_UP}')`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_messages
+     where handover_pack_id='${FOLLOW_UP}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("consent is off unless it is deliberately given", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select bool_or(testimonial_consent) any_consent from public.chat_messages
+     where member_id='${ERIN}'`));
+  return r.rows[0].any_consent === false;
+});
+
+await rejects("consent cannot be given without a build to consent about", async () => {
+  const id = await generalId();
+  return as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body, testimonial_consent)
+     values ('${id}','${ERIN}','Reuse this', true)`));
+}, "chat_messages_consent_needs_a_build");
+
+await check("opening a DM twice returns the same channel, not two", async () => {
+  const first = await as(ERIN, () => db.query(
+    `select public.open_direct_channel('${FRAN}') id`));
+  const second = await as(FRAN, () => db.query(
+    `select public.open_direct_channel('${ERIN}') id`));
+  return first.rows[0].id === second.rows[0].id;
+});
+
+await rejects("you cannot DM yourself", () =>
+  as(ERIN, () => db.query(`select public.open_direct_channel('${ERIN}')`)),
+  "cannot open a direct message with yourself");
+
+await rejects("you cannot DM a cancelled member", () =>
+  as(ERIN, () => db.query(`select public.open_direct_channel('${DANA}')`)),
+  "not reachable");
+
+await check("a DM is invisible to everyone outside it", async () => {
+  const dm = (await as(ERIN, () => db.query(
+    `select public.open_direct_channel('${FRAN}') id`))).rows[0].id;
+  await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${dm}','${ERIN}','Just between us')`));
+
+  const mine = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_messages where channel_id='${dm}'`));
+  const theirs = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.chat_messages where channel_id='${dm}'`));
+  const outsider = await as(BOB, () => db.query(
+    `select count(*)::int c from public.chat_messages where channel_id='${dm}'`));
+  const channel = await as(BOB, () => db.query(
+    `select count(*)::int c from public.chat_channels where id='${dm}'`));
+
+  return mine.rows[0].c === 1 && theirs.rows[0].c === 1
+    && outsider.rows[0].c === 0 && channel.rows[0].c === 0;
+});
+
+await rejects("an outsider cannot post into a DM they can't see", async () => {
+  const dm = (await as(ERIN, () => db.query(
+    `select public.open_direct_channel('${FRAN}') id`))).rows[0].id;
+  return as(BOB, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${dm}','${BOB}','Butting in')`));
+}, "row-level security");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
