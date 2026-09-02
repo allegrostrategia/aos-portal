@@ -11,7 +11,7 @@ import {
   type ReminderKind,
 } from "./reminders";
 import { formatSessionTime } from "@/lib/time-zone";
-import { hotSeatCopy, renderEmail, weeklyLogCopy } from "./copy";
+import { chatUnreadCopy, hotSeatCopy, renderEmail, weeklyLogCopy } from "./copy";
 import {
   daysBetween,
   kindsForDaysUntil,
@@ -384,6 +384,173 @@ async function runHoursLedger(
   return data === null ? "skipped" : "sent";
 }
 
+/**
+ * Email somebody about a direct message they haven't read (§4).
+ *
+ * **Direct messages only.** Notifying every member about every post in General
+ * an hour later is precisely the inbox-clogging this is meant to avoid, and the
+ * case that actually needs covering is the Friday/Monday touchpoint — a DM, with
+ * days between the question and the answer. Open channels stay something you
+ * find by visiting, and that can be widened later if anyone misses it.
+ *
+ * One notification per unread run, not per message. The dedupe key is the
+ * *oldest* unread message in the conversation, so a burst of five messages sends
+ * one email, and no email is ever sent twice for the same backlog. Read the
+ * conversation and the next unread message becomes a different oldest — a new
+ * key, and a new notification if that one is left too.
+ */
+const UNREAD_AFTER_MINUTES = 60;
+
+async function planChatNotifications(now: Date): Promise<number> {
+  const admin = createAdminClient();
+  const cutoff = new Date(now.getTime() - UNREAD_AFTER_MINUTES * 60_000);
+
+  // Direct channels and who is in them. Small by nature — one row per person per
+  // conversation — so this stays a cheap read.
+  const { data: participantRows } = await admin
+    .from("chat_participants")
+    .select("channel_id, member_id, chat_channels!inner(kind)");
+
+  const participants = ((participantRows ?? []) as unknown as {
+    channel_id: string;
+    member_id: string;
+    chat_channels: { kind: string } | null;
+  }[]).filter((row) => row.chat_channels?.kind === "direct");
+
+  if (participants.length === 0) return 0;
+
+  const channelIds = [...new Set(participants.map((p) => p.channel_id))];
+
+  const [{ data: messageRows }, { data: readRows }] = await Promise.all([
+    admin
+      .from("chat_messages")
+      .select("id, channel_id, member_id, created_at")
+      .in("channel_id", channelIds)
+      .lte("created_at", cutoff.toISOString())
+      .order("created_at"),
+    admin
+      .from("chat_reads")
+      .select("channel_id, member_id, last_read_at")
+      .in("channel_id", channelIds),
+  ]);
+
+  const messages = (messageRows ?? []) as {
+    id: string;
+    channel_id: string;
+    member_id: string;
+    created_at: string;
+  }[];
+
+  const lastRead = new Map(
+    ((readRows ?? []) as { channel_id: string; member_id: string; last_read_at: string }[])
+      .map((r) => [`${r.channel_id}:${r.member_id}`, r.last_read_at]),
+  );
+
+  const rows: Record<string, unknown>[] = [];
+
+  for (const participant of participants) {
+    const read = lastRead.get(`${participant.channel_id}:${participant.member_id}`);
+
+    // Their own messages are never unread to them.
+    const unread = messages.filter(
+      (m) =>
+        m.channel_id === participant.channel_id &&
+        m.member_id !== participant.member_id &&
+        (!read || m.created_at > read),
+    );
+
+    if (unread.length === 0) continue;
+
+    const oldest = unread[0];
+    rows.push({
+      kind: "chat_unread",
+      member_id: participant.member_id,
+      // Both set: `due_on` keeps the existing daily query working, `due_at` is
+      // what actually decides, so a sub-daily runner fires it on time.
+      due_on: now.toISOString().slice(0, 10),
+      due_at: new Date(
+        new Date(oldest.created_at).getTime() + UNREAD_AFTER_MINUTES * 60_000,
+      ).toISOString(),
+      dedupe_key: `chat_unread:${participant.member_id}:${oldest.id}`,
+      payload: {
+        channel_id: participant.channel_id,
+        oldest_message_id: oldest.id,
+        count: unread.length,
+      },
+    });
+  }
+
+  if (rows.length === 0) return 0;
+
+  const { data: inserted } = await admin
+    .from("due_jobs")
+    .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
+    .select("id");
+
+  return (inserted ?? []).length;
+}
+
+/**
+ * Send it — unless they've read the conversation since it was queued.
+ *
+ * Re-checked at run time for the same reason the log reminders are: a queued
+ * notification that fires after somebody has already replied is worse than no
+ * notification, because it teaches them the emails aren't worth opening.
+ */
+async function runChatNotification(
+  admin: ReturnType<typeof createAdminClient>,
+  job: {
+    member_id: string;
+    payload: { channel_id?: string; oldest_message_id?: string; count?: number };
+  },
+): Promise<"sent" | "skipped" | "failed"> {
+  const { channel_id: channelId, oldest_message_id: oldestId } = job.payload;
+  if (!channelId || !oldestId) return "failed";
+
+  const [{ data: oldest }, { data: read }, { data: recipient }] = await Promise.all([
+    admin.from("chat_messages").select("created_at, member_id").eq("id", oldestId).maybeSingle(),
+    admin
+      .from("chat_reads")
+      .select("last_read_at")
+      .eq("channel_id", channelId)
+      .eq("member_id", job.member_id)
+      .maybeSingle(),
+    admin.from("members").select("email, full_name").eq("id", job.member_id).maybeSingle(),
+  ]);
+
+  const message = oldest as { created_at: string; member_id: string } | null;
+  const recipientRow = recipient as { email: string; full_name: string } | null;
+  if (!message || !recipientRow) return "skipped";
+
+  const readAt = (read as { last_read_at: string } | null)?.last_read_at;
+  if (readAt && readAt >= message.created_at) return "skipped";
+
+  const { data: sender } = await admin
+    .from("members")
+    .select("full_name")
+    .eq("id", message.member_id)
+    .maybeSingle();
+
+  const copy = chatUnreadCopy({
+    firstName: recipientRow.full_name.split(" ")[0],
+    fromName: (sender as { full_name: string } | null)?.full_name ?? "Someone",
+    count: job.payload.count ?? 1,
+    chatUrl: `${env.siteUrl}/sociale/${channelId}`,
+  });
+
+  const result = await sendEmail({
+    to: recipientRow.email,
+    subject: copy.subject,
+    text: renderEmail(copy),
+  });
+
+  // Reported as failed rather than swallowed, so a delivery problem shows up in
+  // the run summary instead of looking like a quiet success.
+  if (!result.ok) throw new Error(result.error ?? "Send failed");
+
+  return "sent";
+}
+
 export async function runDueJobs(today: string): Promise<RunSummary> {
   const summary: RunSummary = {
     planned: 0,
@@ -403,16 +570,21 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
   summary.planned =
     (await planReminders(today)) +
     (await planHotSeatReminders(today)) +
-    (await planHoursLedger(today));
+    (await planHoursLedger(today)) +
+    (await planChatNotifications(new Date()));
 
   const admin = createAdminClient();
 
   // `lte` rather than `eq`: a missed day is caught up rather than lost.
+  //
+  // Two schedules, so two conditions. Calendar jobs are due on a day; the chat
+  // notification is due at a moment, and would otherwise wait until whichever
+  // 08:00 came next — which for "unread for an hour" means tomorrow morning.
   const { data } = await admin
     .from("due_jobs")
     .select("id, kind, member_id, payload, attempts")
     .eq("status", "pending")
-    .lte("due_on", today)
+    .or(`due_at.lte.${new Date().toISOString()},and(due_at.is.null,due_on.lte.${today})`)
     .order("due_on")
     .limit(500);
 
@@ -422,7 +594,13 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
     id: string;
     kind: string;
     member_id: string;
-    payload: { week_start?: string; session_id?: string };
+    payload: {
+      week_start?: string;
+      session_id?: string;
+      channel_id?: string;
+      oldest_message_id?: string;
+      count?: number;
+    };
     attempts: number;
   }[];
 
@@ -447,6 +625,8 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
         });
       } else if (job.kind === "hours_ledger_week") {
         outcome = await runHoursLedger(admin, job);
+      } else if (job.kind === "chat_unread") {
+        outcome = await runChatNotification(admin, job);
       } else {
         // build_check_in has no handler yet (Step 11). Left pending rather than
         // marked done, so it runs when its handler lands instead of being

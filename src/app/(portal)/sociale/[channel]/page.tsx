@@ -8,6 +8,7 @@ import { getChannel, getDirectPartners, getMessages } from "@/lib/chat/queries";
 import { formatSessionTimeShort } from "@/lib/time-zone";
 import { Card, Eyebrow } from "@/components/ui/card";
 import { Composer } from "./composer";
+import { LiveThread } from "./live-thread";
 
 export const metadata: Metadata = { title: "Piazza Sociale — aOS" };
 
@@ -51,6 +52,8 @@ export default async function ChannelPage({
       </p>
 
       <h1 className="font-display mb-4 text-title text-navy italic">{title}</h1>
+
+      <LiveThread channelId={channel.id} />
 
       <Card padded={false} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-col gap-4 overflow-y-auto p-4">

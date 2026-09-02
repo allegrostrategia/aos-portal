@@ -93,3 +93,22 @@ export async function openDirectMessage(formData: FormData): Promise<void> {
 
   redirect(`/sociale/${data as string}`);
 }
+
+/**
+ * Mark a channel read up to now.
+ *
+ * Called from the open thread rather than the server render, because "they have
+ * seen it" is about the page being in front of them — a prefetch or a bot
+ * fetching the route is not somebody reading.
+ *
+ * Silent on failure by design: a read marker that didn't save costs an extra
+ * email, and surfacing an error about it would interrupt reading to report
+ * something the member can do nothing about.
+ */
+export async function markChannelRead(channelId: string): Promise<void> {
+  await requireMember();
+  if (!channelId) return;
+
+  const supabase = await createClient();
+  await supabase.rpc("mark_channel_read", { p_channel_id: channelId });
+}

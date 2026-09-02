@@ -986,5 +986,81 @@ await rejects("an outsider cannot post into a DM they can't see", async () => {
      values ('${dm}','${BOB}','Butting in')`));
 }, "row-level security");
 
+console.log("\n— chat read state —");
+
+await check("marking read creates a marker", async () => {
+  const id = await generalId();
+  await as(ERIN, () => db.query(`select public.mark_channel_read('${id}')`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_reads
+     where channel_id='${id}' and member_id='${ERIN}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("a read marker only ever moves forward", async () => {
+  const id = await generalId();
+
+  // A marker ahead of now() stands in for the race this guards: now() is
+  // transaction-start time, so two overlapping transactions can commit out of
+  // order and write an older value last. That can't be reproduced on demand;
+  // this asserts the same semantics — an older timestamp never wins.
+  await as(ERIN, () => db.query(
+    `update public.chat_reads set last_read_at = now() + interval '1 hour'
+     where channel_id='${id}' and member_id='${ERIN}'`));
+  const ahead = await as(ERIN, () => db.query(
+    `select last_read_at from public.chat_reads
+     where channel_id='${id}' and member_id='${ERIN}'`));
+
+  await as(ERIN, () => db.query(`select public.mark_channel_read('${id}')`));
+
+  const after = await as(ERIN, () => db.query(
+    `select last_read_at from public.chat_reads
+     where channel_id='${id}' and member_id='${ERIN}'`));
+  return String(after.rows[0].last_read_at) === String(ahead.rows[0].last_read_at);
+});
+
+await check("a member cannot mark a channel they can't see", async () => {
+  const dm = (await as(ERIN, () => db.query(
+    `select public.open_direct_channel('${FRAN}') id`))).rows[0].id;
+  await as(BOB, () => db.query(`select public.mark_channel_read('${dm}')`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.chat_reads where channel_id='${dm}' and member_id='${BOB}'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a member sees only their own read markers", async () => {
+  const mine = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_reads`));
+  const theirs = await as(BOB, () => db.query(
+    `select count(*)::int c from public.chat_reads`));
+  return mine.rows[0].c > 0 && theirs.rows[0].c === 0;
+});
+
+await check("due_jobs can now be due at a moment, not just on a day", async () => {
+  // Written without a role, mirroring the cron's service-role client — the
+  // queue is machine-owned and has no policy for anyone signed in.
+  await db.query(`
+    insert into public.due_jobs (kind, member_id, due_on, due_at, dedupe_key)
+    values ('chat_unread','${ERIN}', current_date, now() + interval '1 hour', 'test:at')`);
+  const r = await db.query(
+    `select due_at is not null h from public.due_jobs where dedupe_key='test:at'`);
+  return r.rows[0].h === true;
+});
+
+await check("nobody signed in can write to the job queue, admins included", async () => {
+  for (const who of [ERIN, ADMIN]) {
+    try {
+      await as(who, () => db.query(`
+        insert into public.due_jobs (kind, member_id, due_on, dedupe_key)
+        values ('chat_unread','${ERIN}', current_date, 'test:forged:${'${who}'}')`));
+    } catch {
+      // Either outcome is fine; what matters is no row appearing.
+    }
+  }
+  const r = await db.query(
+    `select count(*)::int c from public.due_jobs where dedupe_key like 'test:forged%'`);
+  return r.rows[0].c === 0;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

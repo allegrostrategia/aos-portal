@@ -127,3 +127,30 @@ export function hotSeatCopy(
       };
   }
 }
+
+/**
+ * Somebody said something, and it's been sitting there.
+ *
+ * Deliberately doesn't quote the message. A voice note has no text to quote, and
+ * repeating a direct message into an inbox turns a private conversation into
+ * email — which is not what either person agreed to when they wrote it.
+ */
+export function chatUnreadCopy(input: {
+  firstName: string;
+  fromName: string;
+  count: number;
+  chatUrl: string;
+}): EmailCopy {
+  const what =
+    input.count === 1 ? "a message" : `${input.count} messages`;
+
+  return {
+    subject: `${input.fromName} sent you ${what}`,
+    body: [
+      `${input.firstName},`,
+      `${input.fromName} sent you ${what} in the portal, and it's still unread.`,
+      `Nothing needs answering straight away — this is only here so a reply doesn't sit unseen for days.`,
+      `Read it: ${input.chatUrl}`,
+    ],
+  };
+}
