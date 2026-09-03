@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { getChannels, getDirectPartners } from "@/lib/chat/queries";
-import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { Card, PageHeader } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Piazza Sociale — aOS" };
 
@@ -11,10 +11,9 @@ export const metadata: Metadata = { title: "Piazza Sociale — aOS" };
  * Piazza Sociale (§10): chat and the member directory, both utilities reached
  * for constantly rather than destinations arrived at.
  *
- * The directory lives here too, and isn't built yet — `member_profiles` exists
- * and members fill theirs in during onboarding, but there's no browse or search
- * screen. Named rather than silently absent, so it reads as unfinished rather
- * than forgotten.
+ * The directory lives here too, for the same reason: §10 is explicit that it is
+ * a searchable utility rather than a destination, so burying it in a themed
+ * station would add friction without adding feeling.
  */
 export default async function SocialePage() {
   const member = (await getCurrentMember())!;
@@ -75,13 +74,18 @@ export default async function SocialePage() {
         </>
       ) : null}
 
-      <Card className="mt-8">
-        <Eyebrow>Still to come</Eyebrow>
-        <p className="mt-1 text-small text-navy/70">
-          The member directory lives here too — searchable by name, title and
-          bio, with a button through to a direct message. Not built yet.
-        </p>
-      </Card>
+      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+        Everyone else
+      </h2>
+      <Link href="/sociale/directory" className="block">
+        <Card className="transition hover:border-navy/30">
+          <p className="text-body text-navy">The member directory</p>
+          <p className="mt-1 text-small text-navy/70">
+            Search by name, what someone does, or anything in their bio — then
+            message them straight from their listing.
+          </p>
+        </Card>
+      </Link>
     </main>
   );
 }

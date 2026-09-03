@@ -1105,5 +1105,101 @@ await check("a cancelled member resolves nobody", async () => {
   return r.rows[0].c === 0;
 });
 
+console.log("\n— member directory —");
+
+await as(ERIN, () => db.query(`
+  insert into public.member_profiles (member_id, display_name, title, bio, links, completed_at)
+  values ('${ERIN}', 'Erin Vale', 'Fractional operations lead',
+          'I fix delivery for agencies drowning in client admin.',
+          '[{"label":"Work with me","url":"https://example.test/erin"}]'::jsonb, now())`));
+
+// Fran's listing was completed earlier in the display-names block; give her
+// something searchable that doesn't overlap with Erin's wording.
+await as(FRAN, () => db.query(`
+  update public.member_profiles
+  set title = 'Brand photographer', bio = 'Portraits for founders who hate being photographed.'
+  where member_id = '${FRAN}'`));
+
+await check("a member sees other members' completed listings", async () => {
+  const r = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.member_profiles where member_id='${ERIN}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("an owner can still read their own incomplete listing", async () => {
+  // Alice's half-finished row already exists from the tiering tests above, and
+  // "incomplete listings stay hidden" covers the hiding. The other half matters
+  // just as much: a listing hidden from its own author is one they can never
+  // come back and finish.
+  const theirs = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.member_profiles where member_id='${ALICE}'`));
+  const own = await as(ALICE, () => db.query(
+    `select count(*)::int c from public.member_profiles where member_id='${ALICE}'`));
+  return theirs.rows[0].c === 0 && own.rows[0].c === 1;
+});
+
+await check("search matches on the bio, not just the name", async () => {
+  const r = await as(FRAN, () => db.query(
+    `select display_name from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'drowning')`));
+  return r.rows.length === 1 && r.rows[0].display_name === 'Erin Vale';
+});
+
+await check("a search term shared by two listings returns both", async () => {
+  // Erin and Bob both mention agencies. A directory that silently returned one
+  // of them would be worse than useless.
+  const r = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'agencies')`));
+  return r.rows[0].c === 2;
+});
+
+await check("search matches on the title", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select display_name from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'photographer')`));
+  return r.rows.length === 1 && r.rows[0].display_name.includes('Fran');
+});
+
+await check("search stems, so 'photograph' finds 'photographer'", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'photograph')`));
+  return r.rows[0].c === 1;
+});
+
+await check("an apostrophe in the search box doesn't throw", async () => {
+  // websearch_to_tsquery takes what a person actually types. Raw to_tsquery
+  // would raise a syntax error here, and a search box that errors on "founder's"
+  // is worse than one that finds nothing.
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'founder''s hate')`));
+  return typeof r.rows[0].c === "number";
+});
+
+await check("search never reaches an incomplete listing", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'half-written')`));
+  return r.rows[0].c === 0;
+});
+
+await check("a cancelled member sees no directory at all", async () => {
+  const r = await as(DANA, () => db.query(
+    `select count(*)::int c from public.member_profiles`));
+  return r.rows[0].c === 0;
+});
+
+await check("a member cannot edit somebody else's listing", async () => {
+  // No throw: the UPDATE policy simply matches no rows, so this asserts the bio
+  // is untouched rather than expecting an error.
+  await as(FRAN, () => db.query(
+    `update public.member_profiles set bio = 'Hijacked' where member_id='${ERIN}'`));
+  const r = await as(ERIN, () => db.query(
+    `select bio from public.member_profiles where member_id='${ERIN}'`));
+  return !r.rows[0].bio.includes("Hijacked");
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
