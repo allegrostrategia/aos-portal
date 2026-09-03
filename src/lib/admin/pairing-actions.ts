@@ -161,9 +161,21 @@ export async function runMatching(
   ]);
 
   if (jobs.length > 0) {
-    await supabase
+    const { error: queueError } = await supabase
       .from("due_jobs")
       .upsert(jobs, { onConflict: "dedupe_key", ignoreDuplicates: true });
+
+    // Checked, because the failure is invisible otherwise: the pairings exist
+    // and look right, and nobody is ever told about them. Said out loud rather
+    // than swallowed — the pairings are real and shouldn't be undone, so this
+    // reports what didn't happen instead of pretending the run succeeded.
+    if (queueError) {
+      return {
+        error:
+          `Pairings were made, but the emails couldn't be queued: ${queueError.message}. ` +
+          `Nobody has been told yet.`,
+      };
+    }
   }
 
   revalidatePath("/", "layout");
