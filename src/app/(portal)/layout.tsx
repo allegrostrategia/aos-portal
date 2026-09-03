@@ -42,6 +42,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     { href: "/hot-seat", label: "Hot seat" },
     { href: "/stations", label: "La Strada" },
     { href: "/sociale", label: "Sociale" },
+    { href: "/pairing", label: "Pairing" },
     ...(member.role === "admin"
       ? [
           { href: "/admin/members", label: "Admin" },
@@ -50,6 +51,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           { href: "/admin/reminders", label: "Emails" },
           { href: "/admin/library", label: "Library" },
           { href: "/admin/draw", label: "Draw" },
+          { href: "/admin/pairing", label: "Pairs" },
         ]
       : []),
   ];

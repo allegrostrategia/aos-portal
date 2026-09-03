@@ -1225,5 +1225,77 @@ await check("a member cannot edit somebody else's listing", async () => {
   return !r.rows[0].bio.includes("Hijacked");
 });
 
+console.log("\n— pairing, what a member may change —");
+
+const PAIR_MONTH = "2026-10-01";
+const PAIR_ID = "15151515-1515-1515-1515-151515151515";
+
+await as(ADMIN, () => db.query(`
+  insert into public.pairings (id, pairing_month, scheduled_for)
+  values ('${PAIR_ID}', '${PAIR_MONTH}', '2026-10-06 14:00Z')`));
+await as(ADMIN, () => db.query(`
+  insert into public.pairing_participants (pairing_id, member_id, pairing_month)
+  values ('${PAIR_ID}', '${ERIN}', '${PAIR_MONTH}'),
+         ('${PAIR_ID}', '${FRAN}', '${PAIR_MONTH}')`));
+
+await check("a member confirms they met", async () => {
+  await as(ERIN, () => db.query(
+    `update public.pairings set met_at = now() where id='${PAIR_ID}'`));
+  const r = await as(FRAN, () => db.query(
+    `select met_at is not null m from public.pairings where id='${PAIR_ID}'`));
+  return r.rows[0].m === true;
+});
+
+// The policy allows a member to update their own pairing, and RLS is row-level,
+// so without the trigger every column was theirs — including the flag that tells
+// Nina a pairing has stalled.
+await rejects("a member cannot clear the day-7 flag Nina relies on", async () => {
+  await as(ADMIN, () => db.query(
+    `update public.pairings set flagged_at = now() where id='${PAIR_ID}'`));
+  return as(ERIN, () => db.query(
+    `update public.pairings set flagged_at = null where id='${PAIR_ID}'`));
+}, "yours to change");
+
+await rejects("a member cannot move the proposed time unilaterally", () =>
+  as(ERIN, () => db.query(
+    `update public.pairings set scheduled_for = '2026-10-20 09:00Z' where id='${PAIR_ID}'`)),
+  "yours to change");
+
+await check("an admin can still set both", async () => {
+  await as(ADMIN, () => db.query(`
+    update public.pairings set flagged_at = null, scheduled_for = '2026-10-07 10:00Z'
+    where id='${PAIR_ID}'`));
+  const r = await as(ADMIN, () => db.query(
+    `select flagged_at is null f from public.pairings where id='${PAIR_ID}'`));
+  return r.rows[0].f === true;
+});
+
+await check("somebody outside the pairing cannot touch it at all", async () => {
+  try {
+    await as(BOB, () => db.query(
+      `update public.pairings set met_at = null where id='${PAIR_ID}'`));
+  } catch {
+    // Either outcome is fine; what matters is met_at surviving.
+  }
+  const r = await as(ERIN, () => db.query(
+    `select met_at is not null m from public.pairings where id='${PAIR_ID}'`));
+  return r.rows[0].m === true;
+});
+
+await check("availability is private to the member who gave it", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.pairing_availability (member_id, pairing_month, availability, submitted_at)
+    values ('${ERIN}', '${PAIR_MONTH}', '{"slots":["tue-pm"]}'::jsonb, now())`));
+
+  const mine = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.pairing_availability`));
+  const theirs = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.pairing_availability`));
+  const nina = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.pairing_availability`));
+  // Their partner can't read it; Nina can, because she runs the matching.
+  return mine.rows[0].c === 1 && theirs.rows[0].c === 0 && nina.rows[0].c === 1;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

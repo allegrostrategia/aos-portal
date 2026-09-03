@@ -33,6 +33,13 @@ Three things worth keeping from the scoping:
 
 Push likely **complements** the unread email rather than replacing it, since most iOS members won't install to the home screen.
 
+## The two-week check-in — confirmed 3 Sep, build it as written
+The proposed definition **stands as written, no longer pending**: fires two weeks after a specific build, in portal chat; the member posts what worked and what didn't, tagged to that build; Nina reviews and decides whether to retire the rate. Non-response defaults to keep accruing — retiring needs evidence, not silence.
+
+Everything it needs now exists: `build_check_in` is already in the `due_job_kind` enum unhandled (same position `hours_ledger_week` was in), chat carries `handover_pack_id` on every message, and the testimonial consent toggle is built and off by default. **This is the thing that closes Step 10's loop** — without it nothing ever triggers retiring a rate, so a build that stopped running keeps accruing hours forever and the headline number drifts upward untrue.
+
+Scheduled after peer pairing.
+
 ## Two decisions waiting on Nina specifically
 - The two-week check-in's full definition (fires per-build, in chat, member reports, Nina decides on retiring the rate) — needed before Step 10's ledger can close a rate properly.
 - Confirm the spreadsheet-download exception is genuinely fine as a standing rule (already leaning yes, worth an explicit sign-off).
