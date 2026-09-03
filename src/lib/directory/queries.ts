@@ -78,3 +78,29 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
     headshotUrl: row.headshot_path ? (signed.get(row.headshot_path) ?? null) : null,
   }));
 }
+
+export type OwnListing = "complete" | "draft" | "none";
+
+/**
+ * Whether the current member is actually in the directory.
+ *
+ * Asked separately rather than inferred from the search results, because a
+ * search that doesn't match your own listing would otherwise look like not being
+ * listed at all.
+ *
+ * Relies on the policy letting an owner read their own row complete or not —
+ * the same one that lets somebody come back and finish a half-written listing.
+ */
+export async function getOwnListing(memberId: string): Promise<OwnListing> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("member_profiles")
+    .select("completed_at")
+    .eq("member_id", memberId)
+    .maybeSingle();
+
+  const row = data as { completed_at: string | null } | null;
+  if (!row) return "none";
+  return row.completed_at ? "complete" : "draft";
+}

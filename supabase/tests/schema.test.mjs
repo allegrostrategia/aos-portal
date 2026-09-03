@@ -620,6 +620,8 @@ console.log("\n— hours reclaimed —");
 // cancelled for the storage tests, and Bob's February is spoken for by the draw.
 // Accrual needs someone with a clean history and live portal access.
 const ERIN = "99999999-9999-9999-9999-999999999999";
+// An id with no directory listing, for the "not listed at all" case.
+const OMAR_LIKE = "14141414-1414-1414-1414-141414141414";
 const ERIN_WEEK = "2026-05-04"; // a Monday
 
 await db.exec(`insert into auth.users (id, email) values ('${ERIN}', 'erin@test')`);
@@ -1189,6 +1191,28 @@ await check("a cancelled member sees no directory at all", async () => {
   const r = await as(DANA, () => db.query(
     `select count(*)::int c from public.member_profiles`));
   return r.rows[0].c === 0;
+});
+
+// The three states the "you're not listed yet" card reads. All three are the
+// same policy — an owner reads their own row complete or not — but the card
+// says something different for each, and getting them the wrong way round
+// would tell a listed member they're invisible.
+await check("an account with no listing at all reads as none", async () => {
+  const r = await as(BOB, () => db.query(
+    `select count(*)::int c from public.member_profiles where member_id='${OMAR_LIKE}'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a started-but-unfinished listing is readable by its owner", async () => {
+  const r = await as(ALICE, () => db.query(
+    `select completed_at from public.member_profiles where member_id='${ALICE}'`));
+  return r.rows.length === 1 && r.rows[0].completed_at === null;
+});
+
+await check("a finished listing reads as complete", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select completed_at from public.member_profiles where member_id='${ERIN}'`));
+  return r.rows.length === 1 && r.rows[0].completed_at !== null;
 });
 
 await check("a member cannot edit somebody else's listing", async () => {

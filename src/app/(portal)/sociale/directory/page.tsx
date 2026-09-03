@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
-import { searchDirectory } from "@/lib/directory/queries";
+import { getOwnListing, searchDirectory } from "@/lib/directory/queries";
 import { initials } from "@/lib/directory/initials";
 import { openDirectMessage } from "@/lib/chat/actions";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
@@ -31,7 +31,10 @@ export default async function DirectoryPage({
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q : "";
 
-  const entries = await searchDirectory(query);
+  const [entries, ownListing] = await Promise.all([
+    searchDirectory(query),
+    getOwnListing(member.id),
+  ]);
 
   return (
     <main className="flex-1 py-8 sm:py-10">
@@ -49,6 +52,31 @@ export default async function DirectoryPage({
         title="Who else is here"
         intro="Search by name, what someone does, or anything in their bio. Then say hello."
       />
+
+      {/* Filling this in is a required onboarding task, so most members are
+          already here. The ones who aren't are accounts created straight into
+          `active` — an admin, in practice — who never saw the onboarding
+          sequence and have no nav route to the form. Without this, the only way
+          in is knowing a URL, which is a quiet gap for one kind of account
+          rather than a path that works for all of them. */}
+      {ownListing !== "complete" ? (
+        <Card className="mb-6 bg-lemon/25">
+          <Eyebrow>You&rsquo;re not listed yet</Eyebrow>
+          <p className="mt-1 text-small text-navy/80">
+            {ownListing === "draft"
+              ? "Your listing is started but not finished, so nobody can find you or message you from here."
+              : "Other members can't find you or message you until you add a listing."}
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/onboarding/directory"
+              className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+            >
+              {ownListing === "draft" ? "Finish your listing" : "Add your listing"}
+            </Link>
+          </p>
+        </Card>
+      ) : null}
 
       <form method="get" className="mb-6 flex flex-wrap gap-2">
         <input
