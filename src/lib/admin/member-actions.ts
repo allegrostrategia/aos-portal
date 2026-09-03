@@ -104,3 +104,39 @@ export async function rejoinMember(
     }
   );
 }
+
+/**
+ * Mark who the coach is (§9).
+ *
+ * The odd one out in a month's pairing is paired with the coach, and that has to
+ * be a named person rather than whoever happens to run the matching — with more
+ * than one admin those are different people, and a member's coach pairing being
+ * with a developer account isn't what §9 describes.
+ *
+ * Clearing the current coach first, in the same breath as setting the new one:
+ * the database allows exactly one, so setting a second without clearing the
+ * first fails on the unique index rather than doing what was meant.
+ */
+export async function setCoach(formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const memberId = String(formData.get("member_id") ?? "").trim();
+  const makeCoach = formData.get("is_coach") === "true";
+  if (!memberId) return;
+
+  const supabase = await createClient();
+
+  if (makeCoach) {
+    await supabase
+      .from("members")
+      .update({ is_coach: false })
+      .eq("is_coach", true);
+  }
+
+  await supabase
+    .from("members")
+    .update({ is_coach: makeCoach })
+    .eq("id", memberId);
+
+  revalidatePath("/", "layout");
+}

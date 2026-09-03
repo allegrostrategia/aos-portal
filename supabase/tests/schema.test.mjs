@@ -1348,5 +1348,52 @@ await check("queuing the same pairing twice adds nothing", async () => {
   return r.rows[0].c === 1;
 });
 
+console.log("\n— who the coach is —");
+
+await check("nobody is the coach until somebody is made one", async () => {
+  const r = await db.query(`select count(*)::int c from public.members where is_coach`);
+  return r.rows[0].c === 0;
+});
+
+await check("an admin can be made the coach", async () => {
+  await as(ADMIN, () => db.query(
+    `update public.members set is_coach = true where id='${ADMIN}'`));
+  const r = await as(ADMIN, () => db.query(
+    `select is_coach from public.members where id='${ADMIN}'`));
+  return r.rows[0].is_coach === true;
+});
+
+await rejects("an ordinary member cannot be the coach", () =>
+  db.query(`update public.members set is_coach = true where id='${ERIN}'`),
+  "members_coach_is_admin");
+
+await rejects("there can only ever be one coach", async () => {
+  // A second admin, so the constraint is tested against a row that could
+  // otherwise legitimately hold the flag.
+  const SECOND = "16161616-1616-1616-1616-161616161616";
+  await db.exec(`
+    insert into auth.users (id, email) values ('${SECOND}', 'dom@test');
+    insert into public.members (id, email, full_name, role, status)
+      values ('${SECOND}', 'dom@test', 'Dom', 'admin', 'active')`);
+  return db.query(`update public.members set is_coach = true where id='${SECOND}'`);
+}, "members_only_one_coach");
+
+// The pairing code reads "the" coach, so two would make that arbitrary again —
+// and a member setting it on themselves would hand themselves the coach slot.
+await rejects("a member cannot make themselves the coach", () =>
+  as(ERIN, () => db.query(
+    `update public.members set is_coach = true where id='${ERIN}'`)),
+  "Only an admin");
+
+await check("the coach can be handed over", async () => {
+  await as(ADMIN, () => db.query(
+    `update public.members set is_coach = false where id='${ADMIN}'`));
+  await as(ADMIN, () => db.query(
+    `update public.members set is_coach = true where id='16161616-1616-1616-1616-161616161616'`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.members where is_coach`));
+  return r.rows[0].c === 1;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

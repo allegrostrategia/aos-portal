@@ -57,6 +57,17 @@ export async function runMatching(
     return { error: "Not enough active members to pair anyone up yet." };
   }
 
+  // The coach is whoever is flagged, not whoever pressed the button. With more
+  // than one admin those are different people, and a member's coach pairing
+  // being with a developer account is not what §9 describes.
+  const { data: coachRow } = await supabase
+    .from("members")
+    .select("id")
+    .eq("is_coach", true)
+    .maybeSingle();
+
+  const coachId = (coachRow as { id: string } | null)?.id ?? null;
+
   const [{ data: availabilityRows }, { data: historyRows }] = await Promise.all([
     supabase
       .from("pairing_availability")
@@ -90,9 +101,9 @@ export async function runMatching(
     members,
     history: [...byPairing.values()],
     availability,
-    // The odd one out gets Nina, still genuinely mutual (§9) — whoever is
-    // running this, since they're the coach in the room.
-    coachId: admin.id,
+    // Null if nobody is flagged: the matching still runs, and an odd count
+    // leaves one person out rather than silently handing them an admin.
+    coachId,
   });
 
   for (const pair of result.pairs) {
@@ -184,9 +195,12 @@ export async function runMatching(
   return {
     notice:
       `${result.pairs.length} ${result.pairs.length === 1 ? "pairing" : "pairings"} made` +
-      (withCoach > 0 ? ", including one with you — the rotation landed odd." : ".") +
+      (withCoach > 0 ? ", including one with the coach — the rotation landed odd." : ".") +
       (result.unmatched.length > 0
-        ? ` ${result.unmatched.length} left unmatched.`
+        ? ` ${result.unmatched.length} left unmatched` +
+          (coachId
+            ? "."
+            : " — nobody is marked as the coach, so the odd one out had no partner.")
         : ""),
   };
 }

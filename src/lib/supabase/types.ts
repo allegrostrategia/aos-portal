@@ -31,6 +31,8 @@ export interface Member {
   full_name: string;
   role: MemberRole;
   status: MemberStatus;
+  /** §9: the odd one out in a month's pairing is paired with the coach. */
+  is_coach: boolean;
   join_date: string;
   onboarding_start_date: string | null;
   cohort_start_date: string | null;

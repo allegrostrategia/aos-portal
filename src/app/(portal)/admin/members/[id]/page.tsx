@@ -9,6 +9,7 @@ import { buildItinerary } from "@/lib/onboarding/cadence";
 import type { Member } from "@/lib/supabase/types";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { StatusActions } from "./status-actions";
+import { setCoach } from "@/lib/admin/member-actions";
 import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
 import { getMemberBuilds } from "@/lib/hours/queries";
 import { formatHours } from "@/lib/hours/milestones";
@@ -182,6 +183,33 @@ export default async function AdminMemberPage({
               indicative.
             </p>
           ) : null}
+        </Card>
+      ) : null}
+
+      {/* §9: the odd one out in a month's pairing is paired with the coach.
+          A named person, so it doesn't depend on who ran the matching. */}
+      {member.role === "admin" ? (
+        <Card className="mt-5">
+          <Eyebrow>Peer pairing</Eyebrow>
+          <p className="mt-1 text-small text-navy/80">
+            {member.is_coach
+              ? "This is the coach — when a month's pairing lands on an odd number, the spare member is paired with them."
+              : "Not the coach. Only one admin can be, and it decides who the odd one out is paired with each month."}
+          </p>
+          <form action={setCoach} className="mt-3">
+            <input type="hidden" name="member_id" value={member.id} />
+            <input
+              type="hidden"
+              name="is_coach"
+              value={member.is_coach ? "false" : "true"}
+            />
+            <button
+              type="submit"
+              className="text-caption text-navy underline decoration-orange decoration-2 underline-offset-4"
+            >
+              {member.is_coach ? "Stop being the coach" : "Make this the coach"}
+            </button>
+          </form>
         </Card>
       ) : null}
 
