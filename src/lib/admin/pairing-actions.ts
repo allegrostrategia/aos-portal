@@ -122,6 +122,50 @@ export async function runMatching(
     }
   }
 
+  // Queue the two notifications per pairing (§9). Queued rather than sent from
+  // here so a delivery failure is retried and reported by the runner, and so
+  // matching itself can't half-succeed on a bad connection to Resend.
+  //
+  // `pairing_booked` is due today; `pairing_day7` a week out, and it re-checks
+  // at send time whether they've since confirmed they met.
+  const created = (
+    (
+      await supabase
+        .from("pairings")
+        .select("id, pairing_participants(member_id)")
+        .eq("pairing_month", pairingMonth)
+    ).data ?? []
+  ) as { id: string; pairing_participants: { member_id: string }[] }[];
+
+  const today = new Date();
+  const daySeven = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const asDate = (d: Date) => d.toISOString().slice(0, 10);
+
+  const jobs = created.flatMap((pairing) => [
+    ...pairing.pairing_participants.map((participant) => ({
+      kind: "pairing_booked" as const,
+      member_id: participant.member_id,
+      due_on: asDate(today),
+      dedupe_key: `pairing_booked:${pairing.id}:${participant.member_id}`,
+      payload: { pairing_id: pairing.id },
+    })),
+    {
+      // The flag goes to Nina, not the pair (§9) — chasing two people quietly
+      // sorting it out themselves would be noise.
+      kind: "pairing_day7" as const,
+      member_id: admin.id,
+      due_on: asDate(daySeven),
+      dedupe_key: `pairing_day7:${pairing.id}`,
+      payload: { pairing_id: pairing.id },
+    },
+  ]);
+
+  if (jobs.length > 0) {
+    await supabase
+      .from("due_jobs")
+      .upsert(jobs, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  }
+
   revalidatePath("/", "layout");
 
   const withCoach = result.pairs.filter((p) => p.withCoach).length;

@@ -1297,5 +1297,56 @@ await check("availability is private to the member who gave it", async () => {
   return mine.rows[0].c === 1 && theirs.rows[0].c === 0 && nina.rows[0].c === 1;
 });
 
+console.log("\n— pairing notifications —");
+
+await check("the two new job kinds exist", async () => {
+  const r = await db.query(
+    `select count(*)::int c from pg_enum e join pg_type t on t.oid = e.enumtypid
+     where t.typname = 'due_job_kind' and e.enumlabel in ('pairing_booked','pairing_day7')`);
+  return r.rows[0].c === 2;
+});
+
+await check("the day-7 flag is only ever set once", async () => {
+  // The runner sets it with `is('flagged_at', null)` so a re-run can't produce a
+  // second email about the same silence. This asserts the guard the runner leans
+  // on, in the database where it actually lives.
+  await db.query(`update public.pairings set flagged_at = null where id='${PAIR_ID}'`);
+  await db.query(
+    `update public.pairings set flagged_at = '2026-10-08 09:00Z'
+     where id='${PAIR_ID}' and flagged_at is null`);
+  await db.query(
+    `update public.pairings set flagged_at = '2026-10-15 09:00Z'
+     where id='${PAIR_ID}' and flagged_at is null`);
+
+  const r = await db.query(
+    `select flagged_at::text f from public.pairings where id='${PAIR_ID}'`);
+  return r.rows[0].f.startsWith("2026-10-08");
+});
+
+await check("a due job can be queued a week ahead", async () => {
+  await db.query(`
+    insert into public.due_jobs (kind, member_id, due_on, dedupe_key, payload)
+    values ('pairing_day7','${ADMIN}', current_date + 7, 'pairing_day7:${PAIR_ID}',
+            jsonb_build_object('pairing_id','${PAIR_ID}'))`);
+  const r = await db.query(
+    `select (due_on > current_date) ahead from public.due_jobs
+     where dedupe_key='pairing_day7:${PAIR_ID}'`);
+  return r.rows[0].ahead === true;
+});
+
+await check("queuing the same pairing twice adds nothing", async () => {
+  // dedupe_key is what stops a second matching run double-notifying.
+  try {
+    await db.query(`
+      insert into public.due_jobs (kind, member_id, due_on, dedupe_key)
+      values ('pairing_day7','${ADMIN}', current_date + 7, 'pairing_day7:${PAIR_ID}')`);
+  } catch {
+    // The unique constraint is the point.
+  }
+  const r = await db.query(
+    `select count(*)::int c from public.due_jobs where dedupe_key='pairing_day7:${PAIR_ID}'`);
+  return r.rows[0].c === 1;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

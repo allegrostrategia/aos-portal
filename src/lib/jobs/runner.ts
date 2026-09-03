@@ -11,7 +11,15 @@ import {
   type ReminderKind,
 } from "./reminders";
 import { formatSessionTime } from "@/lib/time-zone";
-import { chatUnreadCopy, hotSeatCopy, renderEmail, weeklyLogCopy } from "./copy";
+import {
+  chatUnreadCopy,
+  hotSeatCopy,
+  pairingBookedCopy,
+  pairingStalledCopy,
+  renderEmail,
+  weeklyLogCopy,
+} from "./copy";
+import { slotLabel, readSlots } from "@/lib/pairing/slots";
 import {
   daysBetween,
   kindsForDaysUntil,
@@ -551,6 +559,145 @@ async function runChatNotification(
   return "sent";
 }
 
+/**
+ * Tell somebody who they're paired with (§9).
+ *
+ * Nothing to plan: the job was queued when the pairing was made. This resolves
+ * the partner and what times they both ticked, and sends.
+ */
+async function runPairingBooked(
+  admin: ReturnType<typeof createAdminClient>,
+  job: { member_id: string; payload: { pairing_id?: string } },
+): Promise<"sent" | "skipped" | "failed"> {
+  const pairingId = job.payload.pairing_id;
+  if (!pairingId) return "failed";
+
+  const [{ data: pairing }, { data: recipient }] = await Promise.all([
+    admin
+      .from("pairings")
+      .select("pairing_month, pairing_participants(member_id)")
+      .eq("id", pairingId)
+      .maybeSingle(),
+    admin.from("members").select("email, full_name").eq("id", job.member_id).maybeSingle(),
+  ]);
+
+  const row = pairing as
+    | { pairing_month: string; pairing_participants: { member_id: string }[] }
+    | null;
+  const to = recipient as { email: string; full_name: string } | null;
+  if (!row || !to) return "skipped";
+
+  const partnerId = row.pairing_participants
+    .map((p) => p.member_id)
+    .find((id) => id !== job.member_id);
+  if (!partnerId) return "skipped";
+
+  const [{ data: partner }, { data: availability }] = await Promise.all([
+    admin.from("members").select("full_name").eq("id", partnerId).maybeSingle(),
+    admin
+      .from("pairing_availability")
+      .select("member_id, availability")
+      .eq("pairing_month", row.pairing_month)
+      .in("member_id", [job.member_id, partnerId]),
+  ]);
+
+  const slots = new Map(
+    ((availability ?? []) as { member_id: string; availability: unknown }[]).map(
+      (a) => [a.member_id, readSlots(a.availability)],
+    ),
+  );
+  const mine = slots.get(job.member_id) ?? [];
+  const theirs = new Set(slots.get(partnerId) ?? []);
+  const shared = mine.filter((slot) => theirs.has(slot));
+
+  const copy = pairingBookedCopy({
+    firstName: to.full_name.split(" ")[0],
+    partnerName:
+      (partner as { full_name: string } | null)?.full_name ?? "another member",
+    sharedTimes:
+      shared.length > 0
+        ? shared.map(slotLabel).join(", ").toLowerCase()
+        : null,
+    pairingUrl: `${env.siteUrl}/pairing`,
+  });
+
+  const result = await sendEmail({
+    to: to.email,
+    subject: copy.subject,
+    text: renderEmail(copy),
+  });
+  if (!result.ok) throw new Error(result.error ?? "Send failed");
+
+  return "sent";
+}
+
+/**
+ * A week on, and still unconfirmed — raise it with Nina (§9).
+ *
+ * Re-checked at run time rather than trusted from when it was queued: a pair who
+ * met on day three shouldn't generate a flag on day seven. Setting `flagged_at`
+ * and sending happen together, and the flag is only set if it isn't already, so
+ * a re-run can't produce a second email about the same silence.
+ */
+async function runPairingDay7(
+  admin: ReturnType<typeof createAdminClient>,
+  job: { member_id: string; payload: { pairing_id?: string } },
+): Promise<"sent" | "skipped" | "failed"> {
+  const pairingId = job.payload.pairing_id;
+  if (!pairingId) return "failed";
+
+  const { data: pairing } = await admin
+    .from("pairings")
+    .select("pairing_month, met_at, flagged_at, pairing_participants(member_id)")
+    .eq("id", pairingId)
+    .maybeSingle();
+
+  const row = pairing as
+    | {
+        pairing_month: string;
+        met_at: string | null;
+        flagged_at: string | null;
+        pairing_participants: { member_id: string }[];
+      }
+    | null;
+
+  // Met, gone, or already flagged. None of them is worth an email.
+  if (!row || row.met_at || row.flagged_at) return "skipped";
+
+  const { data: nina } = await admin
+    .from("members")
+    .select("email")
+    .eq("id", job.member_id)
+    .maybeSingle();
+  if (!nina) return "skipped";
+
+  const { data: people } = await admin
+    .from("members")
+    .select("full_name")
+    .in("id", row.pairing_participants.map((p) => p.member_id));
+
+  const copy = pairingStalledCopy({
+    names: ((people ?? []) as { full_name: string }[]).map((p) => p.full_name),
+    month: row.pairing_month.slice(0, 7),
+    adminUrl: `${env.siteUrl}/admin/pairing`,
+  });
+
+  await admin
+    .from("pairings")
+    .update({ flagged_at: new Date().toISOString() })
+    .eq("id", pairingId)
+    .is("flagged_at", null);
+
+  const result = await sendEmail({
+    to: (nina as { email: string }).email,
+    subject: copy.subject,
+    text: renderEmail(copy),
+  });
+  if (!result.ok) throw new Error(result.error ?? "Send failed");
+
+  return "sent";
+}
+
 export async function runDueJobs(today: string): Promise<RunSummary> {
   const summary: RunSummary = {
     planned: 0,
@@ -600,6 +747,7 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
       channel_id?: string;
       oldest_message_id?: string;
       count?: number;
+      pairing_id?: string;
     };
     attempts: number;
   }[];
@@ -627,6 +775,10 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
         outcome = await runHoursLedger(admin, job);
       } else if (job.kind === "chat_unread") {
         outcome = await runChatNotification(admin, job);
+      } else if (job.kind === "pairing_booked") {
+        outcome = await runPairingBooked(admin, job);
+      } else if (job.kind === "pairing_day7") {
+        outcome = await runPairingDay7(admin, job);
       } else {
         // build_check_in has no handler yet (Step 11). Left pending rather than
         // marked done, so it runs when its handler lands instead of being

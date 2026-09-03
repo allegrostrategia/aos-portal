@@ -154,3 +154,53 @@ export function chatUnreadCopy(input: {
     ],
   };
 }
+
+/**
+ * You're paired with somebody this month (§9).
+ *
+ * Says who and when you both said you're free, and stops there. No call link,
+ * because §9 is deliberate that the pair arrange that themselves — offering one
+ * would quietly turn a peer conversation into a scheduled appointment.
+ */
+export function pairingBookedCopy(input: {
+  firstName: string;
+  partnerName: string;
+  sharedTimes: string | null;
+  pairingUrl: string;
+}): EmailCopy {
+  return {
+    subject: `You're paired with ${input.partnerName} this month`,
+    body: [
+      `${input.firstName},`,
+      `This month you're paired with ${input.partnerName}. Both of you bring something you're stuck on, both of you give and get — about fifteen minutes each way.`,
+      input.sharedTimes
+        ? `You both said ${input.sharedTimes} works.`
+        : `You didn't tick any of the same slots, so you'll need to find a time between you.`,
+      `Message them in the portal to sort out when and where. There's no call link — it's your conversation to arrange.`,
+      `Your pairing: ${input.pairingUrl}`,
+    ],
+  };
+}
+
+/**
+ * A pairing that hasn't happened, a week in — for Nina, not for the pair.
+ *
+ * Framed as something to look at rather than something wrong. §9 tracks met and
+ * not-met as signal, not shame, and an email that reads as a telling-off about
+ * somebody else's diary would make Nina reluctant to act on it.
+ */
+export function pairingStalledCopy(input: {
+  names: string[];
+  month: string;
+  adminUrl: string;
+}): EmailCopy {
+  return {
+    subject: `${input.names.join(" and ")} haven't met yet`,
+    body: [
+      `A week into ${input.month} and this pairing hasn't been confirmed:`,
+      input.names.join(" · "),
+      `Might be nothing — plenty of people meet without marking it. Worth a nudge if it's been quiet, so it doesn't just never happen.`,
+      `Pairings: ${input.adminUrl}`,
+    ],
+  };
+}

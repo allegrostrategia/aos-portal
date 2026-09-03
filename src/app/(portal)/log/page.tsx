@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { requireMember } from "@/lib/auth/member";
 import { deleteEntry, updateEntryNote } from "@/lib/timer/actions";
@@ -21,6 +22,7 @@ import { addDays } from "@/lib/onboarding/cadence";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { ManualEntryForm } from "./manual-entry-form";
 import { WeeklyLogForm } from "./weekly-log-form";
+import { getMyAvailability, pairingMonth } from "@/lib/pairing/queries";
 
 export const metadata: Metadata = {
   title: "This week’s log — aOS",
@@ -76,6 +78,16 @@ export default async function WeeklyLogPage() {
   const progress = weekProgress(week.loggedMinutes, COMPLETE_WEEK_MINUTES);
   const submitted = Boolean(submission?.submitted_at);
 
+  // §9 folds the availability ask into this rhythm rather than making it a
+  // separate chore, so it appears here — the screen members already open weekly.
+  // Only for active members: pairing is locked until active (§1), and asking an
+  // onboarding member for their availability would be an invitation to something
+  // they can't take part in yet.
+  const pairingAvailability =
+    member.status === "active"
+      ? await getMyAvailability(member.id, pairingMonth())
+      : null;
+
   return (
     <main className="flex-1 py-8 sm:py-10">
       <PageHeader
@@ -97,6 +109,25 @@ export default async function WeeklyLogPage() {
               <p key={paragraph.slice(0, 32)}>{paragraph}</p>
             ))}
           </div>
+        </Card>
+      ) : null}
+
+      {pairingAvailability && !pairingAvailability.submitted ? (
+        <Card className="mb-5 bg-sky/15">
+          <Eyebrow>One thing for this month</Eyebrow>
+          <p className="mt-1 text-small text-navy/80">
+            You haven&rsquo;t said when you could take your peer call yet. It&rsquo;s
+            fifteen boxes and takes about ten seconds — and it&rsquo;s what gets you
+            matched.
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/pairing"
+              className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+            >
+              Say when you&rsquo;re free
+            </Link>
+          </p>
         </Card>
       ) : null}
 
