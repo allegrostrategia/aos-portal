@@ -18,8 +18,8 @@
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
 ## Genuinely still open
-1. **Step 9 — the handover pack** (next). See below.
-2. **The admin Roadmaps section** and the richer roadmap structure — see new scope below.
+1. **The admin Roadmaps section** and the richer roadmap structure — see new scope below. Next.
+2. **Nina's write-up screen for hot seat builds.** Step 9's other half: she can create the entry, but there's no admin form to write it up in. Members see "the write-up for this one isn't in yet" until there is.
 3. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target.
 4. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
 5. **Steps 12–13** — roadmap reveal generator (AI, paused) and final polish.
@@ -33,7 +33,14 @@ Anchored to `effective_from` rather than row creation, and planned from `<= toda
 
 `ensure_direct_channel()` was split out of `open_direct_channel()` so the runner can open the conversation without a session — the original reads `auth.uid()`, and a job has none. Not reachable by anyone signed in.
 
-**Step 9's handover pack is what's left of the loop**: the write-up and export.
+## Step 9 — Archivio and the SOP template, BUILT 3 Sep
+`/stations/archivio` — a real station on the map, and the one that holds nothing from the library (`holds_training_content` was already false for it). Two sources in one list: what Nina wrote up from a hot seat build, and what the member documented themselves.
+
+**The SOP tool is a template, not a generator** (see the AI decision). The questions are the product — trigger, outcome, owner, tools, ordered steps, optional walkthrough video. A member who has answered those has written the SOP; the generator would have rephrased them. Half-finished saves are allowed and the page says what's still missing, because somebody writes the steps, gets interrupted, and comes back.
+
+**Export is browser print-to-PDF**, at `/stations/archivio/[id]/print` — a clean document page outside the portal chrome. Deliberate over a PDF library: no dependency, no server rendering, no font embedding, works on a phone through the share sheet, and the output is a real PDF. The trade is pagination control, worth giving up for a page of numbered steps. A branded, precisely laid out document is when a renderer earns its dependency. §11 holds: SOPs are still the only exportable thing.
+
+Members can delete their own SOPs — the one place rule 6 doesn't apply, since a draft somebody thought better of isn't the record of their membership.
 
 ## Known coverage gap: the job runner's send path
 `runMatching` is now tested end to end, including which notification jobs are queued and for whom. What still has **no test**: the handlers that read those jobs and send — `runPairingBooked`, `runPairingDay7`, `runChatNotification`, `runHoursLedger`, both reminder tracks. Nothing exercises what gets skipped at send time or what the email says.

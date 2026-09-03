@@ -1481,5 +1481,74 @@ await check("a check-in response is readable by the coach, tagged to its build",
   return nina.rows.length === 1 && outsider.rows[0].c === 0;
 });
 
+console.log("\n— member SOPs —");
+
+await check("a member writes their own SOP and owns it", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source, sop, member_edited_at)
+    values ('${ERIN}', 'Onboarding a new client', 'member_sop',
+            '{"trigger":"They sign","steps":[{"text":"Create the record"}]}'::jsonb, now())`));
+  const r = await as(ERIN, () => db.query(
+    `select sop->>'trigger' t from public.handover_pack where title='Onboarding a new client'`));
+  return r.rows[0].t === "They sign";
+});
+
+// The source is what a row IS. Structured steps on a hot seat write-up would
+// mean it no longer says that.
+// Tested as the admin: a member can't create a hot_seat entry at all, so RLS
+// stops them before the constraint does. The constraint is what protects it from
+// the one account that CAN write those rows.
+await rejects("only a member SOP can carry template content", () =>
+  as(ADMIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source, sop)
+    values ('${ERIN}', 'A live build', 'hot_seat', '{"trigger":"x"}'::jsonb)`)),
+  "handover_pack_sop_is_member_sop");
+
+await check("a hot seat write-up needs no template content", async () => {
+  await as(ADMIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source, body)
+    values ('${ERIN}', 'Enquiry automation', 'hot_seat', 'What we built together.')`));
+  const r = await as(ERIN, () => db.query(
+    `select sop is null n from public.handover_pack where title='Enquiry automation'`));
+  return r.rows[0].n === true;
+});
+
+await check("nobody else can read another member's SOPs", async () => {
+  const theirs = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.handover_pack where member_id='${ERIN}'`));
+  return theirs.rows[0].c === 0;
+});
+
+await rejects("nobody else can write into another member's Archivio", () =>
+  as(FRAN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source)
+    values ('${ERIN}', 'Not mine to add', 'member_sop')`)),
+  "row-level security");
+
+// Rule 6 protects the record of a membership — weekly logs, roadmap history,
+// status. A first draft of a process somebody thought better of isn't that.
+await check("a member can delete their own SOP", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source, sop)
+    values ('${ERIN}', 'Abandoned draft', 'member_sop', '{}'::jsonb)`));
+  await as(ERIN, () => db.query(
+    `delete from public.handover_pack where title='Abandoned draft' and source='member_sop'`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.handover_pack where title='Abandoned draft'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a rejoined member keeps their old Archivio", async () => {
+  // ALICE cancelled and rejoined earlier, so she sits in onboarding — the trap
+  // the handover_pack policies were written to avoid, gating on portal access
+  // rather than on active status.
+  await as(ADMIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source, body)
+    values ('${ALICE}', 'From before she left', 'hot_seat', 'Still hers.')`));
+  const r = await as(ALICE, () => db.query(
+    `select count(*)::int c from public.handover_pack where title='From before she left'`));
+  return r.rows[0].c === 1;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
