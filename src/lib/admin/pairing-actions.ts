@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { matchPairings, type PastPairing } from "@/lib/pairing/match";
 import { readSlots, type SlotId } from "@/lib/pairing/slots";
 
@@ -172,7 +173,12 @@ export async function runMatching(
   ]);
 
   if (jobs.length > 0) {
-    const { error: queueError } = await supabase
+    // The service role, not the admin's own session. `due_jobs` has no policy
+    // for anyone signed in — the queue is machine-owned by design, and there's a
+    // test asserting even an admin can't write to it. So a member session
+    // genuinely can't do this job, which is the bar CLAUDE.md sets for reaching
+    // for the service role. The admin check has already happened above.
+    const { error: queueError } = await createAdminClient()
       .from("due_jobs")
       .upsert(jobs, { onConflict: "dedupe_key", ignoreDuplicates: true });
 
