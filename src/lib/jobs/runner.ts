@@ -12,6 +12,7 @@ import {
 } from "./reminders";
 import { formatSessionTime } from "@/lib/time-zone";
 import {
+  buildCheckInCopy,
   chatUnreadCopy,
   hotSeatCopy,
   pairingBookedCopy,
@@ -698,6 +699,142 @@ async function runPairingDay7(
   return "sent";
 }
 
+/**
+ * Queue the two-week check-in on each build (§2).
+ *
+ * Anchored to when the rate started earning rather than when the row was
+ * created: that's the date Nina set deliberately as "this is live now", and a
+ * build entered retrospectively shouldn't be asked about before it existed.
+ *
+ * One per build, ever — the dedupe key is the build itself, with no month or
+ * date in it. A member who never answers isn't asked again; §2 is explicit that
+ * non-response means the rate keeps accruing, because retiring needs evidence
+ * rather than silence, and a second email would be chasing them for permission
+ * to take hours away.
+ *
+ * Planned from `effective_from <= today - 14` rather than `= `, so a fortnight
+ * the cron missed is still caught rather than skipped forever.
+ */
+const CHECK_IN_AFTER_DAYS = 14;
+
+async function planBuildCheckIns(today: string): Promise<number> {
+  const admin = createAdminClient();
+  const cutoff = addDays(today, -CHECK_IN_AFTER_DAYS);
+
+  const { data: rateRows } = await admin
+    .from("handover_pack_rates")
+    .select("handover_pack_id, effective_from, handover_pack!inner(member_id)")
+    .lte("effective_from", cutoff);
+
+  const rates = (rateRows ?? []) as unknown as {
+    handover_pack_id: string;
+    effective_from: string;
+    handover_pack: { member_id: string } | null;
+  }[];
+
+  // The first period of each build only. A revised rate opens a new period, and
+  // asking again because the number changed would be asking the same question.
+  const firstByBuild = new Map<string, { memberId: string }>();
+  for (const rate of rates) {
+    if (!rate.handover_pack) continue;
+    if (!firstByBuild.has(rate.handover_pack_id)) {
+      firstByBuild.set(rate.handover_pack_id, {
+        memberId: rate.handover_pack.member_id,
+      });
+    }
+  }
+
+  if (firstByBuild.size === 0) return 0;
+
+  const rows = [...firstByBuild.entries()].map(([buildId, { memberId }]) => ({
+    kind: "build_check_in" as const,
+    member_id: memberId,
+    due_on: today,
+    dedupe_key: `build_check_in:${buildId}`,
+    payload: { handover_pack_id: buildId },
+  }));
+
+  const { data: inserted } = await admin
+    .from("due_jobs")
+    .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
+    .select("id");
+
+  return (inserted ?? []).length;
+}
+
+/**
+ * Ask the member how a build is holding up.
+ *
+ * Opens their conversation with the coach first, so the email lands on a link
+ * that goes straight to a reply box. Without it the invitation ends at "go and
+ * find the right conversation", which is friction on the exact action being
+ * asked for.
+ *
+ * Skipped if there's no coach to reply to, rather than sending somebody to a
+ * conversation that doesn't exist.
+ */
+async function runBuildCheckIn(
+  admin: ReturnType<typeof createAdminClient>,
+  job: { member_id: string; payload: { handover_pack_id?: string } },
+): Promise<"sent" | "skipped" | "failed"> {
+  const buildId = job.payload.handover_pack_id;
+  if (!buildId) return "failed";
+
+  const [{ data: build }, { data: member }, { data: coach }] = await Promise.all([
+    admin.from("handover_pack").select("title").eq("id", buildId).maybeSingle(),
+    admin
+      .from("members")
+      .select("email, full_name, status")
+      .eq("id", job.member_id)
+      .maybeSingle(),
+    admin.from("members").select("id").eq("is_coach", true).maybeSingle(),
+  ]);
+
+  const buildRow = build as { title: string } | null;
+  const memberRow = member as
+    | { email: string; full_name: string; status: string }
+    | null;
+  const coachRow = coach as { id: string } | null;
+
+  // A cancelled member isn't asked how their build is going.
+  if (!buildRow || !memberRow || memberRow.status === "cancelled") return "skipped";
+  if (!coachRow) return "skipped";
+
+  const { data: rate } = await admin
+    .from("handover_pack_rates")
+    .select("hours_per_week")
+    .eq("handover_pack_id", buildId)
+    .is("effective_until", null)
+    .maybeSingle();
+
+  // Already retired — nothing left to ask about.
+  if (!rate) return "skipped";
+
+  const { data: channelId, error: channelError } = await admin.rpc(
+    "ensure_direct_channel",
+    { p_member_a: job.member_id, p_member_b: coachRow.id },
+  );
+  if (channelError) throw new Error(channelError.message);
+
+  const copy = buildCheckInCopy({
+    firstName: memberRow.full_name.split(" ")[0],
+    buildTitle: buildRow.title,
+    hoursPerWeek: String(
+      Number((rate as { hours_per_week: string | number }).hours_per_week),
+    ),
+    chatUrl: `${env.siteUrl}/sociale/${channelId as string}`,
+  });
+
+  const result = await sendEmail({
+    to: memberRow.email,
+    subject: copy.subject,
+    text: renderEmail(copy),
+  });
+  if (!result.ok) throw new Error(result.error ?? "Send failed");
+
+  return "sent";
+}
+
 export async function runDueJobs(today: string): Promise<RunSummary> {
   const summary: RunSummary = {
     planned: 0,
@@ -718,7 +855,8 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
     (await planReminders(today)) +
     (await planHotSeatReminders(today)) +
     (await planHoursLedger(today)) +
-    (await planChatNotifications(new Date()));
+    (await planChatNotifications(new Date())) +
+    (await planBuildCheckIns(today));
 
   const admin = createAdminClient();
 
@@ -748,6 +886,7 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
       oldest_message_id?: string;
       count?: number;
       pairing_id?: string;
+      handover_pack_id?: string;
     };
     attempts: number;
   }[];
@@ -779,10 +918,11 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
         outcome = await runPairingBooked(admin, job);
       } else if (job.kind === "pairing_day7") {
         outcome = await runPairingDay7(admin, job);
+      } else if (job.kind === "build_check_in") {
+        outcome = await runBuildCheckIn(admin, job);
       } else {
-        // build_check_in has no handler yet (Step 11). Left pending rather than
-        // marked done, so it runs when its handler lands instead of being
-        // silently consumed now.
+        // An unknown kind: left pending rather than marked done, so a handler
+        // landing later picks it up instead of it being silently consumed now.
         summary.skipped += 1;
         continue;
       }

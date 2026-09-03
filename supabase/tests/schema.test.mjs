@@ -1395,5 +1395,91 @@ await check("the coach can be handed over", async () => {
   return r.rows[0].c === 1;
 });
 
+console.log("\n— the two-week check-in —");
+
+await check("ensure_direct_channel finds the existing conversation", async () => {
+  const first = (await as(ERIN, () => db.query(
+    `select public.open_direct_channel('${FRAN}') id`))).rows[0].id;
+  // As the service role would call it: both members named, nobody signed in.
+  const second = (await db.query(
+    `select public.ensure_direct_channel('${ERIN}','${FRAN}') id`)).rows[0].id;
+  return first === second;
+});
+
+await check("and creates one where there isn't", async () => {
+  const before = (await db.query(
+    `select count(*)::int c from public.chat_channels where kind='direct'`)).rows[0].c;
+  await db.query(`select public.ensure_direct_channel('${ERIN}','${ADMIN}')`);
+  const after = (await db.query(
+    `select count(*)::int c from public.chat_channels where kind='direct'`)).rows[0].c;
+  return after === before + 1;
+});
+
+await rejects("it refuses a conversation with yourself", () =>
+  db.query(`select public.ensure_direct_channel('${ERIN}','${ERIN}')`),
+  "two different people");
+
+// It takes both members as arguments and asks nothing about who is calling, so
+// a member reaching it could put themselves in a conversation with anyone.
+await rejects("no signed-in member can reach it", () =>
+  as(ERIN, () => db.query(`select public.ensure_direct_channel('${FRAN}','${BOB}')`)),
+  "permission denied");
+
+await check("open_direct_channel still works, and still checks who is asking", async () => {
+  const id = (await as(FRAN, () => db.query(
+    `select public.open_direct_channel('${ERIN}') id`))).rows[0].id;
+  return typeof id === "string";
+});
+
+await rejects("a cancelled member still cannot open one", () =>
+  as(DANA, () => db.query(`select public.open_direct_channel('${ERIN}')`)),
+  "No portal access");
+
+await check("build_check_in is a real job kind, ready to dispatch", async () => {
+  const r = await db.query(
+    `select count(*)::int c from pg_enum e join pg_type t on t.oid = e.enumtypid
+     where t.typname = 'due_job_kind' and e.enumlabel = 'build_check_in'`);
+  return r.rows[0].c === 1;
+});
+
+await check("one check-in per build, ever — silence is not chased", async () => {
+  // §2: non-response means the rate keeps accruing. The dedupe key is the build
+  // itself, with no date in it, so a second planning pass adds nothing.
+  await db.query(`
+    insert into public.due_jobs (kind, member_id, due_on, dedupe_key, payload)
+    values ('build_check_in','${ERIN}', current_date, 'build_check_in:${FOLLOW_UP}',
+            jsonb_build_object('handover_pack_id','${FOLLOW_UP}'))`);
+  try {
+    await db.query(`
+      insert into public.due_jobs (kind, member_id, due_on, dedupe_key, payload)
+      values ('build_check_in','${ERIN}', current_date, 'build_check_in:${FOLLOW_UP}',
+              jsonb_build_object('handover_pack_id','${FOLLOW_UP}'))`);
+  } catch {
+    // The unique dedupe key is the point.
+  }
+  const r = await db.query(
+    `select count(*)::int c from public.due_jobs
+     where dedupe_key = 'build_check_in:${FOLLOW_UP}'`);
+  return r.rows[0].c === 1;
+});
+
+await check("a check-in response is readable by the coach, tagged to its build", async () => {
+  const dm = (await db.query(
+    `select public.ensure_direct_channel('${ERIN}','${ADMIN}') id`)).rows[0].id;
+  await as(ERIN, () => db.query(`
+    insert into public.chat_messages (channel_id, member_id, body, handover_pack_id)
+    values ('${dm}','${ERIN}','Honestly it stopped running after week one','${FOLLOW_UP}')`));
+
+  const nina = await as(ADMIN, () => db.query(
+    `select body from public.chat_messages where handover_pack_id='${FOLLOW_UP}'
+     and body like 'Honestly%'`));
+  const outsider = await as(BOB, () => db.query(
+    `select count(*)::int c from public.chat_messages where handover_pack_id='${FOLLOW_UP}'
+     and body like 'Honestly%'`));
+
+  // Nina sees it because she is in the conversation, not through special access.
+  return nina.rows.length === 1 && outsider.rows[0].c === 0;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

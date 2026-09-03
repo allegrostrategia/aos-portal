@@ -204,3 +204,33 @@ export function pairingStalledCopy(input: {
     ],
   };
 }
+
+/**
+ * Two weeks on from a build — how is it actually holding up? (§2)
+ *
+ * Asks for the truth rather than a success story. The answer decides whether the
+ * build keeps earning hours, and a member who feels they're being asked to
+ * confirm something worked will say it worked. "What didn't" is named first on
+ * purpose.
+ *
+ * No mention of testimonials. Consent to reuse is a toggle they meet at the
+ * point of writing, off by default — putting it in the invitation would make the
+ * whole thing feel like a request for a quote.
+ */
+export function buildCheckInCopy(input: {
+  firstName: string;
+  buildTitle: string;
+  hoursPerWeek: string;
+  chatUrl: string;
+}): EmailCopy {
+  return {
+    subject: `Two weeks on: ${input.buildTitle}`,
+    body: [
+      `${input.firstName},`,
+      `It's been a fortnight since ${input.buildTitle} went live, and it's currently credited with saving you ${input.hoursPerWeek} hours a week.`,
+      `Is that still true? What's working, and more usefully, what isn't — has it needed fixing, has it quietly stopped running, are you doing bits of it by hand again?`,
+      `An honest "it didn't stick" is worth more than a polite yes. Your hours reclaimed are built on these numbers, so they're only worth having if they're real.`,
+      `Reply here: ${input.chatUrl}`,
+    ],
+  };
+}

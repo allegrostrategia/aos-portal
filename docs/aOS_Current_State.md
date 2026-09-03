@@ -18,16 +18,22 @@
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
 ## Genuinely still open
-1. **The two-week check-in** — confirmed, defined, and the thing that closes Step 10's loop. See below.
-2. **Step 9 — the handover pack.** The write-up, the member's own edit and export are unbuilt. Adding a build with a rate exists only because Step 10 needed it. The AI SOP generator is blocked.
+1. **Step 9 — the handover pack** (next). See below.
+2. **The admin Roadmaps section** and the richer roadmap structure — see new scope below.
 3. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target.
 4. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
 5. **Steps 12–13** — roadmap reveal generator (AI, paused) and final polish.
 
-## The two-week check-in — confirmed 3 Sep, build it as written
-The definition **stands as written, no longer pending**: fires two weeks after a specific build, in portal chat; the member posts what worked and what didn't, tagged to that build; Nina reviews and decides whether to retire the rate. Non-response defaults to keep accruing — retiring needs evidence, not silence.
+## The two-week check-in — BUILT 3 Sep, closes Step 10's loop
+Fires two weeks after a build's rate starts earning, emails the member in their conversation with the coach, and they reply tagged to that build with the consent toggle off by default. **One per build, ever** — the dedupe key has no date in it, because §2 says non-response means the rate keeps accruing, and a second email would be chasing somebody for permission to take hours away.
 
-Everything it needs exists: `build_check_in` is already in the `due_job_kind` enum unhandled (the same position `hours_ledger_week` sat in), chat carries `handover_pack_id` on every message, and the testimonial consent toggle is built and off by default. **Without it nothing ever triggers retiring a rate**, so a build that stopped running keeps accruing hours forever and the headline number drifts upward untrue.
+Nina sees the responses **on the member page, directly above the retire button** — that's the "evidence, not silence" half made real. Where nothing has been said, it says so rather than leaving a blank.
+
+Anchored to `effective_from` rather than row creation, and planned from `<= today - 14` so a fortnight the cron missed is caught rather than skipped forever. Skips a cancelled member, an already-retired rate, or a project with no coach to reply to.
+
+`ensure_direct_channel()` was split out of `open_direct_channel()` so the runner can open the conversation without a session — the original reads `auth.uid()`, and a job has none. Not reachable by anyone signed in.
+
+**Step 9's handover pack is what's left of the loop**: the write-up and export.
 
 ## Known coverage gap: the job runner's send path
 `runMatching` is now tested end to end, including which notification jobs are queued and for whom. What still has **no test**: the handlers that read those jobs and send — `runPairingBooked`, `runPairingDay7`, `runChatNotification`, `runHoursLedger`, both reminder tracks. Nothing exercises what gets skipped at send time or what the email says.
@@ -42,8 +48,27 @@ Deferred to its own session by decision, not oversight. Needs a service worker, 
 - **Notification text should not quote the message**, matching the unread-email decision: a banner on a lock screen is the same exposure.
 - **The testing story is much weaker than everything else here.** Permission is one-shot per device — deny once and you cannot ask again. Needs a physical iPhone.
 
+## FINAL: no AI runs inside the app, anywhere (3 Sep)
+**Settled, not pending. `ANTHROPIC_API_KEY` never needs to be added at all.** All four original AI touchpoints are resolved without it:
+
+1. **Hot seat prep** — unchanged. Nina reads the raw evidence (their words, their tracked hours, the biggest time block) and confirms manually. Already built this way.
+2. **Initial roadmap** — Nina works it out with Claude *externally*, then types the result into a new admin **Roadmaps** section. See new scope below.
+3. **SOP generator (Step 9)** — becomes **member-facing**: a reusable template a member fills in themselves whenever they've built something worth documenting, compiling to a clean PDF. No AI, no API key.
+4. **Roadmap reveal document** — unchanged. Nina drafts with Claude externally and sends the result.
+
+The pattern across all four is the same: **Claude is a tool Nina uses outside the product, not a dependency inside it.** `CLAUDE.md`'s standing rule 2 ("AI drafts, human confirms") still describes how Nina works — it no longer implies anything runs in-app. A fresh session should not wire an API call anywhere.
+
+## New scope: the admin Roadmaps section
+Its own nav entry, filtered by member, where Nina inputs or edits a roadmap directly. The roadmap structure itself needs to grow to hold it:
+- each **month** has **focuses**
+- each focus has **actions**
+- each action links to a **specific recommended training**
+- each action has **its own comment box** (not one comment for the whole week)
+- each action is assigned to a **week within the month** — a plain week-number dropdown, not drag-and-drop for now
+
+Not yet built. Sequenced after the two-week check-in and Step 9.
+
 ## Decisions, not gaps — do not "fix" these
-- **AI drafting is paused** pending Nina. `ANTHROPIC_API_KEY` deliberately unset; the hot seat prep panel stays empty with manual confirmation. That is the tested working state, not an unfinished feature.
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
 - **Chat messages cannot be edited or deleted**, matching the voice bucket's existing rule. Stricter than most chat products; easy to relax, hard to recover an edited conversation.
@@ -77,7 +102,7 @@ Deferred to its own session by decision, not oversight. Needs a service worker, 
 19. **This document's own updates silently failing** — string replacement against anchors that no longer existed, reported as success. Same silent-no-op shape as #18 and as a mutation test that never applied
 
 ## Environment variables confirmed set in Vercel
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` deliberately unset** — see decisions above.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
 **Nine pasted directly via the SQL Editor across 1–3 Sep, not through the CLI** — the pooler connection was never fixed, only worked around. Root cause still unknown; the username finding is written up in the README. `migration repair` owed for all nine once the pooler works — safe to keep deferring, each is idempotent or purely additive.
@@ -90,6 +115,6 @@ Deferred to its own session by decision, not oversight. Needs a service worker, 
 - For a build this size, start a fresh session per major step or per day rather than one marathon.
 
 ## Right now, exactly
-Steps 1–8, 10 (core) and 11 are done. Next: **the two-week check-in**, which closes Step 10's loop, then Step 9's handover pack.
+Steps 1–8, 10 (core) and 11 are done. Next: **the two-week check-in**, which closes Step 10's loop, then **Step 9's handover pack** (member-facing SOP template, not an AI generator), then **the admin Roadmaps section** and the richer roadmap structure it needs.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.**

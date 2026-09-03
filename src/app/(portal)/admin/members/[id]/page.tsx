@@ -11,7 +11,7 @@ import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { StatusActions } from "./status-actions";
 import { setCoach } from "@/lib/admin/member-actions";
 import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
-import { getMemberBuilds } from "@/lib/hours/queries";
+import { getCheckInsByBuild, getMemberBuilds } from "@/lib/hours/queries";
 import { formatHours } from "@/lib/hours/milestones";
 import { AddBuildForm, RateControls } from "./build-forms";
 
@@ -110,6 +110,7 @@ export default async function AdminMemberPage({
     : null;
 
   const builds = await getMemberBuilds(id);
+  const checkIns = await getCheckInsByBuild(builds.map((b) => b.id));
   const today = new Date().toISOString().slice(0, 10);
   const weeklyRate = builds.reduce(
     (sum, build) => sum + (build.current?.hours_per_week ?? 0),
@@ -373,6 +374,35 @@ export default async function AdminMemberPage({
                     </li>
                   ))}
                 </ul>
+              ) : null}
+
+              {/* §2: retiring a rate needs evidence, not silence. This is
+                  where the evidence is — what they actually said about the
+                  build, next to the button that decides its future. */}
+              {(checkIns.get(build.id) ?? []).length > 0 ? (
+                <div className="mt-3 rounded-md border border-sky/40 bg-sky/10 p-3">
+                  <Eyebrow>What they said about it</Eyebrow>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {(checkIns.get(build.id) ?? []).map((response) => (
+                      <li key={response.id}>
+                        <p className="text-small whitespace-pre-wrap text-navy/80">
+                          {response.body ?? "Sent a voice note."}
+                        </p>
+                        <p className="text-caption text-navy/50">
+                          {response.created_at.slice(0, 10)}
+                          {response.testimonial_consent
+                            ? " · happy for you to quote this"
+                            : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : build.current ? (
+                <p className="mt-3 text-caption text-navy/50">
+                  Nothing said about this one yet. Retiring it without asking is
+                  a guess about their business.
+                </p>
               ) : null}
 
               <RateControls

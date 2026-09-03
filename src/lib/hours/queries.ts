@@ -139,3 +139,47 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
     };
   });
 }
+
+export type CheckInResponse = {
+  id: string;
+  body: string | null;
+  voice_path: string | null;
+  created_at: string;
+  testimonial_consent: boolean;
+};
+
+/**
+ * What a member has said about their builds (§2's two-week check-in).
+ *
+ * The evidence half of "retiring needs evidence, not silence". Retiring a rate
+ * without it is a guess about somebody else's business, and this is the only
+ * place that guess can be replaced with what they actually said.
+ *
+ * Read under the admin's own RLS: check-ins are posted in their conversation
+ * with the coach, so Nina sees them as a participant rather than through any
+ * special access. An admin who isn't in that conversation sees nothing, which is
+ * correct — it isn't addressed to them.
+ */
+export async function getCheckInsByBuild(
+  buildIds: string[],
+): Promise<Map<string, CheckInResponse[]>> {
+  const byBuild = new Map<string, CheckInResponse[]>();
+  if (buildIds.length === 0) return byBuild;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chat_messages")
+    .select("id, body, voice_path, created_at, testimonial_consent, handover_pack_id")
+    .in("handover_pack_id", buildIds)
+    .order("created_at", { ascending: false });
+
+  for (const row of (data ?? []) as (CheckInResponse & {
+    handover_pack_id: string;
+  })[]) {
+    const existing = byBuild.get(row.handover_pack_id) ?? [];
+    existing.push(row);
+    byBuild.set(row.handover_pack_id, existing);
+  }
+
+  return byBuild;
+}
