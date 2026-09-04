@@ -252,7 +252,9 @@ export default async function PiazzaPage() {
             {formatHours(hours.total)}
           </p>
 
-          <div className="mt-3">
+          {/* §2: compact here, click-through to the full path — the same
+              pattern the draw card uses. */}
+          <Link href="/milestones" className="mt-3 block">
             <div className="h-1.5 overflow-hidden rounded-full bg-navy/10">
               <div
                 className="h-full rounded-full bg-orange"
@@ -262,9 +264,12 @@ export default async function PiazzaPage() {
             <p className="mt-2 text-small text-navy/70">
               {milestone.next === null
                 ? "Every milestone passed."
-                : `${milestone.toNext} to your next unlock at ${milestone.next}.`}
+                : `${milestone.toNext} to your next unlock at ${milestone.next}.`}{" "}
+              <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
+                See how far you&rsquo;ve come
+              </span>
             </p>
-          </div>
+          </Link>
 
           {hours.weeklyRate > 0 ? (
             <p className="mt-3 text-caption text-navy/60">

@@ -63,3 +63,67 @@ export function formatHours(hours: number): string {
   const rounded = Math.round(hours * 10) / 10;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
+
+export type MilestoneStep = {
+  target: number;
+  reached: boolean;
+  /** Monday of the week the running total first crossed it. */
+  reachedInWeek: string | null;
+  /** Hours still to go, rounded up. Null once reached. */
+  toGo: number | null;
+};
+
+export type MilestoneJourney = {
+  steps: MilestoneStep[];
+  total: number;
+  /** Weeks that earned something, oldest first. */
+  weeks: { weekStartDate: string; hours: number; runningTotal: number }[];
+};
+
+/**
+ * The journey behind the number (§2).
+ *
+ * Walks the ledger in order and records the week each threshold was crossed,
+ * which is the thing a progress bar can't say: not "you're 62% of the way" but
+ * "you passed fifty in the week of 9 March". The ledger is append-only precisely
+ * so that answer stays true — a rate retired in June doesn't move when March
+ * happened.
+ *
+ * Weeks are expected oldest-first. A running total is carried rather than
+ * recomputed per milestone, so a member with two years of weeks costs one pass.
+ *
+ * A qualifying week that earned nothing still appears: it's a week they showed
+ * up, and dropping it would make the record of their membership sparser than
+ * the truth.
+ */
+export function milestoneJourney(
+  ledger: { weekStartDate: string; hours: number }[],
+): MilestoneJourney {
+  const weeks: MilestoneJourney["weeks"] = [];
+  const crossedIn = new Map<number, string>();
+
+  let running = 0;
+  for (const week of ledger) {
+    const before = running;
+    running += week.hours;
+    weeks.push({ ...week, runningTotal: running });
+
+    for (const target of MILESTONES) {
+      if (before < target && running >= target && !crossedIn.has(target)) {
+        crossedIn.set(target, week.weekStartDate);
+      }
+    }
+  }
+
+  const steps = MILESTONES.map((target) => {
+    const reachedInWeek = crossedIn.get(target) ?? null;
+    return {
+      target,
+      reached: running >= target,
+      reachedInWeek,
+      toGo: running >= target ? null : Math.ceil(target - running),
+    };
+  });
+
+  return { steps, total: running, weeks };
+}

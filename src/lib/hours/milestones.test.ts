@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   MILESTONES,
   formatHours,
+  milestoneJourney,
   milestoneLine,
   milestoneProgress,
 } from "./milestones.ts";
@@ -59,4 +60,85 @@ test("a negative total can't happen, and doesn't produce nonsense if it does", (
   const p = milestoneProgress(-10);
   assert.equal(p.next, 50);
   assert.equal(p.fraction, 0);
+});
+
+// --- the journey ----------------------------------------------------------
+
+test("an empty ledger is a journey that hasn't started", () => {
+  const journey = milestoneJourney([]);
+  assert.equal(journey.total, 0);
+  assert.deepEqual(journey.weeks, []);
+  assert.equal(journey.steps[0].reached, false);
+  assert.equal(journey.steps[0].toGo, 50);
+});
+
+test("the running total accumulates week by week", () => {
+  const journey = milestoneJourney([
+    { weekStartDate: "2026-03-02", hours: 8 },
+    { weekStartDate: "2026-03-09", hours: 8 },
+    { weekStartDate: "2026-03-16", hours: 8 },
+  ]);
+  assert.deepEqual(journey.weeks.map((w) => w.runningTotal), [8, 16, 24]);
+  assert.equal(journey.total, 24);
+});
+
+// The thing a progress bar can't say.
+test("it records the week a threshold was crossed", () => {
+  const journey = milestoneJourney([
+    { weekStartDate: "2026-03-02", hours: 20 },
+    { weekStartDate: "2026-03-09", hours: 20 },
+    { weekStartDate: "2026-03-16", hours: 20 },
+  ]);
+
+  const fifty = journey.steps.find((s) => s.target === 50)!;
+  assert.equal(fifty.reached, true);
+  assert.equal(fifty.reachedInWeek, "2026-03-16");
+});
+
+test("landing exactly on a threshold counts as crossing it that week", () => {
+  const journey = milestoneJourney([
+    { weekStartDate: "2026-03-02", hours: 25 },
+    { weekStartDate: "2026-03-09", hours: 25 },
+  ]);
+  assert.equal(journey.steps[0].reachedInWeek, "2026-03-09");
+});
+
+test("two thresholds crossed in one big week are both recorded", () => {
+  const journey = milestoneJourney([{ weekStartDate: "2026-03-02", hours: 120 }]);
+  assert.equal(journey.steps[0].reachedInWeek, "2026-03-02");
+  assert.equal(journey.steps[1].reachedInWeek, "2026-03-02");
+  assert.equal(journey.steps[2].reached, false);
+});
+
+test("a threshold not yet reached reports the distance, not a date", () => {
+  const journey = milestoneJourney([{ weekStartDate: "2026-03-02", hours: 12.5 }]);
+  const fifty = journey.steps.find((s) => s.target === 50)!;
+  assert.equal(fifty.reachedInWeek, null);
+  assert.equal(fifty.toGo, 38);
+});
+
+// The ledger is append-only so this answer stays true: a rate retired later
+// must not move when a threshold was passed.
+test("later weeks never change when an earlier threshold was crossed", () => {
+  const early = [
+    { weekStartDate: "2026-03-02", hours: 30 },
+    { weekStartDate: "2026-03-09", hours: 30 },
+  ];
+  const crossedAt = milestoneJourney(early).steps[0].reachedInWeek;
+
+  const withMore = milestoneJourney([
+    ...early,
+    { weekStartDate: "2026-03-16", hours: 500 },
+  ]);
+  assert.equal(withMore.steps[0].reachedInWeek, crossedAt);
+});
+
+// A week they showed up for and earned nothing is still a week they showed up.
+test("a qualifying week worth zero hours is kept in the record", () => {
+  const journey = milestoneJourney([
+    { weekStartDate: "2026-03-02", hours: 0 },
+    { weekStartDate: "2026-03-09", hours: 5 },
+  ]);
+  assert.equal(journey.weeks.length, 2);
+  assert.equal(journey.weeks[0].runningTotal, 0);
 });

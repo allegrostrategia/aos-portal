@@ -189,3 +189,18 @@ export async function getCheckInsByBuild(
 
   return byBuild;
 }
+
+/**
+ * The ledger oldest-first, which is the order a journey is read in.
+ *
+ * `getMemberHours` returns newest-first for the compact card; reversing here
+ * rather than fetching twice, and named so the direction is a decision rather
+ * than something a caller has to remember.
+ */
+export function asJourneyOrder(
+  weeks: LedgerWeek[],
+): { weekStartDate: string; hours: number }[] {
+  return [...weeks]
+    .sort((a, b) => a.week_start_date.localeCompare(b.week_start_date))
+    .map((week) => ({ weekStartDate: week.week_start_date, hours: week.hours }));
+}

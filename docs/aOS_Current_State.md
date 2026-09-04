@@ -18,9 +18,21 @@
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
 ## Genuinely still open
-1. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target. Next. — see the coverage gap below. Agreed timing: after the Roadmaps section, or sooner if real onboarding is imminent. Not a dedicated session; the fixture work that was blocking it is done.
-2. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
-5. **Steps 12–13** — roadmap reveal generator (AI, paused) and final polish.
+1. **The design/artwork pass** — the milestone path and a La Strada refresh, judged together rather than one at a time. The milestone page is built as structure only, waiting on it.
+2. **The community goal** — needs a target from Nina before it can be built at all.
+3. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
+4. **Steps 12–13** — roadmap reveal generator (drafted externally per the AI decision) and final polish.
+
+## The milestone path — BUILT 3 Sep (structure only)
+`/milestones`, linked from Piazza's compact line — §2's "compact + click-through", the same pattern as the draw card.
+
+**The mechanic worth having is when each threshold was crossed**, not a bigger progress bar. "You passed fifty in the week of 9 March" is a different thing to say than "you're 62% of the way to a hundred", and the append-only ledger is what makes it answerable — a rate retired in June doesn't move when March happened, and a test asserts exactly that. Each band is measured from the previous threshold rather than from zero, so the long stretch to 500 doesn't look static for months.
+
+A qualifying week worth zero hours still appears in the week-by-week list: it's a week they showed up, and dropping it would make the record sparser than the truth.
+
+**Visuals are deliberately absent** — Dom's call, so the milestone path and a La Strada refresh can be designed together. What's built is the shape the artwork will hang on.
+
+**⚠️ Nothing unlocks.** §2 says "distance to next unlock" and never says what is unlocked. Piazza keeps the brief's wording; the full page deliberately avoids promising a reward that doesn't exist. **Either Nina defines what a milestone unlocks, or the copy should stop saying "unlock".** Same shape as the community goal's missing target.
 
 ## The two-week check-in — BUILT 3 Sep, closes Step 10's loop
 Fires two weeks after a build's rate starts earning, emails the member in their conversation with the coach, and they reply tagged to that build with the consent toggle off by default. **One per build, ever** — the dedupe key has no date in it, because §2 says non-response means the rate keeps accruing, and a second email would be chasing somebody for permission to take hours away.
@@ -85,6 +97,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - The actual multiple-choice audit questions and answers.
 - The welcome session recording, and the three priming content pieces.
 - A community-goal target.
+- What a milestone unlocks, if anything — or agreement that the copy should stop saying "unlock".
 - Confirming Resend deliverability isn't landing in spam long-term.
 - Confirming the spreadsheet-download exception as a standing rule (leaning yes).
 
