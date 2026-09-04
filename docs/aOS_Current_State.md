@@ -171,6 +171,7 @@ Root cause of the pooler failure is still unknown; the username finding (`postgr
 - **Prove a test can fail before trusting it.** Reintroduce the bug, watch that test go red, restore. Twice this week a green test was proving nothing.
 - **Assert that a mutation, or a file edit, actually applied.** A silent no-op looks identical to a passing check.
 - **Sample before calling a suite green.** One run is not evidence.
+- **Check conditional navigation for the state it forgets.** An affordance shown only in one state leaves the other states with no route at all. Twice on the directory screen: the profile form was reachable only when you had no profile, or only when your own card happened to match the current search — so a member who was listed without a photo, or who had searched, had no way in. When a link appears under a condition, ask what the other branch of that condition looks like.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
 - For a build this size, start a fresh session per major step or per day rather than one marathon.
 
