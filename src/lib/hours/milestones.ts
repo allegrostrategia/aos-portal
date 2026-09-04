@@ -45,13 +45,21 @@ export function milestoneProgress(hours: number): MilestoneProgress {
   };
 }
 
-/** "62 hrs · 38 to your next unlock" — the compact Piazza line from §2. */
+/**
+ * "62 hrs · 38 to your next milestone" — the compact Piazza line from §2.
+ *
+ * §2 words this as "distance to next unlock", and nothing unlocks: no reward is
+ * defined anywhere in the brief. Real unlockable rewards at each threshold are
+ * intended eventually and aren't scoped — until they are, the copy says
+ * milestone. A number that quietly promises something is worse than one that
+ * just says how far you've come.
+ */
 export function milestoneLine(hours: number): string {
   const { next, toNext } = milestoneProgress(hours);
   const total = formatHours(hours);
 
   if (next === null) return `${total} hrs · every milestone passed`;
-  return `${total} hrs · ${toNext} to your next unlock`;
+  return `${total} hrs · ${toNext} to your next milestone`;
 }
 
 /**

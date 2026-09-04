@@ -25,6 +25,12 @@ export const metadata: Metadata = { title: "Your milestones — aOS" };
  * Nothing here claims a milestone unlocks anything. §2 uses the word "unlock"
  * but never says what is unlocked, and a page promising a reward that doesn't
  * exist is worse than one that just says how far you've come.
+ *
+ * **Rewards are intended, though — deferred, not dropped.** Real unlockable
+ * things at each threshold are wanted eventually and aren't scoped yet. When
+ * they are, this page is where they belong: the thresholds, the dates and the
+ * bands are already here, and a reward hangs off a step rather than replacing
+ * anything. See the state doc's deferred-decisions section.
  */
 export default async function MilestonesPage() {
   const member = (await getCurrentMember())!;

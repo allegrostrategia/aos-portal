@@ -264,7 +264,7 @@ export default async function PiazzaPage() {
             <p className="mt-2 text-small text-navy/70">
               {milestone.next === null
                 ? "Every milestone passed."
-                : `${milestone.toNext} to your next unlock at ${milestone.next}.`}{" "}
+                : `${milestone.toNext} to your next milestone at ${milestone.next}.`}{" "}
               <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
                 See how far you&rsquo;ve come
               </span>

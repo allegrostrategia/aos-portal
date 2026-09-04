@@ -46,7 +46,8 @@ test("hours still to go round up, so it never reads as nagging over a fraction",
 });
 
 test("the Piazza line matches the shape §2 asks for", () => {
-  assert.equal(milestoneLine(62), "62 hrs · 38 to your next unlock");
+  // Deliberately not "unlock": nothing does, until rewards are scoped.
+  assert.equal(milestoneLine(62), "62 hrs · 38 to your next milestone");
   assert.equal(milestoneLine(500), "500 hrs · every milestone passed");
 });
 

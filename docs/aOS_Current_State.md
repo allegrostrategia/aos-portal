@@ -17,6 +17,15 @@
 - Realtime live updates, name resolution, directory search, opening a DM from a listing.
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
+## DEFERRED, NOT DROPPED: milestone rewards
+**Real unlockable rewards at each milestone threshold (50 / 100 / 250 / 500) are intended.** They are not scoped, not designed and not built — and that is a deferral, not a decision against them.
+
+Until they exist, the copy says **"distance to your next milestone"** rather than §2's "distance to next unlock". Changed 3 Sep: the brief uses "unlock" throughout and never says what is unlocked anywhere, so the original wording promised members something the product didn't have. The mechanic underneath is unchanged.
+
+**When rewards are scoped, `/milestones` is where they go.** The thresholds, the crossing dates and the progress bands are already built; a reward hangs off an existing step rather than needing the page rebuilt. The copy reverts to "unlock" at the same time, and not before.
+
+This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
+
 ## Genuinely still open
 1. **The design/artwork pass** — the milestone path and a La Strada refresh, judged together rather than one at a time. The milestone page is built as structure only, waiting on it.
 2. **The community goal** — needs a target from Nina before it can be built at all.
@@ -32,7 +41,7 @@ A qualifying week worth zero hours still appears in the week-by-week list: it's 
 
 **Visuals are deliberately absent** — Dom's call, so the milestone path and a La Strada refresh can be designed together. What's built is the shape the artwork will hang on.
 
-**⚠️ Nothing unlocks.** §2 says "distance to next unlock" and never says what is unlocked. Piazza keeps the brief's wording; the full page deliberately avoids promising a reward that doesn't exist. **Either Nina defines what a milestone unlocks, or the copy should stop saying "unlock".** Same shape as the community goal's missing target.
+**The copy says "milestone", not "unlock"** — see the deferred-decisions section above. Rewards are intended and unscoped; the wording reverts when they exist.
 
 ## The two-week check-in — BUILT 3 Sep, closes Step 10's loop
 Fires two weeks after a build's rate starts earning, emails the member in their conversation with the coach, and they reply tagged to that build with the consent toggle off by default. **One per build, ever** — the dedupe key has no date in it, because §2 says non-response means the rate keeps accruing, and a second email would be chasing somebody for permission to take hours away.
@@ -97,7 +106,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - The actual multiple-choice audit questions and answers.
 - The welcome session recording, and the three priming content pieces.
 - A community-goal target.
-- What a milestone unlocks, if anything — or agreement that the copy should stop saying "unlock".
+- What a milestone unlocks — deferred rather than pending; see the deferred-decisions section.
 - Confirming Resend deliverability isn't landing in spam long-term.
 - Confirming the spreadsheet-download exception as a standing rule (leaning yes).
 
