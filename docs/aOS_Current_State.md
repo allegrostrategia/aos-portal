@@ -167,6 +167,7 @@ Root cause of the pooler failure is still unknown; the username finding (`postgr
 **Before saying a migration is pending, check.** `ls supabase/migrations/` against what has been pasted, or `git show --stat` on the commit that supposedly added one. A stale "still to do" is worse than a missing one, because somebody acts on it.
 
 ## Standing rules, learned the hard way
+- **Close every build session by walking through what shipped.** Open each new screen and use it, don't just read it. The 3 Sep walkthrough found five real user-facing bugs across six screens — all in code written that day, tested at every layer a test could reach, and described in commit messages as working. **The layers a test can reach are not the layers a member touches.**
 - **Always confirm real testing is complete — actually done, not just described as done — before committing or pushing.**
 - **Prove a test can fail before trusting it.** Reintroduce the bug, watch that test go red, restore. Twice this week a green test was proving nothing.
 - **Assert that a mutation, or a file edit, actually applied.** A silent no-op looks identical to a passing check.
