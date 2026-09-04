@@ -143,6 +143,7 @@ export function createShimClient(db, uid) {
       table,
       filters: [],
       inFilters: [],
+      isFilters: [],
       columns: "*",
       count: null,
       head: false,
@@ -167,6 +168,18 @@ export function createShimClient(db, uid) {
         params.push(values);
         clauses.push(`${quoteIdent(column)} = any($${params.length})`);
       }
+
+      // `.is(col, null)` — PostgREST's null comparison, which `= null` isn't.
+      // Held separately because they carry no parameters, which is what lets the
+      // update path reuse them without disturbing its placeholder numbering.
+      const isClauses = state.isFilters.map(([column, value]) =>
+        value === "NOT_NULL"
+          ? `${quoteIdent(column)} is not null`
+          : `${quoteIdent(column)} is ${
+              value === null ? "null" : value ? "true" : "false"
+            }`,
+      );
+      clauses.push(...isClauses);
 
       const whereSql = clauses.length ? ` where ${clauses.join(" and ")}` : "";
       const orderSql = state.order.length
@@ -248,9 +261,14 @@ export function createShimClient(db, uid) {
           if (state.inFilters.length > 0) {
             throw new Error("Shim does not implement .in() on an update");
           }
-          const updateWhere = state.filters
-            .map(([column], i) => `${quoteIdent(column)} = $${i + 1}`)
-            .join(" and ");
+          // Filters were pushed first, so their placeholders still line up; the
+          // is-clauses carry no parameters and simply append.
+          const updateWhere = [
+            ...state.filters.map(
+              ([column], i) => `${quoteIdent(column)} = $${i + 1}`,
+            ),
+            ...isClauses,
+          ].join(" and ");
           await run(
             `update public.${quoteIdent(state.table)} set ${assignments.join(", ")}` +
               (updateWhere ? ` where ${updateWhere}` : ""),
@@ -311,6 +329,18 @@ export function createShimClient(db, uid) {
       },
       in(column, values) {
         state.inFilters.push([column, values]);
+        return api;
+      },
+      is(column, value) {
+        state.isFilters.push([column, value]);
+        return api;
+      },
+      not(column, operator, value) {
+        // Only `.not("col", "is", null)` is used, and only as "is not null".
+        if (operator !== "is") {
+          throw new Error(`Shim does not implement .not(..., '${operator}', ...)`);
+        }
+        state.isFilters.push([column, value === null ? "NOT_NULL" : value]);
         return api;
       },
       update(values) {

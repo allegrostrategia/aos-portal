@@ -18,9 +18,8 @@
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
 ## Genuinely still open
-1. **The send-handler tests** — next. — see the coverage gap below. Agreed timing: after the Roadmaps section, or sooner if real onboarding is imminent. Not a dedicated session; the fixture work that was blocking it is done.
-3. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target.
-4. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
+1. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target. Next. — see the coverage gap below. Agreed timing: after the Roadmaps section, or sooner if real onboarding is imminent. Not a dedicated session; the fixture work that was blocking it is done.
+2. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
 5. **Steps 12–13** — roadmap reveal generator (AI, paused) and final polish.
 
 ## The two-week check-in — BUILT 3 Sep, closes Step 10's loop
@@ -43,12 +42,14 @@ Members can delete their own SOPs — the one place rule 6 doesn't apply, since 
 
 **Step 9 is complete (3 Sep).** Nina writes a build up from the member's admin page; saving publishes it straight to their Archivio, with no draft state — she works the wording out with Claude externally, so drafting happens where drafting happens, and a half-written note sitting in a column the member can technically read is a worse answer than not storing one. The member can then reword their own copy (§8), which reads as prose until they choose to change it rather than as a text box waiting to be filled in.
 
-## Known coverage gap: the job runner's send path
-`runMatching` is now tested end to end, including which notification jobs are queued and for whom. What still has **no test**: the handlers that read those jobs and send — `runPairingBooked`, `runPairingDay7`, `runChatNotification`, `runHoursLedger`, both reminder tracks. Nothing exercises what gets skipped at send time or what the email says.
+## The send path — CLOSED 3 Sep
+16 tests over the handlers that read a due job and send: the check-in, both pairing emails, the unread notification, and the hours ledger. They assert who it went to, whether it went at all, and the words — not just that the function returned.
 
-`runPairingDay7` was manually verified live on 3 Sep, both directions. That's real evidence and it's a one-off — nothing re-checks it on the next change.
+What that pins down, none of which any schema test could reach: the check-in skips a cancelled member and a retired build and names the rate in the email; the booked-in email names the *partner* rather than the recipient, quotes the shared slot, and offers no meeting URL; the day-7 flag goes to the coach and is set as it sends; the unread email never quotes the message; reading a conversation first cancels its email; a week that didn't qualify is skipped rather than failed; and a delivery failure is raised rather than swallowed as a success.
 
-Closing it needs the handlers exported (only `runDueJobs` is) and a stub for `@/lib/email/send`. The fixture work that was blocking it is done: it now resolves one-to-many embeds by asking `information_schema` which way the foreign key runs, and serialises dates as strings the way PostgREST does.
+The handlers are exported for this, which is a slightly wider surface than the code needs — `runDueJobs` is the only real caller. Testing through it would need PostgREST's `or(...)` syntax reimplemented in the fixture, and these are where "nothing was sent" and "the wrong person was emailed" both live. Worth the export.
+
+**Still not covered:** the two reminder tracks (`runReminder`, `runHotSeatReminder`), whose decision logic is already unit-tested as pure functions and whose delivery was verified by hand on 31 Aug. And `runDueJobs` itself — planning, dispatch and the pending-jobs query.
 
 ## Scoped but deliberately not built: true push notifications
 Deferred to its own session by decision, not oversight. Needs a service worker, VAPID keys (3 new Vercel env vars), a per-device `push_subscriptions` table, permission UX, and iOS guidance. Three things worth keeping:

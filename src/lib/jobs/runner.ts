@@ -40,6 +40,19 @@ import {
  * it needs to read across all members.
  */
 
+/**
+ * The handlers below are exported for tests, not because anything else calls
+ * them — `runDueJobs` is the only real entry point.
+ *
+ * Testing through `runDueJobs` would be better, and isn't practical: it plans
+ * every job kind first, and its pending-jobs query uses PostgREST's `or(...)`
+ * syntax, which the test fixture would have to reimplement. Exporting the units
+ * buys the coverage that matters — which rows a handler reads, what it skips,
+ * and what the email says — at the cost of a slightly wider surface.
+ *
+ * These are where "nothing was sent" and "the wrong person was emailed" live,
+ * and both fail silently. That's worth an export.
+ */
 export type RunSummary = {
   planned: number;
   ran: number;
@@ -115,7 +128,7 @@ async function planReminders(today: string): Promise<number> {
   return (inserted ?? []).length;
 }
 
-async function runReminder(
+export async function runReminder(
   admin: ReturnType<typeof createAdminClient>,
   job: {
     id: string;
@@ -235,7 +248,7 @@ async function planHotSeatReminders(today: string): Promise<number> {
   return (inserted ?? []).length;
 }
 
-async function runHotSeatReminder(
+export async function runHotSeatReminder(
   admin: ReturnType<typeof createAdminClient>,
   job: {
     id: string;
@@ -374,7 +387,7 @@ async function planHoursLedger(today: string): Promise<number> {
  * qualify is recorded as skipped rather than failed: not qualifying is a normal
  * outcome, not an error.
  */
-async function runHoursLedger(
+export async function runHoursLedger(
   admin: ReturnType<typeof createAdminClient>,
   job: { member_id: string; payload: { week_start?: string } },
 ): Promise<"sent" | "skipped" | "failed"> {
@@ -506,7 +519,7 @@ async function planChatNotifications(now: Date): Promise<number> {
  * notification that fires after somebody has already replied is worse than no
  * notification, because it teaches them the emails aren't worth opening.
  */
-async function runChatNotification(
+export async function runChatNotification(
   admin: ReturnType<typeof createAdminClient>,
   job: {
     member_id: string;
@@ -566,7 +579,7 @@ async function runChatNotification(
  * Nothing to plan: the job was queued when the pairing was made. This resolves
  * the partner and what times they both ticked, and sends.
  */
-async function runPairingBooked(
+export async function runPairingBooked(
   admin: ReturnType<typeof createAdminClient>,
   job: { member_id: string; payload: { pairing_id?: string } },
 ): Promise<"sent" | "skipped" | "failed"> {
@@ -640,7 +653,7 @@ async function runPairingBooked(
  * and sending happen together, and the flag is only set if it isn't already, so
  * a re-run can't produce a second email about the same silence.
  */
-async function runPairingDay7(
+export async function runPairingDay7(
   admin: ReturnType<typeof createAdminClient>,
   job: { member_id: string; payload: { pairing_id?: string } },
 ): Promise<"sent" | "skipped" | "failed"> {
@@ -683,6 +696,10 @@ async function runPairingDay7(
     adminUrl: `${env.siteUrl}/admin/pairing`,
   });
 
+  // `is("flagged_at", null)` guards the gap between the read above and this
+  // write: two overlapping cron runs would both pass the in-memory check and
+  // both send. No test isolates it — the earlier check already covers the
+  // single-runner case — so it is here for the race, not for the common path.
   await admin
     .from("pairings")
     .update({ flagged_at: new Date().toISOString() })
@@ -773,7 +790,7 @@ async function planBuildCheckIns(today: string): Promise<number> {
  * Skipped if there's no coach to reply to, rather than sending somebody to a
  * conversation that doesn't exist.
  */
-async function runBuildCheckIn(
+export async function runBuildCheckIn(
   admin: ReturnType<typeof createAdminClient>,
   job: { member_id: string; payload: { handover_pack_id?: string } },
 ): Promise<"sent" | "skipped" | "failed"> {
