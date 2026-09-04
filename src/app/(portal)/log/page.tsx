@@ -311,6 +311,7 @@ export default async function WeeklyLogPage() {
         <WeeklyLogForm
           roadmapItems={roadmapItems}
           defaultOtherActivity={submission?.other_activity ?? ""}
+          actionsTaken={submission?.actions_taken ?? {}}
         />
       )}
 

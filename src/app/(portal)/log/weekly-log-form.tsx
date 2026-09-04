@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { submitWeeklyLog, type LogState } from "@/lib/log/actions";
+import { saveLogDraft, submitWeeklyLog, type LogState } from "@/lib/log/actions";
 import type { RoadmapItem } from "@/lib/log/queries";
 import { FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
 import { Card, Eyebrow } from "@/components/ui/card";
@@ -10,9 +10,12 @@ import { Card, Eyebrow } from "@/components/ui/card";
 export function WeeklyLogForm({
   roadmapItems,
   defaultOtherActivity,
+  actionsTaken,
 }: {
   roadmapItems: RoadmapItem[];
   defaultOtherActivity: string;
+  /** What's already ticked, so a refresh doesn't lose it. */
+  actionsTaken: Record<string, boolean>;
 }) {
   const [state, formAction] = useActionState<LogState, FormData>(
     submitWeeklyLog,
@@ -58,6 +61,18 @@ export function WeeklyLogForm({
                       <input
                         type="checkbox"
                         name={`action:${item.key}`}
+                        defaultChecked={actionsTaken[item.key] === true}
+                        // §4 is "logged as you go, signed off at the end", so a
+                        // tick saves as a draft immediately. It never sets
+                        // `submitted_at` — ticking a box isn't signing off a
+                        // week, and the sign-off is a moment the member makes
+                        // on purpose.
+                        onChange={(event) => {
+                          const form = event.currentTarget.form;
+                          if (!form) return;
+                          // The week is the server's to decide, not the page's.
+                          void saveLogDraft(new FormData(form));
+                        }}
                         className="mt-0.5 size-4 accent-navy"
                       />
                       {item.label}

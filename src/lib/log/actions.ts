@@ -73,3 +73,68 @@ export async function submitWeeklyLog(
   revalidatePath("/", "layout");
   return { notice: "Logged. That's this week accounted for." };
 }
+
+/**
+ * Save the actions-taken ticks without signing the week off (§4).
+ *
+ * §4's framing is "logged as you go, signed off at the end", and the schema was
+ * built for it: `weekly_submissions.submitted_at` is nullable and the update
+ * policy permits edits only while it is null. A draft row was always the
+ * intended shape — the form just never wrote one, so a member ticking an action
+ * on the day they did it lost it on the next refresh.
+ *
+ * Deliberately never sets `submitted_at`. Ticking a box is not signing off a
+ * week, and a checklist that quietly submitted the log would take away the one
+ * moment §4 asks the member to make on purpose.
+ *
+ * Silent on failure: this fires on every tick, and interrupting somebody
+ * mid-checklist to report a dropped autosave would be worse than the dropped
+ * autosave. The submit at the end sends the full set regardless.
+ *
+ * The week comes from the clock, exactly as `submitWeeklyLog` takes it, rather
+ * than from the form. Two sources for "which week" is one too many: a page left
+ * open across midnight on a Sunday would draft into the week it was rendered in
+ * and submit into the one it was sent in, and the ticks would land on different
+ * rows without anybody seeing why.
+ */
+export async function saveLogDraft(formData: FormData): Promise<void> {
+  const member = await requireMember();
+
+  const weekStart = currentWeekStart();
+
+  const actionsTaken: Record<string, boolean> = {};
+  for (const [name, value] of formData.entries()) {
+    if (name.startsWith("action:") && value === "on") {
+      actionsTaken[name.slice("action:".length)] = true;
+    }
+  }
+
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("weekly_submissions")
+    .select("id, submitted_at")
+    .eq("member_id", member.id)
+    .eq("week_start_date", weekStart)
+    .maybeSingle();
+
+  const row = existing as { id: string; submitted_at: string | null } | null;
+
+  // A signed-off week is what it said. RLS refuses this anyway; returning early
+  // means it isn't attempted rather than failing quietly.
+  if (row?.submitted_at) return;
+
+  if (row) {
+    await supabase
+      .from("weekly_submissions")
+      .update({ actions_taken: actionsTaken })
+      .eq("id", row.id);
+    return;
+  }
+
+  await supabase.from("weekly_submissions").insert({
+    member_id: member.id,
+    week_start_date: weekStart,
+    actions_taken: actionsTaken,
+  });
+}
