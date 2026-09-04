@@ -20,7 +20,10 @@ export const metadata: Metadata = { title: "Reveal — aOS" };
  * as the first page of aOS itself" — Cormorant for the display line, Inter for
  * the body, JetBrains Mono for the numbers, exactly as the portal does.
  *
- * Outside the portal chrome deliberately: no nav, nothing that would print.
+ * It renders *inside* the portal layout — it needs the admin session, and the
+ * layout is where that lives — so the chrome is hidden at print time there
+ * rather than avoided here. Worth knowing before adding another print view:
+ * `print:hidden` on the layout's nav is what makes this a document.
  */
 export default async function RevealDocumentPage({
   params,

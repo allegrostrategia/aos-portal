@@ -60,7 +60,13 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="border-b border-navy/10 bg-white/50">
+      {/* Everything in this layout is chrome, and none of it belongs on paper.
+          The SOP and the reveal document both print from inside the portal —
+          they are admin and member screens, so they need the layout's auth —
+          and without this the printed page carries the whole navigation with
+          it. `print:hidden` on each piece rather than one wrapper, because the
+          content sits between them in the DOM. */}
+      <header className="border-b border-navy/10 bg-white/50 print:hidden">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-3">
           <Link href="/piazza" className="font-display text-heading text-navy italic">
             aOS
@@ -83,18 +89,21 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
       </header>
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-5">
-        <aside className="hidden w-44 shrink-0 py-8 lg:block">
+        <aside className="hidden w-44 shrink-0 py-8 lg:block print:hidden">
           <PortalNavSidebar items={items} className="sticky top-8" />
         </aside>
 
-        {/* Bottom padding clears the mobile nav bar, which is fixed. */}
-        <div className="flex min-w-0 flex-1 flex-col pb-24 lg:pb-0">
+        {/* Bottom padding clears the mobile nav bar, which is fixed — and is
+            removed for print, where there is no nav bar to clear. */}
+        <div className="flex min-w-0 flex-1 flex-col pb-24 lg:pb-0 print:pb-0">
           {children}
         </div>
       </div>
 
-      <FloatingTimer categories={categories} running={running} />
-      <PortalNavBottom items={items} />
+      <div className="print:hidden">
+        <FloatingTimer categories={categories} running={running} />
+        <PortalNavBottom items={items} />
+      </div>
     </div>
   );
 }

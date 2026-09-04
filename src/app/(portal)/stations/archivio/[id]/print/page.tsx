@@ -19,8 +19,9 @@ export const metadata: Metadata = { title: "SOP — aOS" };
  * worth giving up. If a branded, precisely laid out document is ever wanted,
  * that's when a real renderer earns its dependency.
  *
- * Deliberately outside the portal chrome: no nav, no sidebar, nothing that would
- * print. Styles are inline for the same reason — this page is a document.
+ * It renders inside the portal layout, which is where the member session lives,
+ * so the navigation is hidden at print time in the layout rather than avoided
+ * here. Styles stay inline: this page is a document, not a screen.
  */
 export default async function SopPrintPage({
   params,
