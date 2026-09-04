@@ -201,8 +201,22 @@ export function LaStradaMap({
 
       {/* `touch-pan-x touch-pan-y` tells the browser this is a pannable surface,
           so a drag scrolls the map rather than the page. */}
+      {/* Focusable so the arrow keys work.
+          
+          A scroll container is only keyboard-scrollable in Chrome if it can take
+          focus — Firefox allows it either way, which is why this was easy to
+          miss. Without it, panning is mouse-and-touch only and there is no
+          keyboard route around the map at all.
+          
+          The cost is one tab stop before the eleven station links, which is the
+          right trade: somebody tabbing through reaches the map, can move it, and
+          tabs on. `role="region"` with a name means it is announced as somewhere
+          you've arrived rather than as an unlabelled box. */}
       <div
         ref={scroller}
+        tabIndex={0}
+        role="region"
+        aria-label="La Strada map — use the arrow keys to move around"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -216,7 +230,7 @@ export function LaStradaMap({
           event.preventDefault();
           event.stopPropagation();
         }}
-        className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-navy/10 bg-sky/10 ${
+        className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-navy/10 bg-sky/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange ${
           dragging ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
       >
@@ -447,8 +461,8 @@ export function LaStradaMap({
       </div>
 
       <p className="mt-2 text-caption text-navy/50">
-        Drag or scroll to move around. A dot on a photo marks somewhere
-        you&rsquo;ve been.
+        Drag or scroll to move around, or tab to the map and use the arrow keys.
+        A dot on a photo marks somewhere you&rsquo;ve been.
       </p>
     </div>
   );
