@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { allActions, readRoadmap } from "@/lib/roadmap/shape";
 import { mondayOf, addDays } from "@/lib/onboarding/cadence";
 
 export type WeeklySubmission = {
@@ -22,6 +23,10 @@ export type RoadmapItem = {
   key: string;
   label: string;
   phaseTitle: string | null;
+  /** Which week of the month it's meant for, where Nina set one. */
+  week: number | null;
+  /** The training it points at, for a link straight to it. */
+  trainingId: string | null;
 };
 
 export function currentWeekStart(): string {
@@ -107,28 +112,14 @@ export async function getRoadmapItems(memberId: string): Promise<RoadmapItem[]> 
     .not("confirmed_at", "is", null)
     .maybeSingle();
 
-  const phases = (data?.phases ?? []) as {
-    title?: string;
-    items?: (string | { id?: string; label?: string })[];
-  }[];
-
-  const items: RoadmapItem[] = [];
-
-  phases.forEach((phase, phaseIndex) => {
-    (phase.items ?? []).forEach((item, itemIndex) => {
-      const label = typeof item === "string" ? item : (item.label ?? "");
-      if (!label) return;
-
-      // Stable key: what gets stored in actions_taken. Prefer an explicit id
-      // from the roadmap so re-ordering phases doesn't detach past ticks.
-      const key =
-        typeof item === "object" && item.id
-          ? item.id
-          : `${phaseIndex}:${itemIndex}`;
-
-      items.push({ key, label, phaseTitle: phase.title ?? null });
-    });
-  });
-
-  return items;
+  // `readRoadmap` handles both shapes and, crucially, keeps the legacy
+  // `<phase>:<item>` fallback id — which is the key `actions_taken` has been
+  // written against since Step 5. A different key would orphan every tick.
+  return allActions(readRoadmap(data?.phases)).map(({ action, focus, month }) => ({
+    key: action.id,
+    label: action.label,
+    phaseTitle: month.title || focus.title || null,
+    week: action.week,
+    trainingId: action.trainingId,
+  }));
 }

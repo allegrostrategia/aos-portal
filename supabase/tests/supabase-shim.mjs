@@ -151,6 +151,7 @@ export function createShimClient(db, uid) {
       update: null,
       upsert: null,
       onConflict: null,
+      delete: false,
       order: [],
       returning: false,
     };
@@ -230,6 +231,14 @@ export function createShimClient(db, uid) {
           };
         }
 
+        if (state.delete) {
+          await run(
+            `delete from public.${quoteIdent(state.table)}${whereSql}`,
+            params,
+          );
+          return { data: null, error: null };
+        }
+
         if (state.update) {
           const assignments = Object.keys(state.update).map((c) => {
             params.push(state.update[c]);
@@ -306,6 +315,10 @@ export function createShimClient(db, uid) {
       },
       update(values) {
         state.update = values;
+        return api;
+      },
+      delete() {
+        state.delete = true;
         return api;
       },
       order(column, options = {}) {

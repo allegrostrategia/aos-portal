@@ -18,8 +18,7 @@
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
 ## Genuinely still open
-1. **The admin Roadmaps section** and the richer roadmap structure — see new scope below. Next.
-2. **The send-handler tests** — see the coverage gap below. Agreed timing: after the Roadmaps section, or sooner if real onboarding is imminent. Not a dedicated session; the fixture work that was blocking it is done.
+1. **The send-handler tests** — next. — see the coverage gap below. Agreed timing: after the Roadmaps section, or sooner if real onboarding is imminent. Not a dedicated session; the fixture work that was blocking it is done.
 3. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target.
 4. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
 5. **Steps 12–13** — roadmap reveal generator (AI, paused) and final polish.
@@ -67,15 +66,14 @@ Deferred to its own session by decision, not oversight. Needs a service worker, 
 
 The pattern across all four is the same: **Claude is a tool Nina uses outside the product, not a dependency inside it.** `CLAUDE.md`'s standing rule 2 ("AI drafts, human confirms") still describes how Nina works — it no longer implies anything runs in-app. A fresh session should not wire an API call anywhere.
 
-## New scope: the admin Roadmaps section
-Its own nav entry, filtered by member, where Nina inputs or edits a roadmap directly. The roadmap structure itself needs to grow to hold it:
-- each **month** has **focuses**
-- each focus has **actions**
-- each action links to a **specific recommended training**
-- each action has **its own comment box** (not one comment for the whole week)
-- each action is assigned to a **week within the month** — a plain week-number dropdown, not drag-and-drop for now
+## The admin Roadmaps section — BUILT 3 Sep
+`/admin/roadmaps`, its own nav entry, filtered by member through the URL so a roadmap can be linked to and come back to. Months hold focuses, focuses hold actions, and each action carries the training it points at and the week it's meant for (a plain dropdown, no drag-and-drop). Nothing drafts anything — Nina works the plan out with Claude externally and types it in.
 
-Not yet built, and now the next piece of work — the two-week check-in and Step 9 that preceded it are both done.
+**The load-bearing rule: an action keeps its id when its wording is unchanged.** `weekly_submissions.actions_taken` and `roadmap_action_notes` both key off those ids, so renaming a focus, reordering actions or moving one to a different week must not detach a member's ticks or separate them from what they wrote. A *reworded* action gets a new id, which is the honest answer — what they ticked isn't what's there now. Covered by 9 action tests, because when this breaks nothing errors: the roadmap saves, looks right, and a member's history quietly stops belonging to anything.
+
+**The old shape is read, not migrated.** `readRoadmap()` normalises a legacy phase into a month with one focus, and keeps the `<phase>:<item>` fallback id the weekly log has written since Step 5. No script has to be right about real members' plans.
+
+`roadmap_action_notes` is the per-action comment box — one note per action, edited in place rather than appended to, so a member saying "actually it's working now" updates what they said rather than leaving Nina two contradictory notes. Nina reads them beside the action in the editor.
 
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.

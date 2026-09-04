@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { readRoadmap } from "@/lib/roadmap/shape";
 
 export type FocusStation = {
   slug: string;
@@ -40,11 +41,7 @@ export async function getPiazzaRoadmap(
   if (!data) return null;
 
   const row = data as {
-    phases: {
-      title?: string;
-      station_slug?: string | null;
-      items?: { id?: string; label?: string }[];
-    }[];
+    phases: unknown;
     current_focus: string | null;
     current_focus_station_slug: string | null;
   };
@@ -59,15 +56,25 @@ export async function getPiazzaRoadmap(
     focusStation = (station as FocusStation | null) ?? null;
   }
 
-  // The first phase with anything in it — what they're working through now.
-  const phase = (row.phases ?? []).find((p) => (p.items ?? []).length > 0);
+  // The first month with anything in it — what they're working through now.
+  // `readRoadmap` normalises the legacy phase shape, so a roadmap written before
+  // 3 Sep still reads here without being migrated.
+  const months = readRoadmap(row.phases);
+  const month = months.find((m) =>
+    m.focuses.some((f) => f.actions.length > 0),
+  );
+
+  const focusWithActions = month?.focuses.find((f) => f.actions.length > 0);
 
   return {
     currentFocus: row.current_focus,
     focusStation,
-    phaseTitle: phase?.title ?? null,
-    openItems: (phase?.items ?? [])
-      .map((item) => item.label ?? "")
-      .filter(Boolean),
+    // The month's own title where it has one, falling back to the focus — a
+    // legacy phase carried its title on the focus, and Piazza should read the
+    // same either way.
+    phaseTitle: month?.title || focusWithActions?.title || null,
+    openItems: (month?.focuses ?? []).flatMap((focus) =>
+      focus.actions.map((action) => action.label),
+    ),
   };
 }

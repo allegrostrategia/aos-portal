@@ -1621,5 +1621,80 @@ await check("an admin can still write it up and sign it off", async () => {
   return r.rows[0].body === "Rewritten by Nina.";
 });
 
+console.log("\n— roadmap action notes —");
+
+const ROADMAP_ID = (await as(ADMIN, () => db.query(
+  `select id from public.roadmap where member_id='${ALICE}' limit 1`))).rows[0].id;
+
+await check("a member writes a note against an action", async () => {
+  await as(ALICE, () => db.query(`
+    insert into public.roadmap_action_notes (member_id, roadmap_id, action_id, body)
+    values ('${ALICE}','${ROADMAP_ID}','0:0','Got stuck on the third step.')`));
+  const r = await as(ALICE, () => db.query(
+    `select body from public.roadmap_action_notes where action_id='0:0'`));
+  return r.rows[0].body === "Got stuck on the third step.";
+});
+
+await check("Nina can read it — that's the point of it existing", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.roadmap_action_notes where member_id='${ALICE}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("nobody else can", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.roadmap_action_notes`));
+  return r.rows[0].c === 0;
+});
+
+await check("one note per action, edited rather than appended to", async () => {
+  try {
+    await as(ALICE, () => db.query(`
+      insert into public.roadmap_action_notes (member_id, roadmap_id, action_id, body)
+      values ('${ALICE}','${ROADMAP_ID}','0:0','A second, contradictory note.')`));
+  } catch {
+    // The unique constraint is the point.
+  }
+  const r = await as(ALICE, () => db.query(
+    `select count(*)::int c from public.roadmap_action_notes where action_id='0:0'`));
+  return r.rows[0].c === 1;
+});
+
+await check("editing their own note works", async () => {
+  await as(ALICE, () => db.query(`
+    update public.roadmap_action_notes set body = 'Actually it is working now.'
+    where action_id='0:0'`));
+  const r = await as(ALICE, () => db.query(
+    `select body from public.roadmap_action_notes where action_id='0:0'`));
+  return r.rows[0].body === "Actually it is working now.";
+});
+
+// The column-ownership trap, checked on a new table before it bit rather than
+// after: without the trigger a member could reattach what they said about one
+// action to a different one.
+await rejects("a note cannot be moved onto another action", () =>
+  as(ALICE, () => db.query(
+    `update public.roadmap_action_notes set action_id='0:1' where action_id='0:0'`)),
+  "stays attached to the action");
+
+await rejects("a note cannot be moved onto another roadmap", () =>
+  as(ALICE, () => db.query(
+    `update public.roadmap_action_notes set roadmap_id=gen_random_uuid() where action_id='0:0'`)),
+  "stays attached to the action");
+
+await check("a member can clear their own note", async () => {
+  await as(ALICE, () => db.query(
+    `delete from public.roadmap_action_notes where action_id='0:0'`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.roadmap_action_notes where action_id='0:0'`));
+  return r.rows[0].c === 0;
+});
+
+await rejects("a member cannot write a note into somebody else's roadmap", () =>
+  as(ERIN, () => db.query(`
+    insert into public.roadmap_action_notes (member_id, roadmap_id, action_id, body)
+    values ('${ALICE}','${ROADMAP_ID}','0:2','Not mine to write')`)),
+  "row-level security");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -50,6 +50,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           { href: "/admin/touchpoint", label: "Friday" },
           { href: "/admin/reminders", label: "Emails" },
           { href: "/admin/library", label: "Library" },
+          { href: "/admin/roadmaps", label: "Roadmaps" },
           { href: "/admin/draw", label: "Draw" },
           { href: "/admin/pairing", label: "Pairs" },
         ]

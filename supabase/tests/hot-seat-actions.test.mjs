@@ -11,41 +11,10 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { registerHooks } from "node:module";
-import path from "node:path";
-import { existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
-
+// Registers the module hooks; must come before the dynamic import below.
+import "./hooks.mjs";
 import { createTestDatabase, asMember } from "./pglite.mjs";
 import { configure } from "./stubs/supabase-server.mjs";
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = path.join(HERE, "..", "..", "src");
-const stub = (file) => pathToFileURL(path.join(HERE, "stubs", file)).href;
-
-const SUBSTITUTES = new Map([
-  ["server-only", stub("server-only.mjs")],
-  ["next/cache", stub("next-cache.mjs")],
-  ["next/navigation", stub("next-navigation.mjs")],
-  ["@/lib/supabase/server", stub("supabase-server.mjs")],
-]);
-
-registerHooks({
-  resolve(specifier, context, nextResolve) {
-    const substitute = SUBSTITUTES.get(specifier);
-    if (substitute) return { url: substitute, shortCircuit: true };
-
-    if (specifier.startsWith("@/")) {
-      const base = path.join(SRC, specifier.slice(2));
-      const candidates = [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts")];
-      const found = candidates.find((c) => existsSync(c));
-      if (!found) throw new Error(`Test hook cannot resolve ${specifier}`);
-      return { url: pathToFileURL(found).href, shortCircuit: true };
-    }
-
-    return nextResolve(specifier, context);
-  },
-});
 
 const { confirmChallenge, setAttendance, saveReplayNote } = await import(
   "../../src/lib/admin/hot-seat-actions.ts"
