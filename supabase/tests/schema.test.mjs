@@ -1748,5 +1748,56 @@ await check("a member cannot delete somebody else's photo", async () => {
   return r.rows[0].c === 1;
 });
 
+console.log("\n— the reveal document —");
+
+await check("an admin writes a member's reveal", async () => {
+  await as(ADMIN, () => db.query(`
+    insert into public.roadmap_reveals (member_id, in_their_words, priorities)
+    values ('${ERIN}', 'I am drowning in admin.',
+            '[{"title":"Rebuild follow-up","body":"It is all manual."}]'::jsonb)`));
+  const r = await as(ADMIN, () => db.query(
+    `select in_their_words from public.roadmap_reveals where member_id='${ERIN}'`));
+  return r.rows[0].in_their_words === "I am drowning in admin.";
+});
+
+// §1: handed over before they log in, and La Strada is the live version
+// afterwards. There is no member policy at all, rather than a restrictive one —
+// a policy would imply there is a case where they should read it.
+await check("the member it is about cannot read it", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.roadmap_reveals`));
+  return r.rows[0].c === 0;
+});
+
+await rejects("a member cannot write one either", () =>
+  as(ERIN, () => db.query(`
+    insert into public.roadmap_reveals (member_id, in_their_words)
+    values ('${ERIN}', 'Writing my own')`)),
+  "row-level security");
+
+await check("one reveal per member — a second is the same moment rewritten", async () => {
+  try {
+    await as(ADMIN, () => db.query(`
+      insert into public.roadmap_reveals (member_id, in_their_words)
+      values ('${ERIN}', 'A different version')`));
+  } catch {
+    // The unique constraint is the point.
+  }
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.roadmap_reveals where member_id='${ERIN}'`));
+  return r.rows[0].c === 1;
+});
+
+// A snapshot: the roadmap moves on, this doesn't.
+await check("editing the roadmap afterwards leaves the reveal alone", async () => {
+  const before = await as(ADMIN, () => db.query(
+    `select priorities from public.roadmap_reveals where member_id='${ERIN}'`));
+  await as(ADMIN, () => db.query(`
+    update public.roadmap set phases = '[]'::jsonb where member_id='${ERIN}'`));
+  const after = await as(ADMIN, () => db.query(
+    `select priorities from public.roadmap_reveals where member_id='${ERIN}'`));
+  return JSON.stringify(after.rows[0].priorities) === JSON.stringify(before.rows[0].priorities);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

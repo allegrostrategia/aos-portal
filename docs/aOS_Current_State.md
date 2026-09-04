@@ -29,7 +29,18 @@ This is its own section rather than a line in the open list because it is a prod
 ## Genuinely still open
 1. **The design/artwork pass** — the milestone path and a La Strada refresh, judged together rather than one at a time. The milestone page is built as structure only, waiting on it.
 2. **The community goal** — needs a target from Nina before it can be built at all.
-3. **Steps 12–13** — roadmap reveal generator (drafted externally per the AI decision) and final polish.
+3. **Step 13** — final polish: the Vespa intro video on first login, and the optional animation flourishes (flip-board counters, the FATTO stamp, self-drawing blueprints), all independently droppable.
+
+## Step 12 — the reveal document, BUILT 3 Sep
+`/admin/reveal`, with the document itself at `/admin/reveal/[memberId]/document`.
+
+**An admin tool, not member-facing — and that's from §1, not a shortcut.** The reveal is handed over at the end of the 1:1 "before they even log into the portal", which is why it's a document rather than a screen; once they're in, La Strada is the living version of the same thing. The table has **no member policy at all**, rather than a restrictive one — a policy would imply there's a case where they should read it.
+
+§1 described it as Claude-drafted and Nina-confirmed. It isn't: she writes it with Claude outside the product. What the app contributes is the document — one structure and one type system for every member, instead of whatever survives being hand-edited each time. The form asks in the document's own order (what they said, what's working, what isn't, then priorities), because asking for priorities first produces a task list rather than a reading of somebody.
+
+**A snapshot, deliberately.** Priorities are stored on the reveal rather than read live from `roadmap`, so re-pointing somebody in November doesn't rewrite what was said at their 1:1 in March. A test asserts exactly that.
+
+Export is browser print-to-PDF, same as the SOP. One reveal per member — a second would be the same moment rewritten.
 
 ## Headshot upload — BUILT 3 Sep, closes the directory gap
 On the onboarding directory form. Browser straight to storage, like library uploads and voice notes — a Server Action body is capped at a few megabytes on Vercel and a phone photo routinely isn't.
