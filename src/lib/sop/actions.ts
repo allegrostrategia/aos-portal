@@ -109,3 +109,37 @@ export async function deleteSop(formData: FormData): Promise<void> {
   revalidatePath("/stations/archivio");
   redirect("/stations/archivio");
 }
+
+/**
+ * The member rewording their own copy of a build write-up (§8).
+ *
+ * Only the prose. The title, who wrote it and when it was signed off are Nina's,
+ * and a trigger enforces that rather than this action being the only thing
+ * standing in the way — the update policy grants the whole row, and a screen is
+ * a poor place to keep a rule.
+ */
+export async function rephraseWriteUp(
+  _prev: SopState,
+  formData: FormData,
+): Promise<SopState> {
+  const member = await requireMember();
+
+  const id = String(formData.get("id") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!id) return { error: "Which entry?" };
+  if (!body) {
+    return { error: "Emptying it would lose the write-up — leave it as it is instead." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("handover_pack")
+    .update({ body, member_edited_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("member_id", member.id);
+
+  if (error) return { error: `Couldn't save that: ${error.message}` };
+
+  revalidatePath("/stations/archivio");
+  return { notice: "Saved in your words." };
+}

@@ -1550,5 +1550,76 @@ await check("a rejoined member keeps their old Archivio", async () => {
   return r.rows[0].c === 1;
 });
 
+console.log("\n— what a member may change about a write-up —");
+
+const WRITE_UP = "17171717-1717-1717-1717-171717171717";
+await as(ADMIN, () => db.query(`
+  insert into public.handover_pack (id, member_id, title, source, body, drafted_by, confirmed_at)
+  values ('${WRITE_UP}', '${ERIN}', 'Enquiry follow-up build', 'hot_seat',
+          'What we built together, in Nina''s words.', 'nina', now())`));
+
+// §8: the member can rephrase their own copy.
+await check("a member can reword their own copy", async () => {
+  await as(ERIN, () => db.query(`
+    update public.handover_pack set body = 'In my own words.', member_edited_at = now()
+    where id = '${WRITE_UP}'`));
+  const r = await as(ERIN, () => db.query(
+    `select body from public.handover_pack where id = '${WRITE_UP}'`));
+  return r.rows[0].body === "In my own words.";
+});
+
+// The hole this closes: relabelling a build write-up as an SOP brings it under
+// the delete policy, so one party could remove a shared record.
+await rejects("a member cannot relabel a build write-up as their own SOP", () =>
+  as(ERIN, () => db.query(
+    `update public.handover_pack set source = 'member_sop' where id = '${WRITE_UP}'`)),
+  "not yours to change");
+
+await rejects("a member cannot sign off their own entry", () =>
+  as(ERIN, () => db.query(
+    `update public.handover_pack set confirmed_by = '${ERIN}' where id = '${WRITE_UP}'`)),
+  "not yours to change");
+
+await rejects("a member cannot claim somebody else drafted it", () =>
+  as(ERIN, () => db.query(
+    `update public.handover_pack set drafted_by = 'claude' where id = '${WRITE_UP}'`)),
+  "not yours to change");
+
+// §8: Nina names a build she wrote up.
+await rejects("a member cannot rename a build write-up", () =>
+  as(ERIN, () => db.query(
+    `update public.handover_pack set title = 'My build' where id = '${WRITE_UP}'`)),
+  "not yours to change");
+
+await check("but they can rename their own SOP", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.handover_pack (id, member_id, title, source, sop)
+    values ('18181818-1818-1818-1818-181818181818', '${ERIN}', 'First name', 'member_sop', '{}'::jsonb)`));
+  await as(ERIN, () => db.query(`
+    update public.handover_pack set title = 'Better name'
+    where id = '18181818-1818-1818-1818-181818181818'`));
+  const r = await as(ERIN, () => db.query(
+    `select title from public.handover_pack where id = '18181818-1818-1818-1818-181818181818'`));
+  return r.rows[0].title === "Better name";
+});
+
+await check("the write-up survives the relabel attempt intact", async () => {
+  const r = await as(ADMIN, () => db.query(
+    `select source, title, drafted_by from public.handover_pack where id = '${WRITE_UP}'`));
+  return r.rows[0].source === "hot_seat"
+    && r.rows[0].title === "Enquiry follow-up build"
+    && r.rows[0].drafted_by === "nina";
+});
+
+await check("an admin can still write it up and sign it off", async () => {
+  await as(ADMIN, () => db.query(`
+    update public.handover_pack
+    set body = 'Rewritten by Nina.', confirmed_at = now(), confirmed_by = '${ADMIN}'
+    where id = '${WRITE_UP}'`));
+  const r = await as(ADMIN, () => db.query(
+    `select body from public.handover_pack where id = '${WRITE_UP}'`));
+  return r.rows[0].body === "Rewritten by Nina.";
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

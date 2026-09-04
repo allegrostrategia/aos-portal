@@ -94,6 +94,8 @@ export type BuildRate = {
 export type MemberBuild = {
   id: string;
   title: string;
+  body: string | null;
+  confirmed_at: string | null;
   created_at: string;
   rates: BuildRate[];
   /** The period still running, if any. Null means retired or never rated. */
@@ -113,7 +115,7 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
   const { data } = await supabase
     .from("handover_pack")
     .select(
-      "id, title, created_at, handover_pack_rates(id, hours_per_week, effective_from, effective_until, note)",
+      "id, title, body, confirmed_at, created_at, handover_pack_rates(id, hours_per_week, effective_from, effective_until, note)",
     )
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
@@ -121,6 +123,8 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
   return ((data ?? []) as unknown as {
     id: string;
     title: string;
+    body: string | null;
+    confirmed_at: string | null;
     created_at: string;
     handover_pack_rates: (Omit<BuildRate, "hours_per_week"> & {
       hours_per_week: string | number;
@@ -133,6 +137,8 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
     return {
       id: build.id,
       title: build.title,
+      body: build.body,
+      confirmed_at: build.confirmed_at,
       created_at: build.created_at,
       rates,
       current: rates.find((r) => r.effective_until === null) ?? null,

@@ -13,7 +13,7 @@ import { setCoach } from "@/lib/admin/member-actions";
 import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
 import { getCheckInsByBuild, getMemberBuilds } from "@/lib/hours/queries";
 import { formatHours } from "@/lib/hours/milestones";
-import { AddBuildForm, RateControls } from "./build-forms";
+import { AddBuildForm, RateControls, WriteUpForm } from "./build-forms";
 
 export const metadata: Metadata = {
   title: "Member — aOS admin",
@@ -404,6 +404,12 @@ export default async function AdminMemberPage({
                   a guess about their business.
                 </p>
               ) : null}
+
+              <WriteUpForm
+                packId={build.id}
+                body={build.body}
+                isPublished={Boolean(build.confirmed_at)}
+              />
 
               <RateControls
                 packId={build.id}

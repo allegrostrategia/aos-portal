@@ -19,7 +19,7 @@
 
 ## Genuinely still open
 1. **The admin Roadmaps section** and the richer roadmap structure — see new scope below. Next.
-2. **Nina's write-up screen for hot seat builds.** Step 9's other half: she can create the entry, but there's no admin form to write it up in. Members see "the write-up for this one isn't in yet" until there is.
+2. **The send-handler tests** — see the coverage gap below. Agreed timing: after the Roadmaps section, or sooner if real onboarding is imminent. Not a dedicated session; the fixture work that was blocking it is done.
 3. **Step 10 remainder** — the illustrated milestone path click-through, and the community goal once Nina sets a target.
 4. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
 5. **Steps 12–13** — roadmap reveal generator (AI, paused) and final polish.
@@ -41,6 +41,8 @@ Anchored to `effective_from` rather than row creation, and planned from `<= toda
 **Export is browser print-to-PDF**, at `/stations/archivio/[id]/print` — a clean document page outside the portal chrome. Deliberate over a PDF library: no dependency, no server rendering, no font embedding, works on a phone through the share sheet, and the output is a real PDF. The trade is pagination control, worth giving up for a page of numbered steps. A branded, precisely laid out document is when a renderer earns its dependency. §11 holds: SOPs are still the only exportable thing.
 
 Members can delete their own SOPs — the one place rule 6 doesn't apply, since a draft somebody thought better of isn't the record of their membership.
+
+**Step 9 is complete (3 Sep).** Nina writes a build up from the member's admin page; saving publishes it straight to their Archivio, with no draft state — she works the wording out with Claude externally, so drafting happens where drafting happens, and a half-written note sitting in a column the member can technically read is a worse answer than not storing one. The member can then reword their own copy (§8), which reads as prose until they choose to change it rather than as a text box waiting to be filled in.
 
 ## Known coverage gap: the job runner's send path
 `runMatching` is now tested end to end, including which notification jobs are queued and for whom. What still has **no test**: the handlers that read those jobs and send — `runPairingBooked`, `runPairingDay7`, `runChatNotification`, `runHoursLedger`, both reminder tracks. Nothing exercises what gets skipped at send time or what the email says.

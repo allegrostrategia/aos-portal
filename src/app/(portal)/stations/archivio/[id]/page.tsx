@@ -9,6 +9,7 @@ import { deleteSop } from "@/lib/sop/actions";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { SopForm } from "../sop-form";
+import { WriteUpEditor } from "./write-up-editor";
 
 export const metadata: Metadata = { title: "Archivio — aOS" };
 
@@ -84,9 +85,19 @@ export default async function ArchivioEntryPage({
       ) : (
         <Card>
           <Eyebrow>Written up after your hot seat</Eyebrow>
-          <div className="mt-2 text-body whitespace-pre-wrap text-navy/85">
-            {entry.body ?? "The write-up for this one isn't in yet."}
-          </div>
+          {entry.confirmed_at ? (
+            /* §8: the member can rephrase their own copy. A trigger keeps that
+               to the prose — the title and who signed it off stay Nina's. */
+            <div className="mt-3">
+              <WriteUpEditor id={entry.id} body={entry.body ?? ""} />
+            </div>
+          ) : (
+            <p className="mt-2 text-small text-navy/70">
+              Nina hasn&rsquo;t written this one up yet. It&rsquo;ll appear here
+              when she has — the build itself is already counting towards your
+              hours.
+            </p>
+          )}
         </Card>
       )}
     </main>

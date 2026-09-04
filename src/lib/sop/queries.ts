@@ -7,6 +7,8 @@ export type ArchivioEntry = {
   id: string;
   title: string;
   body: string | null;
+  /** Null on a build Nina hasn't written up yet — the entry shows, the prose doesn't. */
+  confirmed_at: string | null;
   source: "hot_seat" | "member_sop" | "ai_sop";
   sop: Sop | null;
   created_at: string;
@@ -30,7 +32,7 @@ export async function getArchivio(memberId: string): Promise<ArchivioEntry[]> {
 
   const { data } = await supabase
     .from("handover_pack")
-    .select("id, title, body, source, sop, created_at, member_edited_at")
+    .select("id, title, body, source, sop, confirmed_at, created_at, member_edited_at")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
 
@@ -50,7 +52,7 @@ export async function getArchivioEntry(
 
   const { data } = await supabase
     .from("handover_pack")
-    .select("id, title, body, source, sop, created_at, member_edited_at")
+    .select("id, title, body, source, sop, confirmed_at, created_at, member_edited_at")
     .eq("id", id)
     .eq("member_id", memberId)
     .maybeSingle();

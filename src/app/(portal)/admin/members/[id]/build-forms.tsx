@@ -2,8 +2,13 @@
 
 import { useActionState } from "react";
 
-import { addBuild, changeBuildRate, type HoursState } from "@/lib/admin/hours-actions";
-import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
+import {
+  addBuild,
+  changeBuildRate,
+  saveWriteUp,
+  type HoursState,
+} from "@/lib/admin/hours-actions";
+import { Field, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 export function AddBuildForm({
@@ -98,6 +103,54 @@ export function RateControls({
       </p>
 
       <FormMessage error={state?.error} notice={state?.notice} />
+    </form>
+  );
+}
+
+/**
+ * The write-up of a live build (§8).
+ *
+ * No draft state: saving publishes it to their Archivio. Nina works the wording
+ * out with Claude outside the product, so the drafting has already happened by
+ * the time anything is typed here — and a half-written note stored where the
+ * member can technically read it is a worse answer than not storing one.
+ *
+ * The member can rephrase their own copy afterwards, which is §8's intent; a
+ * trigger keeps that to the prose rather than the title or who signed it off.
+ */
+export function WriteUpForm({
+  packId,
+  body,
+  isPublished,
+}: {
+  packId: string;
+  body: string | null;
+  isPublished: boolean;
+}) {
+  const [state, formAction] = useActionState<HoursState, FormData>(
+    saveWriteUp,
+    null,
+  );
+
+  return (
+    <form action={formAction} className="mt-3 flex flex-col gap-2 border-t border-navy/10 pt-3">
+      <input type="hidden" name="handover_pack_id" value={packId} />
+      <TextArea
+        label={isPublished ? "Write-up (published)" : "Write-up"}
+        name="body"
+        rows={4}
+        required={false}
+        defaultValue={body ?? ""}
+        hint={
+          isPublished
+            ? "Saving again replaces what they can see."
+            : "Nothing appears in their Archivio until this is saved."
+        }
+      />
+      <FormMessage error={state?.error} notice={state?.notice} />
+      <Button type="submit" size="sm" variant="secondary" className="self-start">
+        {isPublished ? "Update the write-up" : "Publish to their Archivio"}
+      </Button>
     </form>
   );
 }

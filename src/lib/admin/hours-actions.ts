@@ -123,3 +123,45 @@ export async function changeBuildRate(
   revalidatePath("/", "layout");
   return { notice: `Now ${hours} hrs a week from ${date}. Weeks before that are untouched.` };
 }
+
+/**
+ * Write up what got built (§8).
+ *
+ * Nina's half of Archivio. She works the write-up out with Claude outside the
+ * product and types the result in — there is no draft state here on purpose:
+ * saving publishes it. Drafting happens where the drafting happens, and a
+ * half-written note sitting in a column the member can technically read is a
+ * worse answer than not storing one.
+ *
+ * `confirmed_at` is set on save, and `drafted_by` is 'nina' rather than
+ * 'claude', which is now simply true — nothing in the product drafts anything.
+ */
+export async function saveWriteUp(
+  _prev: HoursState,
+  formData: FormData,
+): Promise<HoursState> {
+  const admin = await requireAdmin();
+
+  const id = String(formData.get("handover_pack_id") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!id) return { error: "Which build?" };
+  if (!body) {
+    return { error: "An empty write-up would tell them less than no write-up." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("handover_pack")
+    .update({
+      body,
+      drafted_by: "nina",
+      confirmed_at: new Date().toISOString(),
+      confirmed_by: admin.id,
+    })
+    .eq("id", id);
+
+  if (error) return { error: `Couldn't save that: ${error.message}` };
+
+  revalidatePath("/", "layout");
+  return { notice: "Written up. It's in their Archivio now." };
+}
