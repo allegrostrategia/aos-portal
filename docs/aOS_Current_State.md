@@ -27,7 +27,7 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
 ## Genuinely still open
-1. **The design/artwork pass** — the milestone path and a La Strada refresh, judged together rather than one at a time. The milestone page is built as structure only, waiting on it.
+1. **The design/artwork pass — La Strada done 4 Sep, milestone path still waiting.** La Strada now matches the design reference (see below). The milestone page is still structure only, and was always meant to be judged alongside it.
 2. **The community goal** — needs a target from Nina before it can be built at all.
 3. **Step 13** — final polish: the Vespa intro video on first login, and the optional animation flourishes (flip-board counters, the FATTO stamp, self-drawing blueprints), all independently droppable.
 
@@ -54,6 +54,22 @@ HEIC is accepted because it's what iPhones produce by default. Greying it out in
 Replacing removes the old object, so the bucket doesn't fill with orphans.
 
 **The path is checked server-side against the member's own folder.** The storage policy stops anyone writing outside their prefix and stops nothing about a listing *claiming* somebody else's photo — the same small forgery the voice-message path guards against. A mutation proved that guard had no test; it has five now.
+
+## La Strada — redrawn to the reference, 4 Sep
+The artwork is now **16:9** (1536×864, centre-cropped from the 3:2 original; the original is in git history). Every position was recalculated against it.
+
+**The reference is not a crop of our artwork.** Its fountain sits at 41% across where ours is at 51%, and no crop moves content outward — it's a separately-generated render of the same scene. Its *look* transfers; its *coordinates* don't, so stations are placed against our actual picture. Worth knowing before anyone tries to match reference percentages again.
+
+What changed:
+- **Hub and spoke.** Every coloured line now radiates from the fountain, because that is what Piazza is. The old version chained station-to-station, which drew a route between shops rather than places reached from home.
+- **Your Story has a line again** — pale, along the bottom, through two bends that carry the white dots the legend calls "Your Story Stations". The previous no-line default was **a regression, not a fresh choice**, and is overruled.
+- **Markers** are photo tiles with a numbered badge (from `stations.sort_order`, so the numbering has one source) and the name above rather than below.
+- **Legend** is a translucent panel on the picture, bottom right, with the Your Story Stations row. The inline key below the image survives for phones, where the panel would cover a third of the map.
+- **Piazza — Home** and **Piazza Sociale** are labelled on the map and link through, though neither is a station.
+
+Two calls the reference couldn't settle: markers are rounded rectangles rather than circles, because the station photographs are architectural and a circle crops the building out; and the line casing is a dark shadow rather than the previous pale halo, because a light casing disappears against the bright square where most of the lines run.
+
+**Not yet seen rendered.** Positions, spacing and overlap are guarded by tests, but whether it *looks* right is unverified — see the standing rule about walkthroughs.
 
 ## The milestone path — BUILT 3 Sep (structure only)
 `/milestones`, linked from Piazza's compact line — §2's "compact + click-through", the same pattern as the draw card.

@@ -29,10 +29,10 @@ export default async function StationsPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("stations")
-    .select("slug, name, description")
+    .select("slug, name, description, sort_order")
     .order("sort_order");
 
-  const stations = (data ?? []) as StationCardStation[];
+  const stations = (data ?? []) as (StationCardStation & { sort_order: number })[];
   const isActive = member.status === "active";
   const visited = await getVisitedStations(member.id);
 
@@ -53,6 +53,10 @@ export default async function StationsPage() {
         stations={stations.map((station) => ({
           slug: station.slug,
           name: station.name,
+          // The badge number on the map. From `stations.sort_order`, so the
+          // numbering has one source rather than a second list in the map
+          // config that could quietly disagree with the seeded order.
+          number: station.sort_order,
           visited: visited.has(station.slug),
         }))}
       />
