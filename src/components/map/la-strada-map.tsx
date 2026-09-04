@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   PIAZZA_HUB,
@@ -30,6 +30,18 @@ import {
  * two-finger handling that browsers already do properly, and breaks keyboard and
  * trackpad users on the way. Scrolling a container behaves identically on a
  * phone, a trackpad, a wheel and arrow keys, and can't be got subtly wrong.
+ *
+ * **Drag-to-pan sits on top of that, not in place of it (4 Sep).** People reach
+ * for a map expecting to drag it. The safe way to give them that is to *drive*
+ * the native scroll — set `scrollLeft` and `scrollTop` on the same container the
+ * browser is already scrolling — rather than to intercept events and transform
+ * the content. Nothing is prevented, so bounds clamping, the wheel, the
+ * trackpad, the keyboard and touch momentum all keep working exactly as they
+ * did; the drag is one more thing that moves the same scroll position.
+ *
+ * Mouse and pen only. Handling touch pointers here would fight the momentum
+ * scrolling a phone already does properly, which is the failure the paragraph
+ * above is about.
  *
  * **Redrawn 4 Sep to the design reference.** Markers are photo tiles with a
  * numbered badge and a name above, lines radiate from the fountain, and the
@@ -94,6 +106,66 @@ export function LaStradaMap({
   locked?: boolean;
 }) {
   const [zoom, setZoom] = useState<number>(ZOOMS[0]);
+  const [dragging, setDragging] = useState(false);
+
+  const scroller = useRef<HTMLDivElement>(null);
+  const drag = useRef<{
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+    moved: boolean;
+  } | null>(null);
+  // A drag that ends over a marker would otherwise navigate on release.
+  const swallowClick = useRef(false);
+
+  // Four pixels: enough that a shaky click still opens a station, small enough
+  // that a deliberate drag feels immediate.
+  const DRAG_THRESHOLD = 4;
+
+  function onPointerDown(event: React.PointerEvent) {
+    // Touch pans natively with momentum this can't match, so it's left alone.
+    if (event.pointerType === "touch" || event.button !== 0) return;
+
+    const element = scroller.current;
+    if (!element) return;
+
+    drag.current = {
+      x: event.clientX,
+      y: event.clientY,
+      left: element.scrollLeft,
+      top: element.scrollTop,
+      moved: false,
+    };
+  }
+
+  function onPointerMove(event: React.PointerEvent) {
+    const start = drag.current;
+    const element = scroller.current;
+    if (!start || !element) return;
+
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+
+    if (!start.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      start.moved = true;
+      setDragging(true);
+      // Captured only once it's a real drag, so a plain click is untouched —
+      // and once captured, letting go outside the map still ends cleanly.
+      element.setPointerCapture(event.pointerId);
+    }
+
+    // Driving the browser's own scroll: it clamps at the edges for us.
+    element.scrollLeft = start.left - dx;
+    element.scrollTop = start.top - dy;
+  }
+
+  function onPointerUp() {
+    if (drag.current?.moved) swallowClick.current = true;
+    drag.current = null;
+    setDragging(false);
+  }
 
   const placed = stations.filter((s) => s.slug in STATION_POSITIONS);
   const storyPoints = yourStoryPoints();
@@ -129,7 +201,25 @@ export function LaStradaMap({
 
       {/* `touch-pan-x touch-pan-y` tells the browser this is a pannable surface,
           so a drag scrolls the map rather than the page. */}
-      <div className="touch-pan-x touch-pan-y overflow-auto rounded-xl border border-navy/10 bg-sky/10">
+      <div
+        ref={scroller}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        // The browser's own image drag would otherwise start a ghost copy the
+        // moment somebody drags from a station photo.
+        onDragStart={(event) => event.preventDefault()}
+        onClickCapture={(event) => {
+          if (!swallowClick.current) return;
+          swallowClick.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-navy/10 bg-sky/10 ${
+          dragging ? "cursor-grabbing select-none" : "cursor-grab"
+        }`}
+      >
         <div
           className="relative"
           style={{ width: `${zoom}%`, minWidth: zoom === 100 ? undefined : "100%" }}
@@ -357,7 +447,8 @@ export function LaStradaMap({
       </div>
 
       <p className="mt-2 text-caption text-navy/50">
-        Drag to move around. A dot on a photo marks somewhere you&rsquo;ve been.
+        Drag or scroll to move around. A dot on a photo marks somewhere
+        you&rsquo;ve been.
       </p>
     </div>
   );
