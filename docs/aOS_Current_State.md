@@ -29,8 +29,20 @@ This is its own section rather than a line in the open list because it is a prod
 ## Genuinely still open
 1. **The design/artwork pass** — the milestone path and a La Strada refresh, judged together rather than one at a time. The milestone page is built as structure only, waiting on it.
 2. **The community goal** — needs a target from Nina before it can be built at all.
-3. **Headshot upload.** Nothing writes `member_profiles.headshot_path`; the bucket, policies and column all exist. Directory listings show initials on brand navy instead, so it reads as finished rather than broken.
-4. **Steps 12–13** — roadmap reveal generator (drafted externally per the AI decision) and final polish.
+3. **Steps 12–13** — roadmap reveal generator (drafted externally per the AI decision) and final polish.
+
+## Headshot upload — BUILT 3 Sep, closes the directory gap
+On the onboarding directory form. Browser straight to storage, like library uploads and voice notes — a Server Action body is capped at a few megabytes on Vercel and a phone photo routinely isn't.
+
+**No signed URL, unlike the library.** The `headshots` bucket has a member insert policy scoped to their own folder, so their own session is allowed to write; the library needed signing precisely because its bucket has no member policy at all. Same shape, different mechanism, and using the member's own session where the policy permits it is what CLAUDE.md asks for.
+
+**Resized in the browser before upload**, longest edge 800px. A phone photo is several megapixels and a directory card renders it at 56. `imageOrientation: "from-image"` is what stops a portrait phone photo arriving sideways — the rotation lives in EXIF that a canvas otherwise discards. If any of it fails the original uploads unchanged: a sideways photo beats a member who can't add one.
+
+HEIC is accepted because it's what iPhones produce by default. Greying it out in the picker means the member whose only photo is a HEIC skips the step.
+
+Replacing removes the old object, so the bucket doesn't fill with orphans.
+
+**The path is checked server-side against the member's own folder.** The storage policy stops anyone writing outside their prefix and stops nothing about a listing *claiming* somebody else's photo — the same small forgery the voice-message path guards against. A mutation proved that guard had no test; it has five now.
 
 ## The milestone path — BUILT 3 Sep (structure only)
 `/milestones`, linked from Piazza's compact line — §2's "compact + click-through", the same pattern as the draw card.

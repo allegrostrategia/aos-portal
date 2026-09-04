@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { HeadshotField } from "./headshot-field";
 
 import {
   saveDirectoryListing,
@@ -25,6 +26,7 @@ export function DirectoryForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <HeadshotField path={profile?.headshot_path ?? null} />
       <Field
         label="Name"
         name="display_name"

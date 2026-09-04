@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
+import { ownsHeadshotPath } from "@/lib/directory/headshot";
 import { AUDIT_QUESTIONS, scoreAudit } from "./audit-questions";
 
 export type OnboardingFormState = {
@@ -120,6 +121,15 @@ export async function saveDirectoryListing(
     };
   }
 
+  // The path arrives from the browser and ends up in a row every other member
+  // reads. The storage policy already stops anyone writing outside their own
+  // prefix, but nothing stopped a listing *claiming* somebody else's photo —
+  // the same small forgery the voice-message path guards against.
+  const headshotPath = String(formData.get("headshot_path") ?? "").trim();
+  if (headshotPath && !ownsHeadshotPath(member.id, headshotPath)) {
+    return { error: "That photo isn't yours to use." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("member_profiles").upsert(
     {
@@ -128,6 +138,7 @@ export async function saveDirectoryListing(
       title: title || null,
       bio,
       links,
+      headshot_path: headshotPath || null,
       completed_at: new Date().toISOString(),
     },
     { onConflict: "member_id" },

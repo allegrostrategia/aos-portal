@@ -1696,5 +1696,57 @@ await rejects("a member cannot write a note into somebody else's roadmap", () =>
     values ('${ALICE}','${ROADMAP_ID}','0:2','Not mine to write')`)),
   "row-level security");
 
+console.log("\n— headshots —");
+
+await check("a member's headshot path is stored on their listing", async () => {
+  await as(ERIN, () => db.query(`
+    update public.member_profiles set headshot_path = '${ERIN}/abc123.jpg'
+    where member_id = '${ERIN}'`));
+  const r = await as(ERIN, () => db.query(
+    `select headshot_path from public.member_profiles where member_id='${ERIN}'`));
+  return r.rows[0].headshot_path === `${ERIN}/abc123.jpg`;
+});
+
+await check("another member can see it — the directory is the point", async () => {
+  const r = await as(FRAN, () => db.query(
+    `select headshot_path from public.member_profiles where member_id='${ERIN}'`));
+  return r.rows[0]?.headshot_path === `${ERIN}/abc123.jpg`;
+});
+
+await check("a member uploads into their own folder", async () => {
+  await as(ERIN, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('headshots','${ERIN}/abc123.jpg')`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from storage.objects where name='${ERIN}/abc123.jpg'`));
+  return r.rows[0].c === 1;
+});
+
+await rejects("and cannot upload into somebody else's", () =>
+  as(FRAN, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('headshots','${ERIN}/forged.jpg')`)),
+  "row-level security");
+
+await check("a member replaces their own photo by removing the old one", async () => {
+  await as(ERIN, () => db.query(
+    `delete from storage.objects where bucket_id='headshots' and name='${ERIN}/abc123.jpg'`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from storage.objects where name='${ERIN}/abc123.jpg'`));
+  return r.rows[0].c === 0;
+});
+
+await check("a member cannot delete somebody else's photo", async () => {
+  await as(ADMIN, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('headshots','${FRAN}/mine.jpg')`));
+  try {
+    await as(ERIN, () => db.query(
+      `delete from storage.objects where bucket_id='headshots' and name='${FRAN}/mine.jpg'`));
+  } catch {
+    // Either outcome is fine; what matters is the file surviving.
+  }
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from storage.objects where name='${FRAN}/mine.jpg'`));
+  return r.rows[0].c === 1;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

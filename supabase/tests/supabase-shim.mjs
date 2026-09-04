@@ -152,6 +152,7 @@ export function createShimClient(db, uid) {
       update: null,
       upsert: null,
       onConflict: null,
+      ignoreDuplicates: false,
       delete: false,
       order: [],
       returning: false,
@@ -218,13 +219,27 @@ export function createShimClient(db, uid) {
             return `(${placeholders.join(", ")})`;
           });
 
-          const conflict =
-            state.upsert && state.onConflict
-              ? ` on conflict (${state.onConflict
-                  .split(",")
-                  .map((c) => quoteIdent(c.trim()))
-                  .join(", ")}) do nothing`
-              : "";
+          // PostgREST's upsert MERGES by default; `ignoreDuplicates: true` is
+          // what makes it skip. Treating every upsert as "do nothing" made an
+          // update-through-upsert silently no-op here while working live — the
+          // fixture diverging from production in the direction that hides real
+          // behaviour, which is the worst direction for it to go.
+          let conflict = "";
+          if (state.upsert && state.onConflict) {
+            const target = state.onConflict
+              .split(",")
+              .map((c) => quoteIdent(c.trim()))
+              .join(", ");
+
+            if (state.ignoreDuplicates) {
+              conflict = ` on conflict (${target}) do nothing`;
+            } else {
+              const assignments = columns
+                .map((c) => `${quoteIdent(c)} = excluded.${quoteIdent(c)}`)
+                .join(", ");
+              conflict = ` on conflict (${target}) do update set ${assignments}`;
+            }
+          }
 
           const returning = state.returning
             ? ` returning ${state.columns === "*" ? "*" : state.columns}`
@@ -325,6 +340,7 @@ export function createShimClient(db, uid) {
       upsert(values, options = {}) {
         state.upsert = values;
         state.onConflict = options.onConflict ?? null;
+        state.ignoreDuplicates = options.ignoreDuplicates ?? false;
         return api;
       },
       in(column, values) {
