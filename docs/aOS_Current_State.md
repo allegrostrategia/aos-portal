@@ -75,7 +75,7 @@ Its own nav entry, filtered by member, where Nina inputs or edits a roadmap dire
 - each action has **its own comment box** (not one comment for the whole week)
 - each action is assigned to a **week within the month** — a plain week-number dropdown, not drag-and-drop for now
 
-Not yet built. Sequenced after the two-week check-in and Step 9.
+Not yet built, and now the next piece of work — the two-week check-in and Step 9 that preceded it are both done.
 
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
@@ -114,7 +114,15 @@ Not yet built. Sequenced after the two-week check-in and Step 9.
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Nine pasted directly via the SQL Editor across 1–3 Sep, not through the CLI** — the pooler connection was never fixed, only worked around. Root cause still unknown; the username finding is written up in the README. `migration repair` owed for all nine once the pooler works — safe to keep deferring, each is idempotent or purely additive.
+**Twelve written across 1–3 Sep. Nine are applied; three are NOT yet on live:**
+
+- `20260903143000_ensure_direct_channel.sql` — the two-week check-in can't open a conversation without it
+- `20260903153000_sop_template.sql` — Archivio's SOP column; the form saves nothing without it
+- `20260903171500_handover_pack_guard.sql` — the column-ownership fix
+
+All three are additive. The two `create trigger` statements error rather than damage on a second run.
+
+Pasted directly via the SQL Editor, not the CLI — the pooler connection was never fixed, only worked around. Root cause still unknown; the username finding is written up in the README. `migration repair` owed for all twelve once the pooler works — safe to keep deferring, each is idempotent or purely additive.
 
 ## Standing rules, learned the hard way
 - **Always confirm real testing is complete — actually done, not just described as done — before committing or pushing.**
@@ -125,6 +133,10 @@ Not yet built. Sequenced after the two-week check-in and Step 9.
 - For a build this size, start a fresh session per major step or per day rather than one marathon.
 
 ## Right now, exactly
-Steps 1–8, 10 (core) and 11 are done. Next: **the two-week check-in**, which closes Step 10's loop, then **Step 9's handover pack** (member-facing SOP template, not an AI generator), then **the admin Roadmaps section** and the richer roadmap structure it needs.
+**Steps 1–11 are done**, including the two-week check-in and Step 9's Archivio.
+
+Next: **the admin Roadmaps section** and the richer roadmap structure it needs (months → focuses → actions, each action linked to a training, with its own comment box and a week-number dropdown). Then **the send-handler tests**. Then Step 10's remainder and Steps 12–13.
+
+**Before anything else: three migrations are waiting to be pasted** — see Migrations above. Archivio and the check-in are built but won't work on live until they are.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.**
