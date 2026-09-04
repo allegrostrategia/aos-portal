@@ -253,7 +253,10 @@ export default async function PiazzaPage() {
           </p>
 
           {/* §2: compact here, click-through to the full path — the same
-              pattern the draw card uses. */}
+              pattern the draw card uses. This link is the contextual route,
+              worth having where the number already is; the nav item is the
+              unconditional one, since this cluster only renders once there is
+              something banked. */}
           <Link href="/milestones" className="mt-3 block">
             <div className="h-1.5 overflow-hidden rounded-full bg-navy/10">
               <div

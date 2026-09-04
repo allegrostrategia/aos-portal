@@ -37,6 +37,12 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
       ? [{ href: "/onboarding", label: "First weeks" }]
       : []),
     { href: "/log", label: "Your log" },
+    // Next to the log on purpose: the log is where the hours come from and this
+    // is where they land. An unconditional route in, because the only other one
+    // is Piazza's proof cluster, which doesn't render until something has been
+    // banked — so a member with nothing yet could never find the page that
+    // explains what they're working towards.
+    { href: "/milestones", label: "Milestones" },
     // Visible to onboarding members too — §1 keeps the session itself in view so
     // the quiet weeks show what's coming; only submitting is gated.
     { href: "/hot-seat", label: "Hot seat" },
