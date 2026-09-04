@@ -79,7 +79,7 @@ export async function getOnboardingProgress(
     },
     {
       key: "directory",
-      title: "Add your directory listing",
+      title: "Add your profile to the directory",
       description:
         "How you'd like the rest of the membership to find you, and the ways to work with you.",
       href: "/onboarding/directory",

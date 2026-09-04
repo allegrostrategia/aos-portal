@@ -78,7 +78,7 @@ export function DirectoryForm({
 
       <FormMessage error={state?.error} notice={state?.notice} />
 
-      <SubmitButton>Save my listing</SubmitButton>
+      <SubmitButton>Save my profile</SubmitButton>
     </form>
   );
 }

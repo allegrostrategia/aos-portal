@@ -145,7 +145,7 @@ export async function saveDirectoryListing(
   );
 
   if (error) {
-    return { error: `Couldn't save your listing: ${error.message}` };
+    return { error: `Couldn't save your profile: ${error.message}` };
   }
 
   revalidatePath("/onboarding");

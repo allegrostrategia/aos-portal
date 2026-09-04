@@ -82,7 +82,7 @@ export default async function SocialePage() {
           <p className="text-body text-navy">The member directory</p>
           <p className="mt-1 text-small text-navy/70">
             Search by name, what someone does, or anything in their bio — then
-            message them straight from their listing.
+            message them straight from their profile.
           </p>
         </Card>
       </Link>

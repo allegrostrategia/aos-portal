@@ -61,18 +61,18 @@ export default async function DirectoryPage({
           rather than a path that works for all of them. */}
       {ownListing !== "complete" ? (
         <Card className="mb-6 bg-lemon/25">
-          <Eyebrow>You&rsquo;re not listed yet</Eyebrow>
+          <Eyebrow>You&rsquo;re not in the directory yet</Eyebrow>
           <p className="mt-1 text-small text-navy/80">
             {ownListing === "draft"
-              ? "Your listing is started but not finished, so nobody can find you or message you from here."
-              : "Other members can't find you or message you until you add a listing."}
+              ? "Your profile is started but not finished, so nobody can find you or message you from here."
+              : "Other members can't find you or message you until you add a profile."}
           </p>
           <p className="mt-3">
             <Link
               href="/onboarding/directory"
               className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
             >
-              {ownListing === "draft" ? "Finish your listing" : "Add your listing"}
+              {ownListing === "draft" ? "Finish your profile" : "Add your profile"}
             </Link>
           </p>
         </Card>
@@ -100,12 +100,28 @@ export default async function DirectoryPage({
         ) : null}
       </form>
 
+      {/* Persistent, and deliberately not conditional on anything. The card
+          above only appears when somebody isn't in the directory at all — but a
+          member who IS listed and has no photo saw nothing, which after
+          headshots landed was every existing member. It also survives a search:
+          "edit" on your own card vanishes the moment you search for something
+          your own bio doesn't match. */}
+      <p className="mb-6 text-small text-navy/70">
+        <Link
+          href="/onboarding/directory"
+          className="text-navy underline decoration-orange decoration-2 underline-offset-4"
+        >
+          Your profile
+        </Link>{" "}
+        — add a photo, change your bio, or update your links.
+      </p>
+
       {entries.length === 0 ? (
         <Card>
           <p className="text-small text-navy/70">
             {query
               ? `Nothing matching “${query}”. Search covers names, titles and bios — there are no filters to have set wrongly.`
-              : "No listings yet. Everyone fills theirs in during their first weeks, so this fills up as people join."}
+              : "Nobody has a profile yet. Everyone fills theirs in during their first weeks, so this fills up as people join."}
           </p>
         </Card>
       ) : (
@@ -190,7 +206,7 @@ export default async function DirectoryPage({
                       href="/onboarding/directory"
                       className="text-caption text-navy/60 underline underline-offset-4 transition hover:text-navy"
                     >
-                      Edit your listing
+                      Edit your profile
                     </Link>
                   </p>
                 )}

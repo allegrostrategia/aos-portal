@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/card";
 import { DirectoryForm } from "./directory-form";
 
 export const metadata: Metadata = {
-  title: "Your directory listing — aOS",
+  title: "Your profile — aOS",
 };
 
 /**
@@ -32,8 +32,8 @@ export default async function DirectoryListingPage() {
     <main className="mx-auto w-full max-w-2xl flex-1 py-8 sm:py-10">
       <PageHeader
         eyebrow="Piazza Sociale"
-        title="Your directory listing"
-        intro="What would you like your listing to say about you? A short bio, the key ways to work with you, and links. Other members can search this — nothing else about you is visible to them."
+        title="Your profile"
+        intro="What would you like the membership to know about you? A photo, a short bio, and the key ways to work with you. Other members can search this — nothing else about you is visible to them."
       />
 
       <DirectoryForm
@@ -45,7 +45,7 @@ export default async function DirectoryListingPage() {
           yet — flagged rather than quietly dropped from §10's field list. */}
       <p className="mt-6 text-small text-navy/60">
         Photos come next — the upload needs a storage bucket that isn&rsquo;t set
-        up yet. Your listing works without one in the meantime.
+        up yet. Your profile works without one in the meantime.
       </p>
 
       <p className="mt-8">
