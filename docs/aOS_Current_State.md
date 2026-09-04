@@ -113,15 +113,11 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Twelve written across 1–3 Sep. Nine are applied; three are NOT yet on live:**
+**Thirteen written 1–3 Sep. All thirteen are applied to live** — pasted directly via the SQL Editor, not the CLI, because the pooler connection was never fixed, only worked around. Nothing is pending as of 3 Sep.
 
-- `20260903143000_ensure_direct_channel.sql` — the two-week check-in can't open a conversation without it
-- `20260903153000_sop_template.sql` — Archivio's SOP column; the form saves nothing without it
-- `20260903171500_handover_pack_guard.sql` — the column-ownership fix
+Root cause of the pooler failure is still unknown; the username finding (`postgres.<ref>`, not `postgres`) is written up in the README. `migration repair` is owed for all thirteen once the pooler works — safe to keep deferring, each is idempotent or purely additive.
 
-All three are additive. The two `create trigger` statements error rather than damage on a second run.
-
-Pasted directly via the SQL Editor, not the CLI — the pooler connection was never fixed, only worked around. Root cause still unknown; the username finding is written up in the README. `migration repair` owed for all twelve once the pooler works — safe to keep deferring, each is idempotent or purely additive.
+**Before saying a migration is pending, check.** `ls supabase/migrations/` against what has been pasted, or `git show --stat` on the commit that supposedly added one. A stale "still to do" is worse than a missing one, because somebody acts on it.
 
 ## Standing rules, learned the hard way
 - **Always confirm real testing is complete — actually done, not just described as done — before committing or pushing.**
