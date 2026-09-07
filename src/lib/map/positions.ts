@@ -71,7 +71,10 @@ export const STATION_POSITIONS: Record<string, MapPosition> = {
  * the stations themselves.
  */
 export const YOUR_STORY_WAYPOINTS: MapPosition[] = [
-  { x: 22, y: 88 },
+  // Was { x: 22, y: 88 } — off the end of the jetty, in the water among the
+  // boats. Each bend draws a visible dot, so that was a marker in the sea for
+  // the same reason the hotel was. (20.5, 88) is the same bend, on the stone.
+  { x: 20.5, y: 88 },
   { x: 50, y: 90 },
 ];
 
