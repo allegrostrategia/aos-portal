@@ -14,8 +14,9 @@
  * Three rules shape the layout:
  *   · nothing on the open square — that's the fountain and the piazza itself,
  *     and Piazza is the daily homepage rather than a station
- *   · the Your Story pair sits along the bottom, far enough apart for a line to
- *     run between them without cutting through anything else
+ *   · the Your Story pair sits low and wide apart — the harbour terrace at one
+ *     end, Archivio at the other — so a line can run between them along the
+ *     shore road without cutting through anything else
  *   · everything else rings the square, on the buildings and terraces, so a
  *     spoke from the middle has somewhere to land
  */
@@ -35,8 +36,15 @@ export const PIAZZA_HUB: MapPosition = { x: 51.5, y: 48 };
 export const PIAZZA_SOCIALE: MapPosition = { x: 42, y: 60 };
 
 export const STATION_POSITIONS: Record<string, MapPosition> = {
-  // The harbour road, bottom left — where a member arrives.
-  "grand-hotel-riposo": { x: 12, y: 80 },
+  // The terrace above the harbour, bottom left — where a member arrives.
+  //
+  // Was { x: 12, y: 80 }, which is open water among the moored boats: sampling
+  // the artwork under a marker-sized patch there comes back 63% sea. The
+  // harbour is right, the waterline was not. There is no hotel-shaped building
+  // down on the quay in this picture — the nearest real building mass is the
+  // terraced palazzo above the harbour road, which is where a grand hotel on
+  // this coast would sit anyway, looking down over the boats.
+  "grand-hotel-riposo": { x: 15, y: 64 },
   // Above the square, either side of the church.
   "studio-dell-architetto": { x: 36, y: 11 },
   "cinema-allegro": { x: 62, y: 10 },
