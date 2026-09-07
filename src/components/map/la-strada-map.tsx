@@ -51,9 +51,40 @@ import {
  * the building out of them; and the line casing is a dark shadow rather than a
  * pale halo, because half this picture is bright limestone and a light halo
  * disappears against it.
+ *
+ * **Markers are sized against the map, not in fixed pixels (7 Sep).** They were
+ * `w-14 sm:w-20`, which on a phone made each tile ~16% of the map's width
+ * against ~9% on desktop — nearly twice the share, on the screen with the least
+ * room, and enough to crowd the closest stations into each other. The sizes are
+ * now container-query units on the scroll viewport, so a marker is the same
+ * fraction of the map at every screen size. See MARKER_SIZE.
  */
 
 const ZOOMS = [100, 160, 240] as const;
+
+/**
+ * Marker sizing, as a share of the map's visible width.
+ *
+ * `cqw` is measured against the *scroll viewport*, not the zoomed picture
+ * inside it, which is deliberate: markers stay a constant size while you zoom,
+ * exactly as they did before, so zooming in still spreads the stations apart
+ * without growing the tiles to match. Zoom is how a phone declutters the
+ * square, and sizing against the zoomed layer would have taken that away.
+ *
+ * The percentages are the desktop sizes expressed as fractions of a 904px map
+ * (1152px shell, less padding, sidebar and gap), so the look approved against
+ * the reference is unchanged there and only narrow screens move.
+ *
+ * The `max()` floors stop a tile shrinking to something you can't make out or
+ * hit. They bind below roughly a 410px-wide map — a phone — where the tile
+ * lands at 36px, about 10% of the map instead of the 16% it was.
+ */
+const MARKER_SIZE = {
+  "--tile": "max(2.25rem, 8.8cqw)",
+  "--badge": "max(0.875rem, 2.6cqw)",
+  "--badge-text": "max(0.5rem, 1.15cqw)",
+  "--dot": "max(0.625rem, 1.3cqw)",
+} as React.CSSProperties;
 
 export type MapStation = {
   slug: string;
@@ -230,6 +261,8 @@ export function LaStradaMap({
           event.preventDefault();
           event.stopPropagation();
         }}
+        // The container the marker sizes are measured against.
+        style={{ containerType: "inline-size" }}
         className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-navy/10 bg-sky/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange ${
           dragging ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
@@ -351,15 +384,30 @@ export function LaStradaMap({
 
                 <span
                   aria-hidden
-                  className="absolute -top-1.5 -left-1.5 z-10 flex size-5 items-center justify-center rounded-full text-[0.55rem] font-semibold text-white shadow-md sm:size-6 sm:text-[0.65rem]"
-                  style={{ backgroundColor: colour }}
+                  className="absolute z-10 flex items-center justify-center rounded-full font-semibold text-white shadow-md"
+                  style={{
+                    backgroundColor: colour,
+                    width: "var(--badge)",
+                    height: "var(--badge)",
+                    fontSize: "var(--badge-text)",
+                    // Overhanging the tile's corner by a third of itself, so the
+                    // overlap looks the same at every size.
+                    top: "calc(var(--badge) / -3)",
+                    left: "calc(var(--badge) / -3)",
+                  }}
                 >
                   {station.number}
                 </span>
 
                 <span
-                  className="block h-12 w-14 overflow-hidden rounded-lg border-2 shadow-lg transition sm:h-[4.5rem] sm:w-20"
-                  style={{ borderColor: colour }}
+                  className="block overflow-hidden rounded-lg border-2 shadow-lg transition"
+                  style={{
+                    borderColor: colour,
+                    width: "var(--tile)",
+                    // The source photographs are 160x140; matching that means
+                    // `object-cover` never has anything to crop.
+                    aspectRatio: "8 / 7",
+                  }}
                 >
                   <Image
                     src={`/stations/${station.slug}.png`}
@@ -378,13 +426,23 @@ export function LaStradaMap({
                   <span
                     aria-hidden
                     title="Visited"
-                    className="absolute -right-1 -bottom-1 block size-3 rounded-full border-2 border-white bg-orange shadow-sm"
+                    className="absolute block rounded-full border-2 border-white bg-orange shadow-sm"
+                    style={{
+                      width: "var(--dot)",
+                      height: "var(--dot)",
+                      right: "calc(var(--dot) / -3)",
+                      bottom: "calc(var(--dot) / -3)",
+                    }}
                   />
                 ) : null}
               </>
             );
 
-            const style = { left: `${pos.x}%`, top: `${pos.y}%` } as const;
+            const style = {
+              ...MARKER_SIZE,
+              left: `${pos.x}%`,
+              top: `${pos.y}%`,
+            };
 
             // Locked stations aren't links — nothing to follow, and a dead link
             // is worse than plain text for anyone tabbing through.
