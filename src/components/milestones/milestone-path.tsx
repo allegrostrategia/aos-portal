@@ -1,6 +1,12 @@
 import Image from "next/image";
 
-import { MILESTONE_POINTS, ROAD_PATH, type PathPoint } from "@/lib/hours/milestone-path";
+import {
+  ARTWORK_HEIGHT,
+  ARTWORK_WIDTH,
+  MILESTONE_POINTS,
+  ROAD_PATH,
+  type PathPoint,
+} from "@/lib/hours/milestone-path";
 import { type MilestoneStep, milestonePathFraction } from "@/lib/hours/milestones";
 
 /**
@@ -35,9 +41,32 @@ const MARKER_SIZE = {
   "--here": "max(1.1rem, 5cqw)",
 } as React.CSSProperties;
 
+/**
+ * The path, in the artwork's own pixels.
+ *
+ * The stored points are percentages, which is right for CSS but wrong for this
+ * overlay: a percentage box is 100x100 whatever shape the picture is, so on a
+ * 941x1672 artwork the x axis is stretched 6.7x and the y axis 11.9x. Under that
+ * distortion an identical dash comes out 1.8x longer running down the picture
+ * than across it, which is what made the dashes look scattered rather than
+ * measured. Drawing in the artwork's own coordinates makes the scaling even in
+ * both directions, and a dash the same length everywhere.
+ */
 function polyline(points: readonly PathPoint[]): string {
-  return points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  return points
+    .map((p, i) => {
+      const x = ((p.x / 100) * ARTWORK_WIDTH).toFixed(1);
+      const y = ((p.y / 100) * ARTWORK_HEIGHT).toFixed(1);
+      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
 }
+
+/** Stroke widths are in artwork units, so the line keeps its share of the
+ *  picture on a phone instead of staying the same pixel width — the same
+ *  reasoning as the markers, and the reason `non-scaling-stroke` is not used
+ *  here even though La Strada's lines need it. */
+const STROKE = 8;
 
 export function MilestonePath({
   hours,
@@ -75,14 +104,16 @@ export function MilestonePath({
       {/* Percentages as coordinates, so the overlay is the same numbers as the
           traced path. `preserveAspectRatio="none"` stretches the box to the
           picture, which is why the stroke has to be non-scaling. */}
+      {/* The viewBox is the artwork's real size, so the overlay scales evenly.
+          The default `preserveAspectRatio` is exactly what's wanted: the box has
+          the picture's shape, so it maps on with nothing to letterbox. */}
       <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
+        viewBox={`0 0 ${ARTWORK_WIDTH} ${ARTWORK_HEIGHT}`}
         className="pointer-events-none absolute inset-0 h-full w-full"
       >
         <defs>
           <filter id="milestone-path-shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="0.2" stdDeviation="0.3" floodColor="#000" floodOpacity="0.5" />
+            <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#000" floodOpacity="0.5" />
           </filter>
         </defs>
 
@@ -100,12 +131,16 @@ export function MilestonePath({
             d={polyline(ROAD_PATH)}
             fill="none"
             stroke="#fff"
-            strokeWidth={5}
+            strokeWidth={STROKE}
             strokeOpacity={0.9}
-            strokeDasharray="8 9"
-            strokeLinecap="round"
+            strokeDasharray="26 18"
+            // Butt, not round. Round caps add half a stroke width to each end of
+            // every dash, so a 26-long dash draws 34 long and very nearly closes
+            // an 18 gap — the marks lose their edges and run together, which is
+            // the other half of why this looked like scattered debris rather
+            // than a centre line.
+            strokeLinecap="butt"
             strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
           />
 
           {travelled.length > 1 ? (
@@ -113,10 +148,9 @@ export function MilestonePath({
               d={polyline(travelled)}
               fill="none"
               stroke="var(--aos-orange)"
-              strokeWidth={5}
+              strokeWidth={STROKE}
               strokeLinecap="round"
               strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
             />
           ) : null}
         </g>

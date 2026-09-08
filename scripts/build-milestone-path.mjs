@@ -198,30 +198,89 @@ for (const [key, d] of distance) {
   bands.set(d, band);
 }
 
-const centreline = [...bands.entries()]
+const raw = [...bands.entries()]
   .sort((a, b) => a[0] - b[0])
-  .map(([d, b]) => ({
-    d,
-    x: (((b.c / b.n) * CELL + CELL / 2) / W) * 100,
-    y: (((b.r / b.n) * CELL + CELL / 2) / H) * 100,
+  .map(([, b]) => ({
+    x: ((b.c / b.n) * CELL + CELL / 2),
+    y: ((b.r / b.n) * CELL + CELL / 2),
   }));
 
-/** The point a fraction of the way along, by distance rather than by index. */
-function pointAt(fraction) {
-  const target = longest * (INSET + fraction * (1 - 2 * INSET));
-  let best = centreline[0];
-  for (const p of centreline) {
-    if (Math.abs(p.d - target) < Math.abs(best.d - target)) best = p;
-  }
-  return { x: Number(best.x.toFixed(2)), y: Number(best.y.toFixed(2)) };
+/**
+ * Take the wobble out.
+ *
+ * The centroid of a distance band is the middle of the carriageway, but only on
+ * average: band to band it jitters sideways by a few pixels, which put 63
+ * direction reversals of over 20 degrees into the line. Drawn solid that reads
+ * as a slightly shaky road; drawn dashed it reads as scattered debris, because
+ * every kink throws the next dash out of line with the last.
+ *
+ * The window is deliberately short. Long windows produce a beautifully smooth
+ * line that cuts the corners off the hairpins and leaves the road altogether —
+ * which the test would catch, but the point is that smoothing and accuracy pull
+ * against each other here, and accuracy wins.
+ */
+function smooth(points, window) {
+  return points.map((_, i) => {
+    let x = 0;
+    let y = 0;
+    let n = 0;
+    for (let k = -window; k <= window; k++) {
+      const p = points[i + k];
+      if (!p) continue;
+      x += p.x;
+      y += p.y;
+      n++;
+    }
+    return { x: x / n, y: y / n };
+  });
 }
 
-const path = Array.from({ length: SAMPLES }, (_, i) => pointAt(i / (SAMPLES - 1)));
+const smoothed = smooth(raw, 3);
 
+/**
+ * Resample at even spacing by *real* distance.
+ *
+ * The bands are evenly spaced in flood-fill steps, which is not the same thing:
+ * a step across a diagonal covers more ground than a step along a row, so the
+ * raw points range from 3px to 37px apart. Dashes drawn along that look
+ * irregular however evenly the pattern is specified, because the geometry
+ * underneath them is irregular.
+ */
+function resample(points, count, from, to) {
+  const cumulative = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumulative.push(
+      cumulative[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y),
+    );
+  }
+  const length = cumulative[cumulative.length - 1];
+
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const target = length * (from + ((to - from) * i) / (count - 1));
+    let j = 1;
+    while (j < cumulative.length - 1 && cumulative[j] < target) j++;
+    const span = cumulative[j] - cumulative[j - 1] || 1;
+    const t = (target - cumulative[j - 1]) / span;
+    out.push({
+      x: points[j - 1].x + (points[j].x - points[j - 1].x) * t,
+      y: points[j - 1].y + (points[j].y - points[j - 1].y) * t,
+    });
+  }
+  return out;
+}
+
+const path = resample(smoothed, SAMPLES, INSET, 1 - INSET).map((p) => ({
+  x: Number(((p.x / W) * 100).toFixed(2)),
+  y: Number(((p.y / H) * 100).toFixed(2)),
+}));
+
+// Markers are taken from the path itself, so a marker and the progress dot that
+// reaches it land on exactly the same spot rather than a pixel or two apart.
 const MILESTONES = [50, 100, 250, 500, 750];
 const markers = MILESTONES.map((hours, i) => ({
   hours,
-  ...pointAt((i + 1) / MILESTONES.length),
+  ...path[Math.round(((i + 1) / MILESTONES.length) * (SAMPLES - 1))],
 }));
 
 // The coarse mask, for checking a marker is on the road without re-deriving it.
@@ -272,6 +331,10 @@ export type PathPoint = { x: number; y: number };
 export const ARTWORK_SHA256 = "${hash}";
 
 export const ROAD_MASK_CELL = ${MASK_CELL};
+
+/** The artwork's own pixel size, for an SVG overlay that scales evenly. */
+export const ARTWORK_WIDTH = ${W};
+export const ARTWORK_HEIGHT = ${H};
 
 /** Zero hours first, last milestone last. Percentages of the artwork. */
 export const ROAD_PATH: readonly PathPoint[] = ${JSON.stringify(path)
