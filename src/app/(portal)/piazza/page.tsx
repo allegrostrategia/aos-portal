@@ -283,10 +283,22 @@ export default async function PiazzaPage() {
           ) : null}
         </Card>
       ) : (
-        <p className="mt-8 text-small text-navy/50">
-          Hours reclaimed, your milestones and the monthly draw arrive with the
-          first builds.
-        </p>
+        /* Gated exactly as before — "0 hrs reclaimed" is still a worse thing to
+           greet somebody with every morning than nothing — but no longer a dead
+           end. This used to say the milestones arrived later, which was honest
+           when the page behind it was a stack of empty cards. Since 8 Sep it is
+           an illustrated road with all five thresholds on it and the member's
+           own position marked at the top, and that is worth seeing before
+           anything has been banked: it is the answer to "what am I working
+           towards", which is exactly the question somebody with nothing yet is
+           asking. The words were underselling the page. */
+        <Link href="/milestones" className="mt-8 block text-small text-navy/70">
+          Your milestones are mapped out — the hours start landing with your
+          first builds.{" "}
+          <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
+            See the path
+          </span>
+        </Link>
       )}
     </main>
   );
