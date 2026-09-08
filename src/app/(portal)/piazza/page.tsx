@@ -177,6 +177,79 @@ export default async function PiazzaPage() {
         </Card>
       ) : null}
 
+      {/* Hours reclaimed sits here, not at the foot of the page.
+          
+          It was last, under the map, which put the empty state below the fold on
+          a laptop — Dom went looking for it on 8 Sep and concluded it wasn't
+          rendering at all. For a member with nothing banked that state is the
+          only thing on Piazza that answers "what am I working towards", so being
+          the easiest thing to miss was exactly backwards.
+          
+          Both states moved, not just the empty one. Moving only the empty state
+          would have made the block jump from mid-page to the foot the first week
+          a member banked anything, which is a stranger thing to explain than
+          either position on its own. Nothing above it moved: the week and the
+          roadmap focus are what the day is for, and the challenge stays next to
+          the roadmap it was deliberately set apart from. */}
+      {hours.total > 0 ? (
+        /* The proof cluster (§2): the number, and how far to the next
+           threshold. One block rather than three widgets, because milestones
+           are thresholds of the same number rather than a separate idea. */
+        <Card className="mt-5 bg-sky/15">
+          <Eyebrow>Hours reclaimed</Eyebrow>
+          <p className="font-mono mt-1 text-title text-navy">
+            {formatHours(hours.total)}
+          </p>
+
+          {/* §2: compact here, click-through to the full path — the same
+              pattern the draw card uses. This link is the contextual route,
+              worth having where the number already is; the nav item is the
+              unconditional one, since this cluster only renders once there is
+              something banked. */}
+          <Link href="/milestones" className="mt-3 block">
+            <div className="h-1.5 overflow-hidden rounded-full bg-navy/10">
+              <div
+                className="h-full rounded-full bg-orange"
+                style={{ width: `${Math.round(milestone.fraction * 100)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-small text-navy/70">
+              {milestone.next === null
+                ? "Every milestone passed."
+                : `${milestone.toNext} to your next milestone at ${milestone.next}.`}{" "}
+              <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
+                See how far you&rsquo;ve come
+              </span>
+            </p>
+          </Link>
+
+          {hours.weeklyRate > 0 ? (
+            <p className="mt-3 text-caption text-navy/60">
+              Your builds add{" "}
+              <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
+              every week you log ten hours and submit.
+            </p>
+          ) : null}
+        </Card>
+      ) : (
+        /* Gated exactly as before — "0 hrs reclaimed" is still a worse thing to
+           greet somebody with every morning than nothing — but no longer a dead
+           end. This used to say the milestones arrived later, which was honest
+           when the page behind it was a stack of empty cards. Since 8 Sep it is
+           an illustrated road with all five thresholds on it and the member's
+           own position marked at the top, and that is worth seeing before
+           anything has been banked: it is the answer to "what am I working
+           towards", which is exactly the question somebody with nothing yet is
+           asking. The words were underselling the page. */
+        <Link href="/milestones" className="mt-5 block text-small text-navy/70">
+          Your milestones are mapped out — the hours start landing with your
+          first builds.{" "}
+          <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
+            See the path
+          </span>
+        </Link>
+      )}
+
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         {session ? (
           <Card>
@@ -241,65 +314,6 @@ export default async function PiazzaPage() {
       </Link>
 
       <InstallPrompt />
-
-      {hours.total > 0 ? (
-        /* The proof cluster (§2): the number, and how far to the next
-           threshold. One block rather than three widgets, because milestones
-           are thresholds of the same number rather than a separate idea. */
-        <Card className="mt-5 bg-sky/15">
-          <Eyebrow>Hours reclaimed</Eyebrow>
-          <p className="font-mono mt-1 text-title text-navy">
-            {formatHours(hours.total)}
-          </p>
-
-          {/* §2: compact here, click-through to the full path — the same
-              pattern the draw card uses. This link is the contextual route,
-              worth having where the number already is; the nav item is the
-              unconditional one, since this cluster only renders once there is
-              something banked. */}
-          <Link href="/milestones" className="mt-3 block">
-            <div className="h-1.5 overflow-hidden rounded-full bg-navy/10">
-              <div
-                className="h-full rounded-full bg-orange"
-                style={{ width: `${Math.round(milestone.fraction * 100)}%` }}
-              />
-            </div>
-            <p className="mt-2 text-small text-navy/70">
-              {milestone.next === null
-                ? "Every milestone passed."
-                : `${milestone.toNext} to your next milestone at ${milestone.next}.`}{" "}
-              <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
-                See how far you&rsquo;ve come
-              </span>
-            </p>
-          </Link>
-
-          {hours.weeklyRate > 0 ? (
-            <p className="mt-3 text-caption text-navy/60">
-              Your builds add{" "}
-              <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
-              every week you log ten hours and submit.
-            </p>
-          ) : null}
-        </Card>
-      ) : (
-        /* Gated exactly as before — "0 hrs reclaimed" is still a worse thing to
-           greet somebody with every morning than nothing — but no longer a dead
-           end. This used to say the milestones arrived later, which was honest
-           when the page behind it was a stack of empty cards. Since 8 Sep it is
-           an illustrated road with all five thresholds on it and the member's
-           own position marked at the top, and that is worth seeing before
-           anything has been banked: it is the answer to "what am I working
-           towards", which is exactly the question somebody with nothing yet is
-           asking. The words were underselling the page. */
-        <Link href="/milestones" className="mt-8 block text-small text-navy/70">
-          Your milestones are mapped out — the hours start landing with your
-          first builds.{" "}
-          <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
-            See the path
-          </span>
-        </Link>
-      )}
     </main>
   );
 }
