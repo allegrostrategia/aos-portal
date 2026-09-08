@@ -6,16 +6,21 @@ import { asJourneyOrder, getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneJourney, milestoneProgress } from "@/lib/hours/milestones";
 import { formatCalendarDate } from "@/lib/time-zone";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { MilestonePath } from "@/components/milestones/milestone-path";
 
 export const metadata: Metadata = { title: "Your milestones — aOS" };
 
 /**
  * The full milestone path (§2's click-through from Piazza's compact line).
  *
- * **Structure and mechanics only — the illustration comes later**, in a pass
- * alongside a La Strada refresh so both illustrated screens can be judged
- * together. What's here is the shape that artwork will hang on: four thresholds
- * in order, where the member is between them, and the week each was crossed.
+ * **The illustration landed 8 September**, in the pass that followed the La
+ * Strada redraw, as intended. The road runs down the coast with the five
+ * thresholds on it and the travelled stretch picked out; underneath it, the same
+ * five as a list, because the list carries what the picture can't — the week
+ * each one was crossed.
+ *
+ * Zero hours is the top of the road and progress runs downward, so a member sees
+ * where they are without scrolling and scrolls to see what is ahead.
  *
  * That last part is what makes this worth a page rather than a bigger progress
  * bar. "You passed fifty in the week of 9 March" is a different thing to say
@@ -73,6 +78,8 @@ export default async function MilestonesPage() {
         The path
       </h2>
 
+      <MilestonePath hours={journey.total} steps={journey.steps} />
+
       <ol className="mb-8 flex flex-col gap-3">
         {journey.steps.map((step, index) => {
           const previous = index === 0 ? 0 : journey.steps[index - 1].target;
@@ -113,7 +120,7 @@ export default async function MilestonesPage() {
                 </div>
 
                 {/* The band between the previous threshold and this one, so the
-                    last stretch to 500 doesn't look static for months. */}
+                    last stretch to 750 doesn't look static for months. */}
                 {!step.reached ? (
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-navy/10">
                     <div

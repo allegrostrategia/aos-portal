@@ -1,15 +1,19 @@
 /**
  * The milestone path (§2).
  *
- * 50 / 100 / 250 / 500 are real thresholds, not placeholders — paced so a member
- * with two or three active builds reaches the first in about two months, and 500
- * only after genuinely sustained membership.
+ * 50 / 100 / 250 / 500 / 750 are real thresholds, not placeholders — paced so a
+ * member with two or three active builds reaches the first in about two months,
+ * and the last only after genuinely sustained membership.
+ *
+ * 750 was added 8 September 2026, with the illustrated path: the artwork carries
+ * five markers, and a fifth threshold on the road with nothing behind it in the
+ * data would have been a decoration pretending to be a milestone.
  *
  * Pure functions, so the arithmetic behind the headline number can be tested
  * without a database.
  */
 
-export const MILESTONES = [50, 100, 250, 500] as const;
+export const MILESTONES = [50, 100, 250, 500, 750] as const;
 
 export type MilestoneProgress = {
   /** Thresholds already passed, in order. */
@@ -33,7 +37,7 @@ export function milestoneProgress(hours: number): MilestoneProgress {
 
   // Measured from the previous threshold, not from zero: at 260 hours the bar
   // should read as just past 250 rather than nearly full, or the last stretch to
-  // 500 looks like no progress at all for months.
+  // 750 looks like no progress at all for months.
   const previous = reached.length > 0 ? reached[reached.length - 1] : 0;
   const span = next - previous;
 
@@ -70,6 +74,24 @@ export function milestoneLine(hours: number): string {
 export function formatHours(hours: number): string {
   const rounded = Math.round(hours * 10) / 10;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+/**
+ * Where a total sits along the illustrated road, 0–1.
+ *
+ * Evenly spaced: each threshold is a fifth of the road, whatever the hour gap
+ * either side of it. The alternative — road distance proportional to hours — was
+ * considered and rejected on 8 September, for the same reason the band bar above
+ * measures from the previous threshold rather than from zero. Proportional
+ * spacing puts fifty hours 6.7% along and gives the 500→750 stretch a third of
+ * the picture, so a new member watches nothing move for months and a long-
+ * standing one watches it crawl. The road stops being a fair map of the hours;
+ * it stays a fair map of the journey, which is what it is for.
+ */
+export function milestonePathFraction(hours: number): number {
+  const { reached, next, fraction } = milestoneProgress(hours);
+  if (next === null) return 1;
+  return (reached.length + fraction) / MILESTONES.length;
 }
 
 export type MilestoneStep = {

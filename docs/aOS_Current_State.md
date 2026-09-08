@@ -18,7 +18,7 @@
 - Peer pairing end to end, including **the day-7 guard in both directions**: with `met_at` set it skipped and left `flagged_at` null (checked on the row, not the summary count); with `met_at` cleared it sent and set the flag. A handler that never sent anything would have passed the skip test alone.
 
 ## DEFERRED, NOT DROPPED: milestone rewards
-**Real unlockable rewards at each milestone threshold (50 / 100 / 250 / 500) are intended.** They are not scoped, not designed and not built — and that is a deferral, not a decision against them.
+**Real unlockable rewards at each milestone threshold (50 / 100 / 250 / 500 / 750) are intended.** They are not scoped, not designed and not built — and that is a deferral, not a decision against them.
 
 Until they exist, the copy says **"distance to your next milestone"** rather than §2's "distance to next unlock". Changed 3 Sep: the brief uses "unlock" throughout and never says what is unlocked anywhere, so the original wording promised members something the product didn't have. The mechanic underneath is unchanged.
 
@@ -27,7 +27,7 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
 ## Genuinely still open
-1. **The design/artwork pass — La Strada done 4 Sep, milestone path still waiting.** La Strada now matches the design reference (see below). The milestone page is still structure only, and was always meant to be judged alongside it.
+1. ~~**The design/artwork pass**~~ — **done.** La Strada redrawn 4 Sep, the milestone path illustrated 8 Sep. Both illustrated screens now exist.
 2. **The community goal** — needs a target from Nina before it can be built at all.
 3. **Step 13** — final polish: the Vespa intro video on first login, and the optional animation flourishes (flip-board counters, the FATTO stamp, self-drawing blueprints), all independently droppable.
 
@@ -71,14 +71,20 @@ Two calls the reference couldn't settle: markers are rounded rectangles rather t
 
 **Not yet seen rendered.** Positions, spacing and overlap are guarded by tests, but whether it *looks* right is unverified — see the standing rule about walkthroughs.
 
-## The milestone path — BUILT 3 Sep (structure only)
+## The milestone path — BUILT 3 Sep, illustrated 8 Sep
 `/milestones`, linked from Piazza's compact line — §2's "compact + click-through", the same pattern as the draw card.
 
 **The mechanic worth having is when each threshold was crossed**, not a bigger progress bar. "You passed fifty in the week of 9 March" is a different thing to say than "you're 62% of the way to a hundred", and the append-only ledger is what makes it answerable — a rate retired in June doesn't move when March happened, and a test asserts exactly that. Each band is measured from the previous threshold rather than from zero, so the long stretch to 500 doesn't look static for months.
 
 A qualifying week worth zero hours still appears in the week-by-week list: it's a week they showed up, and dropping it would make the record sparser than the truth.
 
-**Visuals are deliberately absent** — Dom's call, so the milestone path and a La Strada refresh can be designed together. What's built is the shape the artwork will hang on.
+**Illustrated 8 Sep.** A coast road runs down the picture with the five thresholds on it; the stretch already travelled is picked out in orange and the road ahead is dashed white. Zero hours is at the top, so a member sees where they are on load and scrolls toward what is ahead — Dom's call, and the reason the page scrolls normally rather than living in a La Strada-style pan container.
+
+**A fifth threshold, 750, was added with it** (8 Sep). The artwork carries five markers and a fifth marker with nothing behind it in the data would have been decoration pretending to be a milestone.
+
+**The road is traced from the artwork, not hand-placed** — `scripts/build-milestone-path.mjs`, checked by `milestone-path.test.ts`. Two things made that harder than it looks and are worth knowing before touching it: the same colour rule that finds asphalt also finds rooftops, walls, rocks and boat wakes (connectivity throws them out, as on La Strada); and 52% of horizontal lines cross this road twice because it switches back, so distance has to be measured along the ribbon rather than read off the height. Tree canopy breaks the road into three pieces, bridged by nearest-pair rather than hardcoded coordinates.
+
+**Spacing is even, not proportional to hours** — each threshold gets a fifth of the road. Proportional spacing puts 50 hrs 6.7% along and gives 500→750 a third of the picture, so nothing appears to move for months. Same reasoning as the per-band progress bar.
 
 **The copy says "milestone", not "unlock"** — see the deferred-decisions section above. Rewards are intended and unscoped; the wording reverts when they exist.
 
