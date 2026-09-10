@@ -165,7 +165,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 7. Reminders not auto-invalidating when a session is rescheduled
 8. Vercel deploys not triggering automatically from git push (twice)
 9. Work reported "done" while sitting uncommitted — **building and shipping are two separate things; say which has happened**
-10. Session pooler rejecting three freshly-reset passwords with `28P01` — the pooler username must be `postgres.<ref>`, not `postgres`. Never actually fixed, only worked around
+10. Session pooler rejecting three freshly-reset passwords with `28P01` — the pooler username must be `postgres.<ref>`, not `postgres`, and the same error a wrong password gives. **Fixed 10 Sep**, nine days later: a month-stale CLI was the top layer, and beneath it two faults that were never wrong simultaneously, so each fix read as a failure. See the Migrations section
 11. `npm run db:bundle` emits **every** migration — a bootstrap tool, not a way to apply one pending migration
 12. A flaky test hiding behind `&&`, failing 6 runs in 12 on untouched code while being quoted as passing
 13. A test that passed for the wrong reason — found by mutation, not by reading
@@ -184,9 +184,15 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Thirteen written 1–3 Sep. All thirteen are applied to live** — pasted directly via the SQL Editor, not the CLI, because the pooler connection was never fixed, only worked around. Nothing is pending as of 3 Sep.
+**Thirty-one on disk. All applied to live, and the CLI's history now agrees.** The fourteen from 1–3 Sep (six dated `20260901`, eight dated `20260903`) went in by hand through the SQL Editor while the CLI couldn't connect; the seventeen before them went through the CLI normally.
 
-Root cause of the pooler failure is still unknown; the username finding (`postgres.<ref>`, not `postgres`) is written up in the README. `migration repair` is owed for all thirteen once the pooler works — safe to keep deferring, each is idempotent or purely additive.
+**This said "thirteen" for a week — it was always fourteen.** Counted from memory rather than from `ls`. A repair list off by one is exactly the kind of stale number somebody acts on, which is what the paragraph below is about.
+
+**The pooler is fixed, not worked around (10 Sep).** `migration repair --linked --status applied` was run for all fourteen, `migration list` now matches on both sides, and `db push --dry-run` reports "Remote database is up to date". Nothing is owed.
+
+**The root cause was a month-stale CLI, plus two self-inflicted faults that were never wrong at the same time.** `supabase link` had been failing with `SchemaError … inserted_at` — a CLI/API mismatch. The CLI was 2.112.0 from 7 August; upgrading to 2.117.0 fixed `link` on the first try. Underneath that, the `--db-url` attempts had failed for two *different* reasons in sequence: the first three used the bare username `postgres` (the session pooler needs `postgres.<ref>` to resolve the tenant, and fails with `28P01`, indistinguishable from a wrong password — which is why three password resets looked like the problem); the fourth used the right username but passed the password via `SUPABASE_DB_PASSWORD`, which `--db-url` ignores. **Every attempt had exactly one of the two things right, so each fix appeared not to work.** Worth remembering as a shape, not just as a Supabase fact: when two faults are found in sequence, the second fix is tested against the first fault still present.
+
+**`npm run db:diff` needs Docker, which isn't installed here.** Unverified as of 10 Sep — the two proofs above were judged enough, since they answer whether the history is in sync. `db:diff` answers a different question (schema drift the migrations don't account for) and is still worth running on a machine that can.
 
 **Before saying a migration is pending, check.** `ls supabase/migrations/` against what has been pasted, or `git show --stat` on the commit that supposedly added one. A stale "still to do" is worse than a missing one, because somebody acts on it.
 

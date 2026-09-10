@@ -74,18 +74,38 @@ Under **Authentication**:
 
 ### Connecting to Supabase
 
-**`supabase link` does not currently work on this project.** It fails with
-`SchemaError … inserted_at` while fetching API keys — a CLI/API mismatch on
-Supabase's side, not a problem with the project or the ref. Push over a direct
-connection instead, which skips that step entirely:
+**Keep the CLI current before debugging anything else here.** It is a
+devDependency, so it goes stale silently. A month-old CLI (2.112.0) broke
+`supabase link` for nine days with `SchemaError … inserted_at` while fetching API
+keys — a CLI/API mismatch that looked like a project or credentials problem and
+was neither. `npm i -D supabase@latest` fixed it on the first try.
+
+The normal route:
 
 ```bash
-npm run test:db                             # always, before pushing
+npm run test:db                              # always, before pushing
+npm run db:link -- --project-ref <ref>
+npx supabase migration list --linked         # read-only: local vs remote history
+npm run db:push -- --dry-run
+```
+
+Drop `--dry-run` once the migration list looks right.
+
+**Run `migration list` before `db push`, not after.** It is read-only, and the
+gap between its two columns is the exact repair list — which matters because a
+migration applied by hand through the SQL Editor is *not* in the history table,
+and pushing it again re-runs `create table` on tables that already exist and
+re-inserts the reference-data seeds. Ask what the remote thinks before telling it
+anything.
+
+#### If `link` fails, connect directly
+
+```bash
 npm run db:push -- --db-url "postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres" --dry-run
 ```
 
-Drop `--dry-run` once the migration list looks right. The password is the
-database password from project creation, percent-encoded if it has symbols in it.
+The password is the database password from project creation, percent-encoded if
+it has symbols in it.
 
 Two things worth knowing about that host: it is **IPv6-only** (no A record), so it
 fails from any IPv4-only network — that's the likely cause if it suddenly stops
@@ -123,6 +143,19 @@ which at least tells you it never reached the server.
 Running `select 1` in the SQL editor proves nothing either way here: it goes
 through the dashboard's own connection and never checks your `postgres`
 password. It tells you the project isn't paused, and no more.
+
+**Both of the faults above were once true at once, and that is why this took
+nine days.** The first three attempts had the password inline but the username
+bare; the fourth had the username right but passed the password through
+`SUPABASE_DB_PASSWORD`. Each fix was tested while the other fault was still
+present, so each one read as "that wasn't it" — and the conclusion drawn was that
+the pooler was broken. **When you find a second cause, re-test the first fix
+against it before ruling that fix out.**
+
+`npm run db:diff` needs Docker and is unavailable on a machine without it. It
+answers a different question from `migration list` — schema drift that no
+migration accounts for, rather than history that is out of step — so a clean
+`migration list` and `db push --dry-run` do not cover it.
 
 #### Fallback: pasting SQL by hand
 
