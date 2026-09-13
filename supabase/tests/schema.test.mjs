@@ -1249,6 +1249,30 @@ await check("a member confirms they met", async () => {
 // The policy allows a member to update their own pairing, and RLS is row-level,
 // so without the trigger every column was theirs — including the flag that tells
 // Nina a pairing has stalled.
+await check("a member can say the call is booked, and take it back", async () => {
+  await as(ERIN, () => db.query(
+    `update public.pairings set booked_at = now() where id='${PAIR_ID}'`));
+  const set = (await as(FRAN, () => db.query(
+    `select booked_at is not null b from public.pairings where id='${PAIR_ID}'`))).rows[0].b;
+  await as(FRAN, () => db.query(
+    `update public.pairings set booked_at = null where id='${PAIR_ID}'`));
+  const cleared = (await as(ERIN, () => db.query(
+    `select booked_at is null b from public.pairings where id='${PAIR_ID}'`))).rows[0].b;
+  return set === true && cleared === true;
+});
+
+await check("somebody outside the pairing cannot mark it booked", async () => {
+  try {
+    await as(BOB, () => db.query(
+      `update public.pairings set booked_at = now() where id='${PAIR_ID}'`));
+  } catch {
+    // RLS matching nothing or raising: either way the value must not change.
+  }
+  const r = await as(ERIN, () => db.query(
+    `select booked_at is null b from public.pairings where id='${PAIR_ID}'`));
+  return r.rows[0].b === true;
+});
+
 await rejects("a member cannot clear the day-7 flag Nina relies on", async () => {
   await as(ADMIN, () => db.query(
     `update public.pairings set flagged_at = now() where id='${PAIR_ID}'`));

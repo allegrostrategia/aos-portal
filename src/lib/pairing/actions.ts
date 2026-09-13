@@ -61,6 +61,28 @@ export async function saveAvailability(
  * meet" button to press. A pairing that never gets marked is its own answer, and
  * asking somebody to declare a failure is how you stop them coming back.
  */
+/**
+ * "It's in the diary" — the state between matched and met (L'Editoriale §5).
+ * Either member may set or clear it; the row's own policy and guard trigger
+ * decide, not this code.
+ */
+export async function setPairingBooked(formData: FormData): Promise<void> {
+  await requireMember();
+
+  const pairingId = String(formData.get("pairing_id") ?? "").trim();
+  const booked = formData.get("booked") === "true";
+  if (!pairingId) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("pairings")
+    .update({ booked_at: booked ? new Date().toISOString() : null })
+    .eq("id", pairingId);
+
+  revalidatePath("/pairing");
+  revalidatePath("/piazza");
+}
+
 export async function markPairingMet(formData: FormData): Promise<void> {
   await requireMember();
 

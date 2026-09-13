@@ -12,6 +12,7 @@ export type MyPairing = {
   id: string;
   month: string;
   scheduledFor: string | null;
+  bookedAt: string | null;
   metAt: string | null;
   partnerId: string | null;
 };
@@ -31,7 +32,7 @@ export async function getMyPairing(
 
   const { data } = await supabase
     .from("pairings")
-    .select("id, pairing_month, scheduled_for, met_at, pairing_participants(member_id)")
+    .select("id, pairing_month, scheduled_for, booked_at, met_at, pairing_participants(member_id)")
     .eq("pairing_month", month)
     .maybeSingle();
 
@@ -40,6 +41,7 @@ export async function getMyPairing(
         id: string;
         pairing_month: string;
         scheduled_for: string | null;
+        booked_at: string | null;
         met_at: string | null;
         pairing_participants: { member_id: string }[];
       }
@@ -51,6 +53,7 @@ export async function getMyPairing(
     id: row.id,
     month: row.pairing_month,
     scheduledFor: row.scheduled_for,
+    bookedAt: row.booked_at,
     metAt: row.met_at,
     partnerId:
       row.pairing_participants.find((p) => p.member_id !== memberId)?.member_id ??
