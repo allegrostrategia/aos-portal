@@ -26,6 +26,51 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, LOCAL ONLY, awaiting Dom's walkthrough
+
+**Eleven commits on `main`, none pushed.** `16caceb` through `4c9688d`. Nothing is deployed and no migration has been applied. Brief: `docs/aOS_LEditoriale_Redesign_Brief.md`; reference: `docs/LEditoriale_full_reference_poster.png`.
+
+### Built
+| # | Screen | Status | New scope shipped with it |
+|---|---|---|---|
+| — | Tokens & primitives | done | cream/ink/charcoal tokens, upright serif, pills, `NumberedRow`, `Pill`, `Quote`, `Avatar`; 55 headings made upright, 503 navy→ink class changes; CLAUDE.md brand rules rewritten |
+| 1 | Nav + La Strada | done | five-item nav with icons; map/list toggle via `?view=list`; admin routes to sidebar + You |
+| 2 | Station + lesson | done | `lesson_completions` table; Lessons / Tools / Replays sections; Mark as complete |
+| 3 | Your log | done | day strip, Log/Timer/Insights tabs, day timeline, two SVG charts, `getWeekEntries` |
+| 4 | Sociale | done | `message_reactions` table (four fixed emoji); bubbles, headshots, room list, desktop split |
+| 5 | Pairing | done | `pairings.booked_at`; photos side by side; three icebreakers |
+| 6 | Archivio | done — **HIGH RISK** | folders + search; `template` source + `image_path` + `archivio` bucket policies; **the hot-seat SOP flow turned round** (`coach_note`; Nina's write-up form and the member's rephrase editor removed) |
+| 7 | Onboarding | done — **HIGH RISK** | six steps, `onboarding_steps` table, nothing reads `members.status`; compact on Piazza, full on /onboarding |
+| 8 | Piazza | done | onboarding path → hero + quote + glass metrics strip → task list → hot seat / milestones / pairing cards |
+| 9 | Milestones | untouched | only the global token propagation reached it |
+| 10 | You | done | `/you` page; three notification switches on `members`, honoured in `runner.ts` at every member-facing sender |
+
+Verification at the end: tsc, lint, build clean; **171 unit / 232 schema / 90 action** (from 171 / 203 / 88). Every new policy mutation-tested; every clause a test can reach is killed, and the ones that can't (delete owner-checks, which a SELECT policy already shields) are documented in the migration.
+
+### Before any of this goes live — Dom's steps, in order
+1. **Walk through it.** Local only: `npm run dev`. Everything below is unverified on a real screen — no authenticated page was screenshot-checked from the build session, only the login page.
+2. **Dashboard, two things:** create a private **`archivio`** storage bucket (the policies are in the migration and wait for it); add **`message_reactions`** to the Realtime publication, as `chat_messages` was. Without the second, reactions from other people appear on the next refresh instead of live.
+3. **`npm run db:push`** — eight migrations, `20260913200000` through `20260914003000`. The CLI works now; `migration list` first, as always.
+4. **Phone test the blur.** Two uses only: the bottom nav and the Piazza stat strip. The nav is the one that re-blurs on every scroll frame. If it's janky, set `--aos-glass-blur: none` in `globals.css` and everything falls back to its solid fill.
+5. Push.
+
+### Judgement calls that need Dom's eyes (most important first)
+- **Orange primary buttons, white text: ~2.9:1.** The codebase used to defend navy-for-contrast; the brief names "navy buttons" as a rule it replaces, so the reference won. Semibold 16px+ is the mitigation. The alternative — ink text on the orange pill, 3.5:1 — is one line in `button.tsx`.
+- **The SOP flow (screen 6).** Nina's write-up form is gone; she leaves a comment; the member writes the SOP on the build's own row. Everything she already published still reads, above the member's form. The `sop`-only-on-`member_sop` constraint was dropped and its test retired with the reason in place.
+- **Onboarding (screen 7).** The directory listing dropped out of the sequence (it isn't in the brief's six). "Book your 1:1" is the one step with no fact behind it, so it's a tick. Two steps say "carry on regardless" where content is still on Nina's list.
+- **Calendar blocks are coloured by bucket, not by category.** Ten hues that stay apart in every pairing under colour-vision deficiency on cream don't exist; the dataviz method caps an any-pair identity palette at ~3. Colour says Systems / Profit / Visibility; the label on every block says which category. Validated on the card surface, all pairs.
+- **Lesson page has no Overview / Notes / Resources tabs and no key-takeaways checklist.** They need per-lesson fields that don't exist. A content-model decision, not something to draw empty.
+- **Piazza quotes are placeholders** in the brand's register. Nina should own the list; it is the first sentence a member reads every day.
+- **`text-ink` (#0A1E4A) for all text**, with brand navy kept for the map lines and nav state. One variable if it reads wrong.
+- **Hot seat page (`/hot-seat`) was not restyled** beyond propagation — it isn't a numbered screen in the brief. The reference's dark treatment is on the Piazza card.
+
+### Not built, and why
+- Roadmap's full screen — parked by the brief. Its entry points exist: the Piazza focus line, the log's sign-off checklist.
+- Swipe Copy, Workbooks, Brand Assets — dropped by the brief.
+- Presence / "online" — dropped by the brief.
+- Client Reporting — a separate build.
+- Week navigation on the log (previous weeks) — the reference's arrows; not in the brief's text, and the sign-off is per current week. Small, worth asking.
+
 ## Genuinely still open
 1. ~~**The design/artwork pass**~~ — **done.** La Strada redrawn 4 Sep, the milestone path illustrated 8 Sep. Both illustrated screens now exist.
 2. **The community goal** — needs a target from Nina before it can be built at all.
