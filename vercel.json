@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
+  "regions": [
+    "arn1"
+  ],
   "crons": [
     {
       "path": "/api/cron/due-jobs",

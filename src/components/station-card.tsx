@@ -4,7 +4,7 @@ import Link from "next/link";
 /**
  * A station on La Strada.
  *
- * The image is found by slug — `/stations/${slug}.png` — so there's no mapping
+ * The image is found by slug — `/stations/${slug}.jpg` — so there's no mapping
  * table to keep in step with the database. Adding a station means adding a row
  * and a correspondingly named file, and a mismatch shows up as a missing image
  * rather than as the wrong station's picture. See public/README.md.
@@ -27,7 +27,7 @@ export function StationCard({
     <>
       <div className="relative aspect-3/2 overflow-hidden bg-sky/20">
         <Image
-          src={`/stations/${station.slug}.png`}
+          src={`/stations/${station.slug}.jpg`}
           // Empty alt: the station's name sits directly below in text, so
           // announcing it twice would only get in the way. The image is
           // atmosphere, not information.

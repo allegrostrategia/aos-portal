@@ -410,12 +410,12 @@ export function LaStradaMap({
                   }}
                 >
                   <Image
-                    src={`/stations/${station.slug}.png`}
+                    src={`/stations/${station.slug}.jpg`}
                     alt=""
                     width={160}
                     height={140}
                     // The same eleven images the station cards use — Next serves
-                    // a thumbnail-sized version rather than the 2.6MB source.
+                    // a thumbnail-sized version rather than the full-size source.
                     className={`size-full object-cover transition ${
                       station.visited || locked ? "" : "grayscale"
                     } ${locked ? "opacity-70" : "group-hover:scale-105"}`}

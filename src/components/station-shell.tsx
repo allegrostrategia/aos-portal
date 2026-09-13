@@ -40,7 +40,7 @@ export function StationShell({
       <header>
         <div className="relative aspect-3/2 w-full overflow-hidden rounded-xl bg-sky/20 sm:aspect-[21/9]">
           <Image
-            src={`/stations/${station.slug}.png`}
+            src={`/stations/${station.slug}.jpg`}
             alt=""
             fill
             priority

@@ -50,12 +50,17 @@ export default async function PiazzaPage() {
   const member = (await getCurrentMember())!;
   const weekStart = currentWeekStart();
 
-  const [week, submission, session, challenge, roadmap] = await Promise.all([
+  // One round trip for everything the page needs, not two. `getMemberHours`
+  // used to be awaited on its own after this — a sixth sequential hop to the
+  // database for no reason, which at cross-region latency was the difference
+  // between a page and a wait.
+  const [week, submission, session, challenge, roadmap, hours] = await Promise.all([
     getThisWeekTotal(member.id),
     getWeeklySubmission(member.id, weekStart),
     getUpcomingSession(),
     getCurrentChallenge(member.id),
     getPiazzaRoadmap(member.id),
+    getMemberHours(member.id),
   ]);
 
   const firstName = member.full_name.split(" ")[0];
@@ -63,7 +68,6 @@ export default async function PiazzaPage() {
   const progress = weekProgress(week.loggedMinutes, COMPLETE_WEEK_MINUTES);
   const onboarding = member.status === "onboarding";
 
-  const hours = await getMemberHours(member.id);
   const milestone = milestoneProgress(hours.total);
 
   return (
