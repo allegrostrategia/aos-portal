@@ -141,14 +141,17 @@ export async function runReminder(
 
   const { data } = await admin
     .from("members")
-    .select("id, email, full_name, status")
+    .select("id, email, full_name, status, notify_reminders")
     .eq("id", job.member_id)
     .maybeSingle();
 
-  const member = data as (MemberRow & { status: string }) | null;
+  const member = data as (MemberRow & { status: string; notify_reminders: boolean }) | null;
 
   // Cancelled between planning and running: nothing to say to them.
   if (!member || member.status === "cancelled") return "skipped";
+  // Turned reminders off (You → Notifications). Skipped, not failed: the job
+  // did its job, which was to ask.
+  if (!member.notify_reminders) return "skipped";
 
   const logged = await loggedMinutesForWeek(admin, member.id, weekStart);
 
@@ -264,7 +267,7 @@ export async function runHotSeatReminder(
     await Promise.all([
       admin
         .from("members")
-        .select("email, full_name, status")
+        .select("email, full_name, status, notify_reminders")
         .eq("id", job.member_id)
         .maybeSingle(),
       admin
@@ -281,7 +284,7 @@ export async function runHotSeatReminder(
     ]);
 
   const member = memberRow as
-    | { email: string; full_name: string; status: string }
+    | { email: string; full_name: string; status: string; notify_reminders: boolean }
     | null;
   const session = sessionRow as
     | { scheduled_for: string | null; zoom_url: string | null }
@@ -289,6 +292,7 @@ export async function runHotSeatReminder(
 
   // Cancelled, or no longer active, between planning and running.
   if (!member || member.status !== "active" || !session) return "skipped";
+  if (!member.notify_reminders) return "skipped";
 
   const hasSubmitted = Boolean(
     (submissionRow as { submitted_at: string | null } | null)?.submitted_at,
@@ -537,12 +541,13 @@ export async function runChatNotification(
       .eq("channel_id", channelId)
       .eq("member_id", job.member_id)
       .maybeSingle(),
-    admin.from("members").select("email, full_name").eq("id", job.member_id).maybeSingle(),
+    admin.from("members").select("email, full_name, notify_chat").eq("id", job.member_id).maybeSingle(),
   ]);
 
   const message = oldest as { created_at: string; member_id: string } | null;
-  const recipientRow = recipient as { email: string; full_name: string } | null;
+  const recipientRow = recipient as { email: string; full_name: string; notify_chat: boolean } | null;
   if (!message || !recipientRow) return "skipped";
+  if (!recipientRow.notify_chat) return "skipped";
 
   const readAt = (read as { last_read_at: string } | null)?.last_read_at;
   if (readAt && readAt >= message.created_at) return "skipped";
@@ -592,14 +597,15 @@ export async function runPairingBooked(
       .select("pairing_month, pairing_participants(member_id)")
       .eq("id", pairingId)
       .maybeSingle(),
-    admin.from("members").select("email, full_name").eq("id", job.member_id).maybeSingle(),
+    admin.from("members").select("email, full_name, notify_pairing").eq("id", job.member_id).maybeSingle(),
   ]);
 
   const row = pairing as
     | { pairing_month: string; pairing_participants: { member_id: string }[] }
     | null;
-  const to = recipient as { email: string; full_name: string } | null;
+  const to = recipient as { email: string; full_name: string; notify_pairing: boolean } | null;
   if (!row || !to) return "skipped";
+  if (!to.notify_pairing) return "skipped";
 
   const partnerId = row.pairing_participants
     .map((p) => p.member_id)
@@ -801,7 +807,7 @@ export async function runBuildCheckIn(
     admin.from("handover_pack").select("title").eq("id", buildId).maybeSingle(),
     admin
       .from("members")
-      .select("email, full_name, status")
+      .select("email, full_name, status, notify_reminders")
       .eq("id", job.member_id)
       .maybeSingle(),
     admin.from("members").select("id").eq("is_coach", true).maybeSingle(),
@@ -809,12 +815,14 @@ export async function runBuildCheckIn(
 
   const buildRow = build as { title: string } | null;
   const memberRow = member as
-    | { email: string; full_name: string; status: string }
+    | { email: string; full_name: string; status: string; notify_reminders: boolean }
     | null;
   const coachRow = coach as { id: string } | null;
 
   // A cancelled member isn't asked how their build is going.
   if (!buildRow || !memberRow || memberRow.status === "cancelled") return "skipped";
+  // The check-in is a reminder about their own build, so it follows that switch.
+  if (!memberRow.notify_reminders) return "skipped";
   if (!coachRow) return "skipped";
 
   const { data: rate } = await admin

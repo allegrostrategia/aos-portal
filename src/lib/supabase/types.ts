@@ -37,6 +37,9 @@ export interface Member {
   onboarding_start_date: string | null;
   cohort_start_date: string | null;
   welcome_session_watched_at: string | null;
+  notify_reminders: boolean;
+  notify_chat: boolean;
+  notify_pairing: boolean;
   payment_confirmed_at: string | null;
   contract_signed_at: string | null;
   contract_term_months: number;

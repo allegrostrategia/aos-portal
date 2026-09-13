@@ -259,6 +259,27 @@ test("the unread email says who wrote, and never quotes the message", async () =
   assert.doesNotMatch(sent()[0].text, /revenue/i);
 });
 
+test("turning chat emails off cancels it, and is reported as skipped, not failed", async () => {
+  await db.query(`update public.members set notify_chat = false where id='${RUTH}'`);
+  const channel = (await db.query(
+    `select public.ensure_direct_channel('${RUTH}','${OMAR}') id`,
+  )).rows[0].id;
+  const message = (await db.query(`
+    insert into public.chat_messages (channel_id, member_id, body, created_at)
+    values ('${channel}', '${OMAR}', 'Another one', now() - interval '2 hours')
+    returning id`)).rows[0].id;
+  const before = sent().length;
+
+  const outcome = await runChatNotification(admin, {
+    member_id: RUTH,
+    payload: { channel_id: channel, oldest_message_id: message, count: 1 },
+  });
+
+  assert.equal(outcome, "skipped");
+  assert.equal(sent().length, before, "nothing should have gone out");
+  await db.query(`update public.members set notify_chat = true where id='${RUTH}'`);
+});
+
 test("reading it first cancels the email", async () => {
   const channel = (await db.query(
     `select id from public.chat_channels where kind = 'direct'

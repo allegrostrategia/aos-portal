@@ -2009,6 +2009,26 @@ await check("a tick survives the member becoming active — nothing here reads s
   return r.rows[0].step === "call";
 });
 
+console.log("\n— notification preferences —");
+
+await check("a member can turn their own reminders off", async () => {
+  await as(ERIN, () => db.query(
+    `update public.members set notify_reminders = false where id='${ERIN}'`));
+  const r = await as(ERIN, () => db.query(
+    `select notify_reminders, notify_chat from public.members where id='${ERIN}'`));
+  return r.rows[0].notify_reminders === false && r.rows[0].notify_chat === true;
+});
+
+await check("and not somebody else's", async () => {
+  try {
+    await as(BOB, () => db.query(
+      `update public.members set notify_chat = false where id='${ERIN}'`));
+  } catch { /* refused or matched nothing; either way it must not change */ }
+  const r = await as(ERIN, () => db.query(
+    `select notify_chat from public.members where id='${ERIN}'`));
+  return r.rows[0].notify_chat === true;
+});
+
 console.log("\n— message reactions —");
 
 // A message in #general (everyone with access can see it) and one in a direct

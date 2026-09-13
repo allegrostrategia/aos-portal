@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
+import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 
@@ -133,4 +134,27 @@ export async function updatePassword(
 
   revalidatePath("/", "layout");
   redirect("/piazza");
+}
+
+/**
+ * The three notification switches on You (L'Editoriale §10).
+ *
+ * The member's own session writes their own row; the members guard trigger
+ * leaves these columns to them. Unchecked boxes don't post, so each switch is
+ * read as present-or-absent from the form.
+ */
+export async function saveNotificationPreferences(formData: FormData): Promise<void> {
+  const member = await requireMember();
+  const supabase = await createClient();
+
+  await supabase
+    .from("members")
+    .update({
+      notify_reminders: formData.get("notify_reminders") === "on",
+      notify_chat: formData.get("notify_chat") === "on",
+      notify_pairing: formData.get("notify_pairing") === "on",
+    })
+    .eq("id", member.id);
+
+  revalidatePath("/you");
 }
