@@ -1979,6 +1979,36 @@ await check("archivio images: own folder only", async () => {
   return !intruded && own === 1 && theirs === 0;
 });
 
+console.log("\n— onboarding steps —");
+
+await check("a member ticks a step, and it's theirs alone to see", async () => {
+  await as(ERIN, () => db.query(
+    `insert into public.onboarding_steps (member_id, step) values ('${ERIN}','call')`));
+  const own = (await as(ERIN, () => db.query(
+    `select count(*)::int c from public.onboarding_steps`))).rows[0].c;
+  const other = (await as(BOB, () => db.query(
+    `select count(*)::int c from public.onboarding_steps`))).rows[0].c;
+  return own === 1 && other === 0;
+});
+
+await rejects("only the six named steps exist", () =>
+  as(ERIN, () => db.query(
+    `insert into public.onboarding_steps (member_id, step) values ('${ERIN}','seventh')`)),
+  "onboarding_steps_step_check");
+
+await rejects("a member cannot tick a step for somebody else", () =>
+  as(BOB, () => db.query(
+    `insert into public.onboarding_steps (member_id, step) values ('${ERIN}','video')`)),
+  "row-level security");
+
+await check("a tick survives the member becoming active — nothing here reads status", async () => {
+  // ERIN is already active. The point is structural: no policy or column
+  // references members.status, so there is nothing for a flip to change.
+  const r = await as(ERIN, () => db.query(
+    `select step from public.onboarding_steps where member_id='${ERIN}'`));
+  return r.rows[0].step === "call";
+});
+
 console.log("\n— message reactions —");
 
 // A message in #general (everyone with access can see it) and one in a direct

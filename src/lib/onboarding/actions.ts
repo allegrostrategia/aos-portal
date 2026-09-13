@@ -151,3 +151,28 @@ export async function saveDirectoryListing(
   revalidatePath("/onboarding");
   redirect("/onboarding?done=directory");
 }
+
+/**
+ * Tick an onboarding step that has no fact behind it in the product — "I've
+ * booked my 1:1" — or take the tick back. Only the member's own session
+ * writes this; RLS decides.
+ */
+export async function setOnboardingStep(formData: FormData): Promise<void> {
+  const member = await requireMember();
+  const step = String(formData.get("step") ?? "");
+  const on = formData.get("done") === "true";
+  const allowed = ["form", "video", "tracking", "call", "roadmap", "hot_seat"];
+  if (!allowed.includes(step)) return;
+
+  const supabase = await createClient();
+  if (on) {
+    await supabase
+      .from("onboarding_steps")
+      .upsert({ member_id: member.id, step }, { onConflict: "member_id,step", ignoreDuplicates: true });
+  } else {
+    await supabase.from("onboarding_steps").delete().eq("member_id", member.id).eq("step", step);
+  }
+
+  revalidatePath("/piazza");
+  revalidatePath("/onboarding");
+}
