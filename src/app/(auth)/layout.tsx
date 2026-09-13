@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           </Link>
         </div>
 
-        <div className="rounded-card border border-ink/8 bg-card shadow-soft p-6 shadow-sm backdrop-blur-sm sm:p-8">
+        <div className="rounded-card border border-ink/8 bg-card shadow-soft p-6 shadow-sm sm:p-8">
           {children}
         </div>
       </div>

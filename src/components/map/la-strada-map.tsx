@@ -474,7 +474,7 @@ export function LaStradaMap({
           {/* On the picture, bottom right — the reference's placement. Hidden
               on the narrowest screens, where it would cover a third of the map
               and the legend below the image says the same thing. */}
-          <div className="pointer-events-none absolute right-3 bottom-3 hidden rounded-lg bg-white/85 px-3 py-2.5 shadow-lg backdrop-blur-sm sm:block">
+          <div className="pointer-events-none absolute right-3 bottom-3 hidden rounded-lg bg-white/85 px-3 py-2.5 shadow-lg sm:block">
             <ul className="flex flex-col gap-1.5">
               {MAP_LINES.map((line) => (
                 <li key={line.key} className="flex items-center gap-2.5">
