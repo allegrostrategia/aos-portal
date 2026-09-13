@@ -79,3 +79,21 @@ export const JOB_LABEL: Record<ContentJob, string> = {
   save_time: "Saves time",
   make_money: "Makes money",
 };
+
+/**
+ * Which of a member's visible lessons they have marked complete.
+ *
+ * Returns the set of content ids, keyed for the station page's ticks and its
+ * "3 of 8" count. RLS scopes this to the member; the explicit filter is the
+ * same belt-and-braces as everywhere else.
+ */
+export async function getCompletedContentIds(memberId: string): Promise<Set<string>> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("lesson_completions")
+    .select("content_id")
+    .eq("member_id", memberId);
+
+  return new Set(((data ?? []) as { content_id: string }[]).map((r) => r.content_id));
+}

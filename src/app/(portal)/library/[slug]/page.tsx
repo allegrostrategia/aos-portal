@@ -10,7 +10,9 @@ import {
   KIND_LABEL,
   type TrainingContent,
 } from "@/lib/library/queries";
-import { Badge, Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { getCompletedContentIds } from "@/lib/library/queries";
+import { Badge, Card, Eyebrow } from "@/components/ui/card";
+import { CompleteButton } from "@/components/library/complete-button";
 
 export const metadata: Metadata = { title: "aOS" };
 
@@ -30,7 +32,7 @@ export const metadata: Metadata = { title: "aOS" };
 export default async function ContentPage({
   params,
 }: PageProps<"/library/[slug]">) {
-  await requireMember();
+  const member = await requireMember();
   const { slug } = await params;
 
   // The member's own client: RLS decides whether this exists for them.
@@ -44,26 +46,34 @@ export default async function ContentPage({
   const item = data as (TrainingContent & { stations: { name: string } | null }) | null;
   if (!item) notFound();
 
+  const completed = await getCompletedContentIds(member.id);
+  const isLesson =
+    item.kind === "training" && (item.format === "video" || item.format === "audio");
+
   const src = `/api/content/${item.id}`;
 
+  // L'Editoriale "06 Lesson": the media first and full-bleed, then the title
+  // and what it's about, then the completion pill. The reference's Overview /
+  // Notes / Resources tabs and its key-takeaways checklist need per-lesson
+  // fields that don't exist yet (a lesson has a description and nothing else
+  // in that shape), so they are not drawn — see the redesign summary.
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-3xl flex-1 py-6 sm:py-10">
       <p className="mb-4">
         <Link
           href={`/stations/${item.station_slug}`}
-          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
+          className="text-small text-ink/60 transition hover:text-ink"
         >
           ← {item.stations?.name ?? "Back to the station"}
         </Link>
       </p>
 
-      <PageHeader
-        eyebrow={KIND_LABEL[item.kind]}
-        title={item.title}
-        intro={item.description ?? undefined}
-      />
+      <div className="mb-6">{media(item, src)}</div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <Eyebrow tone="accent">{KIND_LABEL[item.kind]}</Eyebrow>
+      <h1 className="font-display mt-2 text-title font-medium text-ink">{item.title}</h1>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <Badge>{FORMAT_LABEL[item.format]}</Badge>
         {item.duration_minutes ? (
           <span className="font-mono text-caption text-ink/50">
@@ -76,13 +86,36 @@ export default async function ContentPage({
         ) : null}
       </div>
 
-      {!item.asset_path ? (
-        <Card>
-          <p className="text-small text-ink/70">
-            This one hasn&rsquo;t been uploaded yet.
-          </p>
-        </Card>
-      ) : item.format === "video" ? (
+      {item.description ? (
+        <p className="mt-5 max-w-2xl text-body text-ink/75">{item.description}</p>
+      ) : null}
+
+      {isLesson ? (
+        <div className="mt-8">
+          <CompleteButton
+            contentId={item.id}
+            contentSlug={item.slug}
+            stationSlug={item.station_slug}
+            initial={completed.has(item.id)}
+          />
+        </div>
+      ) : null}
+    </main>
+  );
+}
+
+function media(item: TrainingContent, src: string) {
+  if (!item.asset_path) {
+    return (
+      <Card>
+        <p className="text-small text-ink/70">This one hasn&rsquo;t been uploaded yet.</p>
+      </Card>
+    );
+  }
+  return (
+    <>
+
+      {item.format === "video" ? (
         // Bounded on both axes, sized by neither.
         //
         // `w-full` alone lets width win unconditionally: a phone-recorded
@@ -104,7 +137,7 @@ export default async function ContentPage({
         <video
           controls
           controlsList="nodownload"
-          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-xl border border-ink/10 bg-ink/5"
+          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-card bg-charcoal shadow-lift"
           src={src}
         />
       ) : item.format === "audio" ? (
@@ -118,7 +151,7 @@ export default async function ContentPage({
           // protection is that the URL is short-lived and unguessable.
           src={`${src}#toolbar=0`}
           title={item.title}
-          className="h-[75vh] w-full rounded-xl border border-ink/10 bg-white"
+          className="h-[75vh] w-full rounded-card border border-ink/10 bg-white shadow-soft"
         />
       ) : (
         <Card>
@@ -137,6 +170,6 @@ export default async function ContentPage({
           </p>
         </Card>
       )}
-    </main>
+    </>
   );
 }

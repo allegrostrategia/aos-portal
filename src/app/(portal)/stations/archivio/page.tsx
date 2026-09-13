@@ -47,7 +47,7 @@ export default async function ArchivioPage() {
   return (
     <StationShell
       station={station}
-      whyThisMatters={
+      currentPriority={
         <p>
           Everything you&rsquo;ve actually built. Live builds from the hot seat
           get written up here, and you can document anything else you run — the
@@ -58,7 +58,7 @@ export default async function ArchivioPage() {
       buildAction={
         <ButtonLink href="/stations/archivio/new">Document something</ButtonLink>
       }
-      recommendedTraining={
+      content={
         entries.length === 0 ? (
           <Card>
             <p className="text-small text-ink/70">

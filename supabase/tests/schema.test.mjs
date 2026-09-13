@@ -1799,5 +1799,88 @@ await check("editing the roadmap afterwards leaves the reveal alone", async () =
   return JSON.stringify(after.rows[0].priorities) === JSON.stringify(before.rows[0].priorities);
 });
 
+console.log("\n— lesson completions —");
+
+const LESSON = async (slug) => (await as(ADMIN, () => db.query(
+  `select id from public.training_content where slug='${slug}'`))).rows[0].id;
+
+await check("a member can mark a lesson they can see as complete", async () => {
+  const id = await LESSON("looking-at-data");
+  await as(ERIN, () => db.query(
+    `insert into public.lesson_completions (member_id, content_id) values ('${ERIN}','${id}')`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.lesson_completions where content_id='${id}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("marking it again is a no-op, not a second row", async () => {
+  const id = await LESSON("looking-at-data");
+  await as(ERIN, () => db.query(
+    `insert into public.lesson_completions (member_id, content_id) values ('${ERIN}','${id}')
+     on conflict do nothing`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.lesson_completions where content_id='${id}'`));
+  return r.rows[0].c === 1;
+});
+
+await rejects("a member cannot complete a lesson that is not visible to them", async () => {
+  // The unpublished draft: training_content's RLS hides it, so the insert
+  // policy's subquery finds nothing. No second copy of the tiering rules.
+  const id = await LESSON("draft");
+  return as(ERIN, () => db.query(
+    `insert into public.lesson_completions (member_id, content_id) values ('${ERIN}','${id}')`));
+}, "row-level security");
+
+await rejects("a member cannot complete a lesson on somebody else's behalf", async () => {
+  const id = await LESSON("looking-at-data");
+  return as(ERIN, () => db.query(
+    `insert into public.lesson_completions (member_id, content_id) values ('${BOB}','${id}')`));
+}, "row-level security");
+
+// BOB, who is active — not DANA, who is cancelled by this point in the file and
+// would see nothing whatever the policy said. A mutation that dropped the owner
+// check survived the first version of this test for exactly that reason.
+await check("another member with access cannot see it", async () => {
+  const r = await as(BOB, () => db.query(
+    `select count(*)::int c from public.lesson_completions`));
+  return r.rows[0].c === 0;
+});
+
+await check("a member cannot take somebody else's tick away", async () => {
+  // RLS on delete matches nothing rather than throwing, so assert the row
+  // survives rather than expecting an error.
+  const id = await LESSON("looking-at-data");
+  await as(BOB, () => db.query(
+    `delete from public.lesson_completions where content_id='${id}'`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.lesson_completions where content_id='${id}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("a member can take their own tick back", async () => {
+  const id = await LESSON("looking-at-data");
+  await as(ERIN, () => db.query(
+    `delete from public.lesson_completions where content_id='${id}'`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.lesson_completions where content_id='${id}'`));
+  return r.rows[0].c === 0;
+});
+
+// A member who is actually cancelled. Not ALICE — she rejoins earlier in this
+// file and ends it as onboarding, which is exactly the kind of fixture fact a
+// test quietly assumes and gets wrong.
+const GONE = "19191919-1919-1919-1919-191919191919";
+await db.exec(`insert into auth.users (id, email) values ('${GONE}', 'gone@test')`);
+await as(ADMIN, () => db.query(
+  `select public.create_member('${GONE}','gone@test','Gone Member', now(), now())`));
+await as(ADMIN, () => db.query(`select public.activate_member('${GONE}')`));
+await as(ADMIN, () => db.query(`select public.cancel_member('${GONE}', 'left')`));
+
+await rejects("a cancelled member cannot mark anything complete", async () => {
+  const id = await LESSON("looking-at-data");
+  return as(GONE, () => db.query(
+    `insert into public.lesson_completions (member_id, content_id) values ('${GONE}','${id}')`));
+}, "row-level security");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { Card, Eyebrow } from "@/components/ui/card";
+import { stationCategory } from "@/lib/stations/categories";
+import { Card, Eyebrow, Quote } from "@/components/ui/card";
 
 /**
  * The shared station skeleton (§11).
@@ -16,99 +17,108 @@ import { Card, Eyebrow } from "@/components/ui/card";
  * is the point of the rule, and the reason it's expressed as a component instead
  * of a convention people are asked to remember.
  *
+ * L'Editoriale (13 Sep) restyles the slots, not the order. "Where you are" is
+ * the photo banner with the name and its subject line; "why this matters" is
+ * the station's description set as an editorial pull-quote — the field already
+ * existed, it just never had the visual weight the reference gives it. The
+ * content sits directly on the page rather than inside a card, because a
+ * numbered list is its own surface.
+ *
  * Slots left empty are omitted rather than rendered hollow: an empty "current
  * priority" heading tells a member less than no heading at all.
  */
 export function StationShell({
   station,
-  whyThisMatters,
   currentPriority,
-  recommendedTraining,
+  content,
   buildAction,
   progress,
+  cta,
 }: {
   station: { slug: string; name: string; description: string | null };
-  whyThisMatters?: React.ReactNode;
   currentPriority?: React.ReactNode;
-  recommendedTraining?: React.ReactNode;
+  /** The three sections — lessons, tools, replays. */
+  content?: React.ReactNode;
   buildAction?: React.ReactNode;
   progress?: React.ReactNode;
+  /** The orange "Continue learning" pill, when there is somewhere to continue to. */
+  cta?: React.ReactNode;
 }) {
+  const category = stationCategory(station.slug);
+
   return (
-    <main className="flex-1 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-3xl flex-1 py-6 sm:py-10">
       {/* 1. Where you are */}
       <header>
-        <div className="relative aspect-3/2 w-full overflow-hidden rounded-xl bg-sky/20 sm:aspect-[21/9]">
+        <div className="mb-5">
+          <p className="mb-3">
+            <Link
+              href="/stations"
+              className="text-small text-ink/60 transition hover:text-ink"
+            >
+              ← La Strada
+            </Link>
+          </p>
+          <h1 className="font-display text-display font-medium text-ink">
+            {station.name}
+          </h1>
+          {category ? <Eyebrow className="mt-3">{category}</Eyebrow> : null}
+        </div>
+
+        <div className="relative aspect-4/3 w-full overflow-hidden rounded-card bg-cream-deep shadow-soft sm:aspect-[21/10]">
           <Image
             src={`/stations/${station.slug}.jpg`}
             alt=""
             fill
             priority
-            sizes="(min-width: 1024px) 60rem, 100vw"
+            sizes="(min-width: 768px) 48rem, 100vw"
             className="object-cover"
           />
         </div>
-
-        <div className="mt-5">
-          <Eyebrow tone="accent">La Strada</Eyebrow>
-          <h1 className="font-display mt-2 text-display font-medium text-ink">
-            {station.name}
-          </h1>
-          {station.description ? (
-            <p className="mt-3 max-w-2xl text-body text-ink/70">
-              {station.description}
-            </p>
-          ) : null}
-        </div>
       </header>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-3">
-        {/* 2. Why this matters */}
-        {whyThisMatters ? (
-          <Card className="lg:col-span-2">
-            <Eyebrow>Why this matters</Eyebrow>
-            <div className="mt-3 text-body text-ink/80">{whyThisMatters}</div>
-          </Card>
-        ) : null}
+      {/* 2. Why this matters — the description, given the weight the reference
+          gives it. */}
+      {station.description ? (
+        <Quote className="mt-8 max-w-2xl text-[1.35rem] leading-snug">
+          {station.description}
+        </Quote>
+      ) : null}
 
-        {/* 3. Current priority */}
-        {currentPriority ? (
-          <Card>
-            <Eyebrow>Your current priority</Eyebrow>
-            <div className="mt-3 text-body text-ink/80">{currentPriority}</div>
-          </Card>
-        ) : null}
+      {cta ? <div className="mt-6">{cta}</div> : null}
 
-        {/* 4. Recommended training — §11's slot, filled for now with everything
-            in the room. "Recommended for you" proper is a Piazza card (§6), so
-            calling a complete list that here would be a promise this doesn't
-            keep yet. Ordering by the diagnostic comes later. */}
-        {recommendedTraining ? (
-          <Card className="lg:col-span-2">
-            <Eyebrow>In this room</Eyebrow>
-            <div className="mt-3">{recommendedTraining}</div>
-          </Card>
-        ) : null}
+      {/* 3. Current priority */}
+      {currentPriority ? (
+        <Card className="mt-8">
+          <Eyebrow>Your current priority</Eyebrow>
+          <div className="mt-3 text-body text-ink/80">{currentPriority}</div>
+        </Card>
+      ) : null}
 
-        {/* 5. Build / action */}
-        {buildAction ? (
-          <Card>
-            <Eyebrow>Build something</Eyebrow>
-            <div className="mt-3">{buildAction}</div>
-          </Card>
-        ) : null}
+      {/* 4. Recommended training — §11's slot, filled with everything in the
+          room, grouped. "Recommended for you" proper is a Piazza card (§6), so
+          calling a complete list that here would be a promise this doesn't
+          keep yet. Ordering by the diagnostic comes later. */}
+      {content ? <div className="mt-10">{content}</div> : null}
 
-        {/* 6. Progress */}
-        {progress ? (
-          <Card className="lg:col-span-3">
-            <Eyebrow>Your progress here</Eyebrow>
-            <div className="mt-3">{progress}</div>
-          </Card>
-        ) : null}
-      </div>
+      {/* 5. Build / action */}
+      {buildAction ? (
+        <Card className="mt-8">
+          <Eyebrow>Build something</Eyebrow>
+          <div className="mt-3">{buildAction}</div>
+        </Card>
+      ) : null}
+
+      {/* 6. Progress */}
+      {progress ? (
+        <Card className="mt-8">
+          <Eyebrow>Your progress here</Eyebrow>
+          <div className="mt-3">{progress}</div>
+        </Card>
+      ) : null}
 
       {/* 7. Return to La Strada — every station has one, so nobody gets stuck. */}
-      <div className="mt-8">
+      <div className="mt-10">
         <Link
           href="/stations"
           className="text-small text-ink/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-ink"
