@@ -13,11 +13,11 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
             <p className="font-mono text-eyebrow text-orange uppercase">
               Allegro Strategia
             </p>
-            <p className="font-display mt-1 text-display text-navy italic">aOS</p>
+            <p className="font-display mt-1 text-display font-medium text-ink">aOS</p>
           </Link>
         </div>
 
-        <div className="rounded-xl border border-navy/10 bg-white/70 p-6 shadow-sm backdrop-blur-sm sm:p-8">
+        <div className="rounded-card border border-ink/8 bg-card shadow-soft p-6 shadow-sm backdrop-blur-sm sm:p-8">
           {children}
         </div>
       </div>

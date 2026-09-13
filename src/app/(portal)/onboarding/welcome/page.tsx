@@ -24,16 +24,16 @@ export default async function WelcomeSessionPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 py-8 sm:py-10">
       <Eyebrow tone="accent">Step zero</Eyebrow>
-      <h1 className="font-display mt-2 text-display text-navy italic">
+      <h1 className="font-display mt-2 text-display font-medium text-ink">
         Welcome to aOS
       </h1>
-      <p className="mt-3 text-body text-navy/70">
+      <p className="mt-3 text-body text-ink/70">
         Before the audit, before anything else. This one sets out what kind of
         space this is — the audit teaches you how it works.
       </p>
 
-      <div className="mt-6 flex aspect-video items-center justify-center rounded-xl border border-navy/15 bg-navy/5">
-        <p className="px-6 text-center text-small text-navy/50">
+      <div className="mt-6 flex aspect-video items-center justify-center rounded-xl border border-ink/15 bg-ink/5">
+        <p className="px-6 text-center text-small text-ink/50">
           {/* TODO(step-3): swap for the real recording once Nina has it. */}
           Nina&rsquo;s recording lands here.
         </p>
@@ -41,7 +41,7 @@ export default async function WelcomeSessionPage() {
 
       <Card className="mt-6">
         <Eyebrow>What it covers</Eyebrow>
-        <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-small text-navy/80">
+        <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-small text-ink/80">
           <li>
             The promise: every month, one real thing that&rsquo;s costing you
             time or money gets built, live, from your own data.
@@ -58,12 +58,12 @@ export default async function WelcomeSessionPage() {
       <div className="mt-8">
         {watched ? (
           <div className="flex flex-wrap items-center gap-4">
-            <p className="text-small text-navy/70">
+            <p className="text-small text-ink/70">
               You&rsquo;ve watched this — your audit is open.
             </p>
             <Link
               href="/onboarding/audit"
-              className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+              className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
             >
               Go to your audit
             </Link>
@@ -71,7 +71,7 @@ export default async function WelcomeSessionPage() {
         ) : (
           <form action={markWelcomeWatched}>
             <Button type="submit">I&rsquo;ve watched this</Button>
-            <p className="mt-3 text-small text-navy/60">
+            <p className="mt-3 text-small text-ink/60">
               This just unlocks the next step — nobody&rsquo;s checking.
             </p>
           </form>
@@ -81,7 +81,7 @@ export default async function WelcomeSessionPage() {
       <p className="mt-8">
         <Link
           href="/onboarding"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← Back to your first weeks
         </Link>

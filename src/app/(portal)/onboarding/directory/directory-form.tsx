@@ -48,11 +48,11 @@ export function DirectoryForm({
         hint="A few lines. Who you help, and what changes for them."
       />
 
-      <fieldset className="flex flex-col gap-3 rounded-md border border-navy/15 bg-white/50 p-4">
-        <legend className="px-1 text-small font-medium text-navy">
+      <fieldset className="flex flex-col gap-3 rounded-md border border-ink/15 bg-card p-4">
+        <legend className="px-1 text-small font-medium text-ink">
           Ways to work with you
         </legend>
-        <p className="text-caption text-navy/60">
+        <p className="text-caption text-ink/60">
           Up to three. Leave any blank you don&rsquo;t need.
         </p>
 

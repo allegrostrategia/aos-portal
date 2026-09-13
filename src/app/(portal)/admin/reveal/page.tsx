@@ -68,8 +68,8 @@ export default async function AdminRevealPage({
                   aria-current={member.id === selectedId ? "page" : undefined}
                   className={`block rounded-md px-3 py-2 text-small transition ${
                     member.id === selectedId
-                      ? "bg-white/70 font-medium text-navy"
-                      : "text-navy/70 hover:bg-white/40 hover:text-navy"
+                      ? "bg-card font-medium text-ink"
+                      : "text-ink/70 hover:bg-white/40 hover:text-ink"
                   }`}
                 >
                   {member.full_name}
@@ -82,7 +82,7 @@ export default async function AdminRevealPage({
         <section>
           {!selected || !reveal ? (
             <Card>
-              <p className="text-small text-navy/70">
+              <p className="text-small text-ink/70">
                 Pick somebody. Their reveal is written once, around their 1:1 —
                 it&rsquo;s a snapshot of that conversation, not something that
                 keeps up with their roadmap afterwards.
@@ -91,7 +91,7 @@ export default async function AdminRevealPage({
           ) : (
             <>
               <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-                <h2 className="font-display text-heading text-navy italic">
+                <h2 className="font-display text-heading font-medium text-ink">
                   {selected.full_name}
                 </h2>
                 <div className="flex flex-wrap items-center gap-3">
@@ -111,7 +111,7 @@ export default async function AdminRevealPage({
 
               {!isRevealComplete(reveal) ? (
                 <Card className="mb-4 bg-lemon/25">
-                  <p className="text-small text-navy/80">
+                  <p className="text-small text-ink/80">
                     Still to write: {missingFromReveal(reveal).join(", ")}.
                   </p>
                 </Card>

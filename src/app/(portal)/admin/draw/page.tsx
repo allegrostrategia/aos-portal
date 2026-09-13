@@ -76,20 +76,20 @@ export default async function AdminDrawPage() {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
         <Card>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             Set up a draw
           </h2>
           <NewDrawForm defaultMonth={thisMonth} />
         </Card>
 
         <section>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             Draws
           </h2>
 
           {draws.length === 0 ? (
             <Card>
-              <p className="text-small text-navy/70">
+              <p className="text-small text-ink/70">
                 None yet. One a month, drawn after the month it rewards.
               </p>
             </Card>
@@ -106,7 +106,7 @@ export default async function AdminDrawPage() {
                     <div className="flex flex-wrap items-baseline justify-between gap-3">
                       <div>
                         <Eyebrow>{formatCalendarMonth(draw.draw_month)}</Eyebrow>
-                        <p className="mt-1 text-body font-medium text-navy">
+                        <p className="mt-1 text-body font-medium text-ink">
                           {draw.prize}
                         </p>
                       </div>
@@ -117,19 +117,19 @@ export default async function AdminDrawPage() {
                       )}
                     </div>
 
-                    <p className="mt-1 text-caption text-navy/50">
+                    <p className="mt-1 text-caption text-ink/50">
                       Drawn on {formatCalendarDate(draw.draw_date)}
                     </p>
 
                     {draw.drawn_at ? (
                       <div className="mt-4 rounded-lg border border-gold/50 bg-lemon/25 px-4 py-3">
                         <Eyebrow>Winner</Eyebrow>
-                        <p className="mt-1 text-body text-navy">
+                        <p className="mt-1 text-body text-ink">
                           {draw.winner_member_id
                             ? (nameById[draw.winner_member_id] ?? "A former member")
                             : "No winner recorded"}
                         </p>
-                        <p className="mt-1 text-caption text-navy/50">
+                        <p className="mt-1 text-caption text-ink/50">
                           From {entrants} {entrants === 1 ? "entrant" : "entrants"}
                         </p>
                       </div>
@@ -158,7 +158,7 @@ export default async function AdminDrawPage() {
 
                         {rows.length > 0 ? (
                           <details className="mt-4">
-                            <summary className="cursor-pointer list-none text-caption text-navy/60 underline underline-offset-4 transition hover:text-navy">
+                            <summary className="cursor-pointer list-none text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink">
                               Who&rsquo;s where ({rows.length} active{" "}
                               {rows.length === 1 ? "member" : "members"})
                             </summary>
@@ -169,14 +169,14 @@ export default async function AdminDrawPage() {
                               {rows.map((row) => (
                                 <li
                                   key={row.member_id}
-                                  className="flex items-baseline justify-between gap-3 border-b border-navy/5 py-1.5 last:border-0"
+                                  className="flex items-baseline justify-between gap-3 border-b border-ink/5 py-1.5 last:border-0"
                                 >
-                                  <span className="text-small text-navy">
+                                  <span className="text-small text-ink">
                                     {row.full_name}
                                   </span>
                                   <span
                                     className={`font-mono text-caption ${
-                                      row.is_eligible ? "text-navy" : "text-navy/40"
+                                      row.is_eligible ? "text-ink" : "text-ink/40"
                                     }`}
                                   >
                                     {row.complete_weeks}/{row.weeks_required}

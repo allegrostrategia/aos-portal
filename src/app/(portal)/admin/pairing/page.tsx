@@ -76,7 +76,7 @@ export default async function AdminPairingPage() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
         <div className="flex flex-col gap-4">
           <Card>
-            <h2 className="font-display mb-3 text-heading text-navy italic">
+            <h2 className="font-display mb-3 text-heading font-medium text-ink">
               Run {formatCalendarMonth(month)}
             </h2>
             <MatchForm defaultMonth={month.slice(0, 7)} />
@@ -96,7 +96,7 @@ export default async function AdminPairingPage() {
         </div>
 
         <section>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             {thisMonth.length > 0
               ? `This month's pairings (${thisMonth.length})`
               : "Who's answered"}
@@ -107,7 +107,7 @@ export default async function AdminPairingPage() {
               {thisMonth.map((pairing) => (
                 <Card as="li" key={pairing.id}>
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
-                    <p className="text-body text-navy">
+                    <p className="text-body text-ink">
                       {pairing.pairing_participants
                         .map((p) => nameById[p.member_id] ?? "You")
                         .join(" · ")}
@@ -127,9 +127,9 @@ export default async function AdminPairingPage() {
                 return (
                   <Card as="li" key={m.id}>
                     <div className="flex flex-wrap items-baseline justify-between gap-3">
-                      <p className="text-small text-navy">{m.full_name}</p>
+                      <p className="text-small text-ink">{m.full_name}</p>
                       {theirs?.submitted ? (
-                        <p className="text-caption text-navy/60">
+                        <p className="text-caption text-ink/60">
                           {theirs.slots.length === 0
                             ? "Sitting this month out"
                             : theirs.slots.map(slotLabel).join(", ")}

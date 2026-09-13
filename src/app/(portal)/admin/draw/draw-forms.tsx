@@ -78,7 +78,7 @@ export function DrawControls({
             Lock in {eligible} {eligible === 1 ? "entrant" : "entrants"}
           </Button>
         ) : (
-          <span className="text-caption text-navy/50">
+          <span className="text-caption text-ink/50">
             Nobody has completed the whole month, so there&rsquo;s nobody to
             enter. Nothing to do here until someone does.
           </span>

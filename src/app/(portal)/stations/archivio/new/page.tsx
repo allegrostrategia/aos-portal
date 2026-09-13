@@ -16,7 +16,7 @@ export default async function NewSopPage() {
       <p className="mb-4">
         <Link
           href="/stations/archivio"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← Archivio
         </Link>

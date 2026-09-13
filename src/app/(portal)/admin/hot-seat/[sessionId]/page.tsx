@@ -71,7 +71,7 @@ export default async function SessionPrepPage({
       <p className="mb-4">
         <Link
           href="/admin/hot-seat"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← All sessions
         </Link>
@@ -91,7 +91,7 @@ export default async function SessionPrepPage({
 
       {rows.length === 0 ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             No active members yet, so nobody to prep.
           </p>
         </Card>
@@ -117,10 +117,10 @@ export default async function SessionPrepPage({
               <Card key={row.memberId}>
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <div>
-                    <p className="font-display text-heading text-navy italic">
+                    <p className="font-display text-heading font-medium text-ink">
                       {row.fullName}
                     </p>
-                    <p className="text-caption text-navy/50">{row.email}</p>
+                    <p className="text-caption text-ink/50">{row.email}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {!row.stillActive ? <Badge>Cancelled since</Badge> : null}
@@ -139,14 +139,14 @@ export default async function SessionPrepPage({
                       <>
                         <div>
                           <Eyebrow>In their words</Eyebrow>
-                          <p className="mt-1 text-small text-navy/80">
+                          <p className="mt-1 text-small text-ink/80">
                             {row.challenge || "—"}
                           </p>
                         </div>
                         {row.alreadyTried ? (
                           <div>
                             <Eyebrow>Already tried</Eyebrow>
-                            <p className="mt-1 text-small text-navy/80">
+                            <p className="mt-1 text-small text-ink/80">
                               {row.alreadyTried}
                             </p>
                           </div>
@@ -154,7 +154,7 @@ export default async function SessionPrepPage({
                         {row.doneLooksLike ? (
                           <div>
                             <Eyebrow>Done would look like</Eyebrow>
-                            <p className="mt-1 text-small text-navy/80">
+                            <p className="mt-1 text-small text-ink/80">
                               {row.doneLooksLike}
                             </p>
                           </div>
@@ -163,7 +163,7 @@ export default async function SessionPrepPage({
                     ) : (
                       <div>
                         <Eyebrow>In their words</Eyebrow>
-                        <p className="mt-1 text-small text-navy/60">
+                        <p className="mt-1 text-small text-ink/60">
                           Nothing submitted. The hours on the right are all
                           there is to go on.
                         </p>
@@ -175,7 +175,7 @@ export default async function SessionPrepPage({
                     <Eyebrow>Where their month actually went</Eyebrow>
                     {time && time.byCategory.length > 0 ? (
                       <>
-                        <p className="font-mono mt-1 text-small text-navy tabular-nums">
+                        <p className="font-mono mt-1 text-small text-ink tabular-nums">
                           {formatMinutes(time.totalMinutes)} logged
                         </p>
                         <ul className="mt-2 flex flex-col gap-1">
@@ -187,13 +187,13 @@ export default async function SessionPrepPage({
                               <span
                                 className={`min-w-0 truncate ${
                                   index === 0 && !row.submittedAt
-                                    ? "font-medium text-navy"
-                                    : "text-navy/70"
+                                    ? "font-medium text-ink"
+                                    : "text-ink/70"
                                 }`}
                               >
                                 {category.label}
                               </span>
-                              <span className="font-mono text-navy tabular-nums">
+                              <span className="font-mono text-ink tabular-nums">
                                 {formatMinutes(category.minutes)}
                               </span>
                             </li>
@@ -201,7 +201,7 @@ export default async function SessionPrepPage({
                         </ul>
                       </>
                     ) : (
-                      <p className="mt-1 text-small text-navy/60">
+                      <p className="mt-1 text-small text-ink/60">
                         Nothing logged this month — worth asking why before
                         building anything.
                       </p>
@@ -212,7 +212,7 @@ export default async function SessionPrepPage({
                 {row.suggestedChallenge ? (
                   <div className="mt-4 rounded-md border border-sky/40 bg-sky/10 p-3">
                     <Eyebrow>Drafted suggestion</Eyebrow>
-                    <p className="mt-1 text-small text-navy/80">
+                    <p className="mt-1 text-small text-ink/80">
                       {row.suggestedChallenge}
                     </p>
                   </div>

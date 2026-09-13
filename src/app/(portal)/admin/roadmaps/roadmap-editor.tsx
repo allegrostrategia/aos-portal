@@ -10,7 +10,7 @@ import { Card, Eyebrow } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const INPUT =
-  "w-full rounded-md border border-navy/15 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40";
+  "w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40";
 
 /**
  * Writing a member's roadmap (§3, restructured 3 Sep).
@@ -63,7 +63,7 @@ export function RoadmapEditor({
               <button
                 type="button"
                 onClick={() => update(months.filter((_, i) => i !== mi))}
-                className="text-caption text-navy/40 underline underline-offset-4 transition hover:text-navy"
+                className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
               >
                 Remove month
               </button>
@@ -82,7 +82,7 @@ export function RoadmapEditor({
 
           <div className="mt-4 flex flex-col gap-4">
             {month.focuses.map((focus, fi) => (
-              <div key={fi} className="rounded-lg border border-navy/10 bg-white/60 p-3">
+              <div key={fi} className="rounded-2xl border border-ink/8 bg-card shadow-soft p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     className={`${INPUT} flex-1`}
@@ -100,7 +100,7 @@ export function RoadmapEditor({
                         months[mi].focuses = month.focuses.filter((_, i) => i !== fi);
                         update(months);
                       }}
-                      className="text-caption text-navy/40 underline underline-offset-4 transition hover:text-navy"
+                      className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
                     >
                       Remove
                     </button>
@@ -109,7 +109,7 @@ export function RoadmapEditor({
 
                 <ul className="mt-3 flex flex-col gap-3">
                   {focus.actions.map((action, ai) => (
-                    <li key={ai} className="rounded-md border border-navy/10 p-2">
+                    <li key={ai} className="rounded-md border border-ink/10 p-2">
                       <div className="flex items-center gap-2">
                         <input
                           className={`${INPUT} flex-1`}
@@ -129,7 +129,7 @@ export function RoadmapEditor({
                             update(months);
                           }}
                           aria-label="Remove action"
-                          className="text-caption text-navy/40 transition hover:text-navy"
+                          className="text-caption text-ink/40 transition hover:text-ink"
                         >
                           ✕
                         </button>
@@ -176,7 +176,7 @@ export function RoadmapEditor({
                           theirs, and this is the screen where Nina decides what
                           to do next from it. */}
                       {notes.get(action.id) ? (
-                        <p className="mt-2 rounded-md border border-sky/40 bg-sky/10 px-2 py-1.5 text-caption text-navy/80">
+                        <p className="mt-2 rounded-md border border-sky/40 bg-sky/10 px-2 py-1.5 text-caption text-ink/80">
                           <span className="font-medium">They said:</span>{" "}
                           {notes.get(action.id)}
                         </p>

@@ -14,7 +14,7 @@ export type EditorPhase = {
 };
 
 const INPUT =
-  "w-full rounded-md border border-navy/15 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40";
+  "w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40";
 
 /**
  * Writing a member's roadmap by hand (§3: Claude drafts, Nina confirms).
@@ -71,11 +71,11 @@ export function RoadmapEditor({
           list is all it takes to publish someone else's plan to them, and the
           admin's own name at the top of the page is not a loud enough signal. */}
       <div className="rounded-xl border-2 border-orange/40 bg-blush/15 px-5 py-3">
-        <p className="text-body text-navy">
+        <p className="text-body text-ink">
           You are editing{" "}
           <strong className="font-medium">{memberName}&rsquo;s</strong> roadmap
         </p>
-        <p className="font-mono mt-0.5 text-caption text-navy/60">
+        <p className="font-mono mt-0.5 text-caption text-ink/60">
           {memberEmail}
         </p>
       </div>
@@ -90,25 +90,25 @@ export function RoadmapEditor({
 
         {initialFocus ? (
           <>
-            <p className="font-display mt-2 text-heading text-navy italic">
+            <p className="font-display mt-2 text-heading font-medium text-ink">
               {initialFocus}
             </p>
             {initialFocusStation ? (
-              <p className="mt-1 text-small text-navy/70">
+              <p className="mt-1 text-small text-ink/70">
                 {stations.find((s) => s.slug === initialFocusStation)?.name ??
                   initialFocusStation}
               </p>
             ) : null}
           </>
         ) : (
-          <p className="mt-2 text-small text-navy/70">
+          <p className="mt-2 text-small text-ink/70">
             {hasHadHotSeat
               ? "No build confirmed for this month yet."
               : "Their first hot seat hasn’t happened yet."}
           </p>
         )}
 
-        <p className="mt-3 text-caption text-navy/60">
+        <p className="mt-3 text-caption text-ink/60">
           Set through the hot seat&rsquo;s prep and confirm, from their tracked
           time — not edited here. The roadmap below is the separate, self-paced
           track.
@@ -127,7 +127,7 @@ export function RoadmapEditor({
                     current.filter((_, i) => i !== phaseIndex),
                   )
                 }
-                className="text-caption text-navy/50 underline underline-offset-4 hover:text-navy"
+                className="text-caption text-ink/50 underline underline-offset-4 hover:text-ink"
               >
                 Remove phase
               </button>
@@ -159,9 +159,9 @@ export function RoadmapEditor({
             </select>
           </div>
 
-          <p className="mt-4 mb-2 text-small font-medium text-navy">
+          <p className="mt-4 mb-2 text-small font-medium text-ink">
             Items
-            <span className="ml-2 font-normal text-navy/50">
+            <span className="ml-2 font-normal text-ink/50">
               these become the weekly log&rsquo;s checklist
             </span>
           </p>
@@ -189,7 +189,7 @@ export function RoadmapEditor({
                       items: phase.items.filter((_, i) => i !== itemIndex),
                     })
                   }
-                  className="px-2 text-navy/40 transition hover:text-navy"
+                  className="px-2 text-ink/40 transition hover:text-ink"
                   aria-label="Remove item"
                 >
                   ✕
@@ -203,7 +203,7 @@ export function RoadmapEditor({
             onClick={() =>
               update(phaseIndex, { items: [...phase.items, ""] })
             }
-            className="mt-2 text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+            className="mt-2 text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
           >
             Add item
           </button>
@@ -236,7 +236,7 @@ export function RoadmapEditor({
           Save as draft
         </Button>
       </div>
-      <p className="text-small text-navy/60">
+      <p className="text-small text-ink/60">
         A draft is invisible to the member — they only ever see a roadmap
         you&rsquo;ve published.
       </p>

@@ -137,7 +137,7 @@ export function HeadshotField({ path }: { path: string | null }) {
   return (
     <div className="flex flex-col gap-2">
       <input type="hidden" name="headshot_path" value={storedPath} />
-      <span className="text-small font-medium text-navy">Photo</span>
+      <span className="text-small font-medium text-ink">Photo</span>
 
       <div className="flex flex-wrap items-center gap-3">
         {preview ? (
@@ -152,7 +152,7 @@ export function HeadshotField({ path }: { path: string | null }) {
         ) : (
           <span
             aria-hidden="true"
-            className="size-16 shrink-0 rounded-full border border-dashed border-navy/25"
+            className="size-16 shrink-0 rounded-full border border-dashed border-ink/25"
           />
         )}
 
@@ -173,7 +173,7 @@ export function HeadshotField({ path }: { path: string | null }) {
               setStoredPath("");
               setPreview(null);
             }}
-            className="text-caption text-navy/50 underline underline-offset-4 transition hover:text-navy"
+            className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
           >
             Remove
           </button>
@@ -191,7 +191,7 @@ export function HeadshotField({ path }: { path: string | null }) {
         }}
       />
 
-      <p className="text-caption text-navy/60">
+      <p className="text-caption text-ink/60">
         Optional, and it&rsquo;s resized before it uploads — no need to shrink it
         first.
       </p>

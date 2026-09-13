@@ -46,10 +46,10 @@ function ContentRow({ item }: { item: TrainingContent }) {
     <li>
       <Link
         href={`/library/${item.slug}`}
-        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 rounded-lg border border-navy/10 bg-white/60 px-4 py-3 transition hover:border-navy/25"
+        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 rounded-2xl border border-ink/8 bg-card shadow-soft px-4 py-3 transition hover:border-ink/25"
       >
         <div className="min-w-0">
-          <p className="text-body text-navy">
+          <p className="text-body text-ink">
             {item.is_hot_seat_buildable ? (
               <span
                 title="A real artifact gets built in this one"
@@ -61,14 +61,14 @@ function ContentRow({ item }: { item: TrainingContent }) {
             {item.title}
           </p>
           {item.description ? (
-            <p className="mt-1 text-small text-navy/70">{item.description}</p>
+            <p className="mt-1 text-small text-ink/70">{item.description}</p>
           ) : null}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Badge>{FORMAT_LABEL[item.format]}</Badge>
           {item.duration_minutes ? (
-            <span className="font-mono text-caption text-navy/50">
+            <span className="font-mono text-caption text-ink/50">
               {item.duration_minutes}m
             </span>
           ) : null}
@@ -82,7 +82,7 @@ function ContentRow({ item }: { item: TrainingContent }) {
 export function ContentList({ items }: { items: TrainingContent[] }) {
   if (items.length === 0) {
     return (
-      <p className="text-small text-navy/70">
+      <p className="text-small text-ink/70">
         Nothing in this room yet.
       </p>
     );
@@ -98,7 +98,7 @@ export function ContentList({ items }: { items: TrainingContent[] }) {
           <div key={group.kind}>
             <Eyebrow>{group.title}</Eyebrow>
             {group.note ? (
-              <p className="mt-1 text-caption text-navy/60">{group.note}</p>
+              <p className="mt-1 text-caption text-ink/60">{group.note}</p>
             ) : null}
             <ul className="mt-2 flex flex-col gap-2">
               {inGroup.map((item) => (

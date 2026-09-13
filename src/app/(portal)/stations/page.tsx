@@ -61,7 +61,7 @@ export default async function StationsPage() {
         }))}
       />
 
-      <h2 className="font-display mt-10 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-10 mb-3 text-heading font-medium text-ink">
         Every room
       </h2>
 

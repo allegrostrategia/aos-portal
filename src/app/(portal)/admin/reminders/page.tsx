@@ -138,7 +138,7 @@ export default async function ReminderPreviewPage() {
 
       {!session ? (
         <Card className="mb-5">
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             No session with a time set, so the hot seat examples use a placeholder
             date.
           </p>
@@ -151,14 +151,14 @@ export default async function ReminderPreviewPage() {
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <Eyebrow tone="accent">{sample.label}</Eyebrow>
               {sample.note ? (
-                <p className="text-caption text-navy/50">{sample.note}</p>
+                <p className="text-caption text-ink/50">{sample.note}</p>
               ) : null}
             </div>
 
-            <p className="mt-3 text-small font-medium text-navy">
+            <p className="mt-3 text-small font-medium text-ink">
               Subject: {sample.copy.subject}
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-md border border-navy/10 bg-white/70 p-4 text-small whitespace-pre-wrap text-navy/80">
+            <pre className="mt-3 overflow-x-auto rounded-md border border-ink/10 bg-card p-4 text-small whitespace-pre-wrap text-ink/80">
               {renderEmail(sample.copy)}
             </pre>
           </Card>

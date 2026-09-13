@@ -67,7 +67,7 @@ export function ConfirmForm({
 
       <label
         htmlFor={`confirmed-${memberId}`}
-        className="text-small font-medium text-navy"
+        className="text-small font-medium text-ink"
       >
         {isConfirmed ? "Locked challenge" : `What ${memberName} builds`}
       </label>
@@ -77,10 +77,10 @@ export function ConfirmForm({
         rows={2}
         defaultValue={initial}
         placeholder={fallbackHint ?? "One specific, buildable thing"}
-        className="w-full rounded-md border border-navy/15 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40"
+        className="w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40"
       />
       {fallbackHint ? (
-        <p className="text-caption text-navy/60">{fallbackHint}</p>
+        <p className="text-caption text-ink/60">{fallbackHint}</p>
       ) : null}
 
       <FormMessage error={state?.error} notice={state?.notice} />
@@ -113,10 +113,10 @@ export function AttendanceForm({
   );
 
   return (
-    <form action={formAction} className="mt-3 flex flex-wrap items-center gap-3 border-t border-navy/10 pt-3">
+    <form action={formAction} className="mt-3 flex flex-wrap items-center gap-3 border-t border-ink/10 pt-3">
       <Identity submissionId={submissionId} sessionId={sessionId} memberId={memberId} />
 
-      <span className="text-caption text-navy/60">
+      <span className="text-caption text-ink/60">
         {attended === null ? "Were they there?" : attended ? "Was there." : "Didn't come."}
       </span>
 

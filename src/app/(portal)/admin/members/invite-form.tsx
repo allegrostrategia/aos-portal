@@ -46,8 +46,8 @@ export function InviteForm({ today }: { today: string }) {
 
       {/* The checklist Nina actually works to. Both are required by the database
           as well — this is the readable version of that rule. */}
-      <fieldset className="rounded-md border border-navy/15 bg-white/50 p-4">
-        <legend className="px-1 text-small font-medium text-navy">
+      <fieldset className="rounded-md border border-ink/15 bg-card p-4">
+        <legend className="px-1 text-small font-medium text-ink">
           Before creating the record
         </legend>
         <Checkbox label="Payment confirmed" name="payment_confirmed" />

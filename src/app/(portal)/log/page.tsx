@@ -99,12 +99,12 @@ export default async function WeeklyLogPage() {
       />
 
       {priming ? (
-        <Card className="mb-5 border-navy/15 bg-lemon/25">
+        <Card className="mb-5 border-ink/15 bg-lemon/25">
           <Eyebrow tone="accent">While you&rsquo;re here</Eyebrow>
-          <h2 className="font-display mt-2 text-heading text-navy italic">
+          <h2 className="font-display mt-2 text-heading font-medium text-ink">
             {priming.title}
           </h2>
-          <div className="mt-3 flex flex-col gap-3 text-small text-navy/80">
+          <div className="mt-3 flex flex-col gap-3 text-small text-ink/80">
             {priming.body.map((paragraph) => (
               <p key={paragraph.slice(0, 32)}>{paragraph}</p>
             ))}
@@ -115,7 +115,7 @@ export default async function WeeklyLogPage() {
       {pairingAvailability && !pairingAvailability.submitted ? (
         <Card className="mb-5 bg-sky/15">
           <Eyebrow>One thing for this month</Eyebrow>
-          <p className="mt-1 text-small text-navy/80">
+          <p className="mt-1 text-small text-ink/80">
             You haven&rsquo;t said when you could take your peer call yet. It&rsquo;s
             fifteen boxes and takes about ten seconds — and it&rsquo;s what gets you
             matched.
@@ -123,7 +123,7 @@ export default async function WeeklyLogPage() {
           <p className="mt-3">
             <Link
               href="/pairing"
-              className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+              className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
             >
               Say when you&rsquo;re free
             </Link>
@@ -134,12 +134,12 @@ export default async function WeeklyLogPage() {
       <div className="grid gap-5 sm:grid-cols-2">
         <Card>
           <Eyebrow>Tracked this week</Eyebrow>
-          <p className="font-mono mt-2 text-title text-navy tabular-nums">
+          <p className="font-mono mt-2 text-title text-ink tabular-nums">
             {formatMinutes(week.loggedMinutes)}
           </p>
 
           <div
-            className="mt-3 h-2 overflow-hidden rounded-full bg-navy/10"
+            className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10"
             role="progressbar"
             aria-valuenow={progress}
             aria-valuemin={0}
@@ -148,13 +148,13 @@ export default async function WeeklyLogPage() {
           >
             <div
               className={`h-full rounded-full transition-all ${
-                week.isCompleteWeek ? "bg-navy" : "bg-orange"
+                week.isCompleteWeek ? "bg-ink" : "bg-orange"
               }`}
               style={{ width: `${progress}%` }}
             />
           </div>
 
-          <p className="mt-2 text-small text-navy/70">
+          <p className="mt-2 text-small text-ink/70">
             {week.isCompleteWeek
               ? "Ten hours logged — this week counts, and you’re in the draw."
               : `${formatMinutes(remaining)} more makes it a complete week.`}
@@ -164,7 +164,7 @@ export default async function WeeklyLogPage() {
         <Card>
           <Eyebrow>Where it went</Eyebrow>
           {categoryTotals.length === 0 ? (
-            <p className="mt-3 text-small text-navy/70">
+            <p className="mt-3 text-small text-ink/70">
               Nothing logged yet. Start the timer when you begin something.
             </p>
           ) : (
@@ -174,10 +174,10 @@ export default async function WeeklyLogPage() {
                   key={row.slug}
                   className="flex items-baseline justify-between gap-3 text-small"
                 >
-                  <span className="min-w-0 truncate text-navy/80">
+                  <span className="min-w-0 truncate text-ink/80">
                     {row.label}
                   </span>
-                  <span className="font-mono text-navy tabular-nums">
+                  <span className="font-mono text-ink tabular-nums">
                     {formatMinutes(row.minutes)}
                   </span>
                 </li>
@@ -187,13 +187,13 @@ export default async function WeeklyLogPage() {
         </Card>
       </div>
 
-      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Today
       </h2>
 
       {entries.length === 0 ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             Nothing yet today. Use the timer in the corner when you start
             something.
           </p>
@@ -203,19 +203,19 @@ export default async function WeeklyLogPage() {
           {entries.map((entry) => (
             <li
               key={entry.id}
-              className="rounded-lg border border-navy/10 bg-white/60 px-4 py-3"
+              className="rounded-2xl border border-ink/8 bg-card shadow-soft px-4 py-3"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <div className="min-w-0">
-                  <p className="text-body text-navy">
+                  <p className="text-body text-ink">
                     {labelFor(entry.category_slug)}
                     {entry.source === "manual" ? (
-                      <span className="font-mono ml-2 text-eyebrow text-navy/40 uppercase">
+                      <span className="font-mono ml-2 text-eyebrow text-ink/40 uppercase">
                         added later
                       </span>
                     ) : null}
                   </p>
-                  <p className="font-mono text-caption text-navy/50">
+                  <p className="font-mono text-caption text-ink/50">
                     {TIME.format(new Date(entry.started_at))}
                     {entry.ended_at
                       ? `–${TIME.format(new Date(entry.ended_at))}`
@@ -224,7 +224,7 @@ export default async function WeeklyLogPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <span className="font-mono text-small text-navy tabular-nums">
+                  <span className="font-mono text-small text-ink tabular-nums">
                     {entry.ended_at
                       ? formatMinutes(entry.duration_minutes ?? 0)
                       : "—"}
@@ -233,7 +233,7 @@ export default async function WeeklyLogPage() {
                     <input type="hidden" name="id" value={entry.id} />
                     <button
                       type="submit"
-                      className="text-caption text-navy/40 underline underline-offset-4 transition hover:text-navy"
+                      className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
                       aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
                     >
                       Delete
@@ -247,9 +247,9 @@ export default async function WeeklyLogPage() {
                   genuinely optional furniture rather than something the row is
                   built around. */}
               <details className="group mt-1">
-                <summary className="cursor-pointer list-none text-caption text-navy/50 transition hover:text-navy">
+                <summary className="cursor-pointer list-none text-caption text-ink/50 transition hover:text-ink">
                   {entry.note ? (
-                    <span className="text-navy/70 italic">{entry.note}</span>
+                    <span className="text-ink/70 italic">{entry.note}</span>
                   ) : (
                     <span className="underline underline-offset-4">
                       Add a note
@@ -271,11 +271,11 @@ export default async function WeeklyLogPage() {
                     type="text"
                     defaultValue={entry.note ?? ""}
                     placeholder="What specifically were you doing?"
-                    className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-1.5 text-small text-navy placeholder:text-navy/40"
+                    className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-1.5 text-small text-ink placeholder:text-ink/40"
                   />
                   <button
                     type="submit"
-                    className="rounded-md border border-navy/20 px-3 py-1.5 text-small text-navy transition hover:border-navy/40"
+                    className="rounded-md border border-ink/20 px-3 py-1.5 text-small text-ink transition hover:border-ink/40"
                   >
                     Save
                   </button>
@@ -290,19 +290,19 @@ export default async function WeeklyLogPage() {
         <ManualEntryForm categories={categories} today={today} />
       </div>
 
-      <h2 className="font-display mt-10 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-10 mb-3 text-heading font-medium text-ink">
         Sign off the week
       </h2>
 
       {submitted ? (
         <Card>
           <Eyebrow>Signed</Eyebrow>
-          <p className="mt-2 text-small text-navy/80">
+          <p className="mt-2 text-small text-ink/80">
             This week&rsquo;s log is in. Your time keeps tracking — the entry
             itself stays as written.
           </p>
           {submission?.other_activity ? (
-            <p className="mt-3 border-l-2 border-orange/40 pl-3 text-small text-navy/70 italic">
+            <p className="mt-3 border-l-2 border-orange/40 pl-3 text-small text-ink/70 italic">
               {submission.other_activity}
             </p>
           ) : null}
@@ -316,7 +316,7 @@ export default async function WeeklyLogPage() {
       )}
 
       {running ? (
-        <p className="mt-6 text-small text-navy/60">
+        <p className="mt-6 text-small text-ink/60">
           A timer is still running — it&rsquo;ll count once you stop it.
         </p>
       ) : null}

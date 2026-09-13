@@ -41,7 +41,7 @@ export default async function DirectoryPage({
       <p className="mb-4">
         <Link
           href="/sociale"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← Piazza Sociale
         </Link>
@@ -62,7 +62,7 @@ export default async function DirectoryPage({
       {ownListing !== "complete" ? (
         <Card className="mb-6 bg-lemon/25">
           <Eyebrow>You&rsquo;re not in the directory yet</Eyebrow>
-          <p className="mt-1 text-small text-navy/80">
+          <p className="mt-1 text-small text-ink/80">
             {ownListing === "draft"
               ? "Your profile is started but not finished, so nobody can find you or message you from here."
               : "Other members can't find you or message you until you add a profile."}
@@ -70,7 +70,7 @@ export default async function DirectoryPage({
           <p className="mt-3">
             <Link
               href="/onboarding/directory"
-              className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+              className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
             >
               {ownListing === "draft" ? "Finish your profile" : "Add your profile"}
             </Link>
@@ -85,7 +85,7 @@ export default async function DirectoryPage({
           defaultValue={query}
           placeholder="Try “operations”, “coach”, a name…"
           aria-label="Search the directory"
-          className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy placeholder:text-navy/40"
+          className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink placeholder:text-ink/40"
         />
         <Button type="submit" variant="secondary">
           Search
@@ -93,7 +93,7 @@ export default async function DirectoryPage({
         {query ? (
           <Link
             href="/sociale/directory"
-            className="self-center text-caption text-navy/60 underline underline-offset-4 transition hover:text-navy"
+            className="self-center text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink"
           >
             Clear
           </Link>
@@ -106,10 +106,10 @@ export default async function DirectoryPage({
           headshots landed was every existing member. It also survives a search:
           "edit" on your own card vanishes the moment you search for something
           your own bio doesn't match. */}
-      <p className="mb-6 text-small text-navy/70">
+      <p className="mb-6 text-small text-ink/70">
         <Link
           href="/onboarding/directory"
-          className="text-navy underline decoration-orange decoration-2 underline-offset-4"
+          className="text-ink underline decoration-orange decoration-2 underline-offset-4"
         >
           Your profile
         </Link>{" "}
@@ -118,7 +118,7 @@ export default async function DirectoryPage({
 
       {entries.length === 0 ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             {query
               ? `Nothing matching “${query}”. Search covers names, titles and bios — there are no filters to have set wrongly.`
               : "Nobody has a profile yet. Everyone fills theirs in during their first weeks, so this fills up as people join."}
@@ -145,30 +145,30 @@ export default async function DirectoryPage({
                   ) : (
                     <span
                       aria-hidden="true"
-                      className="font-display flex size-14 shrink-0 items-center justify-center rounded-full bg-navy text-body text-white italic"
+                      className="font-display flex size-14 shrink-0 items-center justify-center rounded-full bg-ink text-body text-white italic"
                     >
                       {initials(entry.displayName)}
                     </span>
                   )}
 
                   <div className="min-w-0">
-                    <p className="font-display text-heading text-navy italic">
+                    <p className="font-display text-heading font-medium text-ink">
                       {entry.displayName}
                       {isMe ? (
-                        <span className="font-body text-caption text-navy/50 not-italic">
+                        <span className="font-body text-caption text-ink/50 not-italic">
                           {" "}
                           · you
                         </span>
                       ) : null}
                     </p>
                     {entry.title ? (
-                      <p className="text-small text-navy/70">{entry.title}</p>
+                      <p className="text-small text-ink/70">{entry.title}</p>
                     ) : null}
                   </div>
                 </div>
 
                 {entry.bio ? (
-                  <p className="mt-3 text-small whitespace-pre-wrap text-navy/80">
+                  <p className="mt-3 text-small whitespace-pre-wrap text-ink/80">
                     {entry.bio}
                   </p>
                 ) : null}
@@ -183,7 +183,7 @@ export default async function DirectoryPage({
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+                            className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
                           >
                             {link.label || link.url}
                           </a>
@@ -204,7 +204,7 @@ export default async function DirectoryPage({
                   <p className="mt-4">
                     <Link
                       href="/onboarding/directory"
-                      className="text-caption text-navy/60 underline underline-offset-4 transition hover:text-navy"
+                      className="text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink"
                     >
                       Edit your profile
                     </Link>

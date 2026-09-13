@@ -43,14 +43,14 @@ export function StationCard({
       </div>
 
       <div className="p-4">
-        <h3 className="font-display text-heading text-navy italic">
+        <h3 className="font-display text-heading font-medium text-ink">
           {station.name}
         </h3>
         {station.description ? (
-          <p className="mt-1 text-small text-navy/70">{station.description}</p>
+          <p className="mt-1 text-small text-ink/70">{station.description}</p>
         ) : null}
         {locked ? (
-          <p className="font-mono mt-3 text-eyebrow text-navy/50 uppercase">
+          <p className="font-mono mt-3 text-eyebrow text-ink/50 uppercase">
             Unlocks when you&rsquo;re active
           </p>
         ) : null}
@@ -59,7 +59,7 @@ export function StationCard({
   );
 
   const shell =
-    "block overflow-hidden rounded-xl border border-navy/10 bg-white/60 transition";
+    "block overflow-hidden rounded-card border border-ink/8 bg-card shadow-soft transition";
 
   // Locked stations render as an article, not a dead link — nothing to follow,
   // and a link that goes nowhere is worse than plain text for anyone tabbing.
@@ -70,7 +70,7 @@ export function StationCard({
   return (
     <Link
       href={`/stations/${station.slug}`}
-      className={`group ${shell} hover:border-navy/25 hover:shadow-sm`}
+      className={`group ${shell} hover:border-ink/25 hover:shadow-sm`}
     >
       {body}
     </Link>

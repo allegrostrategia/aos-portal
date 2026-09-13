@@ -139,7 +139,7 @@ export function Composer({
           });
         }
       }}
-      className="flex flex-col gap-3 border-t border-navy/10 bg-white/60 p-4"
+      className="flex flex-col gap-3 border-t border-ink/10 bg-card p-4"
     >
       <input type="hidden" name="channel_id" value={channelId} />
       <input type="hidden" name="voice_path" value={uploadedPath} />
@@ -149,13 +149,13 @@ export function Composer({
         name="body"
         rows={2}
         placeholder="Write something…"
-        className="w-full rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy placeholder:text-navy/40"
+        className="w-full rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink placeholder:text-ink/40"
       />
 
       {recording ? (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-sky/40 bg-sky/10 px-3 py-2">
           <audio controls src={recording.url} className="h-9 max-w-full" />
-          <span className="font-mono text-caption text-navy/60">
+          <span className="font-mono text-caption text-ink/60">
             {recording.seconds}s
           </span>
           <button
@@ -165,7 +165,7 @@ export function Composer({
               setRecording(null);
               setUploadedPath("");
             }}
-            className="text-caption text-navy/50 underline underline-offset-4 transition hover:text-navy"
+            className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
           >
             Discard
           </button>
@@ -174,7 +174,7 @@ export function Composer({
 
       {builds.length > 0 ? (
         <details className="text-small">
-          <summary className="cursor-pointer list-none text-caption text-navy/60 underline underline-offset-4">
+          <summary className="cursor-pointer list-none text-caption text-ink/60 underline underline-offset-4">
             Is this about one of your builds?
           </summary>
           <div className="mt-2 flex flex-col gap-2">
@@ -182,7 +182,7 @@ export function Composer({
               name="handover_pack_id"
               value={buildId}
               onChange={(event) => setBuildId(event.target.value)}
-              className="w-full rounded-md border border-navy/15 bg-white px-3 py-2 text-small text-navy"
+              className="w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink"
             >
               <option value="">Not about a specific build</option>
               {builds.map((build) => (
@@ -196,11 +196,11 @@ export function Composer({
                 appears once a build is chosen, because it is consent to reuse
                 that answer rather than anything else written here. */}
             {buildId ? (
-              <label className="flex items-start gap-2.5 py-1 text-small text-navy">
+              <label className="flex items-start gap-2.5 py-1 text-small text-ink">
                 <input
                   type="checkbox"
                   name="testimonial_consent"
-                  className="mt-0.5 size-4 accent-navy"
+                  className="mt-0.5 size-4 accent-orange"
                 />
                 Nina can quote this update. Entirely optional — your answer counts
                 either way.

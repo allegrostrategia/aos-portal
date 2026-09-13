@@ -85,14 +85,14 @@ export function SopForm({
         <ol className="mt-3 flex flex-col gap-2">
           {steps.map((step, index) => (
             <li key={index} className="flex items-start gap-2">
-              <span className="font-mono mt-2.5 w-5 shrink-0 text-caption text-navy/40">
+              <span className="font-mono mt-2.5 w-5 shrink-0 text-caption text-ink/40">
                 {index + 1}
               </span>
               <input
                 name="steps"
                 defaultValue={step}
                 placeholder={index === 0 ? "First thing they do" : ""}
-                className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy placeholder:text-navy/40"
+                className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink placeholder:text-ink/40"
               />
             </li>
           ))}
@@ -106,7 +106,7 @@ export function SopForm({
         >
           Add another step
         </Button>
-        <p className="mt-2 text-caption text-navy/50">
+        <p className="mt-2 text-caption text-ink/50">
           Blank rows are ignored, so leave the extras alone.
         </p>
       </Card>
@@ -115,7 +115,7 @@ export function SopForm({
         <Eyebrow>Anything else that helps</Eyebrow>
         <div className="mt-3 flex flex-col gap-4">
           <div>
-            <span className="text-small font-medium text-navy">
+            <span className="text-small font-medium text-ink">
               Tools it&rsquo;s done in
             </span>
             <div className="mt-1.5 flex flex-col gap-2">
@@ -125,7 +125,7 @@ export function SopForm({
                   name="tools"
                   defaultValue={tool}
                   placeholder="HeyClients"
-                  className="rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy placeholder:text-navy/40"
+                  className="rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink placeholder:text-ink/40"
                 />
               ))}
             </div>

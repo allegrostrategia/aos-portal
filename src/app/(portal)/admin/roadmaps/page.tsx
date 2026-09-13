@@ -73,20 +73,20 @@ export default async function AdminRoadmapsPage({
                   aria-current={member.id === selectedId ? "page" : undefined}
                   className={`block rounded-md px-3 py-2 text-small transition ${
                     member.id === selectedId
-                      ? "bg-white/70 font-medium text-navy"
-                      : "text-navy/70 hover:bg-white/40 hover:text-navy"
+                      ? "bg-card font-medium text-ink"
+                      : "text-ink/70 hover:bg-white/40 hover:text-ink"
                   }`}
                 >
                   {member.full_name}
                   {member.status === "onboarding" ? (
-                    <span className="text-caption text-navy/40"> · onboarding</span>
+                    <span className="text-caption text-ink/40"> · onboarding</span>
                   ) : null}
                 </Link>
               </li>
             ))}
           </ul>
           {members.length === 0 ? (
-            <p className="mt-2 text-small text-navy/60">
+            <p className="mt-2 text-small text-ink/60">
               Nobody to plan for yet.
             </p>
           ) : null}
@@ -95,7 +95,7 @@ export default async function AdminRoadmapsPage({
         <section>
           {!selected ? (
             <Card>
-              <p className="text-small text-navy/70">
+              <p className="text-small text-ink/70">
                 Pick somebody. Their roadmap is the self-paced track from the
                 1:1 — separate from the hot seat build, which owns their current
                 focus through its own prep and confirm.
@@ -104,7 +104,7 @@ export default async function AdminRoadmapsPage({
           ) : (
             <>
               <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-                <h2 className="font-display text-heading text-navy italic">
+                <h2 className="font-display text-heading font-medium text-ink">
                   {selected.full_name}
                 </h2>
                 <div className="flex flex-wrap items-center gap-2">
@@ -114,7 +114,7 @@ export default async function AdminRoadmapsPage({
                     <Badge tone="gold">{roadmap ? "Draft" : "Nothing yet"}</Badge>
                   )}
                   {roadmap ? (
-                    <span className="text-caption text-navy/50">
+                    <span className="text-caption text-ink/50">
                       {allActions(roadmap.months).length} actions
                     </span>
                   ) : null}
@@ -124,10 +124,10 @@ export default async function AdminRoadmapsPage({
               {roadmap?.currentFocus ? (
                 <Card className="mb-4 bg-lemon/25">
                   <Eyebrow>This month&rsquo;s build</Eyebrow>
-                  <p className="mt-1 text-small text-navy/80">
+                  <p className="mt-1 text-small text-ink/80">
                     {roadmap.currentFocus}
                   </p>
-                  <p className="mt-1 text-caption text-navy/50">
+                  <p className="mt-1 text-caption text-ink/50">
                     Set through the hot seat&rsquo;s prep and confirm, not here —
                     the roadmap is the self-paced track alongside it.
                   </p>

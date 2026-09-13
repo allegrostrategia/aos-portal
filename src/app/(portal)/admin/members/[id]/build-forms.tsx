@@ -70,7 +70,7 @@ export function RateControls({
   );
 
   return (
-    <form action={formAction} className="mt-3 flex flex-col gap-3 border-t border-navy/10 pt-3">
+    <form action={formAction} className="mt-3 flex flex-col gap-3 border-t border-ink/10 pt-3">
       <input type="hidden" name="handover_pack_id" value={packId} />
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -97,7 +97,7 @@ export function RateControls({
         ) : null}
       </div>
 
-      <p className="text-caption text-navy/50">
+      <p className="text-caption text-ink/50">
         Weeks already earned never change — retiring stops it earning from that
         date, it doesn&rsquo;t take anything back.
       </p>
@@ -133,7 +133,7 @@ export function WriteUpForm({
   );
 
   return (
-    <form action={formAction} className="mt-3 flex flex-col gap-2 border-t border-navy/10 pt-3">
+    <form action={formAction} className="mt-3 flex flex-col gap-2 border-t border-ink/10 pt-3">
       <input type="hidden" name="handover_pack_id" value={packId} />
       <TextArea
         label={isPublished ? "Write-up (published)" : "Write-up"}

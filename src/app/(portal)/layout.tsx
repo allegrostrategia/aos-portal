@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { requireMember } from "@/lib/auth/member";
-import { signOut } from "@/lib/auth/actions";
 import {
   PortalNavBottom,
   PortalNavSidebar,
@@ -27,31 +26,23 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     getRunningEntry(member.id),
   ]);
 
-  // Only destinations that exist. Piazza Sociale and Archivio join as they're
-  // built — a nav item that 404s is worse than one that isn't there yet.
+  // Five, and always the same five (L'Editoriale). Hot seat, Milestones and
+  // Pairing each have a card on Piazza instead of a slot here; the onboarding
+  // sequence is a section at the top of Piazza rather than a nav item; the
+  // Library is a toggle on La Strada. Admin routes live in the sidebar under
+  // their own heading, and on the You screen on a phone.
   const items: NavItem[] = [
-    { href: "/piazza", label: "Piazza" },
-    // Onboarding members get the sequence up front; it drops out of the nav once
-    // they're active and there's nothing left to do there.
-    ...(member.status === "onboarding"
-      ? [{ href: "/onboarding", label: "First weeks" }]
-      : []),
-    { href: "/log", label: "Your log" },
-    // Next to the log on purpose: the log is where the hours come from and this
-    // is where they land. An unconditional route in, because the only other one
-    // is Piazza's proof cluster, which doesn't render until something has been
-    // banked — so a member with nothing yet could never find the page that
-    // explains what they're working towards.
-    { href: "/milestones", label: "Milestones" },
-    // Visible to onboarding members too — §1 keeps the session itself in view so
-    // the quiet weeks show what's coming; only submitting is gated.
-    { href: "/hot-seat", label: "Hot seat" },
-    { href: "/stations", label: "La Strada" },
-    { href: "/sociale", label: "Sociale" },
-    { href: "/pairing", label: "Pairing" },
-    ...(member.role === "admin"
+    { href: "/piazza", label: "Piazza", icon: "piazza" },
+    { href: "/stations", label: "La Strada", icon: "strada" },
+    { href: "/sociale", label: "Sociale", icon: "sociale" },
+    { href: "/log", label: "Log", icon: "log" },
+    { href: "/you", label: "You", icon: "you" },
+  ];
+
+  const admin: NavItem[] =
+    member.role === "admin"
       ? [
-          { href: "/admin/members", label: "Admin" },
+          { href: "/admin/members", label: "Members" },
           { href: "/admin/hot-seat", label: "Sessions" },
           { href: "/admin/touchpoint", label: "Friday" },
           { href: "/admin/reminders", label: "Emails" },
@@ -61,8 +52,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           { href: "/admin/draw", label: "Draw" },
           { href: "/admin/pairing", label: "Pairs" },
         ]
-      : []),
-  ];
+      : [];
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -72,31 +62,27 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           and without this the printed page carries the whole navigation with
           it. `print:hidden` on each piece rather than one wrapper, because the
           content sits between them in the DOM. */}
-      <header className="border-b border-navy/10 bg-white/50 print:hidden">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <Link href="/piazza" className="font-display text-heading text-navy italic">
+      {/* The wordmark, in the reference's orange. Sign-out moved to the You
+          screen, where the reference keeps it; the header carries only the
+          mark and, on desktop, who is signed in. */}
+      <header className="print:hidden">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pt-4 pb-1 sm:pt-5">
+          <Link
+            href="/piazza"
+            className="font-display text-[1.75rem] leading-none font-medium tracking-tight text-orange"
+          >
             aOS
           </Link>
 
-          <div className="flex items-center gap-4">
-            <span className="hidden text-small text-navy/70 sm:inline">
-              {member.full_name}
-            </span>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
+          <span className="hidden text-eyebrow font-medium uppercase text-ink/50 lg:inline">
+            {member.full_name}
+          </span>
         </div>
       </header>
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-5">
         <aside className="hidden w-44 shrink-0 py-8 lg:block print:hidden">
-          <PortalNavSidebar items={items} className="sticky top-8" />
+          <PortalNavSidebar items={items} admin={admin} className="sticky top-8" />
         </aside>
 
         {/* Bottom padding clears the mobile nav bar, which is fixed — and is

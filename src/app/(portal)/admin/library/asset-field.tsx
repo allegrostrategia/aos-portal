@@ -154,23 +154,23 @@ export function AssetField({
           Nina typing it, and the record's shape is unchanged. */}
       <input type="hidden" name="asset_path" value={path} />
 
-      <span className="text-small font-medium text-navy">File</span>
+      <span className="text-small font-medium text-ink">File</span>
 
       {path && !uploading ? (
-        <div className="rounded-md border border-navy/15 bg-white px-3 py-2.5">
-          <p className="font-mono text-caption break-all text-navy">{path}</p>
+        <div className="rounded-md border border-ink/15 bg-white px-3 py-2.5">
+          <p className="font-mono text-caption break-all text-ink">{path}</p>
           <div className="mt-2 flex flex-wrap items-center gap-4">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="text-caption text-navy underline decoration-orange decoration-2 underline-offset-4"
+              className="text-caption text-ink underline decoration-orange decoration-2 underline-offset-4"
             >
               Replace file
             </button>
             <button
               type="button"
               onClick={() => setPath("")}
-              className="text-caption text-navy/50 underline underline-offset-4 transition hover:text-navy"
+              className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
             >
               Detach
             </button>
@@ -180,18 +180,18 @@ export function AssetField({
 
       {uploading ? (
         <div
-          className="rounded-md border border-navy/15 bg-white px-3 py-2.5"
+          className="rounded-md border border-ink/15 bg-white px-3 py-2.5"
           role="status"
           aria-live="polite"
         >
           <div className="flex items-baseline justify-between gap-3">
-            <p className="text-small break-all text-navy">{phase.name}</p>
-            <p className="font-mono text-caption whitespace-nowrap text-navy/70">
+            <p className="text-small break-all text-ink">{phase.name}</p>
+            <p className="font-mono text-caption whitespace-nowrap text-ink/70">
               {phase.percent}% of {prettyBytes(phase.size)}
             </p>
           </div>
           <div
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/10"
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink/10"
             role="progressbar"
             aria-valuenow={phase.percent}
             aria-valuemin={0}
@@ -206,7 +206,7 @@ export function AssetField({
           <button
             type="button"
             onClick={() => cancelRef.current?.()}
-            className="mt-2 text-caption text-navy/50 underline underline-offset-4 transition hover:text-navy"
+            className="mt-2 text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
           >
             Cancel
           </button>
@@ -241,13 +241,13 @@ export function AssetField({
         <p
           role="status"
           aria-live="polite"
-          className="rounded-md border border-orange/30 bg-blush/25 px-3 py-2 text-small text-navy"
+          className="rounded-md border border-orange/30 bg-blush/25 px-3 py-2 text-small text-ink"
         >
           {phase.message}
         </p>
       ) : null}
 
-      <p className="text-caption text-navy/60">
+      <p className="text-caption text-ink/60">
         {stationSlug
           ? "Video, audio, PDF or spreadsheet. It uploads straight away — saving the form is what attaches it."
           : "Pick a station above first; it decides where the file is filed."}

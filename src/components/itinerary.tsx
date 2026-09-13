@@ -30,14 +30,14 @@ function Row({
   what: string;
 }) {
   return (
-    <li className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-navy/10 py-3 first:border-t-0">
+    <li className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-ink/10 py-3 first:border-t-0">
       <span className="font-mono w-24 shrink-0 text-eyebrow text-orange uppercase">
         {stage}
       </span>
-      <span className="font-mono min-w-40 flex-1 text-small text-navy">
+      <span className="font-mono min-w-40 flex-1 text-small text-ink">
         {when}
       </span>
-      <span className="w-full text-small text-navy/70 sm:w-auto sm:flex-2">
+      <span className="w-full text-small text-ink/70 sm:w-auto sm:flex-2">
         {what}
       </span>
     </li>
@@ -52,13 +52,13 @@ export function Itinerary({
   const it = buildItinerary(onboardingStartDate);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-navy/15 bg-lemon/25">
-      <div className="border-b border-dashed border-navy/25 px-5 py-4 sm:px-6">
+    <div className="overflow-hidden rounded-xl border border-ink/15 bg-lemon/25">
+      <div className="border-b border-dashed border-ink/25 px-5 py-4 sm:px-6">
         <Eyebrow tone="accent">Grand Hotel Riposo</Eyebrow>
-        <h2 className="font-display mt-1 text-title text-navy italic">
+        <h2 className="font-display mt-1 text-title font-medium text-ink">
           Your itinerary
         </h2>
-        <p className="mt-2 text-small text-navy/70">
+        <p className="mt-2 text-small text-ink/70">
           Your actual dates, not a generic calendar.
         </p>
       </div>
@@ -93,7 +93,7 @@ export function Itinerary({
 
       {/* §1: a short, light-touch note on what happens if a step is missed, so
           it isn't a silent unknown. */}
-      <div className="border-t border-dashed border-navy/25 px-5 py-4 text-small text-navy/70 sm:px-6">
+      <div className="border-t border-dashed border-ink/25 px-5 py-4 text-small text-ink/70 sm:px-6">
         <p>
           Miss a tracking week and nothing breaks — your roadmap is simply built
           on less. Miss the 1:1 and Nina will find you another slot; it&rsquo;s
@@ -101,7 +101,7 @@ export function Itinerary({
           that conversation.
         </p>
         {it.joinedOffCycle ? (
-          <p className="mt-3 text-navy/60">
+          <p className="mt-3 text-ink/60">
             Your start date falls outside the usual week-2 intake, so these dates
             are indicative — Nina will confirm them with you.
           </p>

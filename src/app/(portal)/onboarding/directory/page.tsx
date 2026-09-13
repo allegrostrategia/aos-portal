@@ -43,7 +43,7 @@ export default async function DirectoryListingPage() {
 
       {/* Headshots need file upload and a storage bucket, which doesn't exist
           yet — flagged rather than quietly dropped from §10's field list. */}
-      <p className="mt-6 text-small text-navy/60">
+      <p className="mt-6 text-small text-ink/60">
         Photos come next — the upload needs a storage bucket that isn&rsquo;t set
         up yet. Your profile works without one in the meantime.
       </p>
@@ -51,7 +51,7 @@ export default async function DirectoryListingPage() {
       <p className="mt-8">
         <Link
           href="/onboarding"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← Back to your first weeks
         </Link>

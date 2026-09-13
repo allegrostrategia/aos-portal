@@ -52,7 +52,7 @@ export function StatusActions({
         {status === "onboarding" ? (
           <form action={activate} className="flex flex-col gap-2">
             <input type="hidden" name="member_id" value={memberId} />
-            <p className="text-small text-navy/70">
+            <p className="text-small text-ink/70">
               Activating opens the full library, hot seat, peer pairing and the
               draw. Done at week 1 of the month after they joined.
             </p>
@@ -65,7 +65,7 @@ export function StatusActions({
         {status === "cancelled" ? (
           <form action={rejoin} className="flex flex-col gap-2">
             <input type="hidden" name="member_id" value={memberId} />
-            <p className="text-small text-navy/70">
+            <p className="text-small text-ink/70">
               Rejoining puts them back into onboarding from scratch — fresh
               audit, fresh roadmap, fresh six-month term. Their previous work
               stays theirs.
@@ -75,12 +75,12 @@ export function StatusActions({
             </Button>
           </form>
         ) : (
-          <form action={cancel} className="flex flex-col gap-2 border-t border-navy/10 pt-4">
+          <form action={cancel} className="flex flex-col gap-2 border-t border-ink/10 pt-4">
             <input type="hidden" name="member_id" value={memberId} />
-            <label htmlFor="cancel_note" className="text-small font-medium text-navy">
+            <label htmlFor="cancel_note" className="text-small font-medium text-ink">
               Cancel {memberName}&rsquo;s membership
             </label>
-            <p className="text-small text-navy/70">
+            <p className="text-small text-ink/70">
               Revokes access. Nothing is deleted — their logs, roadmap and
               Archivio all stay exactly where they are.
             </p>
@@ -89,7 +89,7 @@ export function StatusActions({
               name="note"
               type="text"
               placeholder="Why, if it's worth recording (optional)"
-              className="w-full rounded-md border border-navy/15 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40"
+              className="w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40"
             />
             <Button
               type="submit"

@@ -12,10 +12,12 @@ import { Button } from "./button";
  * starts typing and is the single most common accessibility failure in forms.
  */
 
+// Rounded to match the cards, on the cream-deep ground so a field reads as a
+// well in the card rather than a white box stuck on it (L'Editoriale).
 const CONTROL =
-  "w-full rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy " +
-  "outline-none transition placeholder:text-navy/40 " +
-  "focus:border-orange focus:ring-2 focus:ring-orange/30";
+  "w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 text-body text-ink " +
+  "outline-none transition placeholder:text-ink/40 " +
+  "focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30";
 
 function Wrapper({
   label,
@@ -30,12 +32,12 @@ function Wrapper({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-small font-medium text-navy">
+      <label htmlFor={htmlFor} className="text-small font-medium text-ink">
         {label}
       </label>
       {children}
       {hint ? (
-        <p id={`${htmlFor}-hint`} className="text-caption text-navy/60">
+        <p id={`${htmlFor}-hint`} className="text-caption text-ink/60">
           {hint}
         </p>
       ) : null}
@@ -97,12 +99,12 @@ export function Checkbox({
   ...props
 }: React.ComponentProps<"input"> & { label: string; name: string }) {
   return (
-    <label className="flex items-start gap-2.5 py-1 text-small text-navy">
+    <label className="flex items-start gap-2.5 py-1 text-small text-ink">
       <input
         type="checkbox"
         id={name}
         name={name}
-        className="mt-0.5 size-4 accent-navy"
+        className="mt-0.5 size-4 accent-orange"
         {...props}
       />
       {label}
@@ -155,8 +157,8 @@ export function FormMessage({
       aria-live="polite"
       className={
         error
-          ? "rounded-md border border-orange/30 bg-blush/25 px-3 py-2 text-small text-navy"
-          : "rounded-md border border-sky/40 bg-sky/15 px-3 py-2 text-small text-navy"
+          ? "rounded-md border border-orange/30 bg-blush/25 px-3 py-2 text-small text-ink"
+          : "rounded-md border border-sky/40 bg-sky/15 px-3 py-2 text-small text-ink"
       }
     >
       {error ?? notice}

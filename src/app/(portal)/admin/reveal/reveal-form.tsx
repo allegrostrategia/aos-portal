@@ -77,14 +77,14 @@ export function RevealForm({
           {priorities.map((priority, index) => (
             <li key={index} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-mono w-6 shrink-0 text-caption text-navy/40">
+                <span className="font-mono w-6 shrink-0 text-caption text-ink/40">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <input
                   name="priority_title"
                   defaultValue={priority.title}
                   placeholder="Rebuild your enquiry follow-up"
-                  className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-2 text-body text-navy placeholder:text-navy/40"
+                  className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-2 text-body text-ink placeholder:text-ink/40"
                 />
               </div>
               <textarea
@@ -92,7 +92,7 @@ export function RevealForm({
                 rows={2}
                 defaultValue={priority.body}
                 placeholder="Why this one, and why first"
-                className="ml-8 rounded-md border border-navy/15 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40"
+                className="ml-8 rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40"
               />
             </li>
           ))}
@@ -106,7 +106,7 @@ export function RevealForm({
         >
           Add another
         </Button>
-        <p className="mt-2 text-caption text-navy/50">
+        <p className="mt-2 text-caption text-ink/50">
           Three at the 1:1, usually. An untitled one is left off rather than
           printed blank.
         </p>

@@ -73,10 +73,10 @@ export default async function PiazzaPage() {
   return (
     <main className="flex-1 py-8 sm:py-10">
       <Eyebrow>{LONG_DATE.format(new Date())}</Eyebrow>
-      <h1 className="font-display mt-2 text-display text-navy italic">
+      <h1 className="font-display mt-2 text-display font-medium text-ink">
         Buongiorno, {firstName}
       </h1>
-      <p className="mt-3 max-w-xl text-body text-navy/70">
+      <p className="mt-3 max-w-xl text-body text-ink/70">
         One real thing, built every month, from what your own week actually
         shows.
       </p>
@@ -87,7 +87,7 @@ export default async function PiazzaPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <Eyebrow>This week&rsquo;s log</Eyebrow>
-              <p className="font-mono mt-2 text-title text-navy tabular-nums">
+              <p className="font-mono mt-2 text-title text-ink tabular-nums">
                 {formatMinutes(week.loggedMinutes)}
               </p>
             </div>
@@ -102,7 +102,7 @@ export default async function PiazzaPage() {
           </div>
 
           <div
-            className="mt-3 h-2 overflow-hidden rounded-full bg-navy/10"
+            className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10"
             role="progressbar"
             aria-valuenow={progress}
             aria-valuemin={0}
@@ -111,13 +111,13 @@ export default async function PiazzaPage() {
           >
             <div
               className={`h-full rounded-full transition-all ${
-                week.isCompleteWeek ? "bg-navy" : "bg-orange"
+                week.isCompleteWeek ? "bg-ink" : "bg-orange"
               }`}
               style={{ width: `${progress}%` }}
             />
           </div>
 
-          <p className="mt-2 text-small text-navy/70">
+          <p className="mt-2 text-small text-ink/70">
             {signedOff
               ? "Signed off. Your time keeps tracking."
               : week.isCompleteWeek
@@ -135,16 +135,16 @@ export default async function PiazzaPage() {
         {roadmap?.focusStation ? (
           <Card>
             <Eyebrow>Continue your journey</Eyebrow>
-            <p className="font-display mt-2 text-heading text-navy italic">
+            <p className="font-display mt-2 text-heading font-medium text-ink">
               {roadmap.focusStation.name}
             </p>
             {roadmap.phaseTitle ? (
-              <p className="mt-1 text-small text-navy/60">
+              <p className="mt-1 text-small text-ink/60">
                 {roadmap.phaseTitle}
               </p>
             ) : null}
             {roadmap.focusStation.description ? (
-              <p className="mt-2 text-small text-navy/70">
+              <p className="mt-2 text-small text-ink/70">
                 {roadmap.focusStation.description}
               </p>
             ) : null}
@@ -159,7 +159,7 @@ export default async function PiazzaPage() {
         ) : onboarding ? (
           <Card>
             <Eyebrow>Your first weeks</Eyebrow>
-            <p className="mt-2 text-small text-navy/70">
+            <p className="mt-2 text-small text-ink/70">
               Your roadmap arrives at your 1:1 in week four. Until then the work
               is the tracking — it&rsquo;s what the roadmap gets built from.
             </p>
@@ -175,7 +175,7 @@ export default async function PiazzaPage() {
       {challenge ? (
         <Card className="mt-5 bg-lemon/25">
           <Eyebrow tone="accent">This month you&rsquo;re building</Eyebrow>
-          <p className="font-display mt-2 text-title text-navy italic">
+          <p className="font-display mt-2 text-title font-medium text-ink">
             {challenge}
           </p>
         </Card>
@@ -201,7 +201,7 @@ export default async function PiazzaPage() {
            are thresholds of the same number rather than a separate idea. */
         <Card className="mt-5 bg-sky/15">
           <Eyebrow>Hours reclaimed</Eyebrow>
-          <p className="font-mono mt-1 text-title text-navy">
+          <p className="font-mono mt-1 text-title text-ink">
             {formatHours(hours.total)}
           </p>
 
@@ -211,24 +211,24 @@ export default async function PiazzaPage() {
               unconditional one, since this cluster only renders once there is
               something banked. */}
           <Link href="/milestones" className="mt-3 block">
-            <div className="h-1.5 overflow-hidden rounded-full bg-navy/10">
+            <div className="h-1.5 overflow-hidden rounded-full bg-ink/10">
               <div
                 className="h-full rounded-full bg-orange"
                 style={{ width: `${Math.round(milestone.fraction * 100)}%` }}
               />
             </div>
-            <p className="mt-2 text-small text-navy/70">
+            <p className="mt-2 text-small text-ink/70">
               {milestone.next === null
                 ? "Every milestone passed."
                 : `${milestone.toNext} to your next milestone at ${milestone.next}.`}{" "}
-              <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
+              <span className="text-ink underline decoration-orange decoration-2 underline-offset-4">
                 See how far you&rsquo;ve come
               </span>
             </p>
           </Link>
 
           {hours.weeklyRate > 0 ? (
-            <p className="mt-3 text-caption text-navy/60">
+            <p className="mt-3 text-caption text-ink/60">
               Your builds add{" "}
               <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
               every week you log ten hours and submit.
@@ -245,10 +245,10 @@ export default async function PiazzaPage() {
            anything has been banked: it is the answer to "what am I working
            towards", which is exactly the question somebody with nothing yet is
            asking. The words were underselling the page. */
-        <Link href="/milestones" className="mt-5 block text-small text-navy/70">
+        <Link href="/milestones" className="mt-5 block text-small text-ink/70">
           Your milestones are mapped out — the hours start landing with your
           first builds.{" "}
-          <span className="text-navy underline decoration-orange decoration-2 underline-offset-4">
+          <span className="text-ink underline decoration-orange decoration-2 underline-offset-4">
             See the path
           </span>
         </Link>
@@ -258,7 +258,7 @@ export default async function PiazzaPage() {
         {session ? (
           <Card>
             <Eyebrow>Next hot seat</Eyebrow>
-            <p className="font-display mt-2 text-heading text-navy italic">
+            <p className="font-display mt-2 text-heading font-medium text-ink">
               {session.scheduled_for
                 ? formatSessionTime(session.scheduled_for)
                 : "Week one — time to be confirmed"}
@@ -270,7 +270,7 @@ export default async function PiazzaPage() {
               {session.scheduled_for ? (
                 <a
                   href={`/api/calendar/hot-seat/${session.id}`}
-                  className="text-small text-navy/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-navy"
+                  className="text-small text-ink/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-ink"
                 >
                   Add to calendar
                 </a>
@@ -284,12 +284,12 @@ export default async function PiazzaPage() {
             <Eyebrow>On your roadmap</Eyebrow>
             <ul className="mt-2 flex flex-col gap-1.5">
               {roadmap.openItems.slice(0, 4).map((item) => (
-                <li key={item} className="text-small text-navy/80">
+                <li key={item} className="text-small text-ink/80">
                   {item}
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-caption text-navy/50">
+            <p className="mt-3 text-caption text-ink/50">
               Tick these off when you sign your week&rsquo;s log.
             </p>
           </Card>
@@ -298,7 +298,7 @@ export default async function PiazzaPage() {
 
       <Link
         href="/stations"
-        className="group mt-5 block overflow-hidden rounded-xl border border-navy/10 bg-sky/10 transition hover:border-navy/25"
+        className="group mt-5 block overflow-hidden rounded-xl border border-ink/10 bg-sky/10 transition hover:border-ink/25"
       >
         <div className="relative aspect-[21/9]">
           <Image
@@ -310,8 +310,8 @@ export default async function PiazzaPage() {
           />
         </div>
         <div className="flex items-baseline justify-between gap-3 px-5 py-3">
-          <p className="font-display text-heading text-navy italic">La Strada</p>
-          <p className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4">
+          <p className="font-display text-heading font-medium text-ink">La Strada</p>
+          <p className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4">
             Open the map
           </p>
         </div>

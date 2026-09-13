@@ -3,29 +3,40 @@ import Link from "next/link";
 /**
  * Buttons.
  *
- * Navy carries the primary action, not orange. White on #FF6625 is roughly 3:1,
- * which fails WCAG AA at body size — orange stays the accent, in eyebrows, focus
- * rings and underlines, where it reads without being read *through*.
+ * L'Editoriale (13 Sep 2026): pills, and the primary action is orange.
+ *
+ * That reverses a decision this file used to defend — navy for primary, on the
+ * grounds that white on #FF6625 is about 2.9:1 and fails WCAG AA at body size.
+ * The number hasn't changed; the direction has, and the redesign brief names
+ * "navy buttons" as one of the rules it replaces. The mitigation is weight and
+ * size: primary text is semibold at 16px or larger, which is as far as the type
+ * can go towards the 3:1 large-text threshold without a darker orange. If the
+ * contrast turns out to matter in practice, the one-line alternative is ink
+ * text on the orange pill (3.5:1) — see `primary` below. **This is on the list
+ * for Dom's eyes before it ships.**
  */
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
-export type ButtonSize = "sm" | "md";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "dark";
+export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition " +
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition " +
   "disabled:cursor-not-allowed disabled:opacity-60";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-navy text-white hover:bg-navy/90",
-  secondary: "border border-navy/20 bg-white/70 text-navy hover:border-navy/40",
-  ghost: "text-navy/70 hover:text-navy hover:bg-navy/5",
+  primary: "bg-orange text-white shadow-soft hover:bg-orange/90",
+  secondary: "border border-ink/15 bg-card text-ink hover:border-ink/30",
+  ghost: "text-ink/70 hover:bg-cream-deep hover:text-ink",
+  // On the dark card the primary is still orange; this is the quiet one there.
+  dark: "border border-white/20 bg-white/10 text-white hover:bg-white/15",
 };
 
 const SIZES: Record<ButtonSize, string> = {
   // 16px text on the medium size: anything smaller and iOS Safari zooms the
   // viewport when an adjacent input takes focus.
-  md: "px-4 py-2.5 text-body",
-  sm: "px-3 py-1.5 text-small",
+  lg: "px-7 py-3.5 text-body",
+  md: "px-5 py-2.5 text-body",
+  sm: "px-3.5 py-1.5 text-small",
 };
 
 export function buttonClasses(

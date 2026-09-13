@@ -79,6 +79,45 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
   }));
 }
 
+/**
+ * Signed headshot URLs for a set of members, keyed by member id.
+ *
+ * The same batch-signing as the directory search, lifted out so the You screen,
+ * pairing and chat can show real faces without each re-deriving it. Members
+ * without a headshot are simply absent from the map.
+ */
+export async function getHeadshotUrls(memberIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (memberIds.length === 0) return out;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("member_profiles")
+    .select("member_id, headshot_path")
+    .in("member_id", memberIds)
+    .not("headshot_path", "is", null);
+
+  const rows = (data ?? []) as { member_id: string; headshot_path: string }[];
+  if (rows.length === 0) return out;
+
+  const { data: urls } = await supabase.storage
+    .from("headshots")
+    .createSignedUrls(
+      rows.map((r) => r.headshot_path),
+      HEADSHOT_URL_SECONDS,
+    );
+
+  const byPath = new Map<string, string>();
+  for (const entry of urls ?? []) {
+    if (entry.path && entry.signedUrl) byPath.set(entry.path, entry.signedUrl);
+  }
+  for (const row of rows) {
+    const url = byPath.get(row.headshot_path);
+    if (url) out.set(row.member_id, url);
+  }
+  return out;
+}
+
 export type OwnListing = "complete" | "draft" | "none";
 
 /**

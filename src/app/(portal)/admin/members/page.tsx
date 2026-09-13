@@ -49,10 +49,10 @@ export default async function AdminMembersPage() {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
         <Card>
-          <h2 className="font-display mb-1 text-heading text-navy italic">
+          <h2 className="font-display mb-1 text-heading font-medium text-ink">
             Invite a member
           </h2>
-          <p className="mb-5 text-small text-navy/70">
+          <p className="mb-5 text-small text-ink/70">
             Sends an invitation email and creates their record. This is what
             starts onboarding.
           </p>
@@ -61,14 +61,14 @@ export default async function AdminMembersPage() {
               point decorating a healthy page with green ticks. */}
           {readiness.some((check) => !check.ok) ? (
             <div className="mb-5 rounded-md border border-orange/30 bg-blush/20 p-3">
-              <p className="text-small font-medium text-navy">
+              <p className="text-small font-medium text-ink">
                 Invitations aren&rsquo;t ready yet
               </p>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {readiness
                   .filter((check) => !check.ok)
                   .map((check) => (
-                    <li key={check.label} className="text-caption text-navy/80">
+                    <li key={check.label} className="text-caption text-ink/80">
                       <span className="font-medium">{check.label}:</span>{" "}
                       {check.detail}
                     </li>
@@ -81,13 +81,13 @@ export default async function AdminMembersPage() {
         </Card>
 
         <section>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             Everyone ({members.length})
           </h2>
 
           {members.length === 0 ? (
             <Card>
-              <p className="text-small text-navy/70">No members yet.</p>
+              <p className="text-small text-ink/70">No members yet.</p>
             </Card>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -95,10 +95,10 @@ export default async function AdminMembersPage() {
                 <li key={member.id}>
                   <Link
                     href={`/admin/members/${member.id}`}
-                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border border-navy/10 bg-white/60 px-4 py-3 transition hover:border-navy/25"
+                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-2xl border border-ink/8 bg-card shadow-soft px-4 py-3 transition hover:border-ink/25"
                   >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-navy">
+                    <p className="truncate font-medium text-ink">
                       {member.full_name}
                       {member.role === "admin" ? (
                         <span className="ml-2">
@@ -106,14 +106,14 @@ export default async function AdminMembersPage() {
                         </span>
                       ) : null}
                     </p>
-                    <p className="truncate text-small text-navy/60">{member.email}</p>
+                    <p className="truncate text-small text-ink/60">{member.email}</p>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-small text-navy/80">
+                    <p className="text-small text-ink/80">
                       {STATUS_LABEL[member.status]}
                     </p>
-                    <p className="font-mono text-caption text-navy/50">
+                    <p className="font-mono text-caption text-ink/50">
                       joined {DATE.format(new Date(member.join_date))}
                     </p>
                   </div>

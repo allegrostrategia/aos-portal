@@ -61,7 +61,7 @@ export function SubmissionForm({
         <SubmitButton full={false}>
           {submission?.submitted_at ? "Update my submission" : "Submit"}
         </SubmitButton>
-        <p className="mt-2 text-small text-navy/60">
+        <p className="mt-2 text-small text-ink/60">
           Editable until Nina preps the session.
         </p>
       </div>

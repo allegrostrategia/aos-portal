@@ -49,21 +49,21 @@ export default async function PairingPage() {
       {pairing && pairing.partnerId ? (
         <Card className="mb-6 bg-sky/15">
           <Eyebrow>This month you&rsquo;re paired with</Eyebrow>
-          <p className="font-display mt-1 text-title text-navy italic">
+          <p className="font-display mt-1 text-title font-medium text-ink">
             {partnerName}
           </p>
 
           {pairing.scheduledFor ? (
-            <p className="mt-2 text-small text-navy/80">
+            <p className="mt-2 text-small text-ink/80">
               You both said {formatSessionTime(pairing.scheduledFor)} works.
             </p>
           ) : (
-            <p className="mt-2 text-small text-navy/70">
+            <p className="mt-2 text-small text-ink/70">
               No time you both ticked, so pick one between you.
             </p>
           )}
 
-          <p className="mt-3 text-small text-navy/70">
+          <p className="mt-3 text-small text-ink/70">
             Message each other to sort out when and where — there&rsquo;s no call
             link here on purpose, it&rsquo;s your conversation to arrange.
           </p>
@@ -75,7 +75,7 @@ export default async function PairingPage() {
             />
 
             {pairing.metAt ? (
-              <span className="text-caption text-navy/60">
+              <span className="text-caption text-ink/60">
                 Marked as met — good.
               </span>
             ) : (
@@ -90,7 +90,7 @@ export default async function PairingPage() {
         </Card>
       ) : (
         <Card className="mb-6">
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             {availability.submitted
               ? "You're in for this month. Pairings go out once everyone's had a chance to say when they're free."
               : "No pairing yet this month. Say when you're free below and you'll be matched."}
@@ -98,7 +98,7 @@ export default async function PairingPage() {
         </Card>
       )}
 
-      <h2 className="font-display mb-3 text-heading text-navy italic">
+      <h2 className="font-display mb-3 text-heading font-medium text-ink">
         When could you talk?
       </h2>
       <Card>

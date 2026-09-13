@@ -51,7 +51,7 @@ export default async function ContentPage({
       <p className="mb-4">
         <Link
           href={`/stations/${item.station_slug}`}
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← {item.stations?.name ?? "Back to the station"}
         </Link>
@@ -66,7 +66,7 @@ export default async function ContentPage({
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Badge>{FORMAT_LABEL[item.format]}</Badge>
         {item.duration_minutes ? (
-          <span className="font-mono text-caption text-navy/50">
+          <span className="font-mono text-caption text-ink/50">
             {item.duration_minutes} min
           </span>
         ) : null}
@@ -78,7 +78,7 @@ export default async function ContentPage({
 
       {!item.asset_path ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             This one hasn&rsquo;t been uploaded yet.
           </p>
         </Card>
@@ -104,7 +104,7 @@ export default async function ContentPage({
         <video
           controls
           controlsList="nodownload"
-          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-xl border border-navy/10 bg-navy/5"
+          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-xl border border-ink/10 bg-ink/5"
           src={src}
         />
       ) : item.format === "audio" ? (
@@ -118,19 +118,19 @@ export default async function ContentPage({
           // protection is that the URL is short-lived and unguessable.
           src={`${src}#toolbar=0`}
           title={item.title}
-          className="h-[75vh] w-full rounded-xl border border-navy/10 bg-white"
+          className="h-[75vh] w-full rounded-xl border border-ink/10 bg-white"
         />
       ) : (
         <Card>
           <Eyebrow>Spreadsheet</Eyebrow>
-          <p className="mt-2 text-small text-navy/80">
+          <p className="mt-2 text-small text-ink/80">
             Tools like this are meant to be opened and used in your own business,
             so this one downloads rather than streaming.
           </p>
           <p className="mt-3">
             <a
               href={src}
-              className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+              className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
             >
               Open {item.title}
             </a>

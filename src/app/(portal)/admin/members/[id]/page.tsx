@@ -122,7 +122,7 @@ export default async function AdminMemberPage({
       <p className="mb-4">
         <Link
           href="/admin/members"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← All members
         </Link>
@@ -137,7 +137,7 @@ export default async function AdminMemberPage({
       <div className="grid gap-5 sm:grid-cols-3">
         <Card>
           <Eyebrow>Status</Eyebrow>
-          <p className="mt-2 text-body text-navy">
+          <p className="mt-2 text-body text-ink">
             {member.status}
             {member.role === "admin" ? (
               <span className="ml-2">
@@ -159,7 +159,7 @@ export default async function AdminMemberPage({
         </Card>
         <Card>
           <Eyebrow>Confirmations</Eyebrow>
-          <p className="mt-2 text-small text-navy/80">
+          <p className="mt-2 text-small text-ink/80">
             Payment: {member.payment_confirmed_at ? "✓" : "—"}
             <br />
             Contract: {member.contract_signed_at ? "✓" : "—"}
@@ -172,7 +172,7 @@ export default async function AdminMemberPage({
       {itinerary ? (
         <Card className="mt-5">
           <Eyebrow>Their itinerary — what they&rsquo;ve been told to expect</Eyebrow>
-          <ul className="font-mono mt-3 flex flex-wrap gap-x-8 gap-y-2 text-small text-navy/80">
+          <ul className="font-mono mt-3 flex flex-wrap gap-x-8 gap-y-2 text-small text-ink/80">
             <li>Tracking I · w/c {WEEK.format(new Date(itinerary.trackingWeekOne))}</li>
             <li>Tracking II · w/c {WEEK.format(new Date(itinerary.trackingWeekTwo))}</li>
             <li>1:1 · w/c {WEEK.format(new Date(itinerary.oneToOneWeek))}</li>
@@ -192,7 +192,7 @@ export default async function AdminMemberPage({
       {member.role === "admin" ? (
         <Card className="mt-5">
           <Eyebrow>Peer pairing</Eyebrow>
-          <p className="mt-1 text-small text-navy/80">
+          <p className="mt-1 text-small text-ink/80">
             {member.is_coach
               ? "This is the coach — when a month's pairing lands on an odd number, the spare member is paired with them."
               : "Not the coach. Only one admin can be, and it decides who the odd one out is paired with each month."}
@@ -206,7 +206,7 @@ export default async function AdminMemberPage({
             />
             <button
               type="submit"
-              className="text-caption text-navy underline decoration-orange decoration-2 underline-offset-4"
+              className="text-caption text-ink underline decoration-orange decoration-2 underline-offset-4"
             >
               {member.is_coach ? "Stop being the coach" : "Make this the coach"}
             </button>
@@ -222,10 +222,10 @@ export default async function AdminMemberPage({
         />
       </div>
 
-      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Roadmap
       </h2>
-      <p className="mb-3 text-small text-navy/70">
+      <p className="mb-3 text-small text-ink/70">
         {roadmap
           ? roadmap.confirmed_at
             ? "Published — this is what they see on Piazza and in their weekly log."
@@ -244,13 +244,13 @@ export default async function AdminMemberPage({
         hasHadHotSeat={Boolean(pastHotSeat)}
       />
 
-      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Audits
       </h2>
 
       {audits.length === 0 ? (
         <Card>
-          <p className="text-small text-navy/70">Nothing submitted yet.</p>
+          <p className="text-small text-ink/70">Nothing submitted yet.</p>
         </Card>
       ) : (
         <div className="flex flex-col gap-5">
@@ -258,14 +258,14 @@ export default async function AdminMemberPage({
             <Card key={audit.id}>
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <Eyebrow tone="accent">{audit.occasion}</Eyebrow>
-                <p className="font-mono text-caption text-navy/50">
+                <p className="font-mono text-caption text-ink/50">
                   {audit.submitted_at
                     ? DATE.format(new Date(audit.submitted_at))
                     : "in progress"}
                 </p>
               </div>
 
-              <p className="mt-3 text-body text-navy">
+              <p className="mt-3 text-body text-ink">
                 Weakest:{" "}
                 <strong className="font-medium">
                   {audit.weakest_station_slug
@@ -274,7 +274,7 @@ export default async function AdminMemberPage({
                     : "—"}
                 </strong>
                 {audit.weakest_bucket ? (
-                  <span className="text-navy/60">
+                  <span className="text-ink/60">
                     {" "}
                     · {audit.weakest_bucket.replace("_", " & ")}
                   </span>
@@ -291,16 +291,16 @@ export default async function AdminMemberPage({
                   return (
                     <li
                       key={question.id}
-                      className="border-t border-navy/10 pt-3 first:border-t-0 first:pt-0"
+                      className="border-t border-ink/10 pt-3 first:border-t-0 first:pt-0"
                     >
-                      <p className="text-small text-navy/60">
+                      <p className="text-small text-ink/60">
                         {stationName[question.stationSlug] ?? question.stationSlug}{" "}
                         — {question.prompt}
                       </p>
-                      <p className="mt-1 text-small text-navy">
+                      <p className="mt-1 text-small text-ink">
                         {option ? option.label : "—"}
                         {option ? (
-                          <span className="font-mono ml-2 text-caption text-navy/50">
+                          <span className="font-mono ml-2 text-caption text-ink/50">
                             {option.score}/3
                           </span>
                         ) : null}
@@ -313,7 +313,7 @@ export default async function AdminMemberPage({
           ))}
         </div>
       )}
-      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Builds and what they&rsquo;re worth
       </h2>
 
@@ -322,11 +322,11 @@ export default async function AdminMemberPage({
           function without it — nothing accrues until a build with a rate
           exists. The handover pack proper is still Step 9. */}
       <Card>
-        <p className="text-small text-navy/70">
+        <p className="text-small text-ink/70">
           {weeklyRate > 0 ? (
             <>
               Currently earning{" "}
-              <span className="font-mono text-navy">{formatHours(weeklyRate)} hrs</span>{" "}
+              <span className="font-mono text-ink">{formatHours(weeklyRate)} hrs</span>{" "}
               in every qualifying week — ten hours logged and the log submitted.
             </>
           ) : (
@@ -347,13 +347,13 @@ export default async function AdminMemberPage({
           {builds.map((build) => (
             <Card as="li" key={build.id}>
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <p className="font-medium text-navy">{build.title}</p>
+                <p className="font-medium text-ink">{build.title}</p>
                 {build.current ? (
-                  <span className="font-mono text-small text-navy">
+                  <span className="font-mono text-small text-ink">
                     {formatHours(build.current.hours_per_week)} hrs/week
                   </span>
                 ) : (
-                  <span className="text-caption text-navy/50">Retired</span>
+                  <span className="text-caption text-ink/50">Retired</span>
                 )}
               </div>
 
@@ -362,7 +362,7 @@ export default async function AdminMemberPage({
                   {build.rates.map((rate) => (
                     <li
                       key={rate.id}
-                      className="flex items-baseline justify-between gap-3 text-caption text-navy/60"
+                      className="flex items-baseline justify-between gap-3 text-caption text-ink/60"
                     >
                       <span>
                         {rate.effective_from} →{" "}
@@ -385,10 +385,10 @@ export default async function AdminMemberPage({
                   <ul className="mt-2 flex flex-col gap-2">
                     {(checkIns.get(build.id) ?? []).map((response) => (
                       <li key={response.id}>
-                        <p className="text-small whitespace-pre-wrap text-navy/80">
+                        <p className="text-small whitespace-pre-wrap text-ink/80">
                           {response.body ?? "Sent a voice note."}
                         </p>
-                        <p className="text-caption text-navy/50">
+                        <p className="text-caption text-ink/50">
                           {response.created_at.slice(0, 10)}
                           {response.testimonial_consent
                             ? " · happy for you to quote this"
@@ -399,7 +399,7 @@ export default async function AdminMemberPage({
                   </ul>
                 </div>
               ) : build.current ? (
-                <p className="mt-3 text-caption text-navy/50">
+                <p className="mt-3 text-caption text-ink/50">
                   Nothing said about this one yet. Retiring it without asking is
                   a guess about their business.
                 </p>

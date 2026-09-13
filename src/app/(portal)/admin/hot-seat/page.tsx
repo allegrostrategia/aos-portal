@@ -43,20 +43,20 @@ export default async function AdminHotSeatPage() {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
         <Card>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             Schedule a session
           </h2>
           <SessionForm defaultMonth={thisMonth} />
         </Card>
 
         <section>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             Sessions
           </h2>
 
           {sessions.length === 0 ? (
             <Card>
-              <p className="text-small text-navy/70">None scheduled yet.</p>
+              <p className="text-small text-ink/70">None scheduled yet.</p>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">
@@ -78,20 +78,20 @@ export default async function AdminHotSeatPage() {
                       className="block p-5 transition hover:bg-white/40 sm:p-6"
                     >
                       <div className="flex flex-wrap items-baseline justify-between gap-3">
-                        <p className="font-display text-heading text-navy italic">
+                        <p className="font-display text-heading font-medium text-ink">
                           {MONTH.format(new Date(session.session_month))}
                         </p>
-                        <p className="font-mono text-caption text-navy/60">
+                        <p className="font-mono text-caption text-ink/60">
                           {submitted} submitted · {confirmed} prepped
                         </p>
                       </div>
-                      <p className="mt-1 text-small text-navy/70">
+                      <p className="mt-1 text-small text-ink/70">
                         {session.scheduled_for
                           ? formatSessionTimeShort(session.scheduled_for)
                           : "Time not set"}
                         {session.zoom_url ? " · link set" : " · no link yet"}
                       </p>
-                      <p className="mt-3 text-small text-navy underline decoration-orange decoration-2 underline-offset-4">
+                      <p className="mt-3 text-small text-ink underline decoration-orange decoration-2 underline-offset-4">
                         {submitted > confirmed
                           ? `Prep ${submitted - confirmed} submission${submitted - confirmed === 1 ? "" : "s"} →`
                           : "Open prep sheet →"}
@@ -107,7 +107,7 @@ export default async function AdminHotSeatPage() {
 
       <Card className="mt-8">
         <Eyebrow>Still to come</Eyebrow>
-        <p className="mt-2 text-small text-navy/70">
+        <p className="mt-2 text-small text-ink/70">
           Reviewing and confirming each member&rsquo;s challenge — with Claude
           drafting a suggestion from their tracked time — is the next piece.
           Submissions are being collected in the meantime.

@@ -23,11 +23,11 @@ export function WriteUpEditor({ id, body }: { id: string; body: string }) {
   if (!editing) {
     return (
       <>
-        <div className="text-body whitespace-pre-wrap text-navy/85">{body}</div>
+        <div className="text-body whitespace-pre-wrap text-ink/85">{body}</div>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="mt-3 text-caption text-navy/60 underline underline-offset-4 transition hover:text-navy"
+          className="mt-3 text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink"
         >
           Put it in your own words
         </button>
@@ -38,7 +38,7 @@ export function WriteUpEditor({ id, body }: { id: string; body: string }) {
   return (
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="id" value={id} />
-      <label htmlFor={`body-${id}`} className="text-small font-medium text-navy">
+      <label htmlFor={`body-${id}`} className="text-small font-medium text-ink">
         Your copy
       </label>
       <textarea
@@ -46,9 +46,9 @@ export function WriteUpEditor({ id, body }: { id: string; body: string }) {
         name="body"
         rows={8}
         defaultValue={body}
-        className="w-full rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy"
+        className="w-full rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink"
       />
-      <p className="text-caption text-navy/60">
+      <p className="text-caption text-ink/60">
         This is yours to reword. It doesn&rsquo;t change anything Nina sees about
         the build itself.
       </p>

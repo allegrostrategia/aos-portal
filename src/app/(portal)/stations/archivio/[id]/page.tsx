@@ -36,7 +36,7 @@ export default async function ArchivioEntryPage({
       <p className="mb-4">
         <Link
           href="/stations/archivio"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← Archivio
         </Link>
@@ -68,14 +68,14 @@ export default async function ArchivioEntryPage({
               remove; rule 6 protects the record of their membership, not a
               process they thought better of. */}
           <details className="mt-6">
-            <summary className="cursor-pointer list-none text-caption text-navy/40 transition hover:text-navy">
+            <summary className="cursor-pointer list-none text-caption text-ink/40 transition hover:text-ink">
               Remove this SOP
             </summary>
             <form action={deleteSop} className="mt-2">
               <input type="hidden" name="id" value={entry.id} />
               <button
                 type="submit"
-                className="rounded-md border border-orange/40 px-2 py-1 text-caption text-navy transition hover:bg-blush/20"
+                className="rounded-md border border-orange/40 px-2 py-1 text-caption text-ink transition hover:bg-blush/20"
               >
                 Delete &ldquo;{entry.title}&rdquo; permanently
               </button>
@@ -92,7 +92,7 @@ export default async function ArchivioEntryPage({
               <WriteUpEditor id={entry.id} body={entry.body ?? ""} />
             </div>
           ) : (
-            <p className="mt-2 text-small text-navy/70">
+            <p className="mt-2 text-small text-ink/70">
               Nina hasn&rsquo;t written this one up yet. It&rsquo;ll appear here
               when she has — the build itself is already counting towards your
               hours.

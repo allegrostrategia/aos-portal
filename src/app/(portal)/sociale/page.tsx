@@ -38,12 +38,12 @@ export default async function SocialePage() {
         {groups.map((channel) => (
           <li key={channel.id}>
             <Link href={`/sociale/${channel.slug}`} className="block">
-              <Card className="transition hover:border-navy/30">
-                <p className="font-display text-heading text-navy italic">
+              <Card className="transition hover:border-ink/30">
+                <p className="font-display text-heading font-medium text-ink">
                   {channel.name}
                 </p>
                 {channel.description ? (
-                  <p className="mt-1 text-small text-navy/70">
+                  <p className="mt-1 text-small text-ink/70">
                     {channel.description}
                   </p>
                 ) : null}
@@ -55,15 +55,15 @@ export default async function SocialePage() {
 
       {directs.length > 0 ? (
         <>
-          <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+          <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
             Direct messages
           </h2>
           <ul className="flex flex-col gap-2">
             {directs.map((channel) => (
               <li key={channel.id}>
                 <Link href={`/sociale/${channel.id}`} className="block">
-                  <Card className="transition hover:border-navy/30">
-                    <p className="text-body text-navy">
+                  <Card className="transition hover:border-ink/30">
+                    <p className="text-body text-ink">
                       {partners.get(channel.id) ?? "A member"}
                     </p>
                   </Card>
@@ -74,13 +74,13 @@ export default async function SocialePage() {
         </>
       ) : null}
 
-      <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+      <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Everyone else
       </h2>
       <Link href="/sociale/directory" className="block">
-        <Card className="transition hover:border-navy/30">
-          <p className="text-body text-navy">The member directory</p>
-          <p className="mt-1 text-small text-navy/70">
+        <Card className="transition hover:border-ink/30">
+          <p className="text-body text-ink">The member directory</p>
+          <p className="mt-1 text-small text-ink/70">
             Search by name, what someone does, or anything in their bio — then
             message them straight from their profile.
           </p>

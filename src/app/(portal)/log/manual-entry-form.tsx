@@ -39,7 +39,7 @@ export function ManualEntryForm({
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="manual_category"
-          className="text-small font-medium text-navy"
+          className="text-small font-medium text-ink"
         >
           Category
         </label>
@@ -48,7 +48,7 @@ export function ManualEntryForm({
           name="category_slug"
           defaultValue=""
           required
-          className="w-full rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy"
+          className="w-full rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink"
         >
           <option value="" disabled>
             Choose one
@@ -81,7 +81,7 @@ export function ManualEntryForm({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-small text-navy/60 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/60 underline underline-offset-4 transition hover:text-ink"
         >
           Cancel
         </button>

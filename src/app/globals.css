@@ -16,13 +16,43 @@
   --aos-lemon: #f8e6a0;
   --aos-off-white: #f3f5fd;
 
+  /*
+   * L'Editoriale (13 Sep 2026). The palette above is unchanged; these are the
+   * surfaces and inks the reference poster actually uses, sampled from it.
+   *
+   * The ground is a warm cream rather than the cool off-white, and cards are
+   * cream too — a shade deeper than the ground, not white. Display type is set
+   * in an ink navy that is the brand navy's hue taken darker: on cream, the
+   * brand navy at heading sizes reads bright rather than editorial. The brand
+   * navy stays for links, nav state and anything that needs to read as the
+   * colour itself.
+   */
+  --aos-cream: #fbf5ea;
+  --aos-cream-deep: #f4eee4;
+  --aos-card: #f9f2e6;
+  --aos-ink: #0a1e4a;
+  --aos-charcoal: #1b1920;
+
   /* Map-only. The palette has no deep red; this one is picked to sit with the
      terracotta roofs in the La Strada artwork rather than fight them, and is
      used for the Profit line and nothing else. */
   --aos-deep-red: #9e3b2f;
 
-  --background: var(--aos-off-white);
-  --foreground: var(--aos-navy);
+  --background: var(--aos-cream);
+  --foreground: var(--aos-ink);
+
+  /*
+   * The glass effect, gated.
+   *
+   * `backdrop-filter: blur` is the reference's card style and is expensive on
+   * mobile Safari — every blurred element re-samples what is behind it on each
+   * scroll frame. So it is used in exactly two places (the bottom nav and the
+   * stat strip over the Piazza hero), never on cards over plain ground, and it
+   * is switched from one variable so a phone test that finds it too costly can
+   * turn it off everywhere without touching a component. Set to `none` to
+   * disable; the surfaces fall back to their translucent fill and still read.
+   */
+  --aos-glass-blur: blur(14px);
 }
 
 @theme inline {
@@ -38,6 +68,19 @@
   --color-off-white: var(--aos-off-white);
   --color-deep-red: var(--aos-deep-red);
 
+  --color-cream: var(--aos-cream);
+  --color-cream-deep: var(--aos-cream-deep);
+  --color-card: var(--aos-card);
+  --color-ink: var(--aos-ink);
+  --color-charcoal: var(--aos-charcoal);
+
+  /* Card corners are generous in the reference; pills are fully round. */
+  --radius-card: 1.25rem;
+
+  /* One soft shadow, warm-tinted so it sits on cream rather than greying it. */
+  --shadow-soft: 0 1px 2px rgb(10 30 74 / 0.04), 0 8px 24px -12px rgb(10 30 74 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(10 30 74 / 0.05), 0 16px 40px -16px rgb(10 30 74 / 0.18);
+
   /* Display = Cormorant Garamond, body/UI = Inter, numbers/data = JetBrains Mono */
   --font-display: var(--font-cormorant), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
@@ -52,18 +95,20 @@
    * mobile and desktop are both first-class (standing rule 1), and a scale that
    * needs remembering at each use is a scale that drifts.
    *
-   * The largest sizes are meant for Cormorant italic, which runs small for its
-   * point size and carries the display voice.
+   * The largest sizes are meant for Cormorant roman at medium weight. It runs
+   * small for its point size, which is why the numbers are bigger than they
+   * look. Italic is reserved for quotations — L'Editoriale sets headings upright.
    */
-  --text-display: clamp(2.25rem, 1.6rem + 2.8vw, 3.5rem);
-  --text-display--line-height: 1.05;
-  --text-display--letter-spacing: -0.01em;
+  --text-display: clamp(2.75rem, 1.9rem + 3.6vw, 4.25rem);
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.015em;
 
-  --text-title: clamp(1.75rem, 1.45rem + 1.4vw, 2.25rem);
-  --text-title--line-height: 1.15;
+  --text-title: clamp(2rem, 1.6rem + 1.8vw, 2.75rem);
+  --text-title--line-height: 1.08;
+  --text-title--letter-spacing: -0.01em;
 
-  --text-heading: 1.25rem;
-  --text-heading--line-height: 1.3;
+  --text-heading: 1.375rem;
+  --text-heading--line-height: 1.25;
 
   --text-body: 1rem;
   --text-body--line-height: 1.6;
@@ -74,10 +119,14 @@
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.4;
 
-  /* The mono uppercase label used above headings throughout. */
-  --text-eyebrow: 0.7rem;
+  /*
+   * The tracked uppercase label above and below headings — "REFLECT. FOCUS.
+   * MAKE IT COUNT." Set in Inter now rather than the mono: the reference uses
+   * a sans for these, and the mono keeps its one job, which is numbers.
+   */
+  --text-eyebrow: 0.6875rem;
   --text-eyebrow--line-height: 1.2;
-  --text-eyebrow--letter-spacing: 0.22em;
+  --text-eyebrow--letter-spacing: 0.18em;
 }
 
 /*
@@ -102,4 +151,18 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+@layer utilities {
+  /* See --aos-glass-blur. Fill first, so the surface reads with the blur off. */
+  .glass {
+    background-color: rgb(251 245 234 / 0.82);
+    -webkit-backdrop-filter: var(--aos-glass-blur);
+    backdrop-filter: var(--aos-glass-blur);
+  }
+  .glass-dark {
+    background-color: rgb(27 25 32 / 0.72);
+    -webkit-backdrop-filter: var(--aos-glass-blur);
+    backdrop-filter: var(--aos-glass-blur);
+  }
 }

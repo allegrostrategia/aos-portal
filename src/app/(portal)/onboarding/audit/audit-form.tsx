@@ -35,7 +35,7 @@ export function AuditForm({
             <Eyebrow>
               {index + 1} · {stationNames[question.stationSlug] ?? "aOS"}
             </Eyebrow>
-            <p className="mt-2 mb-4 text-body font-medium text-navy">
+            <p className="mt-2 mb-4 text-body font-medium text-ink">
               {question.prompt}
             </p>
           </legend>
@@ -44,13 +44,13 @@ export function AuditForm({
             {question.options.map((option) => (
               <label
                 key={option.value}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-navy/10 bg-white/60 px-3 py-2.5 text-small text-navy transition hover:border-navy/25 has-checked:border-orange has-checked:bg-blush/15"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-ink/10 bg-card px-3 py-2.5 text-small text-ink transition hover:border-ink/25 has-checked:border-orange has-checked:bg-blush/15"
               >
                 <input
                   type="radio"
                   name={question.id}
                   value={option.value}
-                  className="mt-0.5 size-4 accent-navy"
+                  className="mt-0.5 size-4 accent-orange"
                   required
                 />
                 {option.label}

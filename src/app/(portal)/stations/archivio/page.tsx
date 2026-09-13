@@ -61,7 +61,7 @@ export default async function ArchivioPage() {
       recommendedTraining={
         entries.length === 0 ? (
           <Card>
-            <p className="text-small text-navy/70">
+            <p className="text-small text-ink/70">
               Nothing here yet. Your first hot seat build lands here
               automatically — and anything you run that only exists in your head
               is worth writing down before it has to be explained in a hurry.
@@ -78,7 +78,7 @@ export default async function ArchivioPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
                     <Link
                       href={`/stations/archivio/${entry.id}`}
-                      className="text-body font-medium text-navy underline decoration-orange decoration-2 underline-offset-4"
+                      className="text-body font-medium text-ink underline decoration-orange decoration-2 underline-offset-4"
                     >
                       {entry.title}
                     </Link>
@@ -88,13 +88,13 @@ export default async function ArchivioPage() {
                   </div>
 
                   {sop && !isComplete(sop) ? (
-                    <p className="mt-1 text-caption text-navy/60">
+                    <p className="mt-1 text-caption text-ink/60">
                       Still to add: {missing.join(", ")}.
                     </p>
                   ) : null}
 
                   {sop && isComplete(sop) ? (
-                    <p className="mt-1 text-caption text-navy/50">
+                    <p className="mt-1 text-caption text-ink/50">
                       {sop.steps.length}{" "}
                       {sop.steps.length === 1 ? "step" : "steps"} · ready to hand
                       over

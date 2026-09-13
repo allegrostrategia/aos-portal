@@ -38,7 +38,7 @@ export function WeeklyLogForm({
         <Eyebrow>What you moved on</Eyebrow>
 
         {roadmapItems.length === 0 ? (
-          <p className="mt-3 text-small text-navy/70">
+          <p className="mt-3 text-small text-ink/70">
             Your roadmap arrives at your 1:1 in week four — until then there
             isn&rsquo;t a checklist to tick. Use the box below for anything worth
             remembering about the week.
@@ -48,7 +48,7 @@ export function WeeklyLogForm({
             {Object.entries(byPhase).map(([phase, items]) => (
               <div key={phase}>
                 {phase ? (
-                  <p className="mb-2 text-small font-medium text-navy/80">
+                  <p className="mb-2 text-small font-medium text-ink/80">
                     {phase}
                   </p>
                 ) : null}
@@ -56,7 +56,7 @@ export function WeeklyLogForm({
                   {items.map((item) => (
                     <label
                       key={item.key}
-                      className="flex cursor-pointer items-start gap-2.5 rounded-md px-2 py-1.5 text-small text-navy transition hover:bg-white/60"
+                      className="flex cursor-pointer items-start gap-2.5 rounded-md px-2 py-1.5 text-small text-ink transition hover:bg-card"
                     >
                       <input
                         type="checkbox"
@@ -73,7 +73,7 @@ export function WeeklyLogForm({
                           // The week is the server's to decide, not the page's.
                           void saveLogDraft(new FormData(form));
                         }}
-                        className="mt-0.5 size-4 accent-navy"
+                        className="mt-0.5 size-4 accent-orange"
                       />
                       {item.label}
                     </label>
@@ -100,7 +100,7 @@ export function WeeklyLogForm({
       {state?.notice ? null : (
         <div>
           <SubmitButton full={false}>Sign this week&rsquo;s log</SubmitButton>
-          <p className="mt-2 text-small text-navy/60">
+          <p className="mt-2 text-small text-ink/60">
             Once it&rsquo;s in, it stays as written — it&rsquo;s a dated entry,
             not a document.
           </p>

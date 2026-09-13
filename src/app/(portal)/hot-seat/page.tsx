@@ -42,7 +42,7 @@ export default async function HotSeatPage() {
 
       {!session ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             The next session hasn&rsquo;t been scheduled yet. It&rsquo;s always
             week one of the month — Nina will confirm the time.
           </p>
@@ -51,7 +51,7 @@ export default async function HotSeatPage() {
         <>
           <Card className="mb-5">
             <Eyebrow>When</Eyebrow>
-            <p className="font-display mt-2 text-heading text-navy italic">
+            <p className="font-display mt-2 text-heading font-medium text-ink">
               {session.scheduled_for
                 ? formatSessionTime(session.scheduled_for)
                 : "Week one — time to be confirmed"}
@@ -62,13 +62,13 @@ export default async function HotSeatPage() {
                   href={session.zoom_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-small text-navy underline decoration-orange decoration-2 underline-offset-4"
+                  className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
                 >
                   Join on Zoom
                 </a>
               </p>
             ) : (
-              <p className="mt-2 text-small text-navy/60">
+              <p className="mt-2 text-small text-ink/60">
                 The link appears here once Nina sets it.
               </p>
             )}
@@ -81,7 +81,7 @@ export default async function HotSeatPage() {
               quietly outrun what happens. */}
           <Card className="mb-5 bg-lemon/25">
             <Eyebrow tone="accent">What actually happens</Eyebrow>
-            <p className="mt-2 text-small text-navy/80">
+            <p className="mt-2 text-small text-ink/80">
               Nina arrives having already read your tracked time and your
               submission, with a specific direction drafted. The live part is
               confirming that direction and building against it with her
@@ -92,7 +92,7 @@ export default async function HotSeatPage() {
 
           {isActive ? (
             <>
-              <h2 className="font-display mt-8 mb-3 text-heading text-navy italic">
+              <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
                 {submission?.submitted_at ? "Your submission" : "Submit yours"}
               </h2>
               <SubmissionForm sessionId={session.id} submission={submission} />
@@ -100,7 +100,7 @@ export default async function HotSeatPage() {
           ) : (
             <Card>
               <Eyebrow>Not yet</Eyebrow>
-              <p className="mt-2 text-small text-navy/80">
+              <p className="mt-2 text-small text-ink/80">
                 The hot seat opens once you&rsquo;re active. It&rsquo;s built
                 around a live challenge that comes out of your first roadmap, so
                 there&rsquo;s nothing to work on until that conversation has

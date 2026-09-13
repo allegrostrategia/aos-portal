@@ -48,11 +48,11 @@ export default async function AuditPage() {
         <PageHeader eyebrow="Grand Hotel Riposo" title="Your audit" />
         <Card>
           <Eyebrow>Submitted</Eyebrow>
-          <p className="mt-2 text-small text-navy/80">
+          <p className="mt-2 text-small text-ink/80">
             Your answers are in, and Nina has them ahead of your 1:1. The deeper
             questions happen live in that conversation rather than on a form.
           </p>
-          <p className="mt-3 text-small text-navy/60">
+          <p className="mt-3 text-small text-ink/60">
             Changed your mind about an answer? Mention it on the call — it&rsquo;s
             a point-in-time snapshot, so it isn&rsquo;t edited after the fact.
           </p>
@@ -60,7 +60,7 @@ export default async function AuditPage() {
         <p className="mt-8">
           <Link
             href="/onboarding"
-            className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+            className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
             ← Back to your first weeks
           </Link>

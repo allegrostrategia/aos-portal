@@ -45,7 +45,7 @@ export default async function RevealDocumentPage({
   const firstName = member.full_name.split(" ")[0];
 
   return (
-    <main className="mx-auto w-full max-w-[46rem] bg-white px-8 py-10 text-navy print:px-0 print:py-0">
+    <main className="mx-auto w-full max-w-[46rem] bg-white px-8 py-10 text-ink print:px-0 print:py-0">
       <style>{`
         @media print {
           @page { margin: 16mm; }
@@ -56,22 +56,22 @@ export default async function RevealDocumentPage({
         }
       `}</style>
 
-      <div className="no-print mb-8 rounded-lg border border-navy/15 bg-lemon/25 px-4 py-3">
-        <p className="text-small text-navy/80">
+      <div className="no-print mb-8 rounded-lg border border-ink/15 bg-lemon/25 px-4 py-3">
+        <p className="text-small text-ink/80">
           Print this page and choose <strong className="font-medium">Save as PDF</strong>.
           It&rsquo;s a snapshot of the 1:1 — it won&rsquo;t change as their roadmap does.
         </p>
       </div>
 
       <header className="mb-10">
-        <p className="font-mono text-eyebrow text-navy/50 uppercase">
+        <p className="font-mono text-eyebrow text-ink/50 uppercase">
           Prepared by Nina
         </p>
-        <h1 className="font-display mt-3 text-title text-navy italic">
+        <h1 className="font-display mt-3 text-title font-medium text-ink">
           Welcome to aOS, {firstName}.
         </h1>
 
-        <dl className="mt-6 grid gap-4 border-t border-navy/15 pt-4 sm:grid-cols-3">
+        <dl className="mt-6 grid gap-4 border-t border-ink/15 pt-4 sm:grid-cols-3">
           {[
             ["Prepared", reveal.preparedOn ? formatCalendarDate(reveal.preparedOn) : null],
             ["Baseline", reveal.baseline || null],
@@ -79,10 +79,10 @@ export default async function RevealDocumentPage({
           ].map(([label, value]) =>
             value ? (
               <div key={label}>
-                <dt className="font-mono text-eyebrow text-navy/50 uppercase">
+                <dt className="font-mono text-eyebrow text-ink/50 uppercase">
                   {label}
                 </dt>
-                <dd className="mt-1 text-small text-navy">{value}</dd>
+                <dd className="mt-1 text-small text-ink">{value}</dd>
               </div>
             ) : null,
           )}
@@ -90,17 +90,17 @@ export default async function RevealDocumentPage({
       </header>
 
       <section className="mb-10">
-        <h2 className="font-display text-heading text-navy italic">
+        <h2 className="font-display text-heading font-medium text-ink">
           The honest picture
         </h2>
-        <p className="text-small text-navy/60">
+        <p className="text-small text-ink/60">
           What your audit and our call actually showed.
         </p>
 
         <div className="mt-4 flex flex-col gap-4">
           {reveal.inTheirWords ? (
             <blockquote className="border-l-2 border-orange pl-4">
-              <p className="font-display text-heading text-navy italic">
+              <p className="font-display text-heading text-ink italic">
                 &ldquo;{reveal.inTheirWords}&rdquo;
               </p>
             </blockquote>
@@ -112,10 +112,10 @@ export default async function RevealDocumentPage({
           ].map(([heading, body]) =>
             body ? (
               <div key={heading}>
-                <h3 className="font-mono text-eyebrow text-navy/50 uppercase">
+                <h3 className="font-mono text-eyebrow text-ink/50 uppercase">
                   {heading}
                 </h3>
-                <p className="mt-1 text-body whitespace-pre-wrap text-navy/85">
+                <p className="mt-1 text-body whitespace-pre-wrap text-ink/85">
                   {body}
                 </p>
               </div>
@@ -126,10 +126,10 @@ export default async function RevealDocumentPage({
 
       {reveal.priorities.length > 0 ? (
         <section className="mb-10">
-          <h2 className="font-display text-heading text-navy italic">
+          <h2 className="font-display text-heading font-medium text-ink">
             Your first {reveal.priorities.length === 3 ? "three " : ""}priorities
           </h2>
-          <p className="text-small text-navy/60">
+          <p className="text-small text-ink/60">
             Where La Strada starts, and why.
           </p>
 
@@ -140,11 +140,11 @@ export default async function RevealDocumentPage({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <h3 className="text-body font-medium text-navy">
+                  <h3 className="text-body font-medium text-ink">
                     {priority.title}
                   </h3>
                   {priority.body ? (
-                    <p className="mt-1 text-small whitespace-pre-wrap text-navy/80">
+                    <p className="mt-1 text-small whitespace-pre-wrap text-ink/80">
                       {priority.body}
                     </p>
                   ) : null}
@@ -157,18 +157,18 @@ export default async function RevealDocumentPage({
 
       {reveal.roadNote ? (
         <section className="mb-10">
-          <h2 className="font-display text-heading text-navy italic">Your road</h2>
-          <p className="text-small text-navy/60">
+          <h2 className="font-display text-heading font-medium text-ink">Your road</h2>
+          <p className="text-small text-ink/60">
             La Strada — where you&rsquo;re starting, and what&rsquo;s ahead.
           </p>
-          <p className="mt-3 text-body whitespace-pre-wrap text-navy/85">
+          <p className="mt-3 text-body whitespace-pre-wrap text-ink/85">
             {reveal.roadNote}
           </p>
         </section>
       ) : null}
 
-      <footer className="border-t border-navy/15 pt-4">
-        <p className="text-caption text-navy/50">
+      <footer className="border-t border-ink/15 pt-4">
+        <p className="text-caption text-ink/50">
           aOS · Allegro Strategia · prepared for {member.full_name}
         </p>
       </footer>

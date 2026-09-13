@@ -50,20 +50,20 @@ export default async function AdminLibraryPage({
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start">
         <section>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             {editing ? "Edit content" : "Add content"}
           </h2>
           <ContentForm stations={stations} editing={editing} />
         </section>
 
         <section>
-          <h2 className="font-display mb-3 text-heading text-navy italic">
+          <h2 className="font-display mb-3 text-heading font-medium text-ink">
             In the library ({content.length})
           </h2>
 
           {content.length === 0 ? (
             <Card>
-              <p className="text-small text-navy/70">
+              <p className="text-small text-ink/70">
                 Nothing yet. The full content list and its station mapping is in
                 Training_Library_Grouping.md.
               </p>
@@ -77,10 +77,10 @@ export default async function AdminLibraryPage({
                     {items.map((item) => (
                       <li
                         key={item.id}
-                        className="rounded-lg border border-navy/10 bg-white/60 px-4 py-3"
+                        className="rounded-2xl border border-ink/8 bg-card shadow-soft px-4 py-3"
                       >
                         <div className="flex flex-wrap items-baseline justify-between gap-3">
-                          <p className="font-medium text-navy">
+                          <p className="font-medium text-ink">
                             {item.is_hot_seat_buildable ? "★ " : ""}
                             {item.title}
                           </p>
@@ -92,7 +92,7 @@ export default async function AdminLibraryPage({
                             {item.job ? <Badge tone="gold">{JOB_LABEL[item.job]}</Badge> : null}
                           </div>
                         </div>
-                        <p className="mt-1 text-caption text-navy/50">
+                        <p className="mt-1 text-caption text-ink/50">
                           {item.published_at ? "Published" : "Draft"}
                           {item.available_during_onboarding
                             ? " · in the onboarding set"
@@ -103,7 +103,7 @@ export default async function AdminLibraryPage({
                         <div className="mt-3 flex flex-wrap items-center gap-4">
                           <Link
                             href={`/admin/library?edit=${item.id}`}
-                            className="text-caption text-navy underline decoration-orange decoration-2 underline-offset-4"
+                            className="text-caption text-ink underline decoration-orange decoration-2 underline-offset-4"
                           >
                             Edit
                           </Link>
@@ -117,7 +117,7 @@ export default async function AdminLibraryPage({
                             />
                             <button
                               type="submit"
-                              className="text-caption text-navy/70 underline underline-offset-4 transition hover:text-navy"
+                              className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
                             >
                               {item.published_at ? "Unpublish" : "Publish"}
                             </button>
@@ -127,14 +127,14 @@ export default async function AdminLibraryPage({
                               and irreversible; unpublishing is the everyday
                               correction and sits first for that reason. */}
                           <details className="inline">
-                            <summary className="cursor-pointer list-none text-caption text-navy/40 transition hover:text-navy">
+                            <summary className="cursor-pointer list-none text-caption text-ink/40 transition hover:text-ink">
                               Remove
                             </summary>
                             <form action={deleteContent} className="mt-2">
                               <input type="hidden" name="id" value={item.id} />
                               <button
                                 type="submit"
-                                className="rounded-md border border-orange/40 px-2 py-1 text-caption text-navy transition hover:bg-blush/20"
+                                className="rounded-md border border-orange/40 px-2 py-1 text-caption text-ink transition hover:bg-blush/20"
                               >
                                 Delete &ldquo;{item.title}&rdquo; permanently
                               </button>

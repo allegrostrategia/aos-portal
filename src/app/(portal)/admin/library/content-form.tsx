@@ -10,7 +10,7 @@ import type { TrainingContent } from "@/lib/library/queries";
 import { AssetField } from "./asset-field";
 
 const SELECT =
-  "w-full rounded-md border border-navy/15 bg-white px-3 py-2.5 text-body text-navy";
+  "w-full rounded-md border border-ink/15 bg-white px-3 py-2.5 text-body text-ink";
 
 function Select({
   label,
@@ -26,7 +26,7 @@ function Select({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-small font-medium text-navy">
+      <label htmlFor={name} className="text-small font-medium text-ink">
         {label}
       </label>
       <select id={name} name={name} className={SELECT} {...props}>
@@ -36,7 +36,7 @@ function Select({
           </option>
         ))}
       </select>
-      {hint ? <p className="text-caption text-navy/60">{hint}</p> : null}
+      {hint ? <p className="text-caption text-ink/60">{hint}</p> : null}
     </div>
   );
 }
@@ -75,12 +75,12 @@ export function ContentForm({
 
       {editing ? (
         <div className="rounded-xl border-2 border-orange/40 bg-blush/15 px-5 py-3">
-          <p className="text-body text-navy">
+          <p className="text-body text-ink">
             Editing <strong className="font-medium">{editing.title}</strong>
           </p>
           <a
             href="/admin/library"
-            className="text-caption text-navy/60 underline underline-offset-4"
+            className="text-caption text-ink/60 underline underline-offset-4"
           >
             Cancel and add something new instead
           </a>
@@ -115,7 +115,7 @@ export function ContentForm({
 
       <Card>
         <Eyebrow>Tagging</Eyebrow>
-        <p className="mt-1 mb-3 text-caption text-navy/60">
+        <p className="mt-1 mb-3 text-caption text-ink/60">
           Both layers matter: topic organises it, job is what the recommendation
           engine reads. Untagged content browses fine and is invisible to the
           diagnostic.

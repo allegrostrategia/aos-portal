@@ -105,7 +105,7 @@ function PlaceLabel({
   href?: string;
 }) {
   const content = (
-    <span className="block rounded-md bg-white/95 px-2.5 py-1 text-center text-[0.65rem] font-medium whitespace-nowrap text-navy shadow-md sm:text-caption">
+    <span className="block rounded-md bg-white/95 px-2.5 py-1 text-center text-[0.65rem] font-medium whitespace-nowrap text-ink shadow-md sm:text-caption">
       {children}
     </span>
   );
@@ -205,7 +205,7 @@ export function LaStradaMap({
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-small text-navy/60">
+        <p className="text-small text-ink/60">
           {locked
             ? "Every room opens when you're active."
             : `${placed.filter((s) => s.visited).length} of ${placed.length} visited`}
@@ -221,7 +221,7 @@ export function LaStradaMap({
               className={`rounded-md px-3 py-1.5 text-small transition ${
                 zoom === level
                   ? "bg-navy text-white"
-                  : "border border-navy/20 text-navy/70 hover:text-navy"
+                  : "border border-ink/20 text-ink/70 hover:text-ink"
               }`}
             >
               {index === 0 ? "Fit" : index === 1 ? "Closer" : "Closest"}
@@ -263,7 +263,7 @@ export function LaStradaMap({
         }}
         // The container the marker sizes are measured against.
         style={{ containerType: "inline-size" }}
-        className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-navy/10 bg-sky/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange ${
+        className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-ink/10 bg-sky/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange ${
           dragging ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
       >
@@ -375,7 +375,7 @@ export function LaStradaMap({
                     reference's arrangement, and it keeps the label off the
                     photograph rather than sitting over the building. */}
                 <span
-                  className={`pointer-events-none absolute bottom-full left-1/2 mb-1 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center text-[0.6rem] font-medium whitespace-nowrap text-navy shadow-md transition sm:text-caption ${
+                  className={`pointer-events-none absolute bottom-full left-1/2 mb-1 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center text-[0.6rem] font-medium whitespace-nowrap text-ink shadow-md transition sm:text-caption ${
                     zoom === 100 ? "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : "opacity-100"
                   }`}
                 >
@@ -483,7 +483,7 @@ export function LaStradaMap({
                     className="block h-1 w-6 shrink-0 rounded-full"
                     style={{ backgroundColor: strokeColourFor(line) }}
                   />
-                  <span className="text-caption whitespace-nowrap text-navy/80">
+                  <span className="text-caption whitespace-nowrap text-ink/80">
                     {line.label}
                   </span>
                 </li>
@@ -494,7 +494,7 @@ export function LaStradaMap({
                   className="block size-2.5 shrink-0 rounded-full border-2 bg-white"
                   style={{ borderColor: "var(--aos-navy)" }}
                 />
-                <span className="text-caption whitespace-nowrap text-navy/80">
+                <span className="text-caption whitespace-nowrap text-ink/80">
                   Your Story Stations
                 </span>
               </li>
@@ -513,12 +513,12 @@ export function LaStradaMap({
               className="block h-1 w-5 rounded-full"
               style={{ backgroundColor: strokeColourFor(line) }}
             />
-            <span className="text-caption text-navy/60">{line.label}</span>
+            <span className="text-caption text-ink/60">{line.label}</span>
           </span>
         ))}
       </div>
 
-      <p className="mt-2 text-caption text-navy/50">
+      <p className="mt-2 text-caption text-ink/50">
         Drag or scroll to move around, or tab to the map and use the arrow keys.
         A dot on a photo marks somewhere you&rsquo;ve been.
       </p>

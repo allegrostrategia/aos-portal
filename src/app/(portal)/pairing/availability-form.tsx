@@ -39,7 +39,7 @@ export function AvailabilityForm({
                 <th
                   key={period.key}
                   scope="col"
-                  className="pb-2 text-caption font-medium text-navy/60"
+                  className="pb-2 text-caption font-medium text-ink/60"
                 >
                   {period.label}
                 </th>
@@ -51,7 +51,7 @@ export function AvailabilityForm({
               <tr key={day.key}>
                 <th
                   scope="row"
-                  className="py-1 text-left text-small font-normal text-navy/70"
+                  className="py-1 text-left text-small font-normal text-ink/70"
                 >
                   {day.label}
                 </th>
@@ -68,7 +68,7 @@ export function AvailabilityForm({
                           name="slots"
                           value={slot}
                           defaultChecked={selected.includes(slot)}
-                          className="size-5 accent-navy"
+                          className="size-5 accent-orange"
                         />
                       </label>
                     </td>
@@ -80,7 +80,7 @@ export function AvailabilityForm({
         </table>
       </div>
 
-      <p className="text-caption text-navy/60">
+      <p className="text-caption text-ink/60">
         Tick anything that could work. Nothing ticked means you&rsquo;re sitting
         this month out, which is a fine answer.
       </p>

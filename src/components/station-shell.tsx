@@ -51,11 +51,11 @@ export function StationShell({
 
         <div className="mt-5">
           <Eyebrow tone="accent">La Strada</Eyebrow>
-          <h1 className="font-display mt-2 text-display text-navy italic">
+          <h1 className="font-display mt-2 text-display font-medium text-ink">
             {station.name}
           </h1>
           {station.description ? (
-            <p className="mt-3 max-w-2xl text-body text-navy/70">
+            <p className="mt-3 max-w-2xl text-body text-ink/70">
               {station.description}
             </p>
           ) : null}
@@ -67,7 +67,7 @@ export function StationShell({
         {whyThisMatters ? (
           <Card className="lg:col-span-2">
             <Eyebrow>Why this matters</Eyebrow>
-            <div className="mt-3 text-body text-navy/80">{whyThisMatters}</div>
+            <div className="mt-3 text-body text-ink/80">{whyThisMatters}</div>
           </Card>
         ) : null}
 
@@ -75,7 +75,7 @@ export function StationShell({
         {currentPriority ? (
           <Card>
             <Eyebrow>Your current priority</Eyebrow>
-            <div className="mt-3 text-body text-navy/80">{currentPriority}</div>
+            <div className="mt-3 text-body text-ink/80">{currentPriority}</div>
           </Card>
         ) : null}
 
@@ -111,7 +111,7 @@ export function StationShell({
       <div className="mt-8">
         <Link
           href="/stations"
-          className="text-small text-navy/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-ink"
         >
           ← Return to La Strada
         </Link>

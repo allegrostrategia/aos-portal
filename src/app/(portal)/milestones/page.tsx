@@ -48,7 +48,7 @@ export default async function MilestonesPage() {
       <p className="mb-4">
         <Link
           href="/piazza"
-          className="text-small text-navy/70 underline underline-offset-4 transition hover:text-navy"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           ← Piazza
         </Link>
@@ -62,11 +62,11 @@ export default async function MilestonesPage() {
 
       <Card className="mb-6 bg-sky/15">
         <Eyebrow>Total</Eyebrow>
-        <p className="font-mono mt-1 text-title text-navy">
+        <p className="font-mono mt-1 text-title text-ink">
           {formatHours(journey.total)} hrs
         </p>
         {hours.weeklyRate > 0 ? (
-          <p className="mt-2 text-small text-navy/70">
+          <p className="mt-2 text-small text-ink/70">
             Your builds add{" "}
             <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
             every qualifying week.
@@ -74,7 +74,7 @@ export default async function MilestonesPage() {
         ) : null}
       </Card>
 
-      <h2 className="font-display mb-3 text-heading text-navy italic">
+      <h2 className="font-display mb-3 text-heading font-medium text-ink">
         The path
       </h2>
 
@@ -98,22 +98,22 @@ export default async function MilestonesPage() {
                   step.reached
                     ? "border-gold/50 bg-lemon/25"
                     : isNext
-                      ? "border-navy/25"
+                      ? "border-ink/25"
                       : ""
                 }
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <p className="font-mono text-heading text-navy">
+                  <p className="font-mono text-heading text-ink">
                     {step.target} hrs
                   </p>
                   {step.reached ? (
-                    <p className="text-small text-navy/70">
+                    <p className="text-small text-ink/70">
                       {step.reachedInWeek
                         ? `Passed in the week of ${formatCalendarDate(step.reachedInWeek)}`
                         : "Passed"}
                     </p>
                   ) : (
-                    <p className="text-small text-navy/60">
+                    <p className="text-small text-ink/60">
                       {step.toGo} to go
                     </p>
                   )}
@@ -122,7 +122,7 @@ export default async function MilestonesPage() {
                 {/* The band between the previous threshold and this one, so the
                     last stretch to 750 doesn't look static for months. */}
                 {!step.reached ? (
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-navy/10">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink/10">
                     <div
                       className="h-full rounded-full bg-orange"
                       style={{ width: `${Math.round(bandFraction * 100)}%` }}
@@ -135,31 +135,31 @@ export default async function MilestonesPage() {
         })}
       </ol>
 
-      <h2 className="font-display mb-3 text-heading text-navy italic">
+      <h2 className="font-display mb-3 text-heading font-medium text-ink">
         Week by week
       </h2>
 
       {journey.weeks.length === 0 ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             Nothing banked yet. Hours start accruing from the first week you log
             ten hours and submit, once a build of yours is live.
           </p>
         </Card>
       ) : (
         <Card padded={false}>
-          <ul className="divide-y divide-navy/10">
+          <ul className="divide-y divide-ink/10">
             {[...journey.weeks].reverse().map((week) => (
               <li
                 key={week.weekStartDate}
                 className="flex flex-wrap items-baseline justify-between gap-3 px-5 py-3"
               >
-                <span className="text-small text-navy/70">
+                <span className="text-small text-ink/70">
                   Week of {formatCalendarDate(week.weekStartDate)}
                 </span>
-                <span className="font-mono text-small text-navy tabular-nums">
+                <span className="font-mono text-small text-ink tabular-nums">
                   {week.hours > 0 ? `+${formatHours(week.hours)}` : "—"}
-                  <span className="text-navy/40">
+                  <span className="text-ink/40">
                     {" "}
                     · {formatHours(week.runningTotal)}
                   </span>

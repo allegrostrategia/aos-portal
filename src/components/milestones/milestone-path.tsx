@@ -89,7 +89,7 @@ export function MilestonePath({
     <figure
       aria-hidden
       style={{ ...MARKER_SIZE, containerType: "inline-size" }}
-      className="relative mb-8 overflow-hidden rounded-xl border border-navy/10"
+      className="relative mb-8 overflow-hidden rounded-xl border border-ink/10"
     >
       <Image
         src="/illustrations/milestone-path.png"
@@ -169,7 +169,7 @@ export function MilestonePath({
               fontSize: "var(--marker-text)",
             }}
             className={`font-mono absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold shadow-lg ${
-              done ? "bg-orange text-white" : "bg-white/95 text-navy"
+              done ? "bg-orange text-white" : "bg-white/95 text-ink"
             }`}
           >
             {point.hours}
@@ -185,7 +185,7 @@ export function MilestonePath({
           width: "var(--here)",
           height: "var(--here)",
         }}
-        className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-navy shadow-lg ring-2 ring-navy/30"
+        className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-navy shadow-lg ring-2 ring-ink/30"
       />
     </figure>
   );

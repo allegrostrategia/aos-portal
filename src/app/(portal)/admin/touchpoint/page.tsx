@@ -41,7 +41,7 @@ export default async function TouchpointPage() {
 
       {total === 0 ? (
         <Card>
-          <p className="text-small text-navy/70">
+          <p className="text-small text-ink/70">
             Nothing from the last fortnight. Members write here as part of
             signing off their week, so this fills up towards Friday.
           </p>
@@ -50,16 +50,16 @@ export default async function TouchpointPage() {
         <div className="flex flex-col gap-8">
           {weeks.map((week) => (
             <section key={week.weekStart}>
-              <h2 className="font-display mb-3 text-heading text-navy italic">
+              <h2 className="font-display mb-3 text-heading font-medium text-ink">
                 Week of {DAY.format(new Date(week.weekStart))}
-                <span className="ml-2 font-sans text-small font-normal text-navy/50">
+                <span className="ml-2 font-sans text-small font-normal text-ink/50">
                   to {DAY.format(new Date(addDays(week.weekStart, 6)))}
                 </span>
               </h2>
 
               {week.entries.length === 0 ? (
                 <Card>
-                  <p className="text-small text-navy/60">Nothing this week.</p>
+                  <p className="text-small text-ink/60">Nothing this week.</p>
                 </Card>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -67,21 +67,21 @@ export default async function TouchpointPage() {
                     <Card key={entry.id}>
                       <div className="flex flex-wrap items-baseline justify-between gap-3">
                         <div>
-                          <p className="font-medium text-navy">
+                          <p className="font-medium text-ink">
                             {entry.members?.full_name ?? "Member"}
                           </p>
-                          <p className="text-caption text-navy/50">
+                          <p className="text-caption text-ink/50">
                             {entry.members?.email}
                           </p>
                         </div>
-                        <p className="font-mono text-caption text-navy/50">
+                        <p className="font-mono text-caption text-ink/50">
                           {entry.submitted_at
                             ? WHEN.format(new Date(entry.submitted_at))
                             : "not signed off"}
                         </p>
                       </div>
 
-                      <p className="mt-3 border-l-2 border-orange/40 pl-3 text-body text-navy/80">
+                      <p className="mt-3 border-l-2 border-orange/40 pl-3 text-body text-ink/80">
                         {entry.other_activity}
                       </p>
                     </Card>
@@ -95,7 +95,7 @@ export default async function TouchpointPage() {
 
       <Card className="mt-8">
         <Eyebrow>Answering these</Eyebrow>
-        <p className="mt-2 text-small text-navy/70">
+        <p className="mt-2 text-small text-ink/70">
           Live in portal chat during the Monday window, by voice note if
           that&rsquo;s quicker. Chat is Step 11 — until then these are readable
           here and answerable wherever you already talk to members.

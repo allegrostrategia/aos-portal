@@ -26,11 +26,11 @@ export default async function NoAccessPage() {
         <p className="font-mono text-eyebrow text-orange uppercase">
           Allegro Strategia
         </p>
-        <h1 className="font-display mt-3 text-title text-navy italic">
+        <h1 className="font-display mt-3 text-title font-medium text-ink">
           {cancelled ? "Your membership has ended" : "Your account isn’t ready yet"}
         </h1>
 
-        <p className="mt-4 text-small text-navy/70">
+        <p className="mt-4 text-small text-ink/70">
           {cancelled ? (
             <>
               Nothing has been deleted — your logs, your roadmap and everything in
@@ -46,7 +46,7 @@ export default async function NoAccessPage() {
           )}
         </p>
 
-        <p className="mt-4 text-small text-navy/70">
+        <p className="mt-4 text-small text-ink/70">
           Email{" "}
           <a
             href="mailto:hello@allegrostrategia.com"
@@ -60,7 +60,7 @@ export default async function NoAccessPage() {
         <form action={signOut} className="mt-8">
           <button
             type="submit"
-            className="text-small text-navy/60 underline underline-offset-4 transition hover:text-navy"
+            className="text-small text-ink/60 underline underline-offset-4 transition hover:text-ink"
           >
             Sign out
           </button>

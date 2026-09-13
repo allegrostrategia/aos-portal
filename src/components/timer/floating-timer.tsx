@@ -65,15 +65,15 @@ export function FloatingTimer({
     // Sits above the mobile bottom bar, and out of the way on desktop.
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:justify-end">
       {running ? (
-        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-navy/15 bg-white/95 py-2 pr-2 pl-4 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-ink/15 bg-white/95 py-2 pr-2 pl-4 shadow-lg backdrop-blur">
           <span
             aria-hidden
             className="size-2 animate-pulse rounded-full bg-orange"
           />
           <div className="min-w-0">
-            <p className="truncate text-caption text-navy/60">{categoryLabel}</p>
+            <p className="truncate text-caption text-ink/60">{categoryLabel}</p>
             <p
-              className="font-mono text-small text-navy tabular-nums"
+              className="font-mono text-small text-ink tabular-nums"
               // Announced only when it settles, not every second — a timer
               // reading itself aloud once a second is unusable.
               aria-live="off"
@@ -84,7 +84,7 @@ export function FloatingTimer({
           <form action={stopTimer}>
             <button
               type="submit"
-              className="rounded-full bg-navy px-4 py-2 text-small font-medium text-white transition hover:bg-navy/90"
+              className="rounded-full bg-ink px-4 py-2 text-small font-medium text-white transition hover:bg-ink/90"
             >
               Stop
             </button>
@@ -96,7 +96,7 @@ export function FloatingTimer({
           // Collapse on submit rather than syncing from `running` in an effect —
           // so stopping a timer later doesn't spring the picker back open.
           onSubmit={() => setPicking(false)}
-          className="pointer-events-auto w-full max-w-md rounded-xl border border-navy/15 bg-white/95 p-2 shadow-lg backdrop-blur"
+          className="pointer-events-auto w-full max-w-md rounded-xl border border-ink/15 bg-white/95 p-2 shadow-lg backdrop-blur"
         >
           <div className="flex items-center gap-2">
             <label htmlFor="category_slug" className="sr-only">
@@ -107,7 +107,7 @@ export function FloatingTimer({
               name="category_slug"
               defaultValue=""
               required
-              className="min-w-0 flex-1 rounded-md border border-navy/15 bg-white px-3 py-2 text-body text-navy"
+              className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-2 text-body text-ink"
             >
               <option value="" disabled>
                 What are you working on?
@@ -120,14 +120,14 @@ export function FloatingTimer({
             </select>
             <button
               type="submit"
-              className="rounded-md bg-navy px-4 py-2 text-small font-medium text-white transition hover:bg-navy/90"
+              className="rounded-md bg-ink px-4 py-2 text-small font-medium text-white transition hover:bg-ink/90"
             >
               Start
             </button>
             <button
               type="button"
               onClick={() => setPicking(false)}
-              className="px-2 text-small text-navy/60 transition hover:text-navy"
+              className="px-2 text-small text-ink/60 transition hover:text-ink"
               aria-label="Close"
             >
               ✕
@@ -145,21 +145,21 @@ export function FloatingTimer({
             name="note"
             type="text"
             placeholder="What specifically? (optional)"
-            className="mt-2 w-full rounded-md border border-navy/10 bg-white px-3 py-2 text-small text-navy placeholder:text-navy/40"
+            className="mt-2 w-full rounded-md border border-ink/10 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40"
           />
         </form>
       ) : (
-        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-navy/15 bg-white/90 p-1 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-ink/15 bg-white/90 p-1 shadow-lg backdrop-blur">
           <button
             type="button"
             onClick={() => setPicking(true)}
-            className="rounded-full px-4 py-2 text-small font-medium text-navy transition hover:bg-navy/5"
+            className="rounded-full px-4 py-2 text-small font-medium text-ink transition hover:bg-ink/5"
           >
             Start timer
           </button>
           <Link
             href="/log"
-            className="rounded-full px-3 py-2 text-small text-navy/60 transition hover:bg-navy/5 hover:text-navy"
+            className="rounded-full px-3 py-2 text-small text-ink/60 transition hover:bg-ink/5 hover:text-ink"
           >
             Log
           </Link>

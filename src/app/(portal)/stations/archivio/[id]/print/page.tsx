@@ -35,7 +35,7 @@ export default async function SopPrintPage({
   const sop = entry.sop;
 
   return (
-    <main className="mx-auto w-full max-w-[46rem] bg-white px-8 py-10 text-navy print:px-0 print:py-0">
+    <main className="mx-auto w-full max-w-[46rem] bg-white px-8 py-10 text-ink print:px-0 print:py-0">
       <style>{`
         @media print {
           @page { margin: 18mm; }
@@ -46,28 +46,28 @@ export default async function SopPrintPage({
         }
       `}</style>
 
-      <div className="no-print mb-8 rounded-lg border border-navy/15 bg-lemon/25 px-4 py-3">
-        <p className="text-small text-navy/80">
+      <div className="no-print mb-8 rounded-lg border border-ink/15 bg-lemon/25 px-4 py-3">
+        <p className="text-small text-ink/80">
           Print this page and choose <strong className="font-medium">Save as PDF</strong>{" "}
           as the destination — on a phone, use Share then Print.
         </p>
       </div>
 
-      <header className="mb-8 border-b border-navy/20 pb-5">
-        <p className="font-mono text-eyebrow text-navy/50 uppercase">
+      <header className="mb-8 border-b border-ink/20 pb-5">
+        <p className="font-mono text-eyebrow text-ink/50 uppercase">
           Standard operating procedure
         </p>
-        <h1 className="font-display mt-2 text-title text-navy italic">
+        <h1 className="font-display mt-2 text-title font-medium text-ink">
           {entry.title}
         </h1>
         {sop.owner ? (
-          <p className="mt-2 text-small text-navy/70">Owned by {sop.owner}</p>
+          <p className="mt-2 text-small text-ink/70">Owned by {sop.owner}</p>
         ) : null}
       </header>
 
       {sop.trigger ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-navy/50 uppercase">
+          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">
             What starts it
           </h2>
           <p className="mt-1 text-body whitespace-pre-wrap">{sop.trigger}</p>
@@ -76,7 +76,7 @@ export default async function SopPrintPage({
 
       {sop.outcome ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-navy/50 uppercase">
+          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">
             What done looks like
           </h2>
           <p className="mt-1 text-body whitespace-pre-wrap">{sop.outcome}</p>
@@ -85,18 +85,18 @@ export default async function SopPrintPage({
 
       {sop.tools.length > 0 ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-navy/50 uppercase">Tools</h2>
+          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">Tools</h2>
           <p className="mt-1 text-body">{sop.tools.join(" · ")}</p>
         </section>
       ) : null}
 
       {sop.steps.length > 0 ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-navy/50 uppercase">Steps</h2>
+          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">Steps</h2>
           <ol className="mt-2 flex flex-col gap-3">
             {sop.steps.map((step, index) => (
               <li key={index} className="flex gap-3">
-                <span className="font-mono w-6 shrink-0 text-small text-navy/40">
+                <span className="font-mono w-6 shrink-0 text-small text-ink/40">
                   {index + 1}.
                 </span>
                 <span className="text-body whitespace-pre-wrap">{step.text}</span>
@@ -108,7 +108,7 @@ export default async function SopPrintPage({
 
       {sop.video_url ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-navy/50 uppercase">
+          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">
             Walkthrough
           </h2>
           {/* Printed on paper a link is unclickable, so the address is shown
@@ -117,8 +117,8 @@ export default async function SopPrintPage({
         </section>
       ) : null}
 
-      <footer className="mt-10 border-t border-navy/15 pt-4">
-        <p className="text-caption text-navy/50">
+      <footer className="mt-10 border-t border-ink/15 pt-4">
+        <p className="text-caption text-ink/50">
           {entry.title} · aOS · Allegro Strategia
         </p>
       </footer>

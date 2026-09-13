@@ -92,13 +92,13 @@ export function InstallPrompt() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <Eyebrow>On your phone</Eyebrow>
-          <p className="mt-1 text-body text-navy">
+          <p className="mt-1 text-body text-ink">
             Put aOS on your home screen — it opens straight to Piazza, without
             the browser around it.
           </p>
 
           {state === "ios-guide" ? (
-            <p className="mt-2 text-small text-navy/70">
+            <p className="mt-2 text-small text-ink/70">
               Tap <strong className="font-medium">Share</strong> at the bottom of
               Safari, then{" "}
               <strong className="font-medium">Add to Home Screen</strong>.
@@ -110,7 +110,7 @@ export function InstallPrompt() {
           type="button"
           onClick={dismiss}
           aria-label="Dismiss"
-          className="text-caption text-navy/50 underline underline-offset-4 transition hover:text-navy"
+          className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
         >
           Not now
         </button>
