@@ -29,7 +29,7 @@ import type { TimeCategory, TimeEntry } from "@/lib/timer/queries";
  * Flooring to seconds matters: getSnapshot has to return a stable value within a
  * render pass, and raw `Date.now()` changes on every call.
  */
-function useNowSeconds(): number | null {
+export function useNowSeconds(): number | null {
   return useSyncExternalStore(
     (onChange) => {
       const id = setInterval(onChange, 1000);
@@ -65,7 +65,7 @@ export function FloatingTimer({
     // Sits above the mobile bottom bar, and out of the way on desktop.
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:justify-end">
       {running ? (
-        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-ink/15 bg-white/95 py-2 pr-2 pl-4 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-ink/10 bg-card py-2 pr-2 pl-4 shadow-lift">
           <span
             aria-hidden
             className="size-2 animate-pulse rounded-full bg-orange"
@@ -84,7 +84,7 @@ export function FloatingTimer({
           <form action={stopTimer}>
             <button
               type="submit"
-              className="rounded-full bg-ink px-4 py-2 text-small font-medium text-white transition hover:bg-ink/90"
+              className="rounded-full bg-orange px-4 py-2 text-small font-semibold text-white transition hover:bg-orange/90"
             >
               Stop
             </button>
@@ -96,7 +96,7 @@ export function FloatingTimer({
           // Collapse on submit rather than syncing from `running` in an effect —
           // so stopping a timer later doesn't spring the picker back open.
           onSubmit={() => setPicking(false)}
-          className="pointer-events-auto w-full max-w-md rounded-xl border border-ink/15 bg-white/95 p-2 shadow-lg backdrop-blur"
+          className="pointer-events-auto w-full max-w-md rounded-2xl border border-ink/10 bg-card p-2 shadow-lift"
         >
           <div className="flex items-center gap-2">
             <label htmlFor="category_slug" className="sr-only">
@@ -107,7 +107,7 @@ export function FloatingTimer({
               name="category_slug"
               defaultValue=""
               required
-              className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-2 text-body text-ink"
+              className="min-w-0 flex-1 rounded-xl border border-ink/12 bg-cream-deep px-3 py-2 text-body text-ink"
             >
               <option value="" disabled>
                 What are you working on?
@@ -120,7 +120,7 @@ export function FloatingTimer({
             </select>
             <button
               type="submit"
-              className="rounded-md bg-ink px-4 py-2 text-small font-medium text-white transition hover:bg-ink/90"
+              className="rounded-full bg-orange px-4 py-2 text-small font-semibold text-white transition hover:bg-orange/90"
             >
               Start
             </button>
@@ -145,11 +145,11 @@ export function FloatingTimer({
             name="note"
             type="text"
             placeholder="What specifically? (optional)"
-            className="mt-2 w-full rounded-md border border-ink/10 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40"
+            className="mt-2 w-full rounded-xl border border-ink/12 bg-cream-deep px-3 py-2 text-small text-ink placeholder:text-ink/40"
           />
         </form>
       ) : (
-        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-ink/15 bg-white/90 p-1 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-ink/10 bg-card p-1 shadow-lift">
           <button
             type="button"
             onClick={() => setPicking(true)}

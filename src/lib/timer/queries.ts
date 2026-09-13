@@ -75,6 +75,34 @@ export async function getTodayEntries(memberId: string): Promise<TimeEntry[]> {
   return (data ?? []) as TimeEntry[];
 }
 
+/**
+ * Every entry that started in the week beginning `weekStart` (a Monday), oldest
+ * first — the calendar's raw material. Bounded in UTC a day either side and
+ * bucketed by wall-clock day afterwards, because "which day" is a London
+ * question and the boundary shifts with the clocks.
+ */
+export async function getWeekEntries(
+  memberId: string,
+  weekStart: string,
+): Promise<TimeEntry[]> {
+  const supabase = await createClient();
+
+  const from = new Date(`${weekStart}T00:00:00Z`);
+  from.setUTCDate(from.getUTCDate() - 1);
+  const to = new Date(`${weekStart}T00:00:00Z`);
+  to.setUTCDate(to.getUTCDate() + 8);
+
+  const { data } = await supabase
+    .from("time_entries")
+    .select("*")
+    .eq("member_id", memberId)
+    .gte("started_at", from.toISOString())
+    .lt("started_at", to.toISOString())
+    .order("started_at", { ascending: true });
+
+  return (data ?? []) as TimeEntry[];
+}
+
 export type WeekTotal = {
   weekStartDate: string;
   loggedMinutes: number;

@@ -8,7 +8,7 @@ import {
   getRunningEntry,
   getThisWeekTotal,
   getTimeCategories,
-  getTodayEntries,
+  getWeekEntries,
 } from "@/lib/timer/queries";
 import { formatMinutes, weekProgress } from "@/lib/timer/format";
 import {
@@ -19,42 +19,80 @@ import {
 } from "@/lib/log/queries";
 import { primingForWeek } from "@/lib/log/priming";
 import { addDays } from "@/lib/onboarding/cadence";
-import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
+import { utcToWallClock } from "@/lib/time-zone";
+import { Card, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
 import { ManualEntryForm } from "./manual-entry-form";
 import { WeeklyLogForm } from "./weekly-log-form";
+import { TimerPanel } from "./timer-panel";
+import { DayStrip, DayTimeline, dayOf } from "./log-calendar";
+import { HoursByCategory, HoursByDay } from "./log-charts";
 import { getMyAvailability, pairingMonth } from "@/lib/pairing/queries";
 
 export const metadata: Metadata = {
-  title: "This week’s log — aOS",
+  title: "Your log — aOS",
 };
 
 const TIME = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/London",
 });
 
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
+const DAY_LONG = new Intl.DateTimeFormat("en-GB", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+const RANGE_DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" });
+const RANGE_FULL = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+type Tab = "log" | "timer" | "insights";
 
 /**
- * The weekly check-in (§4) — one submission doing three jobs.
+ * Your log — the plan and the week's time in one place (L'Editoriale "07").
+ *
+ * §4's weekly check-in, restructured around the reference: a date range and a
+ * day selector at the top, then three tabs. **Log** is the selected day as a
+ * timeline of colour-coded blocks, its entries, and the weekly sign-off.
+ * **Timer** is the same timer as the floating one, given the page. **Insights**
+ * is the week as charts. Tabs and the day are query parameters, so each view
+ * is a URL and the page needs no client state to switch.
+ *
+ * The roadmap side is deliberately thin: the brief parks the full Roadmap
+ * screen for its own session. What is here is its entry point — the actions
+ * checklist inside the sign-off, which is where a member ticks what they did
+ * against the plan. The Piazza card is the other route in.
  *
  * Framed as a dated log entry, a ship's log, rather than a generic form: this is
  * the week as it happened, signed off and left alone, not a document that keeps
- * being revised.
- *
- * During onboarding weeks 2–3 it's time tracking only, because there's no
- * roadmap for actions-taken to reference — that falls out naturally rather than
- * needing a special case, since the checklist is empty until a roadmap exists.
+ * being revised. During onboarding weeks 2–3 it's time tracking only, because
+ * there's no roadmap for actions-taken to reference — that falls out naturally
+ * rather than needing a special case, since the checklist is empty until a
+ * roadmap exists.
  */
-export default async function WeeklyLogPage() {
+export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">) {
   const member = await requireMember();
+  const params = await searchParams;
 
   const weekStart = currentWeekStart();
-  const today = new Date().toISOString().slice(0, 10);
+  const weekEnd = addDays(weekStart, 6);
+  const today = utcToWallClock(new Date()).slice(0, 10);
+
+  const tab: Tab =
+    params.tab === "timer" || params.tab === "insights" ? params.tab : "log";
+  // Only days in this week are selectable; anything else falls back to today.
+  const requested = typeof params.day === "string" ? params.day : today;
+  const day = requested >= weekStart && requested <= weekEnd ? requested : today;
 
   const [
     categories,
-    entries,
+    weekEntries,
     week,
     running,
     categoryTotals,
@@ -62,7 +100,7 @@ export default async function WeeklyLogPage() {
     submission,
   ] = await Promise.all([
     getTimeCategories(),
-    getTodayEntries(member.id),
+    getWeekEntries(member.id, weekStart),
     getThisWeekTotal(member.id),
     getRunningEntry(member.id),
     getWeekCategoryTotals(member.id, weekStart),
@@ -74,252 +112,330 @@ export default async function WeeklyLogPage() {
   const labelFor = (slug: string) =>
     categories.find((c) => c.slug === slug)?.label ?? slug;
 
+  // Minutes per wall-clock day, for the strip and the by-day chart.
+  const minutesByDay = new Map<string, number>();
+  for (const entry of weekEntries) {
+    const key = dayOf(entry);
+    if (key < weekStart || key > weekEnd) continue;
+    minutesByDay.set(key, (minutesByDay.get(key) ?? 0) + (entry.duration_minutes ?? 0));
+  }
+  const dayEntries = weekEntries.filter((e) => dayOf(e) === day).reverse();
+
   const remaining = Math.max(0, COMPLETE_WEEK_MINUTES - week.loggedMinutes);
   const progress = weekProgress(week.loggedMinutes, COMPLETE_WEEK_MINUTES);
   const submitted = Boolean(submission?.submitted_at);
 
   // §9 folds the availability ask into this rhythm rather than making it a
   // separate chore, so it appears here — the screen members already open weekly.
-  // Only for active members: pairing is locked until active (§1), and asking an
-  // onboarding member for their availability would be an invitation to something
-  // they can't take part in yet.
+  // Only for active members: pairing is locked until active (§1).
   const pairingAvailability =
     member.status === "active"
       ? await getMyAvailability(member.id, pairingMonth())
       : null;
 
+  const sameMonth = weekStart.slice(0, 7) === weekEnd.slice(0, 7);
+  const range = sameMonth
+    ? `${RANGE_DAY.format(new Date(weekStart))} – ${RANGE_FULL.format(new Date(weekEnd))}`
+    : `${RANGE_FULL.format(new Date(weekStart))} – ${RANGE_FULL.format(new Date(weekEnd))}`;
+
   return (
-    <main className="flex-1 py-8 sm:py-10">
-      <PageHeader
-        eyebrow={`Week of ${DAY.format(new Date(weekStart))}`}
-        title="This week’s log"
-        intro={`${DAY.format(new Date(weekStart))} – ${DAY.format(
-          new Date(addDays(weekStart, 6)),
-        )}. Logged as you go, signed off at the end.`}
-      />
+    <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
+      <PageHeader title="Your log" tagline="Reflect. Focus. Make it count." />
 
-      {priming ? (
-        <Card className="mb-5 border-ink/15 bg-lemon/25">
-          <Eyebrow tone="accent">While you&rsquo;re here</Eyebrow>
-          <h2 className="font-display mt-2 text-heading font-medium text-ink">
-            {priming.title}
-          </h2>
-          <div className="mt-3 flex flex-col gap-3 text-small text-ink/80">
-            {priming.body.map((paragraph) => (
-              <p key={paragraph.slice(0, 32)}>{paragraph}</p>
-            ))}
-          </div>
-        </Card>
-      ) : null}
+      <Card className="mb-5">
+        <p className="text-center text-small font-medium text-ink">{range}</p>
+        <div className="mt-4">
+          <DayStrip
+            weekStart={weekStart}
+            selected={day}
+            minutesByDay={minutesByDay}
+            today={today}
+            tab={tab}
+          />
+        </div>
+      </Card>
 
-      {pairingAvailability && !pairingAvailability.submitted ? (
-        <Card className="mb-5 bg-sky/15">
-          <Eyebrow>One thing for this month</Eyebrow>
-          <p className="mt-1 text-small text-ink/80">
-            You haven&rsquo;t said when you could take your peer call yet. It&rsquo;s
-            fifteen boxes and takes about ten seconds — and it&rsquo;s what gets you
-            matched.
-          </p>
-          <p className="mt-3">
-            <Link
-              href="/pairing"
-              className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
-            >
-              Say when you&rsquo;re free
-            </Link>
-          </p>
-        </Card>
-      ) : null}
+      <Tabs tab={tab} day={day} />
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Card>
-          <Eyebrow>Tracked this week</Eyebrow>
-          <p className="font-mono mt-2 text-title text-ink tabular-nums">
-            {formatMinutes(week.loggedMinutes)}
-          </p>
-
-          <div
-            className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10"
-            role="progressbar"
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Progress toward a complete week"
-          >
-            <div
-              className={`h-full rounded-full transition-all ${
-                week.isCompleteWeek ? "bg-ink" : "bg-orange"
-              }`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          <p className="mt-2 text-small text-ink/70">
-            {week.isCompleteWeek
-              ? "Ten hours logged — this week counts, and you’re in the draw."
-              : `${formatMinutes(remaining)} more makes it a complete week.`}
-          </p>
-        </Card>
-
-        <Card>
-          <Eyebrow>Where it went</Eyebrow>
+      {tab === "timer" ? (
+        <>
+          <TimerPanel categories={categories} running={running} />
+          <WeekProgress
+            loggedMinutes={week.loggedMinutes}
+            isComplete={week.isCompleteWeek}
+            remaining={remaining}
+            progress={progress}
+            className="mt-5"
+          />
+        </>
+      ) : tab === "insights" ? (
+        <div className="flex flex-col gap-5">
+          <WeekProgress
+            loggedMinutes={week.loggedMinutes}
+            isComplete={week.isCompleteWeek}
+            remaining={remaining}
+            progress={progress}
+          />
+          <HoursByCategory totals={categoryTotals} />
+          <HoursByDay weekStart={weekStart} minutesByDay={minutesByDay} />
           {categoryTotals.length === 0 ? (
-            <p className="mt-3 text-small text-ink/70">
-              Nothing logged yet. Start the timer when you begin something.
-            </p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-1.5">
-              {categoryTotals.map((row) => (
-                <li
-                  key={row.slug}
-                  className="flex items-baseline justify-between gap-3 text-small"
-                >
-                  <span className="min-w-0 truncate text-ink/80">
-                    {row.label}
-                  </span>
-                  <span className="font-mono text-ink tabular-nums">
-                    {formatMinutes(row.minutes)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
-        Today
-      </h2>
-
-      {entries.length === 0 ? (
-        <Card>
-          <p className="text-small text-ink/70">
-            Nothing yet today. Use the timer in the corner when you start
-            something.
-          </p>
-        </Card>
+            <Card>
+              <p className="text-small text-ink/70">
+                Nothing logged this week yet. The charts fill in as the timer runs.
+              </p>
+            </Card>
+          ) : null}
+        </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className="rounded-2xl border border-ink/8 bg-card shadow-soft px-4 py-3"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <div className="min-w-0">
-                  <p className="text-body text-ink">
-                    {labelFor(entry.category_slug)}
-                    {entry.source === "manual" ? (
-                      <span className="font-mono ml-2 text-eyebrow text-ink/40 uppercase">
-                        added later
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="font-mono text-caption text-ink/50">
-                    {TIME.format(new Date(entry.started_at))}
-                    {entry.ended_at
-                      ? `–${TIME.format(new Date(entry.ended_at))}`
-                      : " · running"}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <span className="font-mono text-small text-ink tabular-nums">
-                    {entry.ended_at
-                      ? formatMinutes(entry.duration_minutes ?? 0)
-                      : "—"}
-                  </span>
-                  <form action={deleteEntry}>
-                    <input type="hidden" name="id" value={entry.id} />
-                    <button
-                      type="submit"
-                      className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
-                      aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
+        <>
+          {priming ? (
+            <Card className="mb-5 bg-lemon/25">
+              <Eyebrow tone="accent">While you&rsquo;re here</Eyebrow>
+              <h2 className="font-display mt-2 text-heading font-medium text-ink">
+                {priming.title}
+              </h2>
+              <div className="mt-3 flex flex-col gap-3 text-small text-ink/80">
+                {priming.body.map((paragraph) => (
+                  <p key={paragraph.slice(0, 32)}>{paragraph}</p>
+                ))}
               </div>
+            </Card>
+          ) : null}
 
-              {/* A plain <details> rather than a client component: no JavaScript
-                  to load, works before hydration, and keeps the note as
-                  genuinely optional furniture rather than something the row is
-                  built around. */}
-              <details className="group mt-1">
-                <summary className="cursor-pointer list-none text-caption text-ink/50 transition hover:text-ink">
-                  {entry.note ? (
-                    <span className="text-ink/70 italic">{entry.note}</span>
-                  ) : (
-                    <span className="underline underline-offset-4">
-                      Add a note
-                    </span>
-                  )}
-                </summary>
-
-                <form
-                  action={updateEntryNote}
-                  className="mt-2 flex flex-wrap items-center gap-2"
+          {pairingAvailability && !pairingAvailability.submitted ? (
+            <Card className="mb-5 bg-sky/15">
+              <Eyebrow>One thing for this month</Eyebrow>
+              <p className="mt-1 text-small text-ink/80">
+                You haven&rsquo;t said when you could take your peer call yet.
+                It&rsquo;s fifteen boxes and takes about ten seconds — and it&rsquo;s
+                what gets you matched.
+              </p>
+              <p className="mt-3">
+                <Link
+                  href="/pairing"
+                  className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
                 >
-                  <input type="hidden" name="id" value={entry.id} />
-                  <label htmlFor={`note-${entry.id}`} className="sr-only">
-                    Note for this entry
-                  </label>
-                  <input
-                    id={`note-${entry.id}`}
-                    name="note"
-                    type="text"
-                    defaultValue={entry.note ?? ""}
-                    placeholder="What specifically were you doing?"
-                    className="min-w-0 flex-1 rounded-md border border-ink/15 bg-white px-3 py-1.5 text-small text-ink placeholder:text-ink/40"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-ink/20 px-3 py-1.5 text-small text-ink transition hover:border-ink/40"
+                  Say when you&rsquo;re free
+                </Link>
+              </p>
+            </Card>
+          ) : null}
+
+          <WeekProgress
+            loggedMinutes={week.loggedMinutes}
+            isComplete={week.isCompleteWeek}
+            remaining={remaining}
+            progress={progress}
+            className="mb-6"
+          />
+
+          <SectionTitle
+            aside={
+              <span className="font-mono tabular-nums">
+                {formatMinutes(minutesByDay.get(day) ?? 0)}
+              </span>
+            }
+          >
+            {day === today ? "Today" : DAY_LONG.format(new Date(day))}
+          </SectionTitle>
+
+          {dayEntries.length === 0 ? (
+            <Card>
+              <p className="text-small text-ink/70">
+                {day === today
+                  ? "Nothing yet today. Start the timer when you begin something."
+                  : "Nothing logged that day."}
+              </p>
+            </Card>
+          ) : (
+            <>
+              <Card className="mb-4">
+                <DayTimeline entries={dayEntries} categories={categories} />
+              </Card>
+
+              <ul className="flex flex-col gap-2">
+                {dayEntries.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="rounded-2xl border border-ink/8 bg-card px-4 py-3 shadow-soft"
                   >
-                    Save
-                  </button>
-                </form>
-              </details>
-            </li>
-          ))}
-        </ul>
-      )}
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <div className="min-w-0">
+                        <p className="text-body text-ink">
+                          {labelFor(entry.category_slug)}
+                          {entry.source === "manual" ? (
+                            <span className="ml-2 text-eyebrow font-medium text-ink/40 uppercase">
+                              added later
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="font-mono text-caption text-ink/50">
+                          {TIME.format(new Date(entry.started_at))}
+                          {entry.ended_at
+                            ? `–${TIME.format(new Date(entry.ended_at))}`
+                            : " · running"}
+                        </p>
+                      </div>
 
-      <div className="mt-6">
-        <ManualEntryForm categories={categories} today={today} />
-      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-small text-ink tabular-nums">
+                          {entry.ended_at ? formatMinutes(entry.duration_minutes ?? 0) : "—"}
+                        </span>
+                        <form action={deleteEntry}>
+                          <input type="hidden" name="id" value={entry.id} />
+                          <button
+                            type="submit"
+                            className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
+                            aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      </div>
+                    </div>
 
-      <h2 className="font-display mt-10 mb-3 text-heading font-medium text-ink">
-        Sign off the week
-      </h2>
+                    {/* A plain <details> rather than a client component: no
+                        JavaScript to load, works before hydration, and keeps the
+                        note as genuinely optional furniture. */}
+                    <details className="group mt-1">
+                      <summary className="cursor-pointer list-none text-caption text-ink/50 transition hover:text-ink">
+                        {entry.note ? (
+                          <span className="text-ink/70 italic">{entry.note}</span>
+                        ) : (
+                          <span className="underline underline-offset-4">Add a note</span>
+                        )}
+                      </summary>
+                      <form action={updateEntryNote} className="mt-2 flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="id" value={entry.id} />
+                        <label htmlFor={`note-${entry.id}`} className="sr-only">
+                          Note for this entry
+                        </label>
+                        <input
+                          id={`note-${entry.id}`}
+                          name="note"
+                          type="text"
+                          defaultValue={entry.note ?? ""}
+                          placeholder="What specifically were you doing?"
+                          className="min-w-0 flex-1 rounded-xl border border-ink/12 bg-cream-deep px-3 py-1.5 text-small text-ink placeholder:text-ink/40"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-full border border-ink/20 px-3.5 py-1.5 text-small font-medium text-ink transition hover:border-ink/40"
+                        >
+                          Save
+                        </button>
+                      </form>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
-      {submitted ? (
-        <Card>
-          <Eyebrow>Signed</Eyebrow>
-          <p className="mt-2 text-small text-ink/80">
-            This week&rsquo;s log is in. Your time keeps tracking — the entry
-            itself stays as written.
-          </p>
-          {submission?.other_activity ? (
-            <p className="mt-3 border-l-2 border-orange/40 pl-3 text-small text-ink/70 italic">
-              {submission.other_activity}
+          <div className="mt-6">
+            <ManualEntryForm categories={categories} today={day} />
+          </div>
+
+          <SectionTitle className="mt-10">Sign off the week</SectionTitle>
+
+          {submitted ? (
+            <Card>
+              <Eyebrow>Signed</Eyebrow>
+              <p className="mt-2 text-small text-ink/80">
+                This week&rsquo;s log is in. Your time keeps tracking — the entry
+                itself stays as written.
+              </p>
+              {submission?.other_activity ? (
+                <p className="mt-3 border-l-2 border-orange/40 pl-3 text-small text-ink/70 italic">
+                  {submission.other_activity}
+                </p>
+              ) : null}
+            </Card>
+          ) : (
+            <WeeklyLogForm
+              roadmapItems={roadmapItems}
+              defaultOtherActivity={submission?.other_activity ?? ""}
+              actionsTaken={submission?.actions_taken ?? {}}
+            />
+          )}
+
+          {running ? (
+            <p className="mt-6 text-small text-ink/60">
+              A timer is still running — it&rsquo;ll count once you stop it.
             </p>
           ) : null}
-        </Card>
-      ) : (
-        <WeeklyLogForm
-          roadmapItems={roadmapItems}
-          defaultOtherActivity={submission?.other_activity ?? ""}
-          actionsTaken={submission?.actions_taken ?? {}}
-        />
+        </>
       )}
-
-      {running ? (
-        <p className="mt-6 text-small text-ink/60">
-          A timer is still running — it&rsquo;ll count once you stop it.
-        </p>
-      ) : null}
     </main>
+  );
+}
+
+/** Log / Timer / Insights, as links — each tab is a URL. */
+function Tabs({ tab, day }: { tab: Tab; day: string }) {
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "log", label: "Log" },
+    { key: "timer", label: "Timer" },
+    { key: "insights", label: "Insights" },
+  ];
+  return (
+    <nav aria-label="Log sections" className="mb-5 flex gap-2">
+      {tabs.map((t) => (
+        <Link
+          key={t.key}
+          href={`/log?day=${day}${t.key === "log" ? "" : `&tab=${t.key}`}`}
+          aria-current={tab === t.key ? "page" : undefined}
+          className={`rounded-full px-4 py-1.5 text-small font-medium transition ${
+            tab === t.key ? "bg-ink text-cream" : "bg-cream-deep text-ink/70 hover:text-ink"
+          }`}
+        >
+          {t.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function WeekProgress({
+  loggedMinutes,
+  isComplete,
+  remaining,
+  progress,
+  className = "",
+}: {
+  loggedMinutes: number;
+  isComplete: boolean;
+  remaining: number;
+  progress: number;
+  className?: string;
+}) {
+  return (
+    <Card className={className}>
+      <div className="flex items-baseline justify-between gap-4">
+        <div>
+          <Eyebrow>Tracked this week</Eyebrow>
+          <p className="font-mono mt-1 text-title text-ink tabular-nums">
+            {formatMinutes(loggedMinutes)}
+          </p>
+        </div>
+        <p className="max-w-[14rem] text-right text-small text-ink/70">
+          {isComplete
+            ? "Ten hours logged — this week counts, and you’re in the draw."
+            : `${formatMinutes(remaining)} more makes it a complete week.`}
+        </p>
+      </div>
+      <div
+        className="mt-3 h-2 overflow-hidden rounded-full bg-ink/8"
+        role="progressbar"
+        aria-valuenow={progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Progress toward a complete week"
+      >
+        <div
+          className={`h-full rounded-full transition-all ${isComplete ? "bg-ink" : "bg-orange"}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </Card>
   );
 }
