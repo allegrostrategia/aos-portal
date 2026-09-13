@@ -1522,11 +1522,19 @@ await check("a member writes their own SOP and owns it", async () => {
 // Tested as the admin: a member can't create a hot_seat entry at all, so RLS
 // stops them before the constraint does. The constraint is what protects it from
 // the one account that CAN write those rows.
-await rejects("only a member SOP can carry template content", () =>
-  as(ADMIN, () => db.query(`
+// Retired 13 Sep 2026 with the L'Editoriale SOP flow. This used to assert that
+// only a member_sop row could carry template content. Under the new flow the
+// member writes the SOP *for a hot-seat build* into the same column on the
+// hot_seat row, so the constraint was dropped and this test now asserts the
+// opposite of what the product does. Kept as a comment rather than deleted,
+// because a test that vanishes looks like it never existed, and the reason it
+// stopped being true is the kind of thing the next person needs.
+await check("a hot seat build can carry the member's own SOP (constraint retired)", async () => {
+  const r = await as(ADMIN, () => db.query(`
     insert into public.handover_pack (member_id, title, source, sop)
-    values ('${ERIN}', 'A live build', 'hot_seat', '{"trigger":"x"}'::jsonb)`)),
-  "handover_pack_sop_is_member_sop");
+    values ('${ERIN}', 'A live build', 'hot_seat', '{"trigger":"x"}'::jsonb) returning id`));
+  return Boolean(r.rows[0].id);
+});
 
 await check("a hot seat write-up needs no template content", async () => {
   await as(ADMIN, () => db.query(`
@@ -1905,6 +1913,71 @@ await rejects("a cancelled member cannot mark anything complete", async () => {
   return as(GONE, () => db.query(
     `insert into public.lesson_completions (member_id, content_id) values ('${GONE}','${id}')`));
 }, "row-level security");
+
+console.log("\n— hot-seat SOP flow (L'Editoriale) —");
+
+await check("Nina can leave a comment on a build", async () => {
+  await as(ADMIN, () => db.query(
+    `update public.handover_pack set coach_note = 'Start with the trigger, not the tool.' where id='${WRITE_UP}'`));
+  const r = await as(ERIN, () => db.query(
+    `select coach_note from public.handover_pack where id='${WRITE_UP}'`));
+  return r.rows[0].coach_note === "Start with the trigger, not the tool.";
+});
+
+await rejects("the member cannot change Nina's comment", () =>
+  as(ERIN, () => db.query(
+    `update public.handover_pack set coach_note = 'Actually...' where id='${WRITE_UP}'`)),
+  "not yours to change");
+
+await check("the member writes their own SOP on the build, and Nina's comment survives", async () => {
+  await as(ERIN, () => db.query(
+    `update public.handover_pack
+       set sop = '{"trigger":"An enquiry lands","done":"They have a reply","owner":"Me","steps":[{"text":"Open the template"}],"tools":"Gmail","video":""}'::jsonb,
+           member_edited_at = now()
+     where id='${WRITE_UP}'`));
+  const r = await as(ERIN, () => db.query(
+    `select sop->>'owner' o, coach_note from public.handover_pack where id='${WRITE_UP}'`));
+  return r.rows[0].o === "Me" && r.rows[0].coach_note === "Start with the trigger, not the tool.";
+});
+
+console.log("\n— archivio templates —");
+
+await check("a member saves a template — a picture with a name", async () => {
+  const r = await as(ERIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source, image_path)
+    values ('${ERIN}', 'Pricing table', 'template', '${ERIN}/pricing.jpg') returning id`));
+  return Boolean(r.rows[0].id);
+});
+
+await rejects("a template without a picture is refused", () =>
+  as(ERIN, () => db.query(`
+    insert into public.handover_pack (member_id, title, source)
+    values ('${ERIN}', 'Nothing to see', 'template')`)),
+  "handover_pack_template_has_image");
+
+await check("a member can remove their own template", async () => {
+  await as(ERIN, () => db.query(
+    `delete from public.handover_pack where title='Pricing table' and member_id='${ERIN}'`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.handover_pack where title='Pricing table'`));
+  return r.rows[0].c === 0;
+});
+
+await check("archivio images: own folder only", async () => {
+  await as(ERIN, () => db.query(
+    `insert into storage.objects (bucket_id, name) values ('archivio','${ERIN}/pricing.jpg')`));
+  let intruded = false;
+  try {
+    await as(BOB, () => db.query(
+      `insert into storage.objects (bucket_id, name) values ('archivio','${ERIN}/sneaky.jpg')`));
+    intruded = true;
+  } catch { /* refused, as it should be */ }
+  const own = (await as(ERIN, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='archivio'`))).rows[0].c;
+  const theirs = (await as(BOB, () => db.query(
+    `select count(*)::int c from storage.objects where bucket_id='archivio'`))).rows[0].c;
+  return !intruded && own === 1 && theirs === 0;
+});
 
 console.log("\n— message reactions —");
 

@@ -7,9 +7,13 @@ export type ArchivioEntry = {
   id: string;
   title: string;
   body: string | null;
-  /** Null on a build Nina hasn't written up yet — the entry shows, the prose doesn't. */
+  /** Set on builds Nina wrote up under the old flow (before 13 Sep 2026). */
   confirmed_at: string | null;
-  source: "hot_seat" | "member_sop" | "ai_sop";
+  /** Nina's comment on a hot-seat build — guidance beside the member's SOP form. */
+  coach_note: string | null;
+  source: "hot_seat" | "member_sop" | "ai_sop" | "template";
+  /** A template's picture, in the archivio bucket. */
+  image_path: string | null;
   sop: Sop | null;
   created_at: string;
   member_edited_at: string | null;
@@ -32,14 +36,17 @@ export async function getArchivio(memberId: string): Promise<ArchivioEntry[]> {
 
   const { data } = await supabase
     .from("handover_pack")
-    .select("id, title, body, source, sop, confirmed_at, created_at, member_edited_at")
+    .select("id, title, body, source, sop, confirmed_at, coach_note, image_path, created_at, member_edited_at")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
 
   return ((data ?? []) as (Omit<ArchivioEntry, "sop"> & { sop: unknown })[]).map(
     (row) => ({
       ...row,
-      sop: row.source === "member_sop" ? readSop(row.sop) : null,
+      // Since the L'Editoriale flow (13 Sep) a hot-seat build carries the
+      // member's own SOP too, so the column is read on every source. Null
+      // means not written yet, not "not that kind of entry".
+      sop: row.sop ? readSop(row.sop) : null,
     }),
   );
 }
@@ -52,7 +59,7 @@ export async function getArchivioEntry(
 
   const { data } = await supabase
     .from("handover_pack")
-    .select("id, title, body, source, sop, confirmed_at, created_at, member_edited_at")
+    .select("id, title, body, source, sop, confirmed_at, coach_note, image_path, created_at, member_edited_at")
     .eq("id", id)
     .eq("member_id", memberId)
     .maybeSingle();
@@ -60,5 +67,12 @@ export async function getArchivioEntry(
   if (!data) return null;
   const row = data as Omit<ArchivioEntry, "sop"> & { sop: unknown };
 
-  return { ...row, sop: row.source === "member_sop" ? readSop(row.sop) : null };
+  return { ...row, sop: row.sop ? readSop(row.sop) : null };
+}
+
+/** A signed URL for a template's picture — the bucket is private. */
+export async function getArchivioImageUrl(path: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.storage.from("archivio").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
 }

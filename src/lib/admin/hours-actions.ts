@@ -125,43 +125,35 @@ export async function changeBuildRate(
 }
 
 /**
- * Write up what got built (§8).
+ * Nina's comment on a build (L'Editoriale §6).
  *
- * Nina's half of Archivio. She works the write-up out with Claude outside the
- * product and types the result in — there is no draft state here on purpose:
- * saving publishes it. Drafting happens where the drafting happens, and a
- * half-written note sitting in a column the member can technically read is a
- * worse answer than not storing one.
+ * This replaces the write-up she used to publish into the member's Archivio.
+ * Now she leaves a short comment or prompt after the session, and the member
+ * writes the SOP for the build themselves with her comment beside the form.
+ * Short on purpose: a paragraph of guidance, not the record — the record is
+ * the member's to write, which is the point of the change.
  *
- * `confirmed_at` is set on save, and `drafted_by` is 'nina' rather than
- * 'claude', which is now simply true — nothing in the product drafts anything.
+ * Saving is immediate; there is no draft state, for the same reason as before:
+ * a half-written note in a column the member can read is worse than none.
  */
-export async function saveWriteUp(
+export async function saveCoachNote(
   _prev: HoursState,
   formData: FormData,
 ): Promise<HoursState> {
-  const admin = await requireAdmin();
+  await requireAdmin();
 
   const id = String(formData.get("handover_pack_id") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
+  const note = String(formData.get("coach_note") ?? "").trim();
   if (!id) return { error: "Which build?" };
-  if (!body) {
-    return { error: "An empty write-up would tell them less than no write-up." };
-  }
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("handover_pack")
-    .update({
-      body,
-      drafted_by: "nina",
-      confirmed_at: new Date().toISOString(),
-      confirmed_by: admin.id,
-    })
+    .update({ coach_note: note || null })
     .eq("id", id);
 
   if (error) return { error: `Couldn't save that: ${error.message}` };
 
   revalidatePath("/", "layout");
-  return { notice: "Written up. It's in their Archivio now." };
+  return { notice: note ? "Saved. They'll see it beside their SOP form." : "Comment cleared." };
 }

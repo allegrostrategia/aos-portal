@@ -13,7 +13,7 @@ import { setCoach } from "@/lib/admin/member-actions";
 import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
 import { getCheckInsByBuild, getMemberBuilds } from "@/lib/hours/queries";
 import { formatHours } from "@/lib/hours/milestones";
-import { AddBuildForm, RateControls, WriteUpForm } from "./build-forms";
+import { AddBuildForm, CoachNoteForm, RateControls } from "./build-forms";
 
 export const metadata: Metadata = {
   title: "Member — aOS admin",
@@ -405,10 +405,17 @@ export default async function AdminMemberPage({
                 </p>
               ) : null}
 
-              <WriteUpForm
+              {build.body ? (
+                <p className="mt-3 text-caption text-ink/50">
+                  Written up under the old flow{build.confirmed_at ? " and published" : ""}.
+                  It still reads in their Archivio; new builds take a comment instead.
+                </p>
+              ) : null}
+
+              <CoachNoteForm
                 packId={build.id}
-                body={build.body}
-                isPublished={Boolean(build.confirmed_at)}
+                note={build.coach_note}
+                memberHasWritten={Boolean(build.member_edited_at && build.sop)}
               />
 
               <RateControls

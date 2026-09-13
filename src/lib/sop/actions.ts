@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireMember } from "@/lib/auth/member";
+import { getCurrentMember, requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { readSop } from "./template";
 
@@ -49,9 +49,25 @@ export async function saveSop(
   const supabase = await createClient();
 
   if (id) {
+    // A build Nina named keeps her title — the guard trigger would refuse the
+    // change anyway, but sending it would turn every save of the member's SOP
+    // for a build into an error. Only entries the member started are theirs to
+    // rename.
+    const { data: existing } = await supabase
+      .from("handover_pack")
+      .select("source")
+      .eq("id", id)
+      .eq("member_id", member.id)
+      .maybeSingle();
+    const nameable = (existing as { source: string } | null)?.source !== "hot_seat";
+
     const { error } = await supabase
       .from("handover_pack")
-      .update({ title, sop, member_edited_at: new Date().toISOString() })
+      .update({
+        ...(nameable ? { title } : {}),
+        sop,
+        member_edited_at: new Date().toISOString(),
+      })
       .eq("id", id)
       .eq("member_id", member.id);
 
@@ -99,47 +115,66 @@ export async function deleteSop(formData: FormData): Promise<void> {
   if (!id) return;
 
   const supabase = await createClient();
+
+  // A template's picture goes with it. Best-effort, before the row: a stray
+  // object is cheaper than a row pointing at nothing, and RLS refuses either
+  // write for anyone but the owner.
+  const { data: row } = await supabase
+    .from("handover_pack")
+    .select("source, image_path")
+    .eq("id", id)
+    .eq("member_id", member.id)
+    .maybeSingle();
+  const existing = row as { source: string; image_path: string | null } | null;
+  if (existing?.source === "template" && existing.image_path) {
+    await supabase.storage.from("archivio").remove([existing.image_path]);
+  }
+
+  // SOPs and templates are the member's to remove; a build is a shared record
+  // and the delete policy refuses it regardless of what is sent here.
   await supabase
     .from("handover_pack")
     .delete()
     .eq("id", id)
     .eq("member_id", member.id)
-    .eq("source", "member_sop");
+    .in("source", ["member_sop", "template"]);
 
   revalidatePath("/stations/archivio");
-  redirect("/stations/archivio");
+  redirect(existing?.source === "template" ? "/stations/archivio?folder=templates" : "/stations/archivio");
 }
 
+
 /**
- * The member rewording their own copy of a build write-up (§8).
+ * Save a template — a picture with a name (L'Editoriale §6).
  *
- * Only the prose. The title, who wrote it and when it was signed off are Nina's,
- * and a trigger enforces that rather than this action being the only thing
- * standing in the way — the update policy grants the whole row, and a screen is
- * a poor place to keep a rule.
+ * The image has already gone straight from the browser into the member's own
+ * folder of the `archivio` bucket; this records the row that points at it.
+ * The path is checked to be under their folder, the same belt-and-braces as
+ * headshots: storage RLS would refuse the upload otherwise, but a row pointing
+ * at somebody else's picture is refused here too.
  */
-export async function rephraseWriteUp(
+export async function saveTemplate(
   _prev: SopState,
   formData: FormData,
 ): Promise<SopState> {
-  const member = await requireMember();
+  const member = await getCurrentMember();
+  if (!member) return { error: "Signed out." };
 
-  const id = String(formData.get("id") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
-  if (!id) return { error: "Which entry?" };
-  if (!body) {
-    return { error: "Emptying it would lose the write-up — leave it as it is instead." };
-  }
+  const title = String(formData.get("title") ?? "").trim();
+  const imagePath = String(formData.get("image_path") ?? "").trim();
+  if (!title) return { error: "Give it a name — it's what you'll look for later." };
+  if (!imagePath) return { error: "Add the screenshot first." };
+  if (!imagePath.startsWith(`${member.id}/`)) return { error: "That picture isn't yours." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("handover_pack")
-    .update({ body, member_edited_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("member_id", member.id);
+    .insert({ member_id: member.id, title, source: "template", image_path: imagePath })
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { error: `Couldn't save that: ${error.message}` };
+  if (error || !data) return { error: `Couldn't save that: ${error?.message ?? "unknown"}` };
 
   revalidatePath("/stations/archivio");
-  return { notice: "Saved in your words." };
+  redirect(`/stations/archivio/${(data as { id: string }).id}`);
 }

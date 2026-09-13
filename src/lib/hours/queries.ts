@@ -96,6 +96,11 @@ export type MemberBuild = {
   title: string;
   body: string | null;
   confirmed_at: string | null;
+  /** Nina's comment on the build, shown beside the member's SOP form. */
+  coach_note: string | null;
+  /** Whether the member has written their SOP for it (the sop column is set). */
+  sop: unknown;
+  member_edited_at: string | null;
   created_at: string;
   rates: BuildRate[];
   /** The period still running, if any. Null means retired or never rated. */
@@ -115,7 +120,7 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
   const { data } = await supabase
     .from("handover_pack")
     .select(
-      "id, title, body, confirmed_at, created_at, handover_pack_rates(id, hours_per_week, effective_from, effective_until, note)",
+      "id, title, body, confirmed_at, coach_note, sop, member_edited_at, created_at, handover_pack_rates(id, hours_per_week, effective_from, effective_until, note)",
     )
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
@@ -125,6 +130,9 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
     title: string;
     body: string | null;
     confirmed_at: string | null;
+    coach_note: string | null;
+    sop: unknown;
+    member_edited_at: string | null;
     created_at: string;
     handover_pack_rates: (Omit<BuildRate, "hours_per_week"> & {
       hours_per_week: string | number;
@@ -139,6 +147,9 @@ export async function getMemberBuilds(memberId: string): Promise<MemberBuild[]> 
       title: build.title,
       body: build.body,
       confirmed_at: build.confirmed_at,
+      coach_note: build.coach_note,
+      sop: build.sop,
+      member_edited_at: build.member_edited_at,
       created_at: build.created_at,
       rates,
       current: rates.find((r) => r.effective_until === null) ?? null,

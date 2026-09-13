@@ -1,15 +1,18 @@
 /**
- * Adding a build, writing it up, and changing what it's worth.
+ * Adding a build, Nina's comment on it, the member's SOP for it, and changing
+ * what it's worth.
  *
- * Written while chasing a report that a write-up had saved without publishing.
- * It hadn't — the action sets the body and `confirmed_at` in one update, so the
- * two cannot disagree — but nothing here proved that, which is why the question
- * took a live database to answer.
+ * Rewritten 13 Sep 2026 for the L'Editoriale SOP flow. This file used to prove
+ * that Nina's write-up published in one update ("body saved, confirmed_at
+ * null" was the report that prompted it). That flow is gone: Nina leaves a
+ * comment, the member writes the SOP on the same row. What the file proves now
+ * is the shape of the new flow — the comment is Nina's alone, the SOP is the
+ * member's alone, the title of a build stays Nina's, and neither write
+ * disturbs the other.
  *
- * The distinction worth holding onto: a `member_sop` never sets `confirmed_at`,
- * because it is the member's own work with nothing for Nina to confirm. A build
- * write-up always does. Reading one row's column as though it meant the same
- * thing for the other is what made the report confusing.
+ * The distinction worth holding onto is unchanged: a `member_sop` never sets
+ * `confirmed_at`, because it is the member's own work with nothing for Nina to
+ * confirm.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -19,7 +22,7 @@ import "./hooks.mjs";
 import { createTestDatabase, asMember } from "./pglite.mjs";
 import { configure } from "./stubs/supabase-server.mjs";
 
-const { addBuild, saveWriteUp, changeBuildRate } = await import(
+const { addBuild, saveCoachNote, changeBuildRate } = await import(
   "../../src/lib/admin/hours-actions.ts"
 );
 const { saveSop } = await import("../../src/lib/sop/actions.ts");
@@ -45,7 +48,7 @@ function form(fields) {
 
 const buildRow = async () =>
   (await db.query(
-    `select id, body, confirmed_at, confirmed_by, drafted_by, source
+    `select id, title, body, confirmed_at, confirmed_by, drafted_by, source, coach_note, sop, member_edited_at
      from public.handover_pack where member_id='${RUTH}' and source='hot_seat'`,
   )).rows[0];
 
@@ -74,31 +77,51 @@ test("adding a build leaves it unwritten and unpublished", async () => {
   assert.equal(build.confirmed_at, null, "nothing to publish until it's written");
 });
 
-// The report that prompted this file: body saved, confirmed_at null. The action
-// writes both in one update, so that pairing cannot happen.
-test("writing it up sets the body and publishes in one go", async () => {
+test("Nina's comment saves, and publishes nothing", async () => {
   configure(db, NINA);
   const before = await buildRow();
-  const result = await saveWriteUp(null, form({
-    handover_pack_id: before.id, body: "What we built together.",
+  const result = await saveCoachNote(null, form({
+    handover_pack_id: before.id, coach_note: "Start with the trigger, not the tool.",
   }));
 
   assert.equal(result?.error, undefined);
   const after = await buildRow();
-  assert.equal(after.body, "What we built together.");
-  assert.ok(after.confirmed_at, "publishing is not a separate step");
-  assert.equal(after.confirmed_by, NINA);
+  assert.equal(after.coach_note, "Start with the trigger, not the tool.");
+  // The old flow set these on save. The new one never does — there is
+  // nothing to publish; the member writes the record.
+  assert.equal(after.body, null);
+  assert.equal(after.confirmed_at, null);
 });
 
-test("an empty write-up is refused rather than publishing nothing", async () => {
+test("the member writes the SOP for the build, keeping Nina's title and comment", async () => {
+  configure(db, RUTH);
+  const build = await buildRow();
+  // Updating an existing entry returns a notice; only a new entry redirects.
+  const result = await saveSop(null, form({
+    id: build.id,
+    title: "My own name for it",           // ignored on a build — Nina named it
+    trigger: "An enquiry lands",
+    outcome: "They have a reply within the hour",
+    owner: "Me",
+    tools: "Gmail",
+  }));
+  assert.equal(result?.error, undefined);
+
+  const after = await buildRow();
+  assert.equal(after.title, build.title, "a build keeps the name Nina gave it");
+  assert.equal(after.coach_note, "Start with the trigger, not the tool.");
+  assert.ok(after.sop, "the member's SOP is on the build's own row");
+  assert.equal(after.sop.owner, "Me");
+  assert.ok(after.member_edited_at);
+});
+
+test("clearing the comment leaves the member's SOP alone", async () => {
   configure(db, NINA);
   const build = await buildRow();
-  const result = await saveWriteUp(null, form({
-    handover_pack_id: build.id, body: "   ",
-  }));
-
-  assert.match(result?.error ?? "", /empty write-up/);
-  assert.equal((await buildRow()).body, "What we built together.");
+  await saveCoachNote(null, form({ handover_pack_id: build.id, coach_note: "" }));
+  const after = await buildRow();
+  assert.equal(after.coach_note, null);
+  assert.equal(after.sop.owner, "Me");
 });
 
 test("nothing in the product drafts it, so it's recorded as Nina's", async () => {
@@ -122,7 +145,7 @@ test("a member's own SOP is never published — there's nothing to confirm", asy
   assert.equal(sop.source, "member_sop");
 });
 
-test("changing the rate leaves the write-up alone", async () => {
+test("changing the rate leaves the comment and the SOP alone", async () => {
   configure(db, NINA);
   const build = await buildRow();
   await changeBuildRate(null, form({
@@ -131,6 +154,6 @@ test("changing the rate leaves the write-up alone", async () => {
   }));
 
   const after = await buildRow();
-  assert.equal(after.body, "What we built together.");
-  assert.ok(after.confirmed_at);
+  assert.equal(after.coach_note, null);
+  assert.equal(after.sop.owner, "Me");
 });

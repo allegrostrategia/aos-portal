@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { resizeImage } from "@/lib/upload/resize";
 import {
   HEADSHOT_ACCEPT,
   HEADSHOT_MAX_EDGE,
@@ -35,28 +36,6 @@ import { FormMessage } from "@/components/ui/form";
  * oversized photo is a far better outcome than a member who can't add one.
  */
 
-async function resizeForUpload(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-
-  const scale = Math.min(1, HEADSHOT_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("No canvas context");
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.85),
-  );
-  if (!blob) throw new Error("Canvas produced nothing");
-  return blob;
-}
 
 export function HeadshotField({ path }: { path: string | null }) {
   const [storedPath, setStoredPath] = useState(path ?? "");
@@ -104,7 +83,7 @@ export function HeadshotField({ path }: { path: string | null }) {
       let body: Blob = file;
       let name = file.name;
       try {
-        body = await resizeForUpload(file);
+        body = await resizeImage(file, HEADSHOT_MAX_EDGE);
         name = "photo.jpg";
       } catch {
         // Resizing is an optimisation, not a requirement.

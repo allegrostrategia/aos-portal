@@ -24,10 +24,13 @@ export function SopForm({
   id,
   title,
   sop,
+  lockTitle = false,
 }: {
   id?: string;
   title?: string;
   sop: Sop;
+  /** A hot-seat build keeps the name Nina gave it (L'Editoriale §6). */
+  lockTitle?: boolean;
 }) {
   const [state, formAction] = useActionState<SopState, FormData>(saveSop, null);
   const [steps, setSteps] = useState<string[]>(
@@ -44,13 +47,22 @@ export function SopForm({
       <Card>
         <Eyebrow>What this is</Eyebrow>
         <div className="mt-3 flex flex-col gap-4">
-          <Field
-            label="Name it"
-            name="title"
-            defaultValue={title ?? ""}
-            placeholder="Onboarding a new client"
-            hint="What you'd call it when telling somebody to go and read it."
-          />
+          {lockTitle ? (
+            <>
+              <input type="hidden" name="title" value={title ?? ""} />
+              <p className="text-small text-ink/60">
+                Named by Nina: <span className="font-medium text-ink">{title}</span>
+              </p>
+            </>
+          ) : (
+            <Field
+              label="Name it"
+              name="title"
+              defaultValue={title ?? ""}
+              placeholder="Onboarding a new client"
+              hint="What you'd call it when telling somebody to go and read it."
+            />
+          )}
           <TextArea
             label="What starts it off"
             name="trigger"

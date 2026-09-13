@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import {
   addBuild,
   changeBuildRate,
-  saveWriteUp,
+  saveCoachNote,
   type HoursState,
 } from "@/lib/admin/hours-actions";
 import { Field, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
@@ -108,27 +108,24 @@ export function RateControls({
 }
 
 /**
- * The write-up of a live build (§8).
+ * Nina's comment on a build (L'Editoriale §6).
  *
- * No draft state: saving publishes it to their Archivio. Nina works the wording
- * out with Claude outside the product, so the drafting has already happened by
- * the time anything is typed here — and a half-written note stored where the
- * member can technically read it is a worse answer than not storing one.
- *
- * The member can rephrase their own copy afterwards, which is §8's intent; a
- * trigger keeps that to the prose rather than the title or who signed it off.
+ * The write-up form that used to be here published Nina's record into the
+ * member's Archivio. That flow is gone: she leaves a short comment, and the
+ * member writes the SOP for the build themselves, seeing her comment as they
+ * do. This form is the comment.
  */
-export function WriteUpForm({
+export function CoachNoteForm({
   packId,
-  body,
-  isPublished,
+  note,
+  memberHasWritten,
 }: {
   packId: string;
-  body: string | null;
-  isPublished: boolean;
+  note: string | null;
+  memberHasWritten: boolean;
 }) {
   const [state, formAction] = useActionState<HoursState, FormData>(
-    saveWriteUp,
+    saveCoachNote,
     null,
   );
 
@@ -136,20 +133,20 @@ export function WriteUpForm({
     <form action={formAction} className="mt-3 flex flex-col gap-2 border-t border-ink/10 pt-3">
       <input type="hidden" name="handover_pack_id" value={packId} />
       <TextArea
-        label={isPublished ? "Write-up (published)" : "Write-up"}
-        name="body"
-        rows={4}
+        label="Your comment on this build"
+        name="coach_note"
+        rows={3}
         required={false}
-        defaultValue={body ?? ""}
+        defaultValue={note ?? ""}
         hint={
-          isPublished
-            ? "Saving again replaces what they can see."
-            : "Nothing appears in their Archivio until this is saved."
+          memberHasWritten
+            ? "They've written their SOP for this one. Your comment still shows beside it."
+            : "A line or two of guidance. They write the SOP themselves, with this beside the form."
         }
       />
       <FormMessage error={state?.error} notice={state?.notice} />
       <Button type="submit" size="sm" variant="secondary" className="self-start">
-        {isPublished ? "Update the write-up" : "Publish to their Archivio"}
+        Save comment
       </Button>
     </form>
   );
