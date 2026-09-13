@@ -1,6 +1,9 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { REACTION_EMOJI, type ReactionEmoji, type ReactionSummary } from "@/lib/chat/reactions";
+
+export { REACTION_EMOJI, type ReactionEmoji, type ReactionSummary };
 
 export type Channel = {
   id: string;
@@ -135,4 +138,120 @@ export async function getDirectPartners(
   }
 
   return names;
+}
+
+
+/**
+ * Reactions for a set of messages, summarised per message: each emoji's count
+ * and whether the current member is among them. RLS scopes rows to messages
+ * the member can see, so this is safe to call with any ids the page holds.
+ */
+export async function getReactions(
+  messageIds: string[],
+  meId: string,
+): Promise<Map<string, ReactionSummary[]>> {
+  const out = new Map<string, ReactionSummary[]>();
+  if (messageIds.length === 0) return out;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("message_reactions")
+    .select("message_id, member_id, emoji")
+    .in("message_id", messageIds);
+
+  const rows = (data ?? []) as { message_id: string; member_id: string; emoji: ReactionEmoji }[];
+
+  for (const row of rows) {
+    const list = out.get(row.message_id) ?? [];
+    let entry = list.find((e) => e.emoji === row.emoji);
+    if (!entry) {
+      entry = { emoji: row.emoji, count: 0, mine: false };
+      list.push(entry);
+    }
+    entry.count++;
+    if (row.member_id === meId) entry.mine = true;
+    out.set(row.message_id, list);
+  }
+
+  // Fixed order, so the same four never jump around between messages.
+  for (const list of out.values()) {
+    list.sort((a, b) => REACTION_EMOJI.indexOf(a.emoji) - REACTION_EMOJI.indexOf(b.emoji));
+  }
+  return out;
+}
+
+export type ChannelPreview = {
+  body: string | null;
+  voice: boolean;
+  memberId: string;
+  createdAt: string;
+};
+
+/**
+ * The latest message in each channel, for the room list's preview line. One
+ * query for all channels rather than one per row: the list is small, but a
+ * round trip per room is the shape that gets slow the day it isn't.
+ */
+export async function getChannelPreviews(
+  channelIds: string[],
+): Promise<Map<string, ChannelPreview>> {
+  const out = new Map<string, ChannelPreview>();
+  if (channelIds.length === 0) return out;
+
+  const supabase = await createClient();
+  // Newest first across every channel; the first row seen per channel wins.
+  // Bounded, because a member in many rooms would otherwise pull the world.
+  const { data } = await supabase
+    .from("chat_messages")
+    .select("channel_id, member_id, body, voice_path, created_at")
+    .in("channel_id", channelIds)
+    .order("created_at", { ascending: false })
+    .limit(channelIds.length * 20);
+
+  for (const row of (data ?? []) as {
+    channel_id: string;
+    member_id: string;
+    body: string | null;
+    voice_path: string | null;
+    created_at: string;
+  }[]) {
+    if (out.has(row.channel_id)) continue;
+    out.set(row.channel_id, {
+      body: row.body,
+      voice: Boolean(row.voice_path),
+      memberId: row.member_id,
+      createdAt: row.created_at,
+    });
+  }
+  return out;
+}
+
+/** When the member last opened each channel, for the unread dot. */
+export async function getLastReads(): Promise<Map<string, string>> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("chat_reads").select("channel_id, last_read_at");
+  return new Map(
+    ((data ?? []) as { channel_id: string; last_read_at: string }[]).map((r) => [
+      r.channel_id,
+      r.last_read_at,
+    ]),
+  );
+}
+
+/** The other participant of each direct channel, by id — for their headshot. */
+export async function getDirectPartnerIds(
+  channelIds: string[],
+  meId: string,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (channelIds.length === 0) return out;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chat_participants")
+    .select("channel_id, member_id")
+    .in("channel_id", channelIds);
+  for (const row of (data ?? []) as { channel_id: string; member_id: string }[]) {
+    if (row.member_id !== meId) out.set(row.channel_id, row.member_id);
+  }
+  return out;
 }

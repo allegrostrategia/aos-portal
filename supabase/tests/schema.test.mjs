@@ -1882,5 +1882,70 @@ await rejects("a cancelled member cannot mark anything complete", async () => {
     `insert into public.lesson_completions (member_id, content_id) values ('${GONE}','${id}')`));
 }, "row-level security");
 
+console.log("\n— message reactions —");
+
+// A message in #general (everyone with access can see it) and one in a direct
+// channel between ERIN and FRAN (BOB cannot). Both from ERIN.
+const GENERAL_MSG = async () => {
+  const general = await generalId();
+  return (await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${general}','${ERIN}','react to this') returning id`))).rows[0].id;
+};
+const DIRECT_MSG = async () => {
+  const ch = (await as(ERIN, () => db.query(
+    `select public.open_direct_channel('${FRAN}') id`))).rows[0].id;
+  return (await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ('${ch}','${ERIN}','just us') returning id`))).rows[0].id;
+};
+const generalMsg = await GENERAL_MSG();
+const directMsg = await DIRECT_MSG();
+
+await check("a member can react to a message they can see", async () => {
+  await as(BOB, () => db.query(
+    `insert into public.message_reactions (message_id, member_id, emoji) values ('${generalMsg}','${BOB}','👏')`));
+  const r = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.message_reactions where message_id='${generalMsg}'`));
+  return r.rows[0].c === 1;
+});
+
+await rejects("only the four fixed emoji are accepted", () =>
+  as(BOB, () => db.query(
+    `insert into public.message_reactions (message_id, member_id, emoji) values ('${generalMsg}','${BOB}','🔥')`)),
+  "message_reactions_emoji_check");
+
+await rejects("a member cannot react to a message in a channel they are not in", () =>
+  as(BOB, () => db.query(
+    `insert into public.message_reactions (message_id, member_id, emoji) values ('${directMsg}','${BOB}','❤️')`)),
+  "row-level security");
+
+await rejects("a member cannot react as somebody else", () =>
+  as(BOB, () => db.query(
+    `insert into public.message_reactions (message_id, member_id, emoji) values ('${generalMsg}','${ERIN}','❤️')`)),
+  "row-level security");
+
+await check("reactions in a direct channel are invisible to outsiders", async () => {
+  await as(FRAN, () => db.query(
+    `insert into public.message_reactions (message_id, member_id, emoji) values ('${directMsg}','${FRAN}','🤩')`));
+  const outsider = await as(BOB, () => db.query(
+    `select count(*)::int c from public.message_reactions where message_id='${directMsg}'`));
+  const insider = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.message_reactions where message_id='${directMsg}'`));
+  return outsider.rows[0].c === 0 && insider.rows[0].c === 1;
+});
+
+await check("a member can take their own reaction back, and nobody else's", async () => {
+  await as(ERIN, () => db.query(
+    `delete from public.message_reactions where message_id='${generalMsg}' and emoji='👏'`));
+  const stillThere = (await as(BOB, () => db.query(
+    `select count(*)::int c from public.message_reactions where message_id='${generalMsg}'`))).rows[0].c;
+  await as(BOB, () => db.query(
+    `delete from public.message_reactions where message_id='${generalMsg}' and emoji='👏'`));
+  const gone = (await as(BOB, () => db.query(
+    `select count(*)::int c from public.message_reactions where message_id='${generalMsg}'`))).rows[0].c;
+  return stillThere === 1 && gone === 0;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
