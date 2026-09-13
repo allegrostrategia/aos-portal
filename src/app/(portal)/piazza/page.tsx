@@ -3,17 +3,20 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
-import { getThisWeekTotal, COMPLETE_WEEK_MINUTES } from "@/lib/timer/queries";
-import { formatMinutes, weekProgress } from "@/lib/timer/format";
-import { currentWeekStart, getWeeklySubmission } from "@/lib/log/queries";
-import { getCurrentChallenge, getUpcomingSession } from "@/lib/hot-seat/queries";
+import { currentWeekStart, getRoadmapItems, getWeeklySubmission } from "@/lib/log/queries";
+import { countUpcomingSessions, getCurrentChallenge, getMySubmission, getUpcomingSession } from "@/lib/hot-seat/queries";
 import { getPiazzaRoadmap } from "@/lib/piazza/queries";
+import { heroOfTheDay, quoteOfTheDay } from "@/lib/piazza/quotes";
 import { getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
-import { formatSessionTime } from "@/lib/time-zone";
-import { Card, Eyebrow } from "@/components/ui/card";
-import { InstallPrompt } from "@/components/install-prompt";
+import { getMyAvailability, getMyPairing, pairingMonth } from "@/lib/pairing/queries";
+import { resolveNames } from "@/lib/chat/queries";
+import { getOnboardingProgress } from "@/lib/onboarding/progress";
+import { formatSessionTime, utcToWallClock } from "@/lib/time-zone";
+import { Card, Chevron, Eyebrow, Quote, SectionTitle } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
+import { OnboardingPath } from "@/components/onboarding/onboarding-path";
+import { InstallPrompt } from "@/components/install-prompt";
 
 export const metadata: Metadata = { title: "Piazza — aOS" };
 
@@ -21,303 +24,286 @@ const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
   day: "numeric",
   month: "long",
+  timeZone: "Europe/London",
 });
 
 /**
- * Piazza — the daily homepage (§2).
+ * Piazza — the daily homepage (§2), L'Editoriale "02".
  *
- * "I'm arriving at my business today," not "I've opened an app." Calm, not
- * overwhelming — which is as much about what isn't here as what is.
+ * "I'm arriving at my business today," not "I've opened an app." The order,
+ * from the brief:
  *
- * Widgets whose data doesn't exist yet are omitted rather than shown empty. The
- * buddy card needs pairing (Step 11), and the draw card needs a draw to exist.
- * An empty widget takes the same room as a full one and says less — which is why
- * the proof cluster appears only once there are hours in the ledger: "0 hrs
- * reclaimed" is a worse thing to greet somebody with every morning than nothing
- * at all, and in their first weeks it is also just true and unhelpful.
+ *   1. Onboarding progress — only while any of the six steps is left
+ *   2. The metrics strip — hours this month, weekly goals, upcoming sessions
+ *   3. The quote of the day, over the hero
+ *   4. The task list — what actually needs doing now
+ *   5. Hot seat, Milestones and Pairing cards — each a real route in, since
+ *      none of the three has a nav slot any more
  *
- * The community goal from §2 is deliberately absent. The brief asks for the
- * collective number beside the personal one but never says what it counts
- * towards, and a made-up target shown as if it meant something is worse than
- * waiting for a real one.
+ * The onboarding section is *not* gated on status. It reads the six steps,
+ * and some of those complete after a member is active. See progress.ts.
  *
- * The map appears only as a preview (§3): Piazza should never show the full
- * thing, so La Strada stays somewhere members visit rather than get routed
- * through on every login.
+ * Widgets whose data doesn't exist yet are omitted rather than shown empty. A
+ * task list with nothing on it says so in one line; a pairing card with no
+ * pairing points at the availability form; the community goal from §2 is
+ * still absent because nobody has said what it counts towards.
+ *
+ * The stat strip over the hero is the second of the two places the glass blur
+ * is allowed — it sits over a photograph, which is the case it exists for.
  */
 export default async function PiazzaPage() {
-  // Non-null: the portal layout has already run requireMember().
   const member = (await getCurrentMember())!;
   const weekStart = currentWeekStart();
+  const today = utcToWallClock(new Date()).slice(0, 10);
+  const month = pairingMonth();
 
-  // One round trip for everything the page needs, not two. `getMemberHours`
-  // used to be awaited on its own after this — a sixth sequential hop to the
-  // database for no reason, which at cross-region latency was the difference
-  // between a page and a wait.
-  const [week, submission, session, challenge, roadmap, hours] = await Promise.all([
-    getThisWeekTotal(member.id),
+  const [
+    onboardingProgress,
+    submission,
+    roadmapItems,
+    session,
+    sessionCount,
+    challenge,
+    roadmap,
+    hours,
+    pairing,
+    availability,
+  ] = await Promise.all([
+    getOnboardingProgress(member),
     getWeeklySubmission(member.id, weekStart),
+    getRoadmapItems(member.id),
     getUpcomingSession(),
+    countUpcomingSessions(),
     getCurrentChallenge(member.id),
     getPiazzaRoadmap(member.id),
     getMemberHours(member.id),
+    member.status === "active" ? getMyPairing(member.id, month) : Promise.resolve(null),
+    member.status === "active" ? getMyAvailability(member.id, month) : Promise.resolve(null),
+  ]);
+
+  const [mySubmission, partnerNames] = await Promise.all([
+    session ? getMySubmission(member.id, session.id) : Promise.resolve(null),
+    pairing?.partnerId ? resolveNames([pairing.partnerId]) : Promise.resolve(new Map<string, string>()),
   ]);
 
   const firstName = member.full_name.split(" ")[0];
   const signedOff = Boolean(submission?.submitted_at);
-  const progress = weekProgress(week.loggedMinutes, COMPLETE_WEEK_MINUTES);
-  const onboarding = member.status === "onboarding";
-
   const milestone = milestoneProgress(hours.total);
 
+  // Hours reclaimed this month: the ledger weeks that start in this month.
+  const thisMonth = today.slice(0, 7);
+  const monthHours = hours.weeks
+    .filter((w) => w.week_start_date.startsWith(thisMonth))
+    .reduce((sum, w) => sum + w.hours, 0);
+
+  // Weekly goals: roadmap actions ticked this week, of all of them.
+  const ticked = Object.values(submission?.actions_taken ?? {}).filter(Boolean).length;
+  const goalCount = roadmapItems.length;
+
+  // The task list. Only what genuinely needs doing now.
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 Sun … 6 Sat
+  const fridayOn = dow === 5 || dow === 6 || dow === 0;
+  const tasks: { key: string; title: string; detail: string; href: string }[] = [];
+  if (!signedOff && fridayOn) {
+    tasks.push({
+      key: "log",
+      title: "Sign off this week's log",
+      detail: "Tick what you did against the plan, and answer the Friday question.",
+      href: "/log",
+    });
+  }
+  if (availability && !availability.submitted) {
+    tasks.push({
+      key: "pairing",
+      title: "Say when you're free for your peer call",
+      detail: "Fifteen boxes, ten seconds — it's what gets you matched.",
+      href: "/pairing",
+    });
+  }
+  if (session && member.status === "active" && !mySubmission) {
+    tasks.push({
+      key: "hot-seat",
+      title: "Submit your hot seat",
+      detail: session.scheduled_for
+        ? `Before ${formatSessionTime(session.scheduled_for)}.`
+        : "What you're stuck on, and what done looks like.",
+      href: "/hot-seat",
+    });
+  }
+  if (session?.scheduled_for) {
+    tasks.push({
+      key: "calendar",
+      title: "Add the next hot seat to your calendar",
+      detail: formatSessionTime(session.scheduled_for),
+      href: `/api/calendar/hot-seat/${session.id}`,
+    });
+  }
+
+  const partnerName = pairing?.partnerId ? (partnerNames.get(pairing.partnerId) ?? "your partner") : null;
+
   return (
-    <main className="flex-1 py-8 sm:py-10">
+    <main className="flex-1 py-6 sm:py-10">
       <Eyebrow>{LONG_DATE.format(new Date())}</Eyebrow>
       <h1 className="font-display mt-2 text-display font-medium text-ink">
-        Buongiorno, {firstName}
+        Buongiorno, {firstName}.
       </h1>
-      <p className="mt-3 max-w-xl text-body text-ink/70">
-        One real thing, built every month, from what your own week actually
-        shows.
-      </p>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        {/* This week's log, with the FATTO stamp on completion (§2). */}
-        <Card>
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <Eyebrow>This week&rsquo;s log</Eyebrow>
-              <p className="font-mono mt-2 text-title text-ink tabular-nums">
-                {formatMinutes(week.loggedMinutes)}
-              </p>
-            </div>
-            {signedOff ? (
-              // Rotated and bordered — a stamp pressed onto the page rather
-              // than a tidy status badge. §2 asks for a stamp; a pill would be
-              // a different gesture.
-              <span className="font-display shrink-0 -rotate-6 rounded border-2 border-orange/60 px-2 py-1 text-heading text-orange/80 italic">
-                Fatto
-              </span>
-            ) : null}
-          </div>
-
-          <div
-            className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10"
-            role="progressbar"
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Progress toward a complete week"
-          >
-            <div
-              className={`h-full rounded-full transition-all ${
-                week.isCompleteWeek ? "bg-ink" : "bg-orange"
-              }`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          <p className="mt-2 text-small text-ink/70">
-            {signedOff
-              ? "Signed off. Your time keeps tracking."
-              : week.isCompleteWeek
-                ? "Ten hours in — sign the week off when you're ready."
-                : `${formatMinutes(COMPLETE_WEEK_MINUTES - week.loggedMinutes)} more makes it count.`}
-          </p>
-
-          <ButtonLink href="/log" size="sm" variant="secondary" className="mt-4">
-            Your log
-          </ButtonLink>
-        </Card>
-
-        {/* "Continue your journey" is a deep link into the station matching
-            their focus, never a link to the map (§3). */}
-        {roadmap?.focusStation ? (
-          <Card>
-            <Eyebrow>Continue your journey</Eyebrow>
-            <p className="font-display mt-2 text-heading font-medium text-ink">
-              {roadmap.focusStation.name}
-            </p>
-            {roadmap.phaseTitle ? (
-              <p className="mt-1 text-small text-ink/60">
-                {roadmap.phaseTitle}
-              </p>
-            ) : null}
-            {roadmap.focusStation.description ? (
-              <p className="mt-2 text-small text-ink/70">
-                {roadmap.focusStation.description}
-              </p>
-            ) : null}
-            <ButtonLink
-              href={`/stations/${roadmap.focusStation.slug}`}
-              size="sm"
-              className="mt-4"
-            >
-              Go there
-            </ButtonLink>
-          </Card>
-        ) : onboarding ? (
-          <Card>
-            <Eyebrow>Your first weeks</Eyebrow>
-            <p className="mt-2 text-small text-ink/70">
-              Your roadmap arrives at your 1:1 in week four. Until then the work
-              is the tracking — it&rsquo;s what the roadmap gets built from.
-            </p>
-            <ButtonLink href="/onboarding" size="sm" className="mt-4">
-              What&rsquo;s next
-            </ButtonLink>
-          </Card>
-        ) : null}
-      </div>
-
-      {/* The one thing, from the hot seat (§4) — deliberately apart from the
-          roadmap above, which is the separate self-paced track. */}
-      {challenge ? (
-        <Card className="mt-5 bg-lemon/25">
-          <Eyebrow tone="accent">This month you&rsquo;re building</Eyebrow>
-          <p className="font-display mt-2 text-title font-medium text-ink">
-            {challenge}
-          </p>
-        </Card>
+      {/* 1. Onboarding — while any of the six is left. Not gated on status. */}
+      {!onboardingProgress.allDone ? (
+        <div className="mt-6">
+          <OnboardingPath progress={onboardingProgress} compact />
+        </div>
       ) : null}
 
-      {/* Hours reclaimed sits here, not at the foot of the page.
-          
-          It was last, under the map, which put the empty state below the fold on
-          a laptop — Dom went looking for it on 8 Sep and concluded it wasn't
-          rendering at all. For a member with nothing banked that state is the
-          only thing on Piazza that answers "what am I working towards", so being
-          the easiest thing to miss was exactly backwards.
-          
-          Both states moved, not just the empty one. Moving only the empty state
-          would have made the block jump from mid-page to the foot the first week
-          a member banked anything, which is a stranger thing to explain than
-          either position on its own. Nothing above it moved: the week and the
-          roadmap focus are what the day is for, and the challenge stays next to
-          the roadmap it was deliberately set apart from. */}
-      {hours.total > 0 ? (
-        /* The proof cluster (§2): the number, and how far to the next
-           threshold. One block rather than three widgets, because milestones
-           are thresholds of the same number rather than a separate idea. */
-        <Card className="mt-5 bg-sky/15">
-          <Eyebrow>Hours reclaimed</Eyebrow>
-          <p className="font-mono mt-1 text-title text-ink">
-            {formatHours(hours.total)}
-          </p>
-
-          {/* §2: compact here, click-through to the full path — the same
-              pattern the draw card uses. This link is the contextual route,
-              worth having where the number already is; the nav item is the
-              unconditional one, since this cluster only renders once there is
-              something banked. */}
-          <Link href="/milestones" className="mt-3 block">
-            <div className="h-1.5 overflow-hidden rounded-full bg-ink/10">
-              <div
-                className="h-full rounded-full bg-orange"
-                style={{ width: `${Math.round(milestone.fraction * 100)}%` }}
-              />
-            </div>
-            <p className="mt-2 text-small text-ink/70">
-              {milestone.next === null
-                ? "Every milestone passed."
-                : `${milestone.toNext} to your next milestone at ${milestone.next}.`}{" "}
-              <span className="text-ink underline decoration-orange decoration-2 underline-offset-4">
-                See how far you&rsquo;ve come
-              </span>
-            </p>
-          </Link>
-
-          {hours.weeklyRate > 0 ? (
-            <p className="mt-3 text-caption text-ink/60">
-              Your builds add{" "}
-              <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
-              every week you log ten hours and submit.
-            </p>
-          ) : null}
-        </Card>
-      ) : (
-        /* Gated exactly as before — "0 hrs reclaimed" is still a worse thing to
-           greet somebody with every morning than nothing — but no longer a dead
-           end. This used to say the milestones arrived later, which was honest
-           when the page behind it was a stack of empty cards. Since 8 Sep it is
-           an illustrated road with all five thresholds on it and the member's
-           own position marked at the top, and that is worth seeing before
-           anything has been banked: it is the answer to "what am I working
-           towards", which is exactly the question somebody with nothing yet is
-           asking. The words were underselling the page. */
-        <Link href="/milestones" className="mt-5 block text-small text-ink/70">
-          Your milestones are mapped out — the hours start landing with your
-          first builds.{" "}
-          <span className="text-ink underline decoration-orange decoration-2 underline-offset-4">
-            See the path
-          </span>
-        </Link>
-      )}
-
-      <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        {session ? (
-          <Card>
-            <Eyebrow>Next hot seat</Eyebrow>
-            <p className="font-display mt-2 text-heading font-medium text-ink">
-              {session.scheduled_for
-                ? formatSessionTime(session.scheduled_for)
-                : "Week one — time to be confirmed"}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-4">
-              <ButtonLink href="/hot-seat" size="sm" variant="secondary">
-                {member.status === "active" ? "Submit yours" : "What happens"}
-              </ButtonLink>
-              {session.scheduled_for ? (
-                <a
-                  href={`/api/calendar/hot-seat/${session.id}`}
-                  className="text-small text-ink/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-ink"
-                >
-                  Add to calendar
-                </a>
-              ) : null}
-            </div>
-          </Card>
-        ) : null}
-
-        {roadmap && roadmap.openItems.length > 0 ? (
-          <Card>
-            <Eyebrow>On your roadmap</Eyebrow>
-            <ul className="mt-2 flex flex-col gap-1.5">
-              {roadmap.openItems.slice(0, 4).map((item) => (
-                <li key={item} className="text-small text-ink/80">
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-caption text-ink/50">
-              Tick these off when you sign your week&rsquo;s log.
-            </p>
-          </Card>
-        ) : null}
-      </div>
-
-      <Link
-        href="/stations"
-        className="group mt-5 block overflow-hidden rounded-xl border border-ink/10 bg-sky/10 transition hover:border-ink/25"
-      >
-        <div className="relative aspect-[21/9]">
+      {/* 3 (over 2). The hero, the quote, and the metrics strip on the glass. */}
+      <section className="relative mt-6 overflow-hidden rounded-card shadow-lift">
+        <div className="relative aspect-4/5 w-full sm:aspect-[21/10]">
           <Image
-            src="/illustrations/la-strada-map.png"
+            src={heroOfTheDay()}
             alt=""
             fill
+            priority
             sizes="(min-width: 1024px) 60rem, 100vw"
-            className="object-cover object-center transition duration-500 group-hover:scale-[1.02]"
+            className="object-cover"
           />
-        </div>
-        <div className="flex items-baseline justify-between gap-3 px-5 py-3">
-          <p className="font-display text-heading font-medium text-ink">La Strada</p>
-          <p className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4">
-            Open the map
-          </p>
-        </div>
-      </Link>
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/70 via-charcoal/10 to-transparent" />
+          <div className="absolute inset-x-0 top-0 p-5 sm:p-7">
+            <Quote className="max-w-md text-[1.35rem] text-white drop-shadow sm:text-heading">
+              &ldquo;{quoteOfTheDay()}&rdquo;
+            </Quote>
+            {roadmap?.focusStation ? (
+              <Link
+                href={`/stations/${roadmap.focusStation.slug}`}
+                className="mt-3 inline-block text-small text-white/85 underline decoration-orange decoration-2 underline-offset-4 hover:text-white"
+              >
+                This month: {roadmap.focusStation.name} →
+              </Link>
+            ) : null}
+          </div>
 
-      <InstallPrompt />
+          {/* 2. The metrics strip. */}
+          <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 sm:inset-x-5 sm:bottom-5">
+            {[
+              { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones" },
+              { value: goalCount > 0 ? `${ticked}/${goalCount}` : "—", label: "weekly goals", href: "/log" },
+              { value: String(sessionCount), label: sessionCount === 1 ? "upcoming session" : "upcoming sessions", href: "/hot-seat" },
+            ].map((stat) => (
+              <Link
+                key={stat.label}
+                href={stat.href}
+                className="glass rounded-2xl px-3 py-3 text-center transition hover:bg-cream/95 sm:px-4"
+              >
+                <p className="font-mono text-heading text-ink tabular-nums sm:text-title">{stat.value}</p>
+                <p className="mt-0.5 text-[0.62rem] leading-tight font-medium tracking-wide text-ink/60 uppercase sm:text-eyebrow">
+                  {stat.label}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 4. The task list. */}
+      <SectionTitle className="mt-8" aside={tasks.length ? `${tasks.length} to do` : undefined}>
+        Today
+      </SectionTitle>
+      {tasks.length === 0 ? (
+        <Card>
+          <p className="text-small text-ink/70">
+            Nothing waiting on you. Start the timer when you begin something.
+          </p>
+        </Card>
+      ) : (
+        <Card padded={false}>
+          <ul className="divide-y divide-ink/6 p-2">
+            {tasks.map((task) => (
+              <li key={task.key}>
+                <Link
+                  href={task.href}
+                  className="flex items-center gap-4 rounded-2xl px-4 py-3.5 transition hover:bg-cream-deep"
+                >
+                  <span aria-hidden className="size-5 shrink-0 rounded-full border-2 border-ink/25" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body font-medium text-ink">{task.title}</span>
+                    <span className="mt-0.5 block text-caption text-ink/55">{task.detail}</span>
+                  </span>
+                  <Chevron />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {/* 5. The three cards that lost a nav slot. Real routes in. */}
+      <div className="mt-8 grid gap-5 sm:grid-cols-3">
+        <Card tone="dark" className="flex flex-col">
+          <Eyebrow tone="light">The hot seat</Eyebrow>
+          {challenge ? (
+            <p className="font-display mt-2 text-heading font-medium">{challenge}</p>
+          ) : session?.scheduled_for ? (
+            <p className="font-display mt-2 text-heading font-medium">
+              {formatSessionTime(session.scheduled_for)}
+            </p>
+          ) : (
+            <p className="mt-2 text-small text-white/70">
+              Next session not scheduled yet.
+            </p>
+          )}
+          {challenge && session?.scheduled_for ? (
+            <p className="mt-1 text-small text-white/70">{formatSessionTime(session.scheduled_for)}</p>
+          ) : null}
+          <div className="mt-auto pt-5">
+            <ButtonLink href="/hot-seat" variant="primary" size="sm">
+              {member.status === "active" ? "The hot seat" : "What happens"}
+            </ButtonLink>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col">
+          <Eyebrow>Hours reclaimed</Eyebrow>
+          <p className="font-mono mt-2 text-title text-ink">{formatHours(hours.total)}</p>
+          <p className="mt-1 text-small text-ink/65">
+            {milestone.next === null
+              ? "Every milestone passed."
+              : `${milestone.toNext} to your next milestone at ${milestone.next}.`}
+          </p>
+          <div className="mt-auto pt-5">
+            <ButtonLink href="/milestones" variant="secondary" size="sm">
+              See the path
+            </ButtonLink>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col">
+          <Eyebrow>Peer pairing</Eyebrow>
+          {partnerName ? (
+            <>
+              <p className="font-display mt-2 text-heading font-medium text-ink">{partnerName}</p>
+              <p className="mt-1 text-small text-ink/65">
+                {pairing?.metAt ? "Met this month." : pairing?.bookedAt ? "Call's in the diary." : "This month's pair."}
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-small text-ink/65">
+              {member.status === "active"
+                ? availability?.submitted
+                  ? "You're in for this month. Pairings go out soon."
+                  : "Say when you're free and you'll be matched."
+                : "Opens once you're active."}
+            </p>
+          )}
+          <div className="mt-auto pt-5">
+            <ButtonLink href="/pairing" variant="secondary" size="sm">
+              Pairing
+            </ButtonLink>
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <InstallPrompt />
+      </div>
     </main>
   );
 }

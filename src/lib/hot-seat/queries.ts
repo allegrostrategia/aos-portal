@@ -84,3 +84,18 @@ export async function getCurrentChallenge(
 
   return (data as { confirmed_challenge: string | null } | null)?.confirmed_challenge ?? null;
 }
+
+/**
+ * How many sessions are scheduled from now on — the third number in Piazza's
+ * metrics strip. Counts sessions with a time set that hasn't passed; a session
+ * row for a month with no time yet isn't "upcoming" in any sense a member
+ * could act on.
+ */
+export async function countUpcomingSessions(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("hot_seat_sessions")
+    .select("id", { count: "exact", head: true })
+    .gte("scheduled_for", new Date().toISOString());
+  return count ?? 0;
+}
