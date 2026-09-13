@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, LOCAL ONLY, awaiting Dom's walkthrough
+## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, PUSHED 14 Sep after Dom's walkthrough
 
-**Eleven commits on `main`, none pushed.** `16caceb` through `4c9688d`. Nothing is deployed and no migration has been applied. Brief: `docs/aOS_LEditoriale_Redesign_Brief.md`; reference: `docs/LEditoriale_full_reference_poster.png`.
+**Thirteen commits on `main`, pushed 14 Sep** (`795bd52..9976960`). Deployed by Vercel; all eight migrations applied via `npm run db:push`; the `archivio` bucket and the `message_reactions` Realtime publication both done in the dashboard — all before the push. Nothing outstanding from this range. Brief: `docs/aOS_LEditoriale_Redesign_Brief.md`; reference: `docs/LEditoriale_full_reference_poster.png`.
 
 ### Built
 | # | Screen | Status | New scope shipped with it |
@@ -47,12 +47,12 @@ This is its own section rather than a line in the open list because it is a prod
 
 Verification at the end: tsc, lint, build clean; **171 unit / 232 schema / 90 action** (from 171 / 203 / 88). Every new policy mutation-tested; every clause a test can reach is killed, and the ones that can't (delete owner-checks, which a SELECT policy already shields) are documented in the migration.
 
-### Before any of this goes live — Dom's steps, in order
-1. **Walk through it.** Local only: `npm run dev`. Everything below is unverified on a real screen — no authenticated page was screenshot-checked from the build session, only the login page.
-2. **Dashboard, two things:** create a private **`archivio`** storage bucket (the policies are in the migration and wait for it); add **`message_reactions`** to the Realtime publication, as `chat_messages` was. Without the second, reactions from other people appear on the next refresh instead of live.
-3. **`npm run db:push`** — eight migrations, `20260913200000` through `20260914003000`. The CLI works now; `migration list` first, as always.
-4. **Phone test the blur.** Two uses only: the bottom nav and the Piazza stat strip. The nav is the one that re-blurs on every scroll frame. If it's janky, set `--aos-glass-blur: none` in `globals.css` and everything falls back to its solid fill.
-5. Push.
+### Go-live steps — all done 14 Sep
+1. ~~Walk through it locally~~ — done by Dom; four decisions came out of it (below).
+2. ~~Dashboard: `archivio` bucket, `message_reactions` in the Realtime publication~~ — done.
+3. ~~`npm run db:push`, eight migrations~~ — done, before the push.
+4. **Phone test the blur — still worth doing on the live site.** Two uses only: the bottom nav and the Piazza stat strip. The nav is the one that re-blurs on every scroll frame. If it's janky, set `--aos-glass-blur: none` in `globals.css` and everything falls back to its solid fill.
+5. ~~Push~~ — done.
 
 ### Judgement calls that need Dom's eyes (most important first)
 - ~~Orange primary buttons, white text~~ — **decided 14 Sep: ink text on orange (3.5:1)**, on accessibility not preference. Done.
