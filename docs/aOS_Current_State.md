@@ -55,12 +55,12 @@ Verification at the end: tsc, lint, build clean; **171 unit / 232 schema / 90 ac
 5. Push.
 
 ### Judgement calls that need Dom's eyes (most important first)
-- **Orange primary buttons, white text: ~2.9:1.** The codebase used to defend navy-for-contrast; the brief names "navy buttons" as a rule it replaces, so the reference won. Semibold 16px+ is the mitigation. The alternative — ink text on the orange pill, 3.5:1 — is one line in `button.tsx`.
+- ~~Orange primary buttons, white text~~ — **decided 14 Sep: ink text on orange (3.5:1)**, on accessibility not preference. Done.
 - **The SOP flow (screen 6).** Nina's write-up form is gone; she leaves a comment; the member writes the SOP on the build's own row. Everything she already published still reads, above the member's form. The `sop`-only-on-`member_sop` constraint was dropped and its test retired with the reason in place.
 - **Onboarding (screen 7).** The directory listing dropped out of the sequence (it isn't in the brief's six). "Book your 1:1" is the one step with no fact behind it, so it's a tick. Two steps say "carry on regardless" where content is still on Nina's list.
-- **Calendar blocks are coloured by bucket, not by category.** Ten hues that stay apart in every pairing under colour-vision deficiency on cream don't exist; the dataviz method caps an any-pair identity palette at ~3. Colour says Systems / Profit / Visibility; the label on every block says which category. Validated on the card surface, all pairs.
-- **Lesson page has no Overview / Notes / Resources tabs and no key-takeaways checklist.** They need per-lesson fields that don't exist. A content-model decision, not something to draw empty.
-- **Piazza quotes are placeholders** in the brand's register. Nina should own the list; it is the first sentence a member reads every day.
+- ~~Calendar blocks coloured by bucket~~ — **approved 14 Sep as built.** Ten hues that stay apart in every pairing under colour-vision deficiency on cream don't exist; the dataviz method caps an any-pair identity palette at ~3. Colour says Systems / Profit / Visibility; the label on every block says which category. Validated on the card surface, all pairs.
+- ~~Lesson tabs / takeaways~~ — **deferred 14 Sep: a content gap, not a code one.** Lessons get per-lesson notes/resources/takeaways when Nina has them to give.
+- ~~Piazza quotes~~ — **on Nina's content list as of 14 Sep.** Placeholders stay until she supplies hers; `src/lib/piazza/quotes.ts`, one array.
 - **`text-ink` (#0A1E4A) for all text**, with brand navy kept for the map lines and nav state. One variable if it reads wrong.
 - **Hot seat page (`/hot-seat`) was not restyled** beyond propagation — it isn't a numbered screen in the brief. The reference's dark treatment is on the Piazza card.
 
@@ -199,6 +199,9 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - What a milestone unlocks — deferred rather than pending; see the deferred-decisions section.
 - Confirming Resend deliverability isn't landing in spam long-term.
 - Confirming the spreadsheet-download exception as a standing rule (leaning yes).
+- **Quote-of-the-day lines for Piazza** (added 14 Sep) — seven or more, in her voice. Placeholders in `src/lib/piazza/quotes.ts` until then; one array.
+- **The two-week time-tracking explainer video** (from the redesign brief).
+- **Per-lesson notes, resources and key takeaways** — deferred 14 Sep as a content gap; the lesson page's tabs and checklist get built when there is something to put in them.
 
 ## Real bugs found and fixed (running list, worth knowing the shape of each)
 1. Vercel Authentication toggle blocking public site access

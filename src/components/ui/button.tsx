@@ -3,17 +3,12 @@ import Link from "next/link";
 /**
  * Buttons.
  *
- * L'Editoriale (13 Sep 2026): pills, and the primary action is orange.
- *
- * That reverses a decision this file used to defend — navy for primary, on the
- * grounds that white on #FF6625 is about 2.9:1 and fails WCAG AA at body size.
- * The number hasn't changed; the direction has, and the redesign brief names
- * "navy buttons" as one of the rules it replaces. The mitigation is weight and
- * size: primary text is semibold at 16px or larger, which is as far as the type
- * can go towards the 3:1 large-text threshold without a darker orange. If the
- * contrast turns out to matter in practice, the one-line alternative is ink
- * text on the orange pill (3.5:1) — see `primary` below. **This is on the list
- * for Dom's eyes before it ships.**
+ * L'Editoriale (13 Sep 2026): pills, and the primary action is orange — with
+ * **ink text, not white**. White on #FF6625 is about 2.9:1 and fails WCAG AA at
+ * body size; the reference draws it that way and it was built that way first.
+ * Dom's call on 14 Sep: ink on the orange pill, 3.5:1, on accessibility rather
+ * than preference. The reference's look is close enough that nobody will miss
+ * the white; the members who couldn't read it would have missed the button.
  */
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "dark";
@@ -24,7 +19,7 @@ const BASE =
   "disabled:cursor-not-allowed disabled:opacity-60";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-orange text-white shadow-soft hover:bg-orange/90",
+  primary: "bg-orange text-ink shadow-soft hover:bg-orange/90",
   secondary: "border border-ink/15 bg-card text-ink hover:border-ink/30",
   ghost: "text-ink/70 hover:bg-cream-deep hover:text-ink",
   // On the dark card the primary is still orange; this is the quiet one there.
