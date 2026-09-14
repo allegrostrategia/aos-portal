@@ -69,7 +69,7 @@ export default async function MilestonesPage() {
           <p className="mt-2 text-small text-ink/70">
             Your builds add{" "}
             <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
-            every week it's live.
+            every week it&rsquo;s live.
           </p>
         ) : null}
       </Card>

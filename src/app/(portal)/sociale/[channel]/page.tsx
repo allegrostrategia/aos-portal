@@ -5,14 +5,18 @@ import { getCurrentMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import {
   getChannel,
+  getCoachIds,
   getDirectPartners,
   getMessages,
+  getPins,
   getReactions,
 } from "@/lib/chat/queries";
+import { deleteMessage, setPinned } from "@/lib/chat/actions";
 import { getHeadshotUrls } from "@/lib/directory/queries";
 import { formatSessionTimeShort } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
 import { RoomChips, RoomList } from "@/components/chat/room-list";
+import Link from "next/link";
 import { Card, Eyebrow } from "@/components/ui/card";
 import { Composer } from "./composer";
 import { LiveThread } from "./live-thread";
@@ -56,10 +60,14 @@ export default async function ChannelPage({
       .order("created_at", { ascending: false }),
   ]);
 
-  const [reactions, headshots] = await Promise.all([
+  const [reactions, headshots, pins, coaches] = await Promise.all([
     getReactions(messages.map((m) => m.id), member.id),
     getHeadshotUrls([...new Set(messages.map((m) => m.member_id))]),
+    getPins(channel.id),
+    getCoachIds(),
   ]);
+  const pinnedIds = new Set(pins.map((p) => p.id));
+  const isAdmin = member.role === "admin";
 
   const title =
     channel.kind === "group"
@@ -79,7 +87,51 @@ export default async function ChannelPage({
           <div className="mb-3">
             <RoomChips current={channel.id} />
           </div>
-          <h1 className="font-display mb-3 text-title font-medium text-ink">{title}</h1>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h1 className="font-display text-title font-medium text-ink">{title}</h1>
+            <Link
+              href="/sociale/search"
+              className="text-small text-ink/60 underline underline-offset-4 hover:text-ink"
+            >
+              Search
+            </Link>
+          </div>
+
+          {/* Pinned, at the top (round 2, E1). Admin pins; anyone in the room
+              sees it; only an admin takes it down. */}
+          {pins.length > 0 ? (
+            <Card className="mb-3 border-orange/40 bg-lemon/25" padded={false}>
+              <ul className="divide-y divide-ink/8">
+                {pins.map((pin) => (
+                  <li key={pin.id} className="flex items-start gap-3 px-4 py-3">
+                    <span aria-hidden className="mt-0.5 text-orange">📌</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-caption font-medium text-ink/60">
+                        {coaches.has(pin.member_id) ? "Nina" : pin.authorName}
+                      </p>
+                      {pin.body ? (
+                        <p className="text-small break-words whitespace-pre-wrap text-ink">{pin.body}</p>
+                      ) : pin.image_path ? (
+                        <p className="text-small text-ink/70">A picture</p>
+                      ) : (
+                        <p className="text-small text-ink/70">A voice note</p>
+                      )}
+                    </div>
+                    {isAdmin ? (
+                      <form action={setPinned}>
+                        <input type="hidden" name="message_id" value={pin.id} />
+                        <input type="hidden" name="channel_id" value={handle} />
+                        <input type="hidden" name="pinned" value="false" />
+                        <button type="submit" className="text-caption text-ink/50 underline underline-offset-4 hover:text-ink">
+                          Unpin
+                        </button>
+                      </form>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
 
           <LiveThread channelId={channel.id} />
 
@@ -113,8 +165,15 @@ export default async function ChannelPage({
 
                       <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
                         {!mine && !continues && channel.kind === "group" ? (
-                          <p className="mb-1 ml-1 text-caption font-medium text-ink/60">
+                          <p className="mb-1 ml-1 flex items-center gap-1.5 text-caption font-medium text-ink/60">
                             {message.authorName}
+                            {/* Nina's messages read as the coach's, not a
+                                peer's (round 2, E5). */}
+                            {coaches.has(message.member_id) ? (
+                              <span className="rounded-full bg-orange px-1.5 py-px text-[0.6rem] font-semibold tracking-wide text-ink uppercase">
+                                Coach
+                              </span>
+                            ) : null}
                           </p>
                         ) : null}
 
@@ -122,9 +181,22 @@ export default async function ChannelPage({
                           className={`rounded-2xl px-3.5 py-2.5 ${
                             mine
                               ? "rounded-br-md bg-ink text-cream"
-                              : "rounded-bl-md bg-cream-deep text-ink"
+                              : coaches.has(message.member_id)
+                                ? "rounded-bl-md border border-orange/50 bg-lemon/40 text-ink"
+                                : "rounded-bl-md bg-cream-deep text-ink"
                           }`}
                         >
+                          {message.image_path ? (
+                            // Through the API, which checks the reader may see
+                            // the message before signing. Never a public URL.
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/api/chat-image/${message.id}`}
+                              alt=""
+                              loading="lazy"
+                              className={`max-h-80 w-auto max-w-full rounded-xl ${message.body ? "mb-2" : ""}`}
+                            />
+                          ) : null}
                           {message.body ? (
                             <p className="text-body break-words whitespace-pre-wrap">{message.body}</p>
                           ) : null}
@@ -154,8 +226,29 @@ export default async function ChannelPage({
                           ) : null}
                         </div>
 
-                        <p className={`mt-1 font-mono text-[0.65rem] text-ink/40 ${mine ? "mr-1" : "ml-1"}`}>
-                          {formatSessionTimeShort(message.created_at)}
+                        <p className={`mt-1 flex items-center gap-2 font-mono text-[0.65rem] text-ink/40 ${mine ? "mr-1 flex-row-reverse" : "ml-1"}`}>
+                          <span>{formatSessionTimeShort(message.created_at)}</span>
+                          {/* Retract (E4): your own, or anything as an admin.
+                              Pin (E1): admin only. Both are plain forms. */}
+                          {mine || isAdmin ? (
+                            <form action={deleteMessage}>
+                              <input type="hidden" name="message_id" value={message.id} />
+                              <input type="hidden" name="channel_id" value={handle} />
+                              <button type="submit" className="font-sans underline underline-offset-2 hover:text-ink">
+                                Delete
+                              </button>
+                            </form>
+                          ) : null}
+                          {isAdmin && channel.kind === "group" ? (
+                            <form action={setPinned}>
+                              <input type="hidden" name="message_id" value={message.id} />
+                              <input type="hidden" name="channel_id" value={handle} />
+                              <input type="hidden" name="pinned" value={pinnedIds.has(message.id) ? "false" : "true"} />
+                              <button type="submit" className="font-sans underline underline-offset-2 hover:text-ink">
+                                {pinnedIds.has(message.id) ? "Unpin" : "Pin"}
+                              </button>
+                            </form>
+                          ) : null}
                         </p>
 
                         <Reactions

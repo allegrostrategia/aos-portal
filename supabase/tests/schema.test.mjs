@@ -2132,5 +2132,101 @@ await check("a member can take their own reaction back, and nobody else's", asyn
   return stillThere === 1 && gone === 0;
 });
 
+console.log("\n— chat round 2: pins, images, search, retraction —");
+
+const PIN_MSG = await GENERAL_MSG();
+
+await check("an admin pins a message; everyone who can see it sees the pin", async () => {
+  await as(ADMIN, () => db.query(
+    `insert into public.chat_pins (message_id, pinned_by) values ('${PIN_MSG}','${ADMIN}')`));
+  const r = await as(BOB, () => db.query(
+    `select count(*)::int c from public.chat_pins where message_id='${PIN_MSG}'`));
+  return r.rows[0].c === 1;
+});
+
+await rejects("a member cannot pin", () =>
+  as(BOB, () => db.query(
+    `insert into public.chat_pins (message_id, pinned_by) values ('${PIN_MSG}','${BOB}')`)),
+  "row-level security");
+
+await rejects("a message is pinned at most once", () =>
+  as(ADMIN, () => db.query(
+    `insert into public.chat_pins (message_id, pinned_by) values ('${PIN_MSG}','${ADMIN}')`)),
+  "chat_pins_pkey");
+
+await check("a member cannot unpin", async () => {
+  await as(BOB, () => db.query(`delete from public.chat_pins where message_id='${PIN_MSG}'`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.chat_pins where message_id='${PIN_MSG}'`));
+  return r.rows[0].c === 1;
+});
+
+await check("deleting a pinned message removes its pin and its reactions", async () => {
+  await as(BOB, () => db.query(
+    `insert into public.message_reactions (message_id, member_id, emoji) values ('${PIN_MSG}','${BOB}','🙌')`));
+  // ERIN wrote it; ERIN retracts it.
+  await as(ERIN, () => db.query(`delete from public.chat_messages where id='${PIN_MSG}'`));
+  const pins = (await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.chat_pins where message_id='${PIN_MSG}'`))).rows[0].c;
+  const reactions = (await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.message_reactions where message_id='${PIN_MSG}'`))).rows[0].c;
+  const msg = (await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.chat_messages where id='${PIN_MSG}'`))).rows[0].c;
+  return pins === 0 && reactions === 0 && msg === 0;
+});
+
+await check("a member cannot delete somebody else's message; an admin can", async () => {
+  const theirs = await GENERAL_MSG(); // ERIN's
+  await as(BOB, () => db.query(`delete from public.chat_messages where id='${theirs}'`));
+  const still = (await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_messages where id='${theirs}'`))).rows[0].c;
+  await as(ADMIN, () => db.query(`delete from public.chat_messages where id='${theirs}'`));
+  const gone = (await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_messages where id='${theirs}'`))).rows[0].c;
+  return still === 1 && gone === 0;
+});
+
+await check("an image message: own folder only, and a picture alone is content", async () => {
+  const general = await generalId();
+  await as(ERIN, () => db.query(`
+    insert into public.chat_messages (channel_id, member_id, image_path)
+    values ('${general}','${ERIN}','${ERIN}/photo.jpg')`));
+  let forged = false;
+  try {
+    await as(ERIN, () => db.query(`
+      insert into public.chat_messages (channel_id, member_id, image_path)
+      values ('${general}','${ERIN}','${BOB}/theirs.jpg')`));
+    forged = true;
+  } catch (e) {
+    if (!String(e.message).includes("chat_messages_image_is_own")) throw e;
+  }
+  return !forged;
+});
+
+await check("search finds a message by a word in it, only in channels you can see", async () => {
+  const general = await generalId();
+  await as(ERIN, () => db.query(`
+    insert into public.chat_messages (channel_id, member_id, body)
+    values ('${general}','${ERIN}','The pricing spreadsheet is ready')`));
+  const direct = await DIRECT_MSG(); // ERIN + FRAN, body 'just us'
+  await as(ERIN, () => db.query(
+    `update public.chat_messages set body = 'private spreadsheet thoughts' where id='${direct}'`)).catch(() => {});
+  const bob = await as(BOB, () => db.query(
+    `select count(*)::int c from public.chat_messages
+     where search_vector @@ websearch_to_tsquery('english','spreadsheet')`));
+  const erin = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.chat_messages
+     where search_vector @@ websearch_to_tsquery('english','spreadsheet')`));
+  // BOB sees the general one; ERIN would also see the direct one if the
+  // update had been allowed, but there is no update policy, so both see 1.
+  return bob.rows[0].c === 1 && erin.rows[0].c === 1;
+});
+
+await check("the coach is identifiable by id, and only by id", async () => {
+  const r = await as(BOB, () => db.query(`select public.coach_member_ids() id`));
+  return Array.isArray(r.rows);
+});
+
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

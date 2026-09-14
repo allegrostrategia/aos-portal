@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 
 import { sendMessage, type ChatState } from "@/lib/chat/actions";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImage } from "@/lib/upload/resize";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
 
@@ -40,17 +41,36 @@ export function Composer({
   channelId: string;
   builds: { id: string; title: string }[];
 }) {
-  const [state, formAction] = useActionState<ChatState, FormData>(
-    sendMessage,
-    null,
-  );
-
   const [recording, setRecording] = useState<Recording | null>(null);
+  const [imagePath, setImagePath] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedPath, setUploadedPath] = useState("");
   const [buildId, setBuildId] = useState("");
+
+  // React resets the form's uncontrolled fields after a successful action, but
+  // not state-bound ones: without this, the voice note or picture from the
+  // last message would ride along on the next one. Cleared only on success,
+  // so a refused send keeps what was attached.
+  const [state, formAction] = useActionState<ChatState, FormData>(
+    async (prev, formData) => {
+      const result = await sendMessage(prev, formData);
+      if (!result?.error) {
+        setRecording((r) => {
+          if (r) URL.revokeObjectURL(r.url);
+          return null;
+        });
+        setUploadedPath("");
+        setImagePath("");
+        setImagePreview(null);
+        setBuildId("");
+      }
+      return result;
+    },
+    null,
+  );
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const startedAtRef = useRef(0);
@@ -94,6 +114,51 @@ export function Composer({
       setUploadError(
         "Couldn't reach the microphone. Check the browser has permission.",
       );
+    }
+  }
+
+  // An image, sent alongside text or on its own (round 2, E2). Uploaded the
+  // moment it's chosen — resized first, like every other picture in aOS —
+  // into the sender's own folder of the private chat-images bucket, and the
+  // path goes into the form. The server and the database both check the
+  // folder is the sender's.
+  const [imageBusy, setImageBusy] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  async function attachImage(file: File) {
+    setUploadError(null);
+    if (!file.type.startsWith("image/")) {
+      setUploadError("That doesn't look like a picture.");
+      return;
+    }
+    setImageBusy(true);
+    try {
+      const supabase = createClient();
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        setUploadError("Signed out. Reload and try again.");
+        return;
+      }
+      let blob: Blob = file;
+      try {
+        blob = await resizeImage(file, 1600, 0.85);
+      } catch {
+        // Resizing is an optimisation, not a requirement.
+      }
+      const path = `${auth.user.id}/${crypto.randomUUID()}.jpg`;
+      const { error } = await supabase.storage
+        .from("chat-images")
+        .upload(path, blob, { contentType: blob.type || "image/jpeg" });
+      if (error) {
+        setUploadError(`The picture didn't upload: ${error.message}`);
+        return;
+      }
+      if (imagePath) await supabase.storage.from("chat-images").remove([imagePath]);
+      setImagePath(path);
+      setImagePreview(URL.createObjectURL(blob));
+    } finally {
+      setImageBusy(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
     }
   }
 
@@ -144,6 +209,27 @@ export function Composer({
       <input type="hidden" name="channel_id" value={channelId} />
       <input type="hidden" name="voice_path" value={uploadedPath} />
       <input type="hidden" name="voice_seconds" value={recording?.seconds ?? ""} />
+      <input type="hidden" name="image_path" value={imagePath} />
+
+      {imagePreview ? (
+        <div className="flex items-center gap-3">
+          {/* A blob URL for the preview; the sent message loads through the API. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imagePreview} alt="" className="h-20 w-auto rounded-xl object-cover" />
+          <button
+            type="button"
+            onClick={() => {
+              const supabase = createClient();
+              if (imagePath) void supabase.storage.from("chat-images").remove([imagePath]);
+              setImagePath("");
+              setImagePreview(null);
+            }}
+            className="text-caption text-ink/60 underline underline-offset-4 hover:text-ink"
+          >
+            Remove picture
+          </button>
+        </div>
+      ) : null}
 
       <textarea
         name="body"
@@ -234,6 +320,21 @@ export function Composer({
             {recording ? "Record again" : "Record a voice note"}
           </Button>
         )}
+
+        <label className="cursor-pointer rounded-full px-3.5 py-1.5 text-small font-semibold text-ink/70 transition hover:bg-cream-deep hover:text-ink">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            disabled={imageBusy}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void attachImage(f);
+            }}
+          />
+          {imageBusy ? "Uploading…" : imagePreview ? "Change picture" : "Add a picture"}
+        </label>
       </div>
 
       <FormMessage error={uploadError ?? state?.error} />

@@ -19,6 +19,7 @@ export type ChatMessage = {
   body: string | null;
   voice_path: string | null;
   voice_seconds: number | null;
+  image_path: string | null;
   handover_pack_id: string | null;
   created_at: string;
   authorName: string;
@@ -97,7 +98,7 @@ export async function getMessages(
   const { data } = await supabase
     .from("chat_messages")
     .select(
-      "id, member_id, body, voice_path, voice_seconds, handover_pack_id, created_at",
+      "id, member_id, body, voice_path, voice_seconds, image_path, handover_pack_id, created_at",
     )
     .eq("channel_id", channelId)
     .order("created_at", { ascending: false })
@@ -254,4 +255,69 @@ export async function getDirectPartnerIds(
     if (row.member_id !== meId) out.set(row.channel_id, row.member_id);
   }
   return out;
+}
+
+
+/** The pinned messages in a channel, newest pin first. */
+export async function getPins(channelId: string): Promise<ChatMessage[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chat_pins")
+    .select("pinned_at, chat_messages!inner(id, channel_id, member_id, body, voice_path, voice_seconds, image_path, handover_pack_id, created_at)")
+    .eq("chat_messages.channel_id", channelId)
+    .order("pinned_at", { ascending: false });
+
+  // Supabase types an embedded row as an array; it is one row here.
+  const rows = ((data ?? []) as unknown as { chat_messages: Omit<ChatMessage, "authorName"> & { channel_id: string } }[])
+    .map((r) => r.chat_messages);
+  const names = await resolveNames(rows.map((r) => r.member_id));
+  return rows.map((row) => ({ ...row, authorName: names.get(row.member_id) ?? "A member" }));
+}
+
+/** Who the coach is, so her messages can be marked. Ids only. */
+export async function getCoachIds(): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("coach_member_ids");
+  return new Set((Array.isArray(data) ? data : []) as string[]);
+}
+
+export type SearchHit = ChatMessage & { channelId: string; channelName: string; channelHref: string };
+
+/**
+ * Search across every channel the member can see (round 2, E3). The tsvector
+ * index does the matching; RLS does the scoping, as for every other read.
+ */
+export async function searchMessages(query: string, limit = 50): Promise<SearchHit[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chat_messages")
+    .select("id, channel_id, member_id, body, voice_path, voice_seconds, image_path, handover_pack_id, created_at, chat_channels(kind, slug, name)")
+    .textSearch("search_vector", trimmed, { type: "websearch" })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const rows = (data ?? []) as unknown as (Omit<ChatMessage, "authorName"> & {
+    channel_id: string;
+    chat_channels: { kind: "group" | "direct"; slug: string | null; name: string | null } | null;
+  })[];
+  const meId = (await supabase.auth.getUser()).data.user?.id ?? "";
+  const directIds = rows.filter((r) => r.chat_channels?.kind === "direct").map((r) => r.channel_id);
+  const [names, partners] = await Promise.all([
+    resolveNames(rows.map((r) => r.member_id)),
+    getDirectPartners([...new Set(directIds)], meId),
+  ]);
+
+  return rows.map((row) => {
+    const ch = row.chat_channels;
+    const direct = ch?.kind === "direct";
+    return {
+      ...row,
+      authorName: names.get(row.member_id) ?? "A member",
+      channelId: row.channel_id,
+      channelName: direct ? (partners.get(row.channel_id) ?? "Direct message") : (ch?.name ?? "Channel"),
+      channelHref: direct ? `/sociale/${row.channel_id}` : `/sociale/${ch?.slug ?? row.channel_id}`,
+    };
+  });
 }
