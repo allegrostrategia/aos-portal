@@ -153,6 +153,8 @@ export async function saveNotificationPreferences(formData: FormData): Promise<v
       notify_reminders: formData.get("notify_reminders") === "on",
       notify_chat: formData.get("notify_chat") === "on",
       notify_pairing: formData.get("notify_pairing") === "on",
+      push_chat: formData.get("push_chat") === "on",
+      push_reactions: formData.get("push_reactions") === "on",
     })
     .eq("id", member.id);
 

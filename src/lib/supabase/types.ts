@@ -42,6 +42,8 @@ export interface Member {
   notify_reminders: boolean;
   notify_chat: boolean;
   notify_pairing: boolean;
+  push_chat: boolean;
+  push_reactions: boolean;
   payment_confirmed_at: string | null;
   contract_signed_at: string | null;
   contract_term_months: number;

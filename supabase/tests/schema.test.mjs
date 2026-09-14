@@ -2228,5 +2228,34 @@ await check("the coach is identifiable by id, and only by id", async () => {
 });
 
 
+console.log("\n— push subscriptions —");
+
+await check("a member registers a device, and only they can see it", async () => {
+  await as(ERIN, () => db.query(`
+    insert into public.push_subscriptions (member_id, endpoint, p256dh, auth)
+    values ('${ERIN}','https://push.example/erin-phone','k1','a1')`));
+  const own = (await as(ERIN, () => db.query(`select count(*)::int c from public.push_subscriptions`))).rows[0].c;
+  const other = (await as(BOB, () => db.query(`select count(*)::int c from public.push_subscriptions`))).rows[0].c;
+  return own === 1 && other === 0;
+});
+
+await rejects("a device cannot be registered under somebody else's name", () =>
+  as(BOB, () => db.query(`
+    insert into public.push_subscriptions (member_id, endpoint, p256dh, auth)
+    values ('${ERIN}','https://push.example/bob-pretending','k','a')`)),
+  "row-level security");
+
+await rejects("an endpoint is one row, whoever sends it", () =>
+  as(ERIN, () => db.query(`
+    insert into public.push_subscriptions (member_id, endpoint, p256dh, auth)
+    values ('${ERIN}','https://push.example/erin-phone','k2','a2')`)),
+  "push_subscriptions_endpoint_key");
+
+await check("push switches default to messages on, reactions off", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select push_chat, push_reactions from public.members where id='${ERIN}'`));
+  return r.rows[0].push_chat === true && r.rows[0].push_reactions === false;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

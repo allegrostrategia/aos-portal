@@ -166,8 +166,13 @@ export function createShimClient(db, uid) {
       });
 
       for (const [column, values] of state.inFilters) {
+        // Compared as text against a text[] parameter, so the same clause
+        // works on uuid, text and enum columns. `= any($1)` with a plain JS
+        // array came back "malformed array literal" on an enum column (the
+        // push tests filtering members on status); casting the column is the
+        // one form that reads the same for every type these fixtures use.
         params.push(values);
-        clauses.push(`${quoteIdent(column)} = any($${params.length})`);
+        clauses.push(`${quoteIdent(column)}::text = any($${params.length}::text[])`);
       }
 
       // `.is(col, null)` — PostgREST's null comparison, which `= null` isn't.

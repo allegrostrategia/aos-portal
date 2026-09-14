@@ -7,6 +7,7 @@ import { formatCalendarDate } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
 import { Card, Eyebrow, NumberedRow, Quote } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PushToggle } from "@/components/push/push-toggle";
 
 export const metadata: Metadata = { title: "You · aOS" };
 
@@ -74,6 +75,7 @@ export default async function YouPage() {
           Which emails you want. Everything inside aOS still works the same.
         </p>
         <form action={saveNotificationPreferences} className="mt-4 flex flex-col gap-3">
+          <p className="text-eyebrow font-medium text-ink/45 uppercase">By email</p>
           {[
             ["notify_reminders", "Reminders", "The weekly log, the hot seat, and check-ins on your builds.", member.notify_reminders],
             ["notify_chat", "Chat", "A note when something's waited unread in Sociale for an hour.", member.notify_chat],
@@ -92,10 +94,32 @@ export default async function YouPage() {
               </span>
             </label>
           ))}
+          <p className="mt-2 text-eyebrow font-medium text-ink/45 uppercase">On your phone</p>
+          {[
+            ["push_chat", "Messages", "A notification when somebody messages you in Sociale.", member.push_chat],
+            ["push_reactions", "Reactions", "When somebody reacts to one of your messages. Off unless you want it.", member.push_reactions],
+          ].map(([name, label, hint, on]) => (
+            <label key={String(name)} className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                name={String(name)}
+                defaultChecked={Boolean(on)}
+                className="mt-1 size-4 accent-orange"
+              />
+              <span>
+                <span className="block text-body font-medium text-ink">{label}</span>
+                <span className="block text-caption text-ink/55">{hint}</span>
+              </span>
+            </label>
+          ))}
           <Button type="submit" size="sm" variant="secondary" className="mt-1 self-start">
             Save
           </Button>
         </form>
+
+        <div className="mt-5 border-t border-ink/8 pt-5">
+          <PushToggle />
+        </div>
       </Card>
 
       {member.role === "admin" ? (

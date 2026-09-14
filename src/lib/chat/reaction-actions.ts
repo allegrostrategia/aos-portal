@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { REACTION_EMOJI, type ReactionEmoji } from "@/lib/chat/reactions";
+import { pushForReaction } from "@/lib/push/send";
 
 /**
  * Toggle one of the four reactions on a message.
@@ -39,6 +41,9 @@ export async function toggleReaction(
         .eq("emoji", emoji);
 
   if (error) return { ok: false, message: "That didn't save. Try again in a moment." };
+
+  // Only when a reaction is added, and only to the message's author.
+  if (on) after(() => pushForReaction(messageId, member.id, emoji));
 
   revalidatePath("/sociale", "layout");
   return { ok: true };

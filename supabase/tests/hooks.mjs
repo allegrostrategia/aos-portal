@@ -33,6 +33,8 @@ const SUBSTITUTES = new Map([
   ["@/lib/supabase/server", stub("supabase-server.mjs")],
   ["@/lib/supabase/admin", stub("supabase-admin.mjs")],
   ["@/lib/email/send", stub("email-send.mjs")],
+  ["web-push", stub("web-push.mjs")],
+  ["next/server", stub("next-server.mjs")],
 ]);
 
 /** The first of these that exists on disk. */

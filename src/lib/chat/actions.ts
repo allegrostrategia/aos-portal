@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 
 import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pushForMessage } from "@/lib/push/send";
 
 export type ChatState = { error?: string } | null;
 
@@ -64,7 +66,7 @@ export async function sendMessage(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("chat_messages").insert({
+  const { data: inserted, error } = await supabase.from("chat_messages").insert({
     channel_id: channelId,
     member_id: member.id,
     body: body || null,
@@ -73,10 +75,13 @@ export async function sendMessage(
     voice_seconds: voiceSeconds,
     handover_pack_id: buildId || null,
     testimonial_consent: consent,
-  });
+  }).select("id").maybeSingle();
 
   if (error) return { error: `Couldn't send that: ${error.message}` };
 
+  // Push to everyone else in the room, once the response is on its way.
+  const newId = (inserted as { id: string } | null)?.id;
+  if (newId) after(() => pushForMessage(newId));
   revalidatePath("/sociale");
   return null;
 }
