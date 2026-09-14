@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## ROUND 2 — fixes, corrections, ledger change, chat, push — built 14 Sep, LOCAL ONLY, awaiting Dom
+## ROUND 2 — fixes, corrections, ledger change, chat, push — built and PUSHED 14 Sep
 
-**Seven commits on `main`, none pushed** (`df57812`..`cf187b2`). Brief: `docs/aOS_Round2_Fixes_And_Chat_Push_Brief.md`. Verified at the end: tsc, lint, build clean; **175 unit / 248 schema / 96 action**.
+**Eight commits on `main`, pushed 14 Sep** (`df57812`..`b14c0a0`). Brief: `docs/aOS_Round2_Fixes_And_Chat_Push_Brief.md`. Verified at the end: tsc, lint, build clean; **175 unit / 248 schema / 96 action**.
 
 ### Regression or not — the honest answer per item in A
 | # | Item | Verdict |
@@ -50,13 +50,13 @@ This is its own section rather than a line in the open list because it is a prod
 - **E**: pins (`chat_pins`, admin-only, cascade), images (`image_path`, private `chat-images` bucket, own-folder check constraint, `/api/chat-image`), search (tsvector + GIN, `/sociale/search`), retraction (**reverses the standing no-delete rule; admin delete did not exist before either** — both new), Coach badge. Composer now clears its voice/picture after a successful send (latent bug).
 - **F**: `push_subscriptions`, two push switches, web-push sender triggered from the actions in `after()`, `/sw.js` (push only, no caching), device toggle on You. **No database webhook and no webhook secret** — deliberate, flagged.
 
-### Dom's steps before this goes live
-1. Walk through it. `npm run dev`.
-2. **`npm run db:push`** — five migrations, `20260914100000` through `20260914140000`.
-3. **Dashboard:** create the private **`chat-images`** bucket.
-4. **Vercel + `.env.local`:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (generate with `npx web-push generate-vapid-keys`; see CLAUDE.md). Push is silently off until then. The public key is inlined at build, so set it before deploying.
-5. **Drop the real icon into `public/brand/`** (A8) — 512, 192, and a 180 apple-touch — then it ships.
-6. Phone: the nav's bottom strip (C2), the map (A1), Sociale width (A2), and push as its own careful pass.
+### Go-live steps — done 14 Sep, except the phone pass
+1. ~~Walk through it~~ — done by Dom.
+2. ~~`npm run db:push`, five migrations~~ — done; `migration list --linked` matches, `20260914120000` (the ledger change) included.
+3. ~~`chat-images` bucket~~ — done, private.
+4. ~~VAPID variables in Vercel and `.env.local`~~ — done; the redeploy that inlines the public key is the push of this commit.
+5. ~~The real icon~~ — done (`b14c0a0`), favicon rebuilt from it, old blue SVG removed. **iOS caches the home-screen icon: remove and re-add the app to see it.**
+6. **Phone pass — still to do:** the nav's bottom strip (C2), the map (A1), Sociale width (A2). Then push as its own careful pass: install to the home screen first; the permission prompt is a one-shot. The signal that the key made it into the build: `/you`'s device toggle says "Turn on notifications on this device", not "aren't set up on this deployment yet".
 
 ## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, PUSHED 14 Sep after Dom's walkthrough
 
@@ -263,7 +263,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 24. **The site was slow because of geography, not weight** (13 Sep). Supabase is in `eu-north-1` (Stockholm); Vercel had no region set, so every function ran in the default `iad1` — Washington DC. A Piazza request makes ~5 sequential hops to Supabase before its first byte, and every one crossed the Atlantic and back. Measured live: 200ms TTFB warm on the lightest page, 1.86s on a cold start. Reported as "slow on mobile" and investigated as an image/JS problem; both were checked first and both were fine (delivered images 21–96KB, JS modest, fonts self-hosted). **The report named the wrong layer and the investigation nearly followed it.** Fixed with one line: `"regions": ["arn1"]` in `vercel.json`. Stockholm rather than London on purpose — five database hops per request against one user hop, so the hops should be the short ones. Also: the station images were 28.5MB of PNG (now 3.1MB JPEG — delivered bytes unchanged, optimiser cold path and repo size fixed), and the Piazza hours query was a sixth sequential round trip after five parallel ones (folded in)
 
 ## Environment variables confirmed set in Vercel
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`. **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
 **Thirty-one on disk. All applied to live, and the CLI's history now agrees.** The fourteen from 1–3 Sep (six dated `20260901`, eight dated `20260903`) went in by hand through the SQL Editor while the CLI couldn't connect; the seventeen before them went through the CLI normally.
