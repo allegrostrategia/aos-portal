@@ -136,7 +136,12 @@ export function PortalNavBottom({ items }: { items: NavItem[] }) {
       // Padded for the home indicator on notched phones. One of the two places
       // the glass blur is allowed — a single fixed element over scrolling
       // content is the case it exists for. See --aos-glass-blur.
-      className="glass fixed inset-x-0 bottom-0 z-20 border-t border-ink/8 pb-[env(safe-area-inset-bottom)] lg:hidden"
+      // The home indicator's space is reserved with env() and a fallback, as
+      // an inline style rather than a Tailwind arbitrary value, so nothing in
+      // the class pipeline can drop it (Dom, 14 Sep: the bar sat too high with
+      // a strip below it).
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      className="glass fixed inset-x-0 bottom-0 z-20 border-t border-ink/8 lg:hidden"
     >
       <ul className="flex">
         {items.map((item) => {

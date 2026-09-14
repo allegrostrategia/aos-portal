@@ -145,6 +145,13 @@
   }
 }
 
+/* The root as well as the body: in a standalone PWA the area under the home
+   indicator can show the root's background, and white there is exactly the
+   strip Dom saw under the nav. */
+html {
+  background: var(--background);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

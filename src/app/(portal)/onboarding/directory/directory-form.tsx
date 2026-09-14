@@ -40,20 +40,30 @@ export function DirectoryForm({
         defaultValue={profile?.title ?? ""}
         hint="How you'd describe what you do: “Fractional COO”, “Brand photographer”."
       />
+      {/* Two boxes, as the round-2 brief asks (C5). Not "how to work with you". */}
       <TextArea
-        label="Short bio"
+        label="What my business is all about"
+        name="business_about"
+        required={false}
+        defaultValue={profile?.business_about ?? ""}
+        rows={4}
+        hint="Who you help, and what changes for them."
+      />
+      <TextArea
+        label="A bit more about me"
         name="bio"
+        required={false}
         defaultValue={profile?.bio ?? ""}
-        rows={5}
-        hint="A few lines. Who you help, and what changes for them."
+        rows={4}
+        hint="The person behind it. Whatever you'd want another member to know."
       />
 
-      <fieldset className="flex flex-col gap-3 rounded-md border border-ink/15 bg-card p-4">
+      <fieldset className="flex flex-col gap-3 rounded-2xl border border-ink/12 bg-card p-4">
         <legend className="px-1 text-small font-medium text-ink">
-          Ways to work with you
+          Your links
         </legend>
         <p className="text-caption text-ink/60">
-          Up to three. Leave any blank you don&rsquo;t need.
+          Your website, or wherever you&rsquo;d send somebody. Up to three; leave any blank.
         </p>
 
         {[0, 1, 2].map((i) => (

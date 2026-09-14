@@ -22,8 +22,11 @@ import {
 /**
  * La Strada — the town from above, with the eleven stations on it.
  *
- * §3: free-roam once active, navigated entirely by the member's own choice. The
- * only state is visited / not visited, so that is the only state drawn.
+ * §3: free-roam once active, navigated entirely by the member's own choice.
+ * No per-station state is drawn at all since 14 Sep: the visited/not-visited
+ * distinction (greyscale until you'd been in) was built, phone-checked and
+ * then dropped by Dom. Every station is in colour, always. Visits are still
+ * recorded on entry; nothing reads them for the map.
  *
  * **One fixed view, and pan is native scrolling (14 Sep).** The Fit / Closer /
  * Closest buttons are gone. On a phone the map is drawn at twice the screen's
@@ -91,7 +94,6 @@ export type MapStation = {
   name: string;
   /** The badge number, from `stations.sort_order`. */
   number: number;
-  visited: boolean;
 };
 
 /** A label on the map that isn't a station — Piazza itself, and Piazza Sociale. */
@@ -217,11 +219,9 @@ export function LaStradaMap({
 
   return (
     <div>
-      <p className="mb-3 text-small text-ink/60">
-        {locked
-          ? "Every room opens when you're active."
-          : `${placed.filter((s) => s.visited).length} of ${placed.length} visited`}
-      </p>
+      {locked ? (
+        <p className="mb-3 text-small text-ink/60">Every room opens when you&rsquo;re active.</p>
+      ) : null}
 
       {/* `touch-pan-x touch-pan-y` tells the browser this is a pannable surface,
           so a drag scrolls the map rather than the page. */}
@@ -410,25 +410,12 @@ export function LaStradaMap({
                     height={140}
                     // The same eleven images the station cards use — Next serves
                     // a thumbnail-sized version rather than the full-size source.
-                    className={`size-full object-cover transition ${
-                      station.visited || locked ? "" : "grayscale"
-                    } ${locked ? "opacity-70" : "group-hover:scale-105"}`}
+                    // Full colour, always (Dom, 14 Sep). The visited/not-visited
+                    // greyscale was built and phone-checked, and is dropped.
+                    className={`size-full object-cover transition ${locked ? "" : "group-hover:scale-105"}`}
                   />
                 </span>
 
-                {station.visited && !locked ? (
-                  <span
-                    aria-hidden
-                    title="Visited"
-                    className="absolute block rounded-full border-2 border-white bg-orange shadow-sm"
-                    style={{
-                      width: "var(--dot)",
-                      height: "var(--dot)",
-                      right: "calc(var(--dot) / -3)",
-                      bottom: "calc(var(--dot) / -3)",
-                    }}
-                  />
-                ) : null}
               </>
             );
 
@@ -457,7 +444,7 @@ export function LaStradaMap({
                 key={station.slug}
                 href={`/stations/${station.slug}`}
                 style={style}
-                aria-label={`${station.name}${station.visited ? ". Visited" : ""}`}
+                aria-label={station.name}
                 className="group absolute -translate-x-1/2 -translate-y-1/2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange"
               >
                 {marker}
@@ -514,7 +501,7 @@ export function LaStradaMap({
 
       <p className="mt-2 text-caption text-ink/50">
         On a phone, drag or scroll sideways to move around the town; tab to the map and use the arrow keys.
-        A dot on a photo marks somewhere you&rsquo;ve been.
+
       </p>
     </div>
   );

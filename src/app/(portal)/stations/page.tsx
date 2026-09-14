@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 import { stationCategory } from "@/lib/stations/categories";
 import { Card, NumberedRow, PageHeader } from "@/components/ui/card";
 import { LaStradaMap } from "@/components/map/la-strada-map";
-import { getVisitedStations } from "@/lib/map/queries";
 
 export const metadata: Metadata = {
   title: "La Strada · aOS",
@@ -52,7 +51,6 @@ export default async function StationsPage({
     sort_order: number;
   }[];
   const isActive = member.status === "active";
-  const visited = await getVisitedStations(member.id);
 
   const open = (slug: string) => isActive || slug === "grand-hotel-riposo";
 
@@ -76,18 +74,11 @@ export default async function StationsPage({
                     alt=""
                     fill
                     sizes="56px"
-                    className={`object-cover ${open(station.slug) ? "" : "opacity-60 grayscale"}`}
+                    className="object-cover"
                   />
                 </span>
               );
-              const meta = (
-                <>
-                  {stationCategory(station.slug)}
-                  {visited.has(station.slug) ? (
-                    <span className="text-orange"> · Visited</span>
-                  ) : null}
-                </>
-              );
+              const meta = stationCategory(station.slug);
               return (
                 <NumberedRow
                   key={station.slug}
@@ -111,7 +102,6 @@ export default async function StationsPage({
             // numbering has one source rather than a second list in the map
             // config that could quietly disagree with the seeded order.
             number: station.sort_order,
-            visited: visited.has(station.slug),
           }))}
         />
       )}

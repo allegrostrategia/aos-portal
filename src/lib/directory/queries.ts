@@ -7,6 +7,7 @@ export type DirectoryEntry = {
   displayName: string;
   title: string | null;
   bio: string | null;
+  businessAbout: string | null;
   links: { label: string; url: string }[];
   headshotUrl: string | null;
 };
@@ -34,7 +35,7 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
 
   let request = supabase
     .from("member_profiles")
-    .select("member_id, display_name, title, bio, links, headshot_path")
+    .select("member_id, display_name, title, bio, business_about, links, headshot_path")
     .order("display_name");
 
   const trimmed = query.trim();
@@ -49,6 +50,7 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
     display_name: string;
     title: string | null;
     bio: string | null;
+    business_about: string | null;
     links: { label: string; url: string }[] | null;
     headshot_path: string | null;
   }[];
@@ -74,6 +76,7 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
     displayName: row.display_name,
     title: row.title,
     bio: row.bio,
+    businessAbout: row.business_about,
     links: Array.isArray(row.links) ? row.links : [],
     headshotUrl: row.headshot_path ? (signed.get(row.headshot_path) ?? null) : null,
   }));

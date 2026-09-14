@@ -1147,6 +1147,16 @@ await check("search matches on the bio, not just the name", async () => {
   return r.rows.length === 1 && r.rows[0].display_name === 'Erin Vale';
 });
 
+await check("search matches on 'what my business is all about' too", async () => {
+  await as(ERIN, () => db.query(
+    `update public.member_profiles set business_about = 'Fractional operations for boutique gyms'
+     where member_id='${ERIN}'`));
+  const r = await as(FRAN, () => db.query(
+    `select display_name from public.member_profiles
+     where search_vector @@ websearch_to_tsquery('english', 'gyms')`));
+  return r.rows.length === 1 && r.rows[0].display_name === 'Erin Vale';
+});
+
 await check("a search term shared by two listings returns both", async () => {
   // Erin and Bob both mention agencies. A directory that silently returned one
   // of them would be worse than useless.

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentMember } from "@/lib/auth/member";
@@ -13,7 +12,7 @@ import {
 import { getHeadshotUrls } from "@/lib/directory/queries";
 import { formatSessionTimeShort } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
-import { RoomList } from "@/components/chat/room-list";
+import { RoomChips, RoomList } from "@/components/chat/room-list";
 import { Card, Eyebrow } from "@/components/ui/card";
 import { Composer } from "./composer";
 import { LiveThread } from "./live-thread";
@@ -30,8 +29,9 @@ export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
  * on received messages in a group, because a face alone doesn't name a
  * newcomer.
  *
- * On desktop the room list stays alongside. On a phone this is the whole
- * screen and the arrow goes back to the list.
+ * On desktop the room list stays alongside. On a phone the rooms are a strip
+ * of chips above the thread, so switching is one tap and Sociale never lands
+ * on an empty state.
  */
 export default async function ChannelPage({
   params,
@@ -74,18 +74,12 @@ export default async function ChannelPage({
         </div>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="mb-3 flex items-center gap-3">
-            <Link
-              href="/sociale"
-              aria-label="Back to Piazza Sociale"
-              className="flex size-10 items-center justify-center rounded-full text-ink/70 transition hover:bg-cream-deep hover:text-ink lg:hidden"
-            >
-              <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 5l-7 7 7 7" />
-              </svg>
-            </Link>
-            <h1 className="font-display text-title font-medium text-ink">{title}</h1>
+          {/* Phones: the rooms as chips across the top, General first (C4).
+              Laptops: the list is the column to the left. */}
+          <div className="mb-3">
+            <RoomChips current={channel.id} />
           </div>
+          <h1 className="font-display mb-3 text-title font-medium text-ink">{title}</h1>
 
           <LiveThread channelId={channel.id} />
 

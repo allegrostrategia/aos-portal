@@ -96,13 +96,14 @@ export async function saveDirectoryListing(
 
   const displayName = String(formData.get("display_name") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
+  const businessAbout = String(formData.get("business_about") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
 
   if (!displayName) {
     return { error: "Add the name you'd like other members to see." };
   }
-  if (!bio) {
-    return { error: "A short bio is what makes the directory worth searching." };
+  if (!businessAbout && !bio) {
+    return { error: "Say something in at least one of the two boxes. It's what makes the directory worth searching." };
   }
 
   // Up to three ways to work with them. Blank rows are dropped rather than
@@ -136,7 +137,8 @@ export async function saveDirectoryListing(
       member_id: member.id,
       display_name: displayName,
       title: title || null,
-      bio,
+      bio: bio || null,
+      business_about: businessAbout || null,
       links,
       headshot_path: headshotPath || null,
       completed_at: new Date().toISOString(),

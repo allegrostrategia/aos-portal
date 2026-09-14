@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { currentWeekStart, getRoadmapItems, getWeeklySubmission } from "@/lib/log/queries";
-import { countUpcomingSessions, getCurrentChallenge, getMySubmission, getUpcomingSession } from "@/lib/hot-seat/queries";
+import { countUpcomingSessions, getMySubmission, getUpcomingSession } from "@/lib/hot-seat/queries";
 import { getPiazzaRoadmap } from "@/lib/piazza/queries";
 import { quoteOfTheDay } from "@/lib/piazza/quotes";
 import { getMemberHours } from "@/lib/hours/queries";
@@ -63,7 +63,6 @@ export default async function PiazzaPage() {
     roadmapItems,
     session,
     sessionCount,
-    challenge,
     roadmap,
     hours,
     pairing,
@@ -74,7 +73,6 @@ export default async function PiazzaPage() {
     getRoadmapItems(member.id),
     getUpcomingSession(),
     countUpcomingSessions(),
-    getCurrentChallenge(member.id),
     getPiazzaRoadmap(member.id),
     getMemberHours(member.id),
     member.status === "active" ? getMyPairing(member.id, month) : Promise.resolve(null),
@@ -241,21 +239,39 @@ export default async function PiazzaPage() {
       {/* 5. The three cards that lost a nav slot. Real routes in. */}
       <div className="mt-8 grid gap-5 sm:grid-cols-3">
         <Card tone="dark" className="flex flex-col">
-          <Eyebrow tone="light">The hot seat</Eyebrow>
-          {challenge ? (
-            <p className="font-display mt-2 text-heading font-medium">{challenge}</p>
-          ) : session?.scheduled_for ? (
-            <p className="font-display mt-2 text-heading font-medium">
-              {formatSessionTime(session.scheduled_for)}
+          <Eyebrow tone="light">Your hot seat this month</Eyebrow>
+          {/* This member's own submission for the upcoming session, in its
+              actual state (round-2 brief, C7). Four honest states, none of
+              them blank, none of them generic. */}
+          {!session ? (
+            <p className="mt-2 text-small text-white/75">
+              No session scheduled this month yet. Nina sets the date; it will show here.
             </p>
+          ) : mySubmission?.confirmed_at && mySubmission.confirmed_challenge ? (
+            <>
+              <p className="font-display mt-2 text-heading font-medium">
+                {mySubmission.confirmed_challenge}
+              </p>
+              <p className="mt-1 text-small text-white/70">
+                Confirmed{session.scheduled_for ? ` for ${formatSessionTime(session.scheduled_for)}` : ""}.
+              </p>
+            </>
+          ) : mySubmission?.submitted_at ? (
+            <>
+              <p className="mt-2 text-small text-white/90">
+                Submitted. Nina confirms what gets built before the session.
+              </p>
+              {mySubmission.challenge ? (
+                <p className="mt-2 text-small text-white/65 italic">&ldquo;{mySubmission.challenge}&rdquo;</p>
+              ) : null}
+            </>
           ) : (
-            <p className="mt-2 text-small text-white/70">
-              Next session not scheduled yet.
+            <p className="mt-2 text-small text-white/75">
+              Nothing submitted yet
+              {session.scheduled_for ? ` for ${formatSessionTime(session.scheduled_for)}` : " for this month's session"}.
+              Say what you&rsquo;re stuck on and what done looks like.
             </p>
           )}
-          {challenge && session?.scheduled_for ? (
-            <p className="mt-1 text-small text-white/70">{formatSessionTime(session.scheduled_for)}</p>
-          ) : null}
           <div className="mt-auto pt-5">
             <ButtonLink href="/hot-seat" variant="primary" size="sm">
               {member.status === "active" ? "The hot seat" : "What happens"}

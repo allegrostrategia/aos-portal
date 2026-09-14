@@ -33,7 +33,7 @@ export default async function DirectoryListingPage() {
       <PageHeader
         eyebrow="Piazza Sociale"
         title="Your profile"
-        intro="What would you like the membership to know about you? A photo, a short bio, and the key ways to work with you. Other members can search this. Nothing else about you is visible to them."
+        intro="What would you like the membership to know about you? A photo, what your business is all about, a bit about you, and a link. Other members can search this. Nothing else about you is visible to them."
       />
 
       <DirectoryForm

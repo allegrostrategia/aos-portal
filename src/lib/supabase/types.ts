@@ -20,6 +20,8 @@ export interface MemberProfile {
   display_name: string;
   title: string | null;
   bio: string | null;
+  /** "What my business is all about", the first of the listing's two boxes. */
+  business_about: string | null;
   headshot_path: string | null;
   links: { label: string; url: string }[];
   completed_at: string | null;

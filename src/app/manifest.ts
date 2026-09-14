@@ -26,7 +26,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     // Off-white ground and brand navy — matching globals.css rather than being
     // picked again here, so the splash screen isn't a colour nothing else uses.
-    background_color: "#F3F5FD",
+    background_color: "#FBF5EA",
     theme_color: "#073C8C",
     icons: [
       {

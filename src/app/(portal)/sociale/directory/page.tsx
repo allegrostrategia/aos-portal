@@ -167,29 +167,35 @@ export default async function DirectoryPage({
                   </div>
                 </div>
 
-                {entry.bio ? (
-                  <p className="mt-3 text-small whitespace-pre-wrap text-ink/80">
-                    {entry.bio}
-                  </p>
+                {/* Name and link first (C5), then the two boxes. */}
+                {entry.links.length > 0 ? (
+                  <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    {entry.links.map((link) => (
+                      <li key={link.url}>
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
+                        >
+                          {link.label || link.url.replace(/^https?:\/\//, "")}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
 
-                {entry.links.length > 0 ? (
-                  <div className="mt-3">
-                    <Eyebrow>Ways to work with them</Eyebrow>
-                    <ul className="mt-1 flex flex-col gap-1">
-                      {entry.links.map((link) => (
-                        <li key={link.url}>
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
-                          >
-                            {link.label || link.url}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                {entry.businessAbout ? (
+                  <div className="mt-4 rounded-2xl bg-cream-deep px-4 py-3">
+                    <Eyebrow>What my business is all about</Eyebrow>
+                    <p className="mt-1 text-small whitespace-pre-wrap text-ink/85">{entry.businessAbout}</p>
+                  </div>
+                ) : null}
+
+                {entry.bio ? (
+                  <div className="mt-3 rounded-2xl bg-cream-deep px-4 py-3">
+                    <Eyebrow>A bit more about me</Eyebrow>
+                    <p className="mt-1 text-small whitespace-pre-wrap text-ink/85">{entry.bio}</p>
                   </div>
                 ) : null}
 
