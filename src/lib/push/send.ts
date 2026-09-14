@@ -106,15 +106,33 @@ export async function pushForMessage(messageId: string): Promise<number> {
   } | null;
   if (!message) return 0;
 
-  const [{ data: participants }, { data: senderRow }, { data: channelRow }] = await Promise.all([
-    admin.from("chat_participants").select("member_id").eq("channel_id", message.channel_id),
+  const [{ data: senderRow }, { data: channelRow }] = await Promise.all([
     admin.from("members").select("full_name").eq("id", message.member_id).maybeSingle(),
     admin.from("chat_channels").select("kind, slug, name").eq("id", message.channel_id).maybeSingle(),
   ]);
   const room = channelRow as { kind: "group" | "direct"; slug: string | null; name: string | null } | null;
-  const others = ((participants ?? []) as { member_id: string }[])
-    .map((p) => p.member_id)
-    .filter((id) => id !== message.member_id);
+
+  // Who is "in the room" follows can_see_channel exactly. A group room has no
+  // participant rows: it is everyone with portal access. A direct channel is
+  // its participants. The first version of this read chat_participants for
+  // both, which for a group is nobody — and the test let it through because
+  // the fixture had inserted participant rows into #general that production
+  // never has. Nina's first three messages went to no one.
+  let candidates: string[];
+  if (room?.kind === "group") {
+    const { data: everyone } = await admin
+      .from("members")
+      .select("id")
+      .in("status", ["active", "onboarding"]);
+    candidates = ((everyone ?? []) as { id: string }[]).map((r) => r.id);
+  } else {
+    const { data: participants } = await admin
+      .from("chat_participants")
+      .select("member_id")
+      .eq("channel_id", message.channel_id);
+    candidates = ((participants ?? []) as { member_id: string }[]).map((p) => p.member_id);
+  }
+  const others = candidates.filter((id) => id !== message.member_id);
   if (others.length === 0) return 0;
 
   const { data: wanting } = await admin

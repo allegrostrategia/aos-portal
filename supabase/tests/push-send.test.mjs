@@ -29,7 +29,11 @@ const GONE = "44444444-4444-4444-4444-444444444444";
 const db = await createTestDatabase();
 configure(db, null);
 
-// Nina (admin), Ruth and Omar (active), Gone (cancelled). All in #general.
+// Nina (admin), Ruth and Omar (active), Gone (cancelled). Nobody is inserted
+// into chat_participants for #general, because production never does that: a
+// group room is everyone with portal access, and only direct channels have
+// participant rows. The first version of this file inserted them, and the
+// sender's group path passed for a reason that wasn't true anywhere real.
 await db.exec(`
   insert into auth.users (id, email) values
     ('${NINA}','nina@test'), ('${RUTH}','ruth@test'), ('${OMAR}','omar@test'), ('${GONE}','gone@test');
@@ -41,9 +45,6 @@ await db.exec(`
 `);
 const general = (await db.query(`select id from public.chat_channels where slug='general'`)).rows[0].id;
 await db.exec(`
-  insert into public.chat_participants (channel_id, member_id) values
-    ('${general}','${NINA}'), ('${general}','${RUTH}'), ('${general}','${OMAR}'), ('${general}','${GONE}')
-  on conflict do nothing;
   insert into public.push_subscriptions (member_id, endpoint, p256dh, auth) values
     ('${NINA}','https://push/nina','k','a'),
     ('${RUTH}','https://push/ruth-phone','k','a'),
@@ -111,6 +112,20 @@ test("a reaction pushes the author only when they've asked for it, never for the
   const to = pushed().map((p) => p.endpoint).sort();
   assert.deepEqual(to, ["https://push/ruth-laptop", "https://push/ruth-phone"]);
   assert.match(pushed()[0].payload.title, /Omar reacted 👏/);
+});
+
+test("a direct message goes to the other participant only, not the whole membership", async () => {
+  reset();
+  // Nina, not Omar: Omar's device was marked expired by the test above.
+  const direct = (await db.query(
+    `select public.ensure_direct_channel('${RUTH}','${NINA}') id`,
+  )).rows[0].id;
+  const id = (await db.query(
+    `insert into public.chat_messages (channel_id, member_id, body) values ('${direct}','${RUTH}','just you') returning id`,
+  )).rows[0].id;
+  await pushForMessage(id);
+  assert.deepEqual(pushed().map((p) => p.endpoint), ["https://push/nina"]);
+  assert.equal(pushed()[0].payload.url, `/sociale/${direct}`);
 });
 
 test("without VAPID keys nothing is sent and nothing throws", async () => {
