@@ -30,6 +30,10 @@ export async function createTestDatabase() {
     create table auth.users (id uuid primary key default gen_random_uuid(), email text);
     create role authenticated;
     grant usage on schema public to authenticated;
+    -- Supabase manages this publication; migrations add tables to it behind
+    -- an existence guard. It exists here so those guarded blocks run and the
+    -- schema test can assert which tables are actually in it.
+    create publication supabase_realtime;
     create or replace function auth.uid() returns uuid language sql stable
       as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 

@@ -23,16 +23,23 @@ import { markChannelRead } from "@/lib/chat/actions";
  * is what `setAuth` below is for, and it is the whole reason live updates can
  * look correctly configured and still never arrive.
  *
- * The status callback exists for the same reason: a subscription that never
- * connects should say so somewhere, rather than looking identical to a quiet
- * channel.
+ * **SUBSCRIBED is not "subscribed to Postgres".** It is the join acknowledgement.
+ * The backend creates the Postgres subscription afterwards and reports the
+ * outcome as a `system` message; a failure there ("Unable to subscribe to
+ * changes with given parameters") never reaches the status callback. From
+ * 13 to 14 Sep 2026 every conversation was in exactly that state, because
+ * `message_reactions` was missing from the Realtime publication, and nothing
+ * printed anywhere. Hence the `system` listener, and hence **one channel per
+ * table**: Realtime refuses a whole channel when any one binding on it cannot
+ * be served, so reactions and messages sharing a channel meant a reactions
+ * problem took messages down with it.
  */
 export function LiveThread({ channelId }: { channelId: string }) {
   const router = useRouter();
 
   useEffect(() => {
     let disposed = false;
-    let channel: RealtimeChannel | null = null;
+    const channels: RealtimeChannel[] = [];
     const supabase = createClient();
 
     const markRead = () => {
@@ -41,6 +48,23 @@ export function LiveThread({ channelId }: { channelId: string }) {
         // interrupting somebody's reading to tell them.
       });
     };
+
+    // A status callback, and a system listener for the part the status
+    // callback can't see. Anything but a clean subscribe says so in the
+    // console, so the next time this breaks it is a warning, not a mystery.
+    const watch = (channel: RealtimeChannel, label: string) =>
+      channel
+        .on("system", {}, (payload: { status?: string; message?: string }) => {
+          if (payload.status === "error") {
+            console.warn(`[chat] realtime ${label}: ${payload.message ?? "error"}`);
+          }
+        })
+        .subscribe((status, error) => {
+          if (status === "SUBSCRIBED") return;
+          // CHANNEL_ERROR usually means a binding the server rejected outright;
+          // TIMED_OUT means the socket never opened at all.
+          console.warn(`[chat] realtime ${label} ${status}`, error ?? "");
+        });
 
     void (async () => {
       const { data } = await supabase.auth.getSession();
@@ -56,45 +80,40 @@ export function LiveThread({ channelId }: { channelId: string }) {
       await supabase.realtime.setAuth(data.session.access_token);
       if (disposed) return;
 
-      channel = supabase
-        .channel(`chat:${channelId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "chat_messages",
-            filter: `channel_id=eq.${channelId}`,
-          },
-          () => {
-            markRead();
-            router.refresh();
-          },
-        )
-        // Reactions arrive the same way. The reactions table doesn't carry a
-        // channel id, so this is unfiltered; a refresh is cheap and the table
-        // is small, so every reaction in the publication triggers one.
-        //
-        // **`message_reactions` must be in the Realtime publication** (added
-        // in the dashboard, the same step as chat_messages). Realtime
-        // validates every binding on a channel when it joins, and one bad
-        // binding fails the whole join: a missing publication entry here
-        // would not quietly disable reactions, it would take the message
-        // listener above down with it and the thread would stop updating
-        // live. Verified against the live project on 14 Sep 2026 (both
-        // tables present, the combined join SUBSCRIBED). If reactions are
-        // ever dropped from the publication, this binding goes too.
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "message_reactions" },
-          () => router.refresh(),
-        )
-        .subscribe((status, error) => {
-          if (status === "SUBSCRIBED") return;
-          // CHANNEL_ERROR usually means the table isn't in the publication;
-          // TIMED_OUT means the socket never opened at all.
-          console.warn(`[chat] realtime ${status}`, error ?? "");
-        });
+      channels.push(
+        watch(
+          supabase.channel(`chat:${channelId}`).on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "chat_messages",
+              filter: `channel_id=eq.${channelId}`,
+            },
+            () => {
+              markRead();
+              router.refresh();
+            },
+          ),
+          "messages",
+        ),
+      );
+
+      // Reactions on their own channel (see above). The reactions table
+      // doesn't carry a channel id, so this is unfiltered; a refresh is cheap
+      // and the table is small, so every reaction in the publication triggers
+      // one. Both tables are in the publication by migration
+      // (20260914150000), and the schema test asserts it.
+      channels.push(
+        watch(
+          supabase.channel(`reactions:${channelId}`).on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "message_reactions" },
+            () => router.refresh(),
+          ),
+          "reactions",
+        ),
+      );
     })();
 
     markRead();
@@ -109,7 +128,7 @@ export function LiveThread({ channelId }: { channelId: string }) {
     return () => {
       disposed = true;
       document.removeEventListener("visibilitychange", onVisible);
-      if (channel) void supabase.removeChannel(channel);
+      for (const channel of channels) void supabase.removeChannel(channel);
     };
   }, [channelId, router]);
 

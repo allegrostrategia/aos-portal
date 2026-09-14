@@ -2257,5 +2257,23 @@ await check("push switches default to messages on, reactions off", async () => {
   return r.rows[0].push_chat === true && r.rows[0].push_reactions === false;
 });
 
+console.log("\n— realtime publication —");
+
+// Every table the browser subscribes to must be in the publication. Realtime
+// refuses a channel with any binding it cannot serve, and the refusal arrives
+// after the client has already said SUBSCRIBED. So a table missing here is not
+// a missing feature, it is a dead channel (14 Sep: message_reactions was never
+// added, and live chat was off for everyone for a day without a single error).
+// Keep this list in step with the tables named in live-thread.tsx.
+await check("realtime publication carries every table the chat subscribes to", async () => {
+  const r = await db.query(
+    `select tablename from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' order by 1`);
+  const have = r.rows.map((x) => x.tablename);
+  const need = ["chat_messages", "message_reactions"];
+  const missing = need.filter((t) => !have.includes(t));
+  return missing.length === 0 || { have, missing };
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

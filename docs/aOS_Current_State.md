@@ -28,7 +28,7 @@ This is its own section rather than a line in the open list because it is a prod
 
 ## ROUND 2 — fixes, corrections, ledger change, chat, push — built and PUSHED 14 Sep
 
-**Eight commits on `main`, pushed 14 Sep** (`df57812`..`b14c0a0`). Brief: `docs/aOS_Round2_Fixes_And_Chat_Push_Brief.md`. Verified at the end: tsc, lint, build clean; **175 unit / 248 schema / 96 action**.
+**Eight commits on `main`, pushed 14 Sep** (`df57812`..`b14c0a0`), then `d1c6962` (push recipients, see bug 25) and the live-chat fix (bug 26). Brief: `docs/aOS_Round2_Fixes_And_Chat_Push_Brief.md`. Verified at the end: tsc, lint, build clean; **175 unit / 249 schema / 97 action**.
 
 ### Regression or not — the honest answer per item in A
 | # | Item | Verdict |
@@ -56,11 +56,13 @@ This is its own section rather than a line in the open list because it is a prod
 3. ~~`chat-images` bucket~~ — done, private.
 4. ~~VAPID variables in Vercel and `.env.local`~~ — done; the redeploy that inlines the public key is the push of this commit.
 5. ~~The real icon~~ — done (`b14c0a0`), favicon rebuilt from it, old blue SVG removed. **iOS caches the home-screen icon: remove and re-add the app to see it.**
-6. **Phone pass — still to do:** the nav's bottom strip (C2), the map (A1), Sociale width (A2). Then push as its own careful pass: install to the home screen first; the permission prompt is a one-shot. The signal that the key made it into the build: `/you`'s device toggle says "Turn on notifications on this device", not "aren't set up on this deployment yet".
+6. ~~Push on a real phone~~ — **confirmed working 14 Sep** on Dominic's iPhone, after bug 25 (group rooms have no participant rows, so the sender found nobody). The subscribe half had worked first time.
+7. **`npm run db:push` for `20260914150000_reactions_realtime.sql`** — the live-chat fix (bug 26). Until it is applied, reactions don't arrive live; messages do, because they now have their own channel.
+8. **Phone pass — still to do:** the nav's bottom strip (C2), the map (A1), Sociale width (A2).
 
 ## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, PUSHED 14 Sep after Dom's walkthrough
 
-**Thirteen commits on `main`, pushed 14 Sep** (`795bd52..9976960`). Deployed by Vercel; all eight migrations applied via `npm run db:push`; the `archivio` bucket and the `message_reactions` Realtime publication both done in the dashboard — all before the push. Nothing outstanding from this range. Brief: `docs/aOS_LEditoriale_Redesign_Brief.md`; reference: `docs/LEditoriale_full_reference_poster.png`.
+**Thirteen commits on `main`, pushed 14 Sep** (`795bd52..9976960`). Deployed by Vercel; all eight migrations applied via `npm run db:push`; the `archivio` bucket done in the dashboard. **The `message_reactions` publication step was recorded as done and was not** (bug 26); it is a migration now. Nothing outstanding from this range. Brief: `docs/aOS_LEditoriale_Redesign_Brief.md`; reference: `docs/LEditoriale_full_reference_poster.png`.
 
 ### Built
 | # | Screen | Status | New scope shipped with it |
@@ -81,7 +83,7 @@ Verification at the end: tsc, lint, build clean; **171 unit / 232 schema / 90 ac
 
 ### Go-live steps — all done 14 Sep
 1. ~~Walk through it locally~~ — done by Dom; four decisions came out of it (below).
-2. ~~Dashboard: `archivio` bucket, `message_reactions` in the Realtime publication~~ — done.
+2. ~~Dashboard: `archivio` bucket~~ — done. ~~`message_reactions` in the Realtime publication~~ — **was never actually in it**; now migration `20260914150000`, see bug 26.
 3. ~~`npm run db:push`, eight migrations~~ — done, before the push.
 4. **Phone test the blur — still worth doing on the live site.** Two uses only: the bottom nav and the Piazza stat strip. The nav is the one that re-blurs on every scroll frame. If it's janky, set `--aos-glass-blur: none` in `globals.css` and everything falls back to its solid fill.
 5. ~~Push~~ — done.
@@ -262,6 +264,10 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 
 24. **The site was slow because of geography, not weight** (13 Sep). Supabase is in `eu-north-1` (Stockholm); Vercel had no region set, so every function ran in the default `iad1` — Washington DC. A Piazza request makes ~5 sequential hops to Supabase before its first byte, and every one crossed the Atlantic and back. Measured live: 200ms TTFB warm on the lightest page, 1.86s on a cold start. Reported as "slow on mobile" and investigated as an image/JS problem; both were checked first and both were fine (delivered images 21–96KB, JS modest, fonts self-hosted). **The report named the wrong layer and the investigation nearly followed it.** Fixed with one line: `"regions": ["arn1"]` in `vercel.json`. Stockholm rather than London on purpose — five database hops per request against one user hop, so the hops should be the short ones. Also: the station images were 28.5MB of PNG (now 3.1MB JPEG — delivered bytes unchanged, optimiser cold path and repo size fixed), and the Piazza hours query was a sixth sequential round trip after five parallel ones (folded in)
 
+25. **Push sent to nobody in group rooms** (14 Sep). The sender took recipients from `chat_participants`, which only direct channels have; a group is everyone with portal access, per `can_see_channel()`. The test passed because its fixture inserted participant rows into `#general`, a state production never has. **A fixture that disagrees with production proves the wrong thing** — the fixture now matches, and the group path is tested against an empty table
+
+26. **Live chat was dead for everyone from 13 to 14 Sep, and nothing said so.** The Sociale redesign added a reactions listener on the same Realtime channel as the messages listener, with a note to add `message_reactions` to the publication in the dashboard. That step was recorded as done and had not happened. Realtime refuses a whole channel when any one binding on it can't be served, so messages stopped arriving too; and the refusal comes as a `system` message *after* the client has reported `SUBSCRIBED`, on an event type nothing listened to — so the console stayed silent. Found by elimination: service-worker ruled out (can't touch WebSockets), the phone shown to open the socket (edge logs), the row shown visible under exactly the RLS check Realtime performs, the change stream shown to deliver the row to a service-role listener, and only then a probe that waited for the `system` message instead of stopping at `SUBSCRIBED`. My own first probe had made the same mistake as the code. Three fixes: the publication entry is a migration (guarded like `chat_messages`, asserted by the schema test, which the harness can now run because it creates the publication); messages and reactions are on separate channels; both channels log a `system` error. **`SUBSCRIBED` means the join was acknowledged, not that Postgres changes are flowing.** And a dashboard step is a step that can silently not happen: make it a migration
+
 ## Environment variables confirmed set in Vercel
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
@@ -288,6 +294,8 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **Check conditional navigation for the state it forgets.** An affordance shown only in one state leaves the other states with no route at all. Twice on the directory screen: the profile form was reachable only when you had no profile, or only when your own card happened to match the current search — so a member who was listed without a photo, or who had searched, had no way in. When a link appears under a condition, ask what the other branch of that condition looks like.
 - **When something is slow, measure where the time goes before touching what looks heavy.** The 13 Sep slowness report named mobile, images and JS; the cause was the function region, which none of those would have found. `curl -w '%{time_starttransfer}'` and the `x-vercel-id` header (`edge::function::id`) answered it in two commands. Check the region against the database's region on any new Vercel + Supabase project before anything else.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
+- **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
+- **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
 - For a build this size, start a fresh session per major step or per day rather than one marathon.
 
 ## Right now, exactly
