@@ -39,7 +39,7 @@ export function AddBuildForm({
           name="effective_from"
           type="date"
           defaultValue={today}
-          hint="Counts from the first qualifying week on or after this."
+          hint="Counts from the first week on or after this."
         />
       </div>
       <FormMessage error={state?.error} notice={state?.notice} />

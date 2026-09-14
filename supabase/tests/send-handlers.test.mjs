@@ -306,13 +306,11 @@ test("reading it first cancels the email", async () => {
 
 // ---------------------------------------------------------------------------
 
-test("a qualifying week is banked and reported as sent", async () => {
-  await db.exec(`
-    insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
-      ('${RUTH}','client-sessions','2026-09-07 09:00Z','2026-09-07 20:00Z');
-    insert into public.weekly_submissions (member_id, week_start_date, submitted_at)
-    values ('${RUTH}', '2026-09-07', now());`);
-
+// Round 2, D (14 Sep): the ledger accrues every week a build is live, with no
+// look at logged hours or the submitted log. This used to seed eleven hours
+// and a submission first; now it deliberately seeds nothing, and the week
+// still banks.
+test("a week with a live build is banked and reported as sent, whatever was logged", async () => {
   const outcome = await runHoursLedger(admin, {
     member_id: RUTH,
     payload: { week_start: "2026-09-07" },
@@ -326,15 +324,22 @@ test("a qualifying week is banked and reported as sent", async () => {
   assert.equal(row.rows[0].h, 5);
 });
 
-// Not qualifying is a normal outcome, not an error — a week reported as failed
-// would show up in the cron summary as something to investigate.
-test("a week that didn't qualify is skipped, not failed", async () => {
+// A member with no live build banks a real zero for the week, not a gap, and
+// that is reported as sent: the job ran and the ledger has a row. (Under the
+// old rule this test asserted "skipped" for a week that didn't qualify; there
+// is no such thing any more.)
+test("a week with no live build banks a zero and is still sent", async () => {
   const outcome = await runHoursLedger(admin, {
     member_id: OMAR,
     payload: { week_start: "2026-09-14" },
   });
 
-  assert.equal(outcome, "skipped");
+  assert.equal(outcome, "sent");
+  const row = await db.query(
+    `select hours::float h from public.hours_ledger
+     where member_id = '${OMAR}' and week_start_date = '2026-09-14'`,
+  );
+  assert.equal(row.rows[0].h, 0);
 });
 
 // ---------------------------------------------------------------------------

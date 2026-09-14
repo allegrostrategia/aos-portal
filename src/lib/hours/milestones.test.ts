@@ -136,7 +136,7 @@ test("later weeks never change when an earlier threshold was crossed", () => {
 });
 
 // A week they showed up for and earned nothing is still a week they showed up.
-test("a qualifying week worth zero hours is kept in the record", () => {
+test("a week worth zero hours is kept in the record", () => {
   const journey = milestoneJourney([
     { weekStartDate: "2026-03-02", hours: 0 },
     { weekStartDate: "2026-03-09", hours: 5 },

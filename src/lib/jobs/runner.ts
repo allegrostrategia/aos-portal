@@ -385,11 +385,12 @@ async function planHoursLedger(today: string): Promise<number> {
 /**
  * Write one week into the ledger.
  *
- * All the deciding happens in `accrue_hours_for_week()` — whether the week
- * qualified, what the active rates were, and the uniqueness that makes a repeat
- * call harmless. This just reports which way it went, so a week that didn't
- * qualify is recorded as skipped rather than failed: not qualifying is a normal
- * outcome, not an error.
+ * All the deciding happens in `accrue_hours_for_week()` — what the active
+ * rates were, and the uniqueness that makes a repeat call harmless. Since 14
+ * Sep (round 2, D) there is no qualifying condition: a live build accrues
+ * every week. The function never returns null now; the null branch below is
+ * kept so an older database still behaves, and reports skipped rather than
+ * failed because that was never an error.
  */
 export async function runHoursLedger(
   admin: ReturnType<typeof createAdminClient>,
@@ -405,8 +406,8 @@ export async function runHoursLedger(
 
   if (error) throw new Error(error.message);
 
-  // Null means the week didn't qualify — under ten hours, or the log was never
-  // submitted. Nothing to do, and nothing wrong.
+  // Null: only from a database still on the old rule (under ten hours, or never
+  // submitted). Nothing to do, and nothing wrong.
   return data === null ? "skipped" : "sent";
 }
 

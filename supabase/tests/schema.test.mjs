@@ -660,7 +660,13 @@ await check("a same-day correction edits the period rather than splitting it", a
   return r.rows[0].c === 1 && r.rows[0].h === 4;
 });
 
-await check("a week under ten hours earns nothing at all", async () => {
+// Round 2, D (14 Sep 2026): the ledger no longer looks at tracked hours or the
+// submitted log. Until then this test was "a week under ten hours earns
+// nothing at all", and the one after it needed ten hours and a submission to
+// earn the rate. Both rewritten to the confirmed rule; the old gate lives on
+// only in the draw, tested under "monthly draw".
+await check("a week with an active build earns its rate, whatever was logged", async () => {
+  // Five hours logged, and a submission. Under the old rule: nothing. Now: 4.
   await as(ERIN, () => db.query(`
     insert into public.time_entries (member_id, category_slug, started_at, ended_at)
     values ('${ERIN}','client-sessions','${ERIN_WEEK} 09:00Z','${ERIN_WEEK} 14:00Z')`));
@@ -669,13 +675,13 @@ await check("a week under ten hours earns nothing at all", async () => {
     values ('${ERIN}','${ERIN_WEEK}', now())`));
 
   const r = await as(ADMIN, () => db.query(
-    `select public.accrue_hours_for_week('${ERIN}','${ERIN_WEEK}'::date) h`));
+    `select public.accrue_hours_for_week('${ERIN}','${ERIN_WEEK}'::date)::float h`));
   const ledger = await as(ADMIN, () => db.query(
     `select count(*)::int c from public.hours_ledger where member_id='${ERIN}'`));
-  return r.rows[0].h === null && ledger.rows[0].c === 0;
+  return r.rows[0].h === 4 && ledger.rows[0].c === 1;
 });
 
-await check("ten hours and a submitted log earns the active rate", async () => {
+await check("logging more that week changes nothing: the rate is the rate", async () => {
   await as(ERIN, () => db.query(`
     insert into public.time_entries (member_id, category_slug, started_at, ended_at)
     values ('${ERIN}','sales-calls','2026-05-05 09:00Z','2026-05-05 15:00Z')`));
@@ -797,14 +803,14 @@ await check("...and does count once its start date has passed", async () => {
   return r.rows[0].h === 8;
 });
 
-await check("ten hours without submitting the log earns nothing", async () => {
-  await as(ERIN, () => db.query(`
-    insert into public.time_entries (member_id, category_slug, started_at, ended_at) values
-      ('${ERIN}','client-sessions','2026-08-10 09:00Z','2026-08-10 20:00Z')`));
-  // No weekly_submissions row at all.
+await check("a week with nothing logged and no submission still earns the rate", async () => {
+  // Nothing in time_entries for this week, no weekly_submissions row. Under
+  // the old rule this returned null; now the build is live, so it accrues.
   const r = await as(ADMIN, () => db.query(
-    `select public.accrue_hours_for_week('${ERIN}','2026-08-10'::date) h`));
-  return r.rows[0].h === null;
+    `select public.accrue_hours_for_week('${ERIN}','2026-08-10'::date)::float h`));
+  const ledger = await as(ADMIN, () => db.query(
+    `select hours::float h from public.hours_ledger where member_id='${ERIN}' and week_start_date='2026-08-10'`));
+  return r.rows[0].h !== null && ledger.rows[0].h === r.rows[0].h;
 });
 
 await check("a member sees their own ledger and nobody else's", async () => {

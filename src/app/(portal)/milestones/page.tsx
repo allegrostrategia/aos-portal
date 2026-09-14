@@ -57,7 +57,7 @@ export default async function MilestonesPage() {
       <PageHeader
         eyebrow="Hours reclaimed"
         title="How far you've come"
-        intro="Every week you log ten hours and submit, the builds you've made give you time back. This is the distance travelled. It only ever goes up."
+        intro="Every week a build of yours is live, it gives you time back. This is the distance travelled. It only ever goes up."
       />
 
       <Card className="mb-6 bg-sky/15">
@@ -69,7 +69,7 @@ export default async function MilestonesPage() {
           <p className="mt-2 text-small text-ink/70">
             Your builds add{" "}
             <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
-            every qualifying week.
+            every week it's live.
           </p>
         ) : null}
       </Card>
@@ -142,8 +142,8 @@ export default async function MilestonesPage() {
       {journey.weeks.length === 0 ? (
         <Card>
           <p className="text-small text-ink/70">
-            Nothing banked yet. Hours start accruing from the first week you log
-            ten hours and submit, once a build of yours is live.
+            Nothing banked yet. Hours start accruing from the first full week a
+            build of yours is live.
           </p>
         </Card>
       ) : (

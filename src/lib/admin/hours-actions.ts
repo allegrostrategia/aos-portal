@@ -64,7 +64,7 @@ export async function addBuild(
 
   revalidatePath("/", "layout");
   return {
-    notice: `Added. It earns ${hours} hrs in every qualifying week from ${from}.`,
+    notice: `Added. It earns ${hours} hrs every week from ${from}.`,
   };
 }
 

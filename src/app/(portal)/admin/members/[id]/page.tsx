@@ -327,10 +327,10 @@ export default async function AdminMemberPage({
             <>
               Currently earning{" "}
               <span className="font-mono text-ink">{formatHours(weeklyRate)} hrs</span>{" "}
-              in every qualifying week. Ten hours logged and the log submitted.
+              every week, while the builds below are live.
             </>
           ) : (
-            "Nothing earning yet. A build starts adding hours from the first qualifying week after its start date."
+            "Nothing earning yet. A build starts adding hours from the first week after its start date."
           )}
         </p>
       </Card>

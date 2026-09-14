@@ -122,7 +122,7 @@ export type MilestoneJourney = {
  * Weeks are expected oldest-first. A running total is carried rather than
  * recomputed per milestone, so a member with two years of weeks costs one pass.
  *
- * A qualifying week that earned nothing still appears: it's a week they showed
+ * A week that earned nothing still appears: it's a week they were a member
  * up, and dropping it would make the record of their membership sparser than
  * the truth.
  */

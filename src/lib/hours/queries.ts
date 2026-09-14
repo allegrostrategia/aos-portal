@@ -11,7 +11,7 @@ export type LedgerWeek = {
 export type MemberHours = {
   total: number;
   weeks: LedgerWeek[];
-  /** Sum of the rates currently running — what a qualifying week is worth now. */
+  /** Sum of the rates currently running — what a week is worth now. */
   weeklyRate: number;
 };
 
