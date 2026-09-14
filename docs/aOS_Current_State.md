@@ -26,6 +26,38 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## ROUND 2 — fixes, corrections, ledger change, chat, push — built 14 Sep, LOCAL ONLY, awaiting Dom
+
+**Seven commits on `main`, none pushed** (`df57812`..`cf187b2`). Brief: `docs/aOS_Round2_Fixes_And_Chat_Push_Brief.md`. Verified at the end: tsc, lint, build clean; **175 unit / 248 schema / 96 action**.
+
+### Regression or not — the honest answer per item in A
+| # | Item | Verdict |
+|---|---|---|
+| A1/A6 | La Strada unusable on a phone | **Not a code regression.** The map's geometry was byte-identical to the phone-confirmed commit: 197px tall, 36px tiles, names on hover. Reworked anyway: one fixed view (C3), twice the screen on a phone, opens on the Piazza, ~62px tiles, names always on |
+| A2 | Sociale wider than the screen | **Regression** from the redesign's grid (`min-width:auto` on grid children). Fixed |
+| A3 | Photo behind the stats | Introduced by the redesign, never approved. Now a plain orange block |
+| A4 | Off-palette dark | Introduced by the redesign. Now navy; the charcoal token is deleted |
+| A5 | Wrong image on La Strada | **Could not place.** The map and thumbnails are the right files. Likely A3 seen from another angle. **Re-check after A3.** |
+| A7 | No calendar | My one-day-at-a-time reading, drawn only when the day had entries. Now a seven-column week calendar, always drawn |
+| A8 | PWA icon is text | **Not fixable from the repo.** All four files in `public/brand/` (2 Sep) are the serif "aOS" text mark, the SVG included. **The orange/blush-on-navy icon needs dropping in.** |
+| A9 | Pairing dates | Dates now under each weekday. **A bug underneath:** nothing ever writes `pairings.scheduled_for` and a member can't read their partner's availability, so "you're both free X" had never once shown. Fixed with a narrow security-definer function. **The grid's meaning is still weekday-based; per-date ticking would be a model change, unconfirmed.** |
+| A10 | Icebreakers missing | Built at screen 5 but only inside the pairing card. Always shown now |
+
+### Built (B–F)
+- **B**: 200 em dashes out of the copy (478 in comments stay); tagline "Time reclaimed, not time off."; "fifteen boxes" gone; La Strada's line added.
+- **C**: colour always (visited UI gone, visits still recorded); safe-area padding as an inline style plus cream on `html` plus manifest background, **cause unconfirmed, check on the phone**; Sociale opens on General with a chip strip; directory as name + link + two boxes (`business_about` column, search vector rebuilt); Roadmap link on Piazza; hot seat card in four honest states from the member's own submission.
+- **D**: `accrue_hours_for_week()` no longer reads hours or submissions. **Not backfilled** — weeks the old rule skipped stay skipped unless Dom asks; the function is idempotent. **Flag:** the draw's gate is ten hours only and never checked submission; the brief's "tracked-and-submitted" overstates it. Unchanged.
+- **E**: pins (`chat_pins`, admin-only, cascade), images (`image_path`, private `chat-images` bucket, own-folder check constraint, `/api/chat-image`), search (tsvector + GIN, `/sociale/search`), retraction (**reverses the standing no-delete rule; admin delete did not exist before either** — both new), Coach badge. Composer now clears its voice/picture after a successful send (latent bug).
+- **F**: `push_subscriptions`, two push switches, web-push sender triggered from the actions in `after()`, `/sw.js` (push only, no caching), device toggle on You. **No database webhook and no webhook secret** — deliberate, flagged.
+
+### Dom's steps before this goes live
+1. Walk through it. `npm run dev`.
+2. **`npm run db:push`** — five migrations, `20260914100000` through `20260914140000`.
+3. **Dashboard:** create the private **`chat-images`** bucket.
+4. **Vercel + `.env.local`:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (generate with `npx web-push generate-vapid-keys`; see CLAUDE.md). Push is silently off until then. The public key is inlined at build, so set it before deploying.
+5. **Drop the real icon into `public/brand/`** (A8) — 512, 192, and a 180 apple-touch — then it ships.
+6. Phone: the nav's bottom strip (C2), the map (A1), Sociale width (A2), and push as its own careful pass.
+
 ## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, PUSHED 14 Sep after Dom's walkthrough
 
 **Thirteen commits on `main`, pushed 14 Sep** (`795bd52..9976960`). Deployed by Vercel; all eight migrations applied via `npm run db:push`; the `archivio` bucket and the `message_reactions` Realtime publication both done in the dashboard — all before the push. Nothing outstanding from this range. Brief: `docs/aOS_LEditoriale_Redesign_Brief.md`; reference: `docs/LEditoriale_full_reference_poster.png`.
