@@ -68,12 +68,12 @@ export default async function ChannelPage({
 
   return (
     <main className="flex flex-1 flex-col py-4 sm:py-10">
-      <div className="grid flex-1 gap-5 lg:grid-cols-[22rem_1fr]">
+      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[22rem_1fr]">
         <div className="hidden lg:block">
           <RoomList current={channel.id} />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="mb-3 flex items-center gap-3">
             <Link
               href="/sociale"
@@ -90,7 +90,7 @@ export default async function ChannelPage({
           <LiveThread channelId={channel.id} />
 
           <Card padded={false} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex flex-col gap-3 overflow-y-auto p-4">
+            <div className="flex flex-col gap-3 overflow-x-hidden overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <p className="text-small text-ink/60">
                   Nothing here yet. Someone has to go first.
@@ -117,7 +117,7 @@ export default async function ChannelPage({
                         </span>
                       ) : null}
 
-                      <div className={`flex max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
+                      <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
                         {!mine && !continues && channel.kind === "group" ? (
                           <p className="mb-1 ml-1 text-caption font-medium text-ink/60">
                             {message.authorName}
@@ -132,7 +132,7 @@ export default async function ChannelPage({
                           }`}
                         >
                           {message.body ? (
-                            <p className="text-body whitespace-pre-wrap">{message.body}</p>
+                            <p className="text-body break-words whitespace-pre-wrap">{message.body}</p>
                           ) : null}
 
                           {message.voice_path ? (

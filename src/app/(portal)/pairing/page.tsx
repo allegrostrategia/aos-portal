@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
-import { getMyAvailability, getMyPairing, pairingMonth } from "@/lib/pairing/queries";
+import { getMyAvailability, getMyPairing, getSharedSlots, pairingMonth } from "@/lib/pairing/queries";
+import { datesForWeekday, SLOT_DAYS, slotLabel } from "@/lib/pairing/slots";
+import { utcToWallClock } from "@/lib/time-zone";
 import { resolveNames } from "@/lib/chat/queries";
 import { getHeadshotUrls } from "@/lib/directory/queries";
 import { markPairingMet, setPairingBooked } from "@/lib/pairing/actions";
@@ -52,10 +54,23 @@ export default async function PairingPage() {
   ]);
 
   const partnerId = pairing?.partnerId ?? null;
-  const [names, headshots] = await Promise.all([
+  const today = utcToWallClock(new Date()).slice(0, 10);
+  const [names, headshots, shared] = await Promise.all([
     partnerId ? resolveNames([partnerId]) : Promise.resolve(new Map<string, string>()),
     getHeadshotUrls(partnerId ? [member.id, partnerId] : [member.id]),
+    pairing ? getSharedSlots(pairing.id) : Promise.resolve([] as string[]),
   ]);
+
+  // "You're both free Tuesday afternoons (15, 22, 29 Sep)". Computed from
+  // what both actually ticked — scheduled_for was never written by anything,
+  // so the earlier line here never showed.
+  const sharedLine = shared
+    .map((slot) => {
+      const day = SLOT_DAYS.find((d) => slot.startsWith(`${d.key}-`));
+      const dates = day ? datesForWeekday(month, day.isoWeekday, today).map((d) => Number(d.slice(8))) : [];
+      return `${slotLabel(slot).replace(/(morning|afternoon|evening)$/, "$1s")}${dates.length ? ` (${dates.join(", ")})` : ""}`;
+    })
+    .join("; ");
   const partnerName = partnerId ? (names.get(partnerId) ?? "your partner") : null;
   const partnerFirst = partnerName?.split(" ")[0] ?? "them";
 
@@ -100,7 +115,9 @@ export default async function PairingPage() {
           <p className="mt-3 text-small text-ink/80">
             {pairing.scheduledFor
               ? `You're both free ${formatSessionTime(pairing.scheduledFor)}.`
-              : "No time you both ticked — pick one between you."}
+              : sharedLine
+                ? `You're both free ${sharedLine}.`
+                : "No time you both ticked. Pick one between you."}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -112,18 +129,6 @@ export default async function PairingPage() {
               View profile
             </Link>
           </div>
-
-          <SectionTitle className="mt-8">Conversation starters</SectionTitle>
-          <ol className="flex flex-col gap-3">
-            {ICEBREAKERS.map((prompt, i) => (
-              <li key={prompt} className="flex gap-3">
-                <span className="font-display mt-0.5 w-6 shrink-0 text-heading text-orange">
-                  {i + 1}
-                </span>
-                <p className="text-body text-ink/85">{prompt}</p>
-              </li>
-            ))}
-          </ol>
 
           <div className="mt-8 flex flex-col gap-3 border-t border-ink/8 pt-5">
             {/* Booked, then met. Two separate claims, because a call in the
@@ -173,9 +178,26 @@ export default async function PairingPage() {
         </Card>
       )}
 
+      {/* Always here, paired or not (brief A10): they're for structuring the
+          call, and somebody waiting on a match should still be able to read
+          them. */}
+      <SectionTitle>Conversation starters</SectionTitle>
+      <Card className="mb-6">
+        <ol className="flex flex-col gap-3">
+          {ICEBREAKERS.map((prompt, i) => (
+            <li key={prompt} className="flex gap-3">
+              <span className="font-display mt-0.5 w-6 shrink-0 text-heading text-orange">
+                {i + 1}
+              </span>
+              <p className="text-body text-ink/85">{prompt}</p>
+            </li>
+          ))}
+        </ol>
+      </Card>
+
       <SectionTitle aside={formatCalendarMonth(month)}>When could you talk?</SectionTitle>
       <Card>
-        <AvailabilityForm month={month} selected={availability.slots} />
+        <AvailabilityForm month={month} selected={availability.slots} today={today} />
       </Card>
     </main>
   );

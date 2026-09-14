@@ -24,7 +24,7 @@ import { Card, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
 import { ManualEntryForm } from "./manual-entry-form";
 import { WeeklyLogForm } from "./weekly-log-form";
 import { TimerPanel } from "./timer-panel";
-import { DayStrip, DayTimeline, dayOf } from "./log-calendar";
+import { WeekCalendar, dayOf } from "./log-calendar";
 import { HoursByCategory, HoursByDay } from "./log-charts";
 import { getMyAvailability, pairingMonth } from "@/lib/pairing/queries";
 
@@ -142,18 +142,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
     <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
       <PageHeader title="Your log" tagline="Reflect. Focus. Make it count." />
 
-      <Card className="mb-5">
-        <p className="text-center text-small font-medium text-ink">{range}</p>
-        <div className="mt-4">
-          <DayStrip
-            weekStart={weekStart}
-            selected={day}
-            minutesByDay={minutesByDay}
-            today={today}
-            tab={tab}
-          />
-        </div>
-      </Card>
+      <p className="mb-4 text-center text-small font-medium text-ink">{range}</p>
 
       <Tabs tab={tab} day={day} />
 
@@ -221,6 +210,18 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
             </Card>
           ) : null}
 
+          {/* The calendar. Always here, empty or not (brief A7). */}
+          <Card className="mb-5">
+            <WeekCalendar
+              weekStart={weekStart}
+              entries={weekEntries}
+              categories={categories}
+              selected={day}
+              today={today}
+              tab={tab}
+            />
+          </Card>
+
           <WeekProgress
             loggedMinutes={week.loggedMinutes}
             isComplete={week.isCompleteWeek}
@@ -249,10 +250,6 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
             </Card>
           ) : (
             <>
-              <Card className="mb-4">
-                <DayTimeline entries={dayEntries} categories={categories} />
-              </Card>
-
               <ul className="flex flex-col gap-2">
                 {dayEntries.map((entry) => (
                   <li

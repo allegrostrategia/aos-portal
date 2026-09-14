@@ -19,8 +19,9 @@ export type CardTone = "cream" | "dark" | "orange";
 
 const TONES: Record<CardTone, string> = {
   cream: "border border-ink/8 bg-card text-ink shadow-soft",
-  // The hot seat's "next session" card in the reference: near-black, warm.
-  dark: "border border-white/10 bg-charcoal text-white shadow-lift",
+  // The hot seat's "next session" card. The reference draws it near-black;
+  // here it is the brand navy, because there is no off-palette dark (14 Sep).
+  dark: "border border-white/10 bg-navy text-white shadow-lift",
   // The timer — the one surface the brief says goes orange.
   orange: "border border-orange/40 bg-orange text-white shadow-lift",
 };

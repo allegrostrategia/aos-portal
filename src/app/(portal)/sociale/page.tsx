@@ -20,7 +20,7 @@ export default async function SocialePage() {
     <main className="flex-1 py-6 sm:py-10">
       <PageHeader title="Piazza Sociale" tagline="Real conversations. Lasting progress." />
 
-      <div className="grid gap-5 lg:grid-cols-[22rem_1fr]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[22rem_1fr]">
         <RoomList />
         <Card className="hidden items-center justify-center text-center lg:flex">
           <p className="max-w-xs text-small text-ink/60">

@@ -23,15 +23,3 @@ export function quoteOfTheDay(date = new Date()): string {
   const day = Math.floor(date.getTime() / 86_400_000);
   return QUOTES[day % QUOTES.length];
 }
-
-/**
- * The hero photograph, rotating through the more atmospheric of the station
- * images by day so the top of Piazza isn't the same picture every morning.
- * All from the existing set — nothing new to download.
- */
-const HEROES = ["terrazza", "piazza-caffe", "club-allegro", "la-boutique", "cinema-allegro"];
-
-export function heroOfTheDay(date = new Date()): string {
-  const day = Math.floor(date.getTime() / 86_400_000);
-  return `/stations/${HEROES[day % HEROES.length]}.jpg`;
-}

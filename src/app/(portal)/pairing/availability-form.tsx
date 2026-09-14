@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { saveAvailability, type PairingState } from "@/lib/pairing/actions";
-import { SLOT_DAYS, SLOT_PERIODS } from "@/lib/pairing/slots";
+import { SLOT_DAYS, SLOT_PERIODS, datesForWeekday } from "@/lib/pairing/slots";
 import { FormMessage, SubmitButton } from "@/components/ui/form";
 
 /**
@@ -17,9 +17,12 @@ import { FormMessage, SubmitButton } from "@/components/ui/form";
 export function AvailabilityForm({
   month,
   selected,
+  today,
 }: {
   month: string;
   selected: string[];
+  /** Dates before this aren't shown under the day names. */
+  today: string;
 }) {
   const [state, formAction] = useActionState<PairingState, FormData>(
     saveAvailability,
@@ -54,6 +57,14 @@ export function AvailabilityForm({
                   className="py-1 text-left text-small font-normal text-ink/70"
                 >
                   {day.label}
+                  {/* The actual dates this means, this month (brief A9). A tick
+                      still means the weekday, any week — the grid's meaning is
+                      unchanged; this just says which days those are. */}
+                  <span className="block font-mono text-[0.6rem] text-ink/45 tabular-nums">
+                    {datesForWeekday(month, day.isoWeekday, today)
+                      .map((d) => Number(d.slice(8)))
+                      .join(" · ") || "none left this month"}
+                  </span>
                 </th>
                 {SLOT_PERIODS.map((period) => {
                   const slot = `${day.key}-${period.key}`;

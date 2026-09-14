@@ -137,7 +137,7 @@ function media(item: TrainingContent, src: string) {
         <video
           controls
           controlsList="nodownload"
-          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-card bg-charcoal shadow-lift"
+          className="mx-auto block max-h-[75vh] w-auto max-w-full rounded-card bg-navy shadow-lift"
           src={src}
         />
       ) : item.format === "audio" ? (

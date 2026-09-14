@@ -31,7 +31,6 @@
   --aos-cream-deep: #f4eee4;
   --aos-card: #f9f2e6;
   --aos-ink: #0a1e4a;
-  --aos-charcoal: #1b1920;
 
   /* Map-only. The palette has no deep red; this one is picked to sit with the
      terracotta roofs in the La Strada artwork rather than fight them, and is
@@ -72,7 +71,6 @@
   --color-cream-deep: var(--aos-cream-deep);
   --color-card: var(--aos-card);
   --color-ink: var(--aos-ink);
-  --color-charcoal: var(--aos-charcoal);
 
   /* Card corners are generous in the reference; pills are fully round. */
   --radius-card: 1.25rem;
@@ -161,7 +159,7 @@ body {
     backdrop-filter: var(--aos-glass-blur);
   }
   .glass-dark {
-    background-color: rgb(27 25 32 / 0.72);
+    background-color: rgb(7 60 140 / 0.72);
     -webkit-backdrop-filter: var(--aos-glass-blur);
     backdrop-filter: var(--aos-glass-blur);
   }

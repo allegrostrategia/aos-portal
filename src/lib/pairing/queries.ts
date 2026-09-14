@@ -84,3 +84,10 @@ export async function getMyAvailability(
     submitted: Boolean(row?.submitted_at),
   };
 }
+
+/** What the pair both ticked. Empty for anyone outside the pairing. */
+export async function getSharedSlots(pairingId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("pairing_shared_slots", { p_pairing_id: pairingId });
+  return Array.isArray(data) ? (data as string[]) : [];
+}

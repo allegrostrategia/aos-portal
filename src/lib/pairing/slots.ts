@@ -67,3 +67,27 @@ export function readSlots(value: unknown): SlotId[] {
   if (!Array.isArray(slots)) return [];
   return slots.filter((s): s is string => typeof s === "string" && isSlot(s));
 }
+
+/**
+ * The dates in a pairing month that fall on a given weekday, from `from`
+ * onward — "Tuesdays: 15, 22, 29 Sep". For the availability grid's headers
+ * (brief A9: real dates, not just day names) and for saying when a pair are
+ * both free. The grid's semantics are unchanged: a tick means that weekday,
+ * any week of the month.
+ */
+export function datesForWeekday(
+  month: string,
+  isoWeekday: number,
+  from = month,
+): string[] {
+  const [y, m] = month.split("-").map(Number);
+  const out: string[] = [];
+  const cursor = new Date(Date.UTC(y, m - 1, 1));
+  while (cursor.getUTCMonth() === m - 1) {
+    const iso = cursor.toISOString().slice(0, 10);
+    const dow = cursor.getUTCDay() === 0 ? 7 : cursor.getUTCDay();
+    if (dow === isoWeekday && iso >= from) out.push(iso);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
+}

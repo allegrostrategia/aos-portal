@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { currentWeekStart, getRoadmapItems, getWeeklySubmission } from "@/lib/log/queries";
 import { countUpcomingSessions, getCurrentChallenge, getMySubmission, getUpcomingSession } from "@/lib/hot-seat/queries";
 import { getPiazzaRoadmap } from "@/lib/piazza/queries";
-import { heroOfTheDay, quoteOfTheDay } from "@/lib/piazza/quotes";
+import { quoteOfTheDay } from "@/lib/piazza/quotes";
 import { getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { getMyAvailability, getMyPairing, pairingMonth } from "@/lib/pairing/queries";
@@ -48,8 +47,9 @@ const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
  * pairing points at the availability form; the community goal from §2 is
  * still absent because nobody has said what it counts towards.
  *
- * The stat strip over the hero is the second of the two places the glass blur
- * is allowed — it sits over a photograph, which is the case it exists for.
+ * No photograph at the top. The quote sits on a plain orange block; the
+ * metrics strip is a cream card on it. That leaves the bottom nav as the only
+ * place the glass blur is used.
  */
 export default async function PiazzaPage() {
   const member = (await getCurrentMember())!;
@@ -155,51 +155,54 @@ export default async function PiazzaPage() {
         </div>
       ) : null}
 
-      {/* 3 (over 2). The hero, the quote, and the metrics strip on the glass. */}
-      <section className="relative mt-6 overflow-hidden rounded-card shadow-lift">
-        <div className="relative aspect-4/5 w-full sm:aspect-[21/10]">
-          <Image
-            src={heroOfTheDay()}
-            alt=""
-            fill
-            priority
-            sizes="(min-width: 1024px) 60rem, 100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/70 via-charcoal/10 to-transparent" />
-          <div className="absolute inset-x-0 top-0 p-5 sm:p-7">
-            <Quote className="max-w-md text-[1.35rem] text-white drop-shadow sm:text-heading">
-              &ldquo;{quoteOfTheDay()}&rdquo;
-            </Quote>
+      {/* 3 (over 2). The quote of the day on a plain orange block, and the
+          metrics strip at its foot. Not a photograph: the rotating station
+          image was never approved and read as a random background (Dom, 14
+          Sep). Brand colour only. */}
+      <section className="relative mt-6 overflow-hidden rounded-card bg-orange shadow-lift">
+        <div className="p-5 pb-28 sm:p-7 sm:pb-32">
+          <Quote className="max-w-md text-[1.35rem] text-ink sm:text-heading">
+            &ldquo;{quoteOfTheDay()}&rdquo;
+          </Quote>
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-small text-ink/80">
             {roadmap?.focusStation ? (
               <Link
                 href={`/stations/${roadmap.focusStation.slug}`}
-                className="mt-3 inline-block text-small text-white/85 underline decoration-orange decoration-2 underline-offset-4 hover:text-white"
+                className="underline decoration-ink/40 decoration-2 underline-offset-4 hover:decoration-ink"
               >
                 This month: {roadmap.focusStation.name} →
               </Link>
             ) : null}
-          </div>
+            {/* The roadmap's route in from Piazza (brief C6). Its home is the
+                Log's sign-off checklist until the full screen exists. */}
+            <Link
+              href="/log"
+              className="underline decoration-ink/40 decoration-2 underline-offset-4 hover:decoration-ink"
+            >
+              Your roadmap and log →
+            </Link>
+          </p>
+        </div>
 
-          {/* 2. The metrics strip. */}
-          <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 sm:inset-x-5 sm:bottom-5">
-            {[
-              { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones" },
-              { value: goalCount > 0 ? `${ticked}/${goalCount}` : "—", label: "weekly goals", href: "/log" },
-              { value: String(sessionCount), label: sessionCount === 1 ? "upcoming session" : "upcoming sessions", href: "/hot-seat" },
-            ].map((stat) => (
-              <Link
-                key={stat.label}
-                href={stat.href}
-                className="glass rounded-2xl px-3 py-3 text-center transition hover:bg-cream/95 sm:px-4"
-              >
-                <p className="font-mono text-heading text-ink tabular-nums sm:text-title">{stat.value}</p>
-                <p className="mt-0.5 text-[0.62rem] leading-tight font-medium tracking-wide text-ink/60 uppercase sm:text-eyebrow">
-                  {stat.label}
-                </p>
-              </Link>
-            ))}
-          </div>
+        {/* 2. The metrics strip. On a flat colour the glass is a plain cream
+            card — the blur variable only matters over imagery. */}
+        <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 sm:inset-x-5 sm:bottom-5">
+          {[
+            { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones" },
+            { value: goalCount > 0 ? `${ticked}/${goalCount}` : "—", label: "weekly goals", href: "/log" },
+            { value: String(sessionCount), label: sessionCount === 1 ? "upcoming session" : "upcoming sessions", href: "/hot-seat" },
+          ].map((stat) => (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className="rounded-2xl bg-cream px-3 py-3 text-center shadow-soft transition hover:bg-card sm:px-4"
+            >
+              <p className="font-mono text-heading text-ink tabular-nums sm:text-title">{stat.value}</p>
+              <p className="mt-0.5 text-[0.62rem] leading-tight font-medium tracking-wide text-ink/60 uppercase sm:text-eyebrow">
+                {stat.label}
+              </p>
+            </Link>
+          ))}
         </div>
       </section>
 

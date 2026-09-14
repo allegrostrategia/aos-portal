@@ -1321,6 +1321,24 @@ await check("availability is private to the member who gave it", async () => {
   return mine.rows[0].c === 1 && theirs.rows[0].c === 0 && nina.rows[0].c === 1;
 });
 
+await check("either member of a pair can see what they both ticked, and only that", async () => {
+  await as(FRAN, () => db.query(`
+    insert into public.pairing_availability (member_id, pairing_month, availability, submitted_at)
+    values ('${FRAN}', '${PAIR_MONTH}', '{"slots":["tue-pm","thu-am"]}'::jsonb, now())`));
+  // ERIN ticked tue-pm only; FRAN ticked tue-pm and thu-am. Shared: tue-pm.
+  const erin = (await as(ERIN, () => db.query(
+    `select public.pairing_shared_slots('${PAIR_ID}') s`))).rows[0].s;
+  const fran = (await as(FRAN, () => db.query(
+    `select public.pairing_shared_slots('${PAIR_ID}') s`))).rows[0].s;
+  return JSON.stringify(erin) === '["tue-pm"]' && JSON.stringify(fran) === '["tue-pm"]';
+});
+
+await check("somebody outside the pair gets nothing from it", async () => {
+  const r = await as(BOB, () => db.query(
+    `select public.pairing_shared_slots('${PAIR_ID}') s`));
+  return JSON.stringify(r.rows[0].s) === "[]";
+});
+
 console.log("\n— pairing notifications —");
 
 await check("the two new job kinds exist", async () => {
@@ -1334,16 +1352,20 @@ await check("the day-7 flag is only ever set once", async () => {
   // The runner sets it with `is('flagged_at', null)` so a re-run can't produce a
   // second email about the same silence. This asserts the guard the runner leans
   // on, in the database where it actually lives.
-  await db.query(`update public.pairings set flagged_at = null where id='${PAIR_ID}'`);
-  await db.query(
+  //
+  // As the admin, explicitly. This used to run bare and inherit whichever role
+  // the previous test left behind — admin, by luck of ordering — until a test
+  // added above it ended as a member and the guard trigger refused the update.
+  await as(ADMIN, () => db.query(`update public.pairings set flagged_at = null where id='${PAIR_ID}'`));
+  await as(ADMIN, () => db.query(
     `update public.pairings set flagged_at = '2026-10-08 09:00Z'
-     where id='${PAIR_ID}' and flagged_at is null`);
-  await db.query(
+     where id='${PAIR_ID}' and flagged_at is null`));
+  await as(ADMIN, () => db.query(
     `update public.pairings set flagged_at = '2026-10-15 09:00Z'
-     where id='${PAIR_ID}' and flagged_at is null`);
+     where id='${PAIR_ID}' and flagged_at is null`));
 
-  const r = await db.query(
-    `select flagged_at::text f from public.pairings where id='${PAIR_ID}'`);
+  const r = await as(ADMIN, () => db.query(
+    `select flagged_at::text f from public.pairings where id='${PAIR_ID}'`));
   return r.rows[0].f.startsWith("2026-10-08");
 });
 

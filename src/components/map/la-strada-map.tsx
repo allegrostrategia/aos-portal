@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   PIAZZA_HUB,
@@ -25,7 +25,12 @@ import {
  * §3: free-roam once active, navigated entirely by the member's own choice. The
  * only state is visited / not visited, so that is the only state drawn.
  *
- * **Pan is native scrolling, zoom is buttons.** A custom pointer-and-pinch layer
+ * **One fixed view, and pan is native scrolling (14 Sep).** The Fit / Closer /
+ * Closest buttons are gone. On a phone the map is drawn at twice the screen's
+ * width and scrolls, opening centred on the Piazza; on a laptop it fits. That
+ * is the only "zoom" there is. The earlier design fitted the whole town onto a
+ * phone screen at 197px tall with 36px tiles and hidden names — it was what got
+ * built and phone-checked, and it was not usable. A custom pointer-and-pinch layer
  * is the obvious reach and the wrong one: it re-implements momentum, edges and
  * two-finger handling that browsers already do properly, and breaks keyboard and
  * trackpad users on the way. Scrolling a container behaves identically on a
@@ -60,30 +65,25 @@ import {
  * fraction of the map at every screen size. See MARKER_SIZE.
  */
 
-const ZOOMS = [100, 160, 240] as const;
-
 /**
- * Marker sizing, as a share of the map's visible width.
+ * Marker sizing, as a share of the map itself.
  *
- * `cqw` is measured against the *scroll viewport*, not the zoomed picture
- * inside it, which is deliberate: markers stay a constant size while you zoom,
- * exactly as they did before, so zooming in still spreads the stations apart
- * without growing the tiles to match. Zoom is how a phone declutters the
- * square, and sizing against the zoomed layer would have taken that away.
+ * `cqw` is measured against the picture layer, not the scroll viewport. That is
+ * the reverse of the earlier design, and it follows from dropping zoom: with
+ * one fixed view there is nothing to keep markers constant *across*, so a
+ * marker should simply be the same fraction of the map everywhere. On a laptop
+ * the map is ~900px wide and a tile is 80px; on a phone the map is drawn at
+ * 200% of the screen (~700px) and a tile is ~62px — big enough to see the
+ * building in and to hit with a thumb, which 36px was not.
  *
- * The percentages are the desktop sizes expressed as fractions of a 904px map
- * (1152px shell, less padding, sidebar and gap), so the look approved against
- * the reference is unchanged there and only narrow screens move.
- *
- * The `max()` floors stop a tile shrinking to something you can't make out or
- * hit. They bind below roughly a 410px-wide map — a phone — where the tile
- * lands at 36px, about 10% of the map instead of the 16% it was.
+ * The floors are a safety net for very narrow screens, not the normal case.
  */
 const MARKER_SIZE = {
-  "--tile": "max(2.25rem, 8.8cqw)",
-  "--badge": "max(0.875rem, 2.6cqw)",
-  "--badge-text": "max(0.5rem, 1.15cqw)",
-  "--dot": "max(0.625rem, 1.3cqw)",
+  "--tile": "max(3.5rem, 8.8cqw)",
+  "--badge": "max(1.25rem, 2.6cqw)",
+  "--badge-text": "max(0.65rem, 1.15cqw)",
+  "--dot": "max(0.75rem, 1.3cqw)",
+  "--name": "max(0.7rem, 1.5cqw)",
 } as React.CSSProperties;
 
 export type MapStation = {
@@ -136,10 +136,23 @@ export function LaStradaMap({
   /** Onboarding members see the town but can't walk into it yet (§3). */
   locked?: boolean;
 }) {
-  const [zoom, setZoom] = useState<number>(ZOOMS[0]);
   const [dragging, setDragging] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
+
+  // Open on the Piazza. On a phone the map is wider than the screen, and a map
+  // that opens on its left edge opens on the sea; scrolled so the fountain is
+  // in the middle it opens on the town. No-op on a laptop, where nothing
+  // overflows. Runs once: after that the position is the member's.
+  useEffect(() => {
+    const el = scroller.current;
+    const map = layer.current;
+    if (!el || !map) return;
+    const overflow = map.offsetWidth - el.clientWidth;
+    if (overflow <= 0) return;
+    el.scrollLeft = (PIAZZA_HUB.x / 100) * map.offsetWidth - el.clientWidth / 2;
+  }, []);
   const drag = useRef<{
     x: number;
     y: number;
@@ -204,31 +217,11 @@ export function LaStradaMap({
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-small text-ink/60">
-          {locked
-            ? "Every room opens when you're active."
-            : `${placed.filter((s) => s.visited).length} of ${placed.length} visited`}
-        </p>
-
-        <div className="flex items-center gap-1" role="group" aria-label="Zoom">
-          {ZOOMS.map((level, index) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => setZoom(level)}
-              aria-pressed={zoom === level}
-              className={`rounded-md px-3 py-1.5 text-small transition ${
-                zoom === level
-                  ? "bg-navy text-white"
-                  : "border border-ink/20 text-ink/70 hover:text-ink"
-              }`}
-            >
-              {index === 0 ? "Fit" : index === 1 ? "Closer" : "Closest"}
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="mb-3 text-small text-ink/60">
+        {locked
+          ? "Every room opens when you're active."
+          : `${placed.filter((s) => s.visited).length} of ${placed.length} visited`}
+      </p>
 
       {/* `touch-pan-x touch-pan-y` tells the browser this is a pannable surface,
           so a drag scrolls the map rather than the page. */}
@@ -261,15 +254,16 @@ export function LaStradaMap({
           event.preventDefault();
           event.stopPropagation();
         }}
-        // The container the marker sizes are measured against.
-        style={{ containerType: "inline-size" }}
         className={`touch-pan-x touch-pan-y overflow-auto rounded-xl border border-ink/10 bg-sky/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange ${
           dragging ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
       >
+        {/* The picture layer: twice the screen on a phone, the screen on a
+            laptop. It is the container the marker sizes are measured against. */}
         <div
-          className="relative"
-          style={{ width: `${zoom}%`, minWidth: zoom === 100 ? undefined : "100%" }}
+          ref={layer}
+          className="relative w-[200%] sm:w-full"
+          style={{ containerType: "inline-size" }}
         >
           <Image
             src="/illustrations/la-strada-map.png"
@@ -277,7 +271,8 @@ export function LaStradaMap({
             width={1536}
             height={864}
             priority
-            sizes="(min-width: 1024px) 60rem, 100vw"
+            // Twice the screen on a phone, so the optimiser is asked for it.
+            sizes="(min-width: 1024px) 60rem, (min-width: 640px) 100vw, 200vw"
             className="h-auto w-full"
           />
 
@@ -375,9 +370,8 @@ export function LaStradaMap({
                     reference's arrangement, and it keeps the label off the
                     photograph rather than sitting over the building. */}
                 <span
-                  className={`pointer-events-none absolute bottom-full left-1/2 mb-1 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center text-[0.6rem] font-medium whitespace-nowrap text-ink shadow-md transition sm:text-caption ${
-                    zoom === 100 ? "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : "opacity-100"
-                  }`}
+                  className="pointer-events-none absolute bottom-full left-1/2 mb-1 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center font-medium whitespace-nowrap text-ink shadow-md"
+                  style={{ fontSize: "var(--name)" }}
                 >
                   {station.name}
                 </span>
@@ -519,7 +513,7 @@ export function LaStradaMap({
       </div>
 
       <p className="mt-2 text-caption text-ink/50">
-        Drag or scroll to move around, or tab to the map and use the arrow keys.
+        On a phone, drag or scroll sideways to move around the town; tab to the map and use the arrow keys.
         A dot on a photo marks somewhere you&rsquo;ve been.
       </p>
     </div>
