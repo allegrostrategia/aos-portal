@@ -71,7 +71,7 @@ export function ManualEntryForm({
         label="Note"
         name="note"
         required={false}
-        hint="Optional — what it was, if it helps you later."
+        hint="Optional. What it was, if it helps you later."
       />
 
       <FormMessage error={state?.error} />

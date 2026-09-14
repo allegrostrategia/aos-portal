@@ -201,12 +201,12 @@ export async function runMatching(
   return {
     notice:
       `${result.pairs.length} ${result.pairs.length === 1 ? "pairing" : "pairings"} made` +
-      (withCoach > 0 ? ", including one with the coach — the rotation landed odd." : ".") +
+      (withCoach > 0 ? ", including one with the coach. The rotation landed odd." : ".") +
       (result.unmatched.length > 0
         ? ` ${result.unmatched.length} left unmatched` +
           (coachId
             ? "."
-            : " — nobody is marked as the coach, so the odd one out had no partner.")
+            : ". Nobody is marked as the coach, so the odd one out had no partner.")
         : ""),
   };
 }

@@ -47,7 +47,7 @@ export function LiveThread({ channelId }: { channelId: string }) {
       if (disposed) return;
 
       if (!data.session) {
-        console.warn("[chat] no session — live updates are off for this tab");
+        console.warn("[chat] no session. Live updates are off for this tab");
         return;
       }
 

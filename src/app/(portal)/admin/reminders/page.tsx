@@ -7,7 +7,7 @@ import { formatSessionTime } from "@/lib/time-zone";
 import { hotSeatCopy, renderEmail, weeklyLogCopy, type EmailCopy } from "@/lib/jobs/copy";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Reminder copy — aOS admin" };
+export const metadata: Metadata = { title: "Reminder copy · aOS admin" };
 
 /**
  * Every reminder, rendered, sending nothing.
@@ -85,7 +85,7 @@ export default async function ReminderPreviewPage() {
       }),
     },
     {
-      label: "Hot seat · day before — not submitted",
+      label: "Hot seat · day before, not submitted",
       note: "Goes to everyone active, so this branch exists.",
       copy: hotSeatCopy("hot_seat_attend_1d", {
         firstName,
@@ -96,7 +96,7 @@ export default async function ReminderPreviewPage() {
       }),
     },
     {
-      label: "Hot seat · day before — submitted",
+      label: "Hot seat · day before, submitted",
       copy: hotSeatCopy("hot_seat_attend_1d", {
         firstName,
         when,
@@ -106,7 +106,7 @@ export default async function ReminderPreviewPage() {
       }),
     },
     {
-      label: "Hot seat · morning of — not submitted",
+      label: "Hot seat · morning of, not submitted",
       note: "The final nudge. The two day-of emails are mutually exclusive.",
       copy: hotSeatCopy("hot_seat_submit_final", {
         firstName,
@@ -117,7 +117,7 @@ export default async function ReminderPreviewPage() {
       }),
     },
     {
-      label: "Hot seat · morning of — submitted",
+      label: "Hot seat · morning of, submitted",
       copy: hotSeatCopy("hot_seat_attend_am", {
         firstName,
         when,

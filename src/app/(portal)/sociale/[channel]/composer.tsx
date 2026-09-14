@@ -202,7 +202,7 @@ export function Composer({
                   name="testimonial_consent"
                   className="mt-0.5 size-4 accent-orange"
                 />
-                Nina can quote this update. Entirely optional — your answer counts
+                Nina can quote this update. Entirely optional. Your answer counts
                 either way.
               </label>
             ) : null}

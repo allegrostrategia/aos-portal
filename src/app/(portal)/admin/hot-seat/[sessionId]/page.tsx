@@ -9,7 +9,7 @@ import { formatMinutes } from "@/lib/timer/format";
 import { Badge, Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { AttendanceForm, ConfirmForm, ReplayNoteForm } from "./prep-forms";
 
-export const metadata: Metadata = { title: "Prep — aOS admin" };
+export const metadata: Metadata = { title: "Prep · aOS admin" };
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
 
@@ -80,7 +80,7 @@ export default async function SessionPrepPage({
       <PageHeader
         eyebrow="Prep"
         title={MONTH.format(new Date(session.session_month))}
-        intro={`${rows.length} member${rows.length === 1 ? "" : "s"} · ${submitted} submitted · ${locked} locked. Lock each challenge before the call — the live time goes on building it, not writing it up.`}
+        intro={`${rows.length} member${rows.length === 1 ? "" : "s"} · ${submitted} submitted · ${locked} locked. Lock each challenge before the call. The live time goes on building it, not writing it up.`}
       />
 
       {hasHappened ? (
@@ -108,9 +108,9 @@ export default async function SessionPrepPage({
             // — doubly so while AI drafting is on hold.
             const fallbackHint =
               !row.submittedAt && biggest
-                ? `No submission. Their biggest block was ${biggest.label} at ${formatMinutes(biggest.minutes)} — §5 says that's where to start.`
+                ? `No submission. Their biggest block was ${biggest.label} at ${formatMinutes(biggest.minutes)}. §5 says that's where to start.`
                 : !row.submittedAt
-                  ? "No submission, and nothing logged either — worth a conversation before the session."
+                  ? "No submission, and nothing logged either. Worth a conversation before the session."
                   : undefined;
 
             return (
@@ -140,7 +140,7 @@ export default async function SessionPrepPage({
                         <div>
                           <Eyebrow>In their words</Eyebrow>
                           <p className="mt-1 text-small text-ink/80">
-                            {row.challenge || "—"}
+                            {row.challenge || ", "}
                           </p>
                         </div>
                         {row.alreadyTried ? (
@@ -202,7 +202,7 @@ export default async function SessionPrepPage({
                       </>
                     ) : (
                       <p className="mt-1 text-small text-ink/60">
-                        Nothing logged this month — worth asking why before
+                        Nothing logged this month. Worth asking why before
                         building anything.
                       </p>
                     )}

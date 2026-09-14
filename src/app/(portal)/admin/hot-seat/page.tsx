@@ -8,7 +8,7 @@ import { formatSessionTimeShort } from "@/lib/time-zone";
 import { SessionForm } from "./session-form";
 
 export const metadata: Metadata = {
-  title: "Hot seat — aOS admin",
+  title: "Hot seat · aOS admin",
 };
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
@@ -38,7 +38,7 @@ export default async function AdminHotSeatPage() {
       <PageHeader
         eyebrow="Admin"
         title="Hot seat"
-        intro="One session a month, week one. Set the time and link when you have them — members can see the session exists either way."
+        intro="One session a month, week one. Set the time and link when you have them. Members can see the session exists either way."
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
@@ -108,8 +108,8 @@ export default async function AdminHotSeatPage() {
       <Card className="mt-8">
         <Eyebrow>Still to come</Eyebrow>
         <p className="mt-2 text-small text-ink/70">
-          Reviewing and confirming each member&rsquo;s challenge — with Claude
-          drafting a suggestion from their tracked time — is the next piece.
+          Reviewing and confirming each member&rsquo;s challenge. With Claude
+          drafting a suggestion from their tracked time. Is the next piece.
           Submissions are being collected in the meantime.
         </p>
       </Card>

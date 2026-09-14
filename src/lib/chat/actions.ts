@@ -51,7 +51,7 @@ export async function sendMessage(
   if (consent && !buildId) {
     return {
       error:
-        "Tick that only on an update about a specific build — it's consent to reuse that answer, not everything you write.",
+        "Tick that only on an update about a specific build. It's consent to reuse that answer, not everything you write.",
     };
   }
 

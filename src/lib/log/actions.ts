@@ -49,7 +49,7 @@ export async function submitWeeklyLog(
   const row = existing as { id: string; submitted_at: string | null } | null;
 
   if (row?.submitted_at) {
-    return { error: "This week's log is already in — it can't be edited after." };
+    return { error: "This week's log is already in. It can't be edited after." };
   }
 
   const payload = {

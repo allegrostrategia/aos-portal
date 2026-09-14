@@ -101,7 +101,7 @@ export function OnboardingPath({
                 ) : null}
 
                 {!brief && !step.done && step.pending ? (
-                  <p className="mt-1 text-caption text-ink/45">{step.pending} — carry on regardless.</p>
+                  <p className="mt-1 text-caption text-ink/45">{step.pending}. Carry on regardless.</p>
                 ) : null}
 
                 {!brief && step.tickable ? (

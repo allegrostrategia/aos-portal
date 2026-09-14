@@ -8,7 +8,7 @@ import { formatCalendarDate } from "@/lib/time-zone";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { MilestonePath } from "@/components/milestones/milestone-path";
 
-export const metadata: Metadata = { title: "Your milestones — aOS" };
+export const metadata: Metadata = { title: "Your milestones · aOS" };
 
 /**
  * The full milestone path (§2's click-through from Piazza's compact line).
@@ -57,7 +57,7 @@ export default async function MilestonesPage() {
       <PageHeader
         eyebrow="Hours reclaimed"
         title="How far you've come"
-        intro="Every week you log ten hours and submit, the builds you've made give you time back. This is the distance travelled — it only ever goes up."
+        intro="Every week you log ten hours and submit, the builds you've made give you time back. This is the distance travelled. It only ever goes up."
       />
 
       <Card className="mb-6 bg-sky/15">
@@ -158,7 +158,7 @@ export default async function MilestonesPage() {
                   Week of {formatCalendarDate(week.weekStartDate)}
                 </span>
                 <span className="font-mono text-small text-ink tabular-nums">
-                  {week.hours > 0 ? `+${formatHours(week.hours)}` : "—"}
+                  {week.hours > 0 ? `+${formatHours(week.hours)}` : ", "}
                   <span className="text-ink/40">
                     {" "}
                     · {formatHours(week.runningTotal)}

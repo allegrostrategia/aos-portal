@@ -8,7 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { Card, Eyebrow, NumberedRow, Quote } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "You — aOS" };
+export const metadata: Metadata = { title: "You · aOS" };
 
 /**
  * You — the profile and settings screen (L'Editoriale "14 Your Profile").
@@ -51,7 +51,7 @@ export default async function YouPage() {
             href="/onboarding/directory"
             leading={<RowIcon name="details" />}
             title="Your details"
-            meta="Name, headshot and what you do — what other members see"
+            meta="Name, headshot and what you do. What other members see"
           />
           <NumberedRow
             href="/milestones"
@@ -129,7 +129,7 @@ export default async function YouPage() {
         </button>
       </form>
 
-      <Quote className="text-ink/70">Same dreams. More done.</Quote>
+      <Quote className="text-ink/70">Time reclaimed, not time off.</Quote>
     </main>
   );
 }

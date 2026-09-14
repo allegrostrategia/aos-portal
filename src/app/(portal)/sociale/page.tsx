@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { RoomList } from "@/components/chat/room-list";
 import { Card, PageHeader } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Piazza Sociale — aOS" };
+export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
 
 /**
  * Piazza Sociale (§10): chat and the member directory, both utilities reached
@@ -24,7 +24,7 @@ export default async function SocialePage() {
         <RoomList />
         <Card className="hidden items-center justify-center text-center lg:flex">
           <p className="max-w-xs text-small text-ink/60">
-            Pick a room. Type or talk — a voice note often says in twenty seconds
+            Pick a room. Type or talk. A voice note often says in twenty seconds
             what a paragraph doesn&rsquo;t.
           </p>
         </Card>

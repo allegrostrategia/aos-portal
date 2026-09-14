@@ -53,7 +53,7 @@ export async function inviteMember(
   if (!paymentConfirmed || !contractSigned) {
     return {
       error:
-        "Confirm both payment and the signed contract before creating a member — that's the whole reason this step is manual.",
+        "Confirm both payment and the signed contract before creating a member. That's the whole reason this step is manual.",
     };
   }
 
@@ -123,7 +123,7 @@ export async function inviteMember(
     await admin.auth.admin.deleteUser(userId);
 
     return {
-      error: `The invitation was rolled back — creating the member record failed: ${rpcError.message}`,
+      error: `The invitation was rolled back. Creating the member record failed: ${rpcError.message}`,
     };
   }
 

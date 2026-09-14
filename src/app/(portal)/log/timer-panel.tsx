@@ -57,7 +57,7 @@ export function TimerPanel({
               </svg>
             </button>
           </form>
-          <p className="mt-4 text-caption text-white/75">Running — stop it when you switch.</p>
+          <p className="mt-4 text-caption text-white/75">Running. Stop it when you switch.</p>
         </>
       ) : (
         <form action={startTimer} className="mx-auto flex max-w-sm flex-col items-center">

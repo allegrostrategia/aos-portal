@@ -86,7 +86,7 @@ export function RoadmapEditor({
           the 1:1. Typing it here would let a stated goal masquerade as something
           the data actually showed. */}
       <Card>
-        <Eyebrow>This month&rsquo;s focus — the hot seat build</Eyebrow>
+        <Eyebrow>This month&rsquo;s focus. The hot seat build</Eyebrow>
 
         {initialFocus ? (
           <>
@@ -110,7 +110,7 @@ export function RoadmapEditor({
 
         <p className="mt-3 text-caption text-ink/60">
           Set through the hot seat&rsquo;s prep and confirm, from their tracked
-          time — not edited here. The roadmap below is the separate, self-paced
+          time, not edited here. The roadmap below is the separate, self-paced
           track.
         </p>
       </Card>
@@ -237,7 +237,7 @@ export function RoadmapEditor({
         </Button>
       </div>
       <p className="text-small text-ink/60">
-        A draft is invisible to the member — they only ever see a roadmap
+        A draft is invisible to the member. They only ever see a roadmap
         you&rsquo;ve published.
       </p>
     </form>

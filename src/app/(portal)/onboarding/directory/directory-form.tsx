@@ -38,7 +38,7 @@ export function DirectoryForm({
         name="title"
         required={false}
         defaultValue={profile?.title ?? ""}
-        hint="How you'd describe what you do — “Fractional COO”, “Brand photographer”."
+        hint="How you'd describe what you do: “Fractional COO”, “Brand photographer”."
       />
       <TextArea
         label="Short bio"

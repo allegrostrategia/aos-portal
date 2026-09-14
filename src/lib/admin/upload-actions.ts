@@ -54,7 +54,7 @@ export async function createUploadTicket({
   if (!stationSlug) {
     return {
       error:
-        "Pick a station first — that's the folder the file goes in, as well as where the training lives.",
+        "Pick a station first. That's the folder the file goes in, as well as where the training lives.",
     };
   }
 

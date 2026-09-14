@@ -27,7 +27,7 @@ function friendlyAuthError(message: string): string {
     return "Too many attempts just now. Wait a minute and try again.";
   }
   if (/password should be at least/i.test(message)) {
-    return "That password is too short — it needs to be at least 8 characters.";
+    return "That password is too short. It needs to be at least 8 characters.";
   }
   return "Something went wrong signing you in. Try again, and let us know if it keeps happening.";
 }

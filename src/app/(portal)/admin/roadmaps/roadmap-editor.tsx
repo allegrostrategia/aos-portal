@@ -86,7 +86,7 @@ export function RoadmapEditor({
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     className={`${INPUT} flex-1`}
-                    placeholder="Focus — the thing being worked on"
+                    placeholder="Focus. The thing being worked on"
                     value={focus.title}
                     onChange={(e) => {
                       months[mi].focuses[fi].title = e.target.value;

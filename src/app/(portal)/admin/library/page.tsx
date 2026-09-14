@@ -13,7 +13,7 @@ import { Badge, Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { deleteContent, togglePublished } from "@/lib/admin/library-actions";
 import { ContentForm } from "./content-form";
 
-export const metadata: Metadata = { title: "Library — aOS admin" };
+export const metadata: Metadata = { title: "Library · aOS admin" };
 
 export default async function AdminLibraryPage({
   searchParams,
@@ -45,7 +45,7 @@ export default async function AdminLibraryPage({
       <PageHeader
         eyebrow="Admin"
         title="Library"
-        intro="Every training lives in exactly one station. The bucket and job tags are secondary — they feed the recommendation engine, they aren't how anyone browses."
+        intro="Every training lives in exactly one station. The bucket and job tags are secondary. They feed the recommendation engine, they aren't how anyone browses."
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start">

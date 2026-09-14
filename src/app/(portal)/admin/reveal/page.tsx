@@ -9,7 +9,7 @@ import { Badge, Card, PageHeader } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { RevealForm } from "./reveal-form";
 
-export const metadata: Metadata = { title: "Reveal document — aOS admin" };
+export const metadata: Metadata = { title: "Reveal document · aOS admin" };
 
 /**
  * The roadmap reveal document (§1, Step 12).
@@ -83,7 +83,7 @@ export default async function AdminRevealPage({
           {!selected || !reveal ? (
             <Card>
               <p className="text-small text-ink/70">
-                Pick somebody. Their reveal is written once, around their 1:1 —
+                Pick somebody. Their reveal is written once, around their 1:1.
                 it&rsquo;s a snapshot of that conversation, not something that
                 keeps up with their roadmap afterwards.
               </p>

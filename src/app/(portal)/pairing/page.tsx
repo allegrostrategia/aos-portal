@@ -15,7 +15,7 @@ import { Button, buttonClasses } from "@/components/ui/button";
 import { OpenDirectMessage } from "./open-dm";
 import { AvailabilityForm } from "./availability-form";
 
-export const metadata: Metadata = { title: "Peer pairing — aOS" };
+export const metadata: Metadata = { title: "Peer pairing · aOS" };
 
 /**
  * The three icebreakers — fixed copy, confirmed in the brief. Not stored,
@@ -147,7 +147,7 @@ export default async function PairingPage() {
                 <span className="text-body text-ink">
                   We&rsquo;ve booked a time
                   {pairing.bookedAt ? (
-                    <span className="block text-caption text-ink/55">In the diary — tap to undo.</span>
+                    <span className="block text-caption text-ink/55">In the diary. Tap to undo.</span>
                   ) : null}
                 </span>
               </button>
@@ -156,7 +156,7 @@ export default async function PairingPage() {
             {pairing.metAt ? (
               <p className="flex items-center gap-3 text-body text-ink">
                 <Tick on />
-                We met — good.
+                We met. Good.
               </p>
             ) : (
               <form action={markPairingMet}>

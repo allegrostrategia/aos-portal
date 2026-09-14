@@ -10,7 +10,7 @@ import { Card, Eyebrow, PageHeader, Quote } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { SopForm } from "../sop-form";
 
-export const metadata: Metadata = { title: "Archivio — aOS" };
+export const metadata: Metadata = { title: "Archivio · aOS" };
 
 /**
  * One entry.
@@ -97,7 +97,7 @@ export default async function ArchivioEntryPage({
           sop && written && !isComplete(sop)
             ? `Still to add: ${missingFrom(sop).join(", ")}.`
             : isBuild && !written
-              ? "Write up how this runs now it's built — the same template as any SOP, in your own words."
+              ? "Write up how this runs now it's built. The same template as any SOP, in your own words."
               : undefined
         }
       />

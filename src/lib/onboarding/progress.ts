@@ -137,7 +137,7 @@ export async function getOnboardingProgress(member: Member): Promise<OnboardingP
     {
       key: "roadmap",
       title: "Your roadmap arrives",
-      description: "The outcome of the call — nothing for you to do here.",
+      description: "The outcome of the call. Nothing for you to do here.",
       href: null,
       done: done("roadmap", Boolean(roadmap)),
       tickable: false,

@@ -10,7 +10,7 @@ import { LaStradaMap } from "@/components/map/la-strada-map";
 import { getVisitedStations } from "@/lib/map/queries";
 
 export const metadata: Metadata = {
-  title: "La Strada — aOS",
+  title: "La Strada · aOS",
 };
 
 /**
@@ -61,6 +61,7 @@ export default async function StationsPage({
       <PageHeader
         title={listView ? "The stations" : "La Strada"}
         tagline={listView ? "Explore. Learn. Implement." : "Your journey. Your pace."}
+        intro="All trainings and resources live here. Eleven stations, each its own room."
         actions={<ViewToggle listView={listView} />}
       />
 

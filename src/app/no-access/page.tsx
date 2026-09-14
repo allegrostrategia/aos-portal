@@ -33,7 +33,7 @@ export default async function NoAccessPage() {
         <p className="mt-4 text-small text-ink/70">
           {cancelled ? (
             <>
-              Nothing has been deleted — your logs, your roadmap and everything in
+              Nothing has been deleted. Your logs, your roadmap and everything in
               your Archivio are exactly where you left them. Rejoin whenever
               you&rsquo;re ready and it will all still be there.
             </>

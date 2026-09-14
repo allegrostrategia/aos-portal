@@ -33,7 +33,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const station = await getStation(slug);
 
-  return { title: station ? `${station.name} — aOS` : "Station — aOS" };
+  return { title: station ? `${station.name}. aOS` : "Station · aOS" };
 }
 
 /**
@@ -93,7 +93,7 @@ export default async function StationPage({
           <ContentList items={content} completed={completed} />
         ) : (
           <p className="text-body text-ink/70">
-            {station.name} holds no formal training content — it&rsquo;s a place
+            {station.name} holds no formal training content. It&rsquo;s a place
             rather than a library.
           </p>
         )

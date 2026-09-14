@@ -93,7 +93,7 @@ export function InstallPrompt() {
         <div className="min-w-0">
           <Eyebrow>On your phone</Eyebrow>
           <p className="mt-1 text-body text-ink">
-            Put aOS on your home screen — it opens straight to Piazza, without
+            Put aOS on your home screen. It opens straight to Piazza, without
             the browser around it.
           </p>
 

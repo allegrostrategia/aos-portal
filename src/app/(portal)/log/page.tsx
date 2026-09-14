@@ -29,7 +29,7 @@ import { HoursByCategory, HoursByDay } from "./log-charts";
 import { getMyAvailability, pairingMonth } from "@/lib/pairing/queries";
 
 export const metadata: Metadata = {
-  title: "Your log — aOS",
+  title: "Your log · aOS",
 };
 
 const TIME = new Intl.DateTimeFormat("en-GB", {
@@ -196,8 +196,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
               <Eyebrow>One thing for this month</Eyebrow>
               <p className="mt-1 text-small text-ink/80">
                 You haven&rsquo;t said when you could take your peer call yet.
-                It&rsquo;s fifteen boxes and takes about ten seconds — and it&rsquo;s
-                what gets you matched.
+                It takes about ten seconds, and it&rsquo;s what gets you matched.
               </p>
               <p className="mt-3">
                 <Link
@@ -276,7 +275,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
 
                       <div className="flex items-center gap-4">
                         <span className="font-mono text-small text-ink tabular-nums">
-                          {entry.ended_at ? formatMinutes(entry.duration_minutes ?? 0) : "—"}
+                          {entry.ended_at ? formatMinutes(entry.duration_minutes ?? 0) : ", "}
                         </span>
                         <form action={deleteEntry}>
                           <input type="hidden" name="id" value={entry.id} />
@@ -339,7 +338,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
             <Card>
               <Eyebrow>Signed</Eyebrow>
               <p className="mt-2 text-small text-ink/80">
-                This week&rsquo;s log is in. Your time keeps tracking — the entry
+                This week&rsquo;s log is in. Your time keeps tracking. The entry
                 itself stays as written.
               </p>
               {submission?.other_activity ? (
@@ -358,7 +357,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
 
           {running ? (
             <p className="mt-6 text-small text-ink/60">
-              A timer is still running — it&rsquo;ll count once you stop it.
+              A timer is still running. It&rsquo;ll count once you stop it.
             </p>
           ) : null}
         </>
@@ -416,7 +415,7 @@ function WeekProgress({
         </div>
         <p className="max-w-[14rem] text-right text-small text-ink/70">
           {isComplete
-            ? "Ten hours logged — this week counts, and you’re in the draw."
+            ? "Ten hours logged. This week counts, and you’re in the draw."
             : `${formatMinutes(remaining)} more makes it a complete week.`}
         </p>
       </div>

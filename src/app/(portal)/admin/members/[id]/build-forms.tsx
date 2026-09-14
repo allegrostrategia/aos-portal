@@ -98,7 +98,7 @@ export function RateControls({
       </div>
 
       <p className="text-caption text-ink/50">
-        Weeks already earned never change — retiring stops it earning from that
+        Weeks already earned never change. Retiring stops it earning from that
         date, it doesn&rsquo;t take anything back.
       </p>
 

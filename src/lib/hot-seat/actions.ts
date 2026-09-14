@@ -27,7 +27,7 @@ export async function saveSubmission(
   if (member.status !== "active") {
     return {
       error:
-        "The hot seat opens once you're active — it's built around a live challenge, which comes out of your first roadmap.",
+        "The hot seat opens once you're active. It's built around a live challenge, which comes out of your first roadmap.",
     };
   }
 
@@ -55,7 +55,7 @@ export async function saveSubmission(
   if (row?.confirmed_at) {
     return {
       error:
-        "Nina has already prepped this one, so it's locked. Mention any change on the call — that's quicker than rewriting it here.",
+        "Nina has already prepped this one, so it's locked. Mention any change on the call. That's quicker than rewriting it here.",
     };
   }
 

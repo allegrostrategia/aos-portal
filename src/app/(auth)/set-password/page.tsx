@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SetPasswordForm } from "./set-password-form";
 
 export const metadata: Metadata = {
-  title: "Choose a password — aOS",
+  title: "Choose a password · aOS",
 };
 
 /**
@@ -34,7 +34,7 @@ export default async function SetPasswordPage() {
         Choose a password
       </h1>
       <p className="mb-6 text-small text-ink/70">
-        Signed in as {user.email}. Pick something you&rsquo;ll remember — this is
+        Signed in as {user.email}. Pick something you&rsquo;ll remember. This is
         how you&rsquo;ll get back in.
       </p>
 

@@ -29,7 +29,7 @@ export function SubmissionForm({
           name="challenge"
           rows={3}
           defaultValue={submission?.challenge ?? ""}
-          hint="In your own words. Nina will have your tracked time in front of her already — this is the part only you can say."
+          hint="In your own words. Nina will have your tracked time in front of her already. This is the part only you can say."
         />
       </Card>
 
@@ -51,7 +51,7 @@ export function SubmissionForm({
           rows={3}
           required={false}
           defaultValue={submission?.done_looks_like ?? ""}
-          hint="The most useful box here. Five minutes builds one specific thing — naming it is what makes that possible."
+          hint="The most useful box here. Five minutes builds one specific thing. Naming it is what makes that possible."
         />
       </Card>
 

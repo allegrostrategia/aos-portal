@@ -30,7 +30,7 @@ export function TemplateForm() {
   async function handleFile(file: File) {
     setError(null);
     if (!file.type.startsWith("image/")) {
-      setError("That doesn't look like a picture — a screenshot, JPEG or PNG.");
+      setError("That doesn't look like a picture. A screenshot, JPEG or PNG.");
       return;
     }
 
@@ -85,7 +85,7 @@ export function TemplateForm() {
             <img src={preview} alt="" className="max-h-80 w-full rounded-xl object-contain bg-cream-deep" />
           ) : (
             <p className="text-small text-ink/60">
-              A screenshot of what you built — a pricing table, an offer sheet, a
+              A screenshot of what you built. A pricing table, an offer sheet, a
               template you filled in.
             </p>
           )}

@@ -16,7 +16,7 @@ import { formatHours } from "@/lib/hours/milestones";
 import { AddBuildForm, CoachNoteForm, RateControls } from "./build-forms";
 
 export const metadata: Metadata = {
-  title: "Member — aOS admin",
+  title: "Member · aOS admin",
 };
 
 const DATE = new Intl.DateTimeFormat("en-GB", {
@@ -153,25 +153,25 @@ export default async function AdminMemberPage({
             detail={
               member.contract_term_end_date
                 ? `Term ends ${DATE.format(new Date(member.contract_term_end_date))}`
-                : "No contract term — hand-seeded row"
+                : "No contract term. Hand-seeded row"
             }
           />
         </Card>
         <Card>
           <Eyebrow>Confirmations</Eyebrow>
           <p className="mt-2 text-small text-ink/80">
-            Payment: {member.payment_confirmed_at ? "✓" : "—"}
+            Payment: {member.payment_confirmed_at ? "✓" : ", "}
             <br />
-            Contract: {member.contract_signed_at ? "✓" : "—"}
+            Contract: {member.contract_signed_at ? "✓" : ", "}
             <br />
-            Welcome session: {member.welcome_session_watched_at ? "✓" : "—"}
+            Welcome session: {member.welcome_session_watched_at ? "✓" : ", "}
           </p>
         </Card>
       </div>
 
       {itinerary ? (
         <Card className="mt-5">
-          <Eyebrow>Their itinerary — what they&rsquo;ve been told to expect</Eyebrow>
+          <Eyebrow>Their itinerary. What they&rsquo;ve been told to expect</Eyebrow>
           <ul className="font-mono mt-3 flex flex-wrap gap-x-8 gap-y-2 text-small text-ink/80">
             <li>Tracking I · w/c {WEEK.format(new Date(itinerary.trackingWeekOne))}</li>
             <li>Tracking II · w/c {WEEK.format(new Date(itinerary.trackingWeekTwo))}</li>
@@ -180,7 +180,7 @@ export default async function AdminMemberPage({
           </ul>
           {itinerary.joinedOffCycle ? (
             <p className="mt-3 text-small text-orange">
-              Joined outside week 2 — these dates were shown to them as
+              Joined outside week 2. These dates were shown to them as
               indicative.
             </p>
           ) : null}
@@ -194,7 +194,7 @@ export default async function AdminMemberPage({
           <Eyebrow>Peer pairing</Eyebrow>
           <p className="mt-1 text-small text-ink/80">
             {member.is_coach
-              ? "This is the coach — when a month's pairing lands on an odd number, the spare member is paired with them."
+              ? "This is the coach. When a month's pairing lands on an odd number, the spare member is paired with them."
               : "Not the coach. Only one admin can be, and it decides who the odd one out is paired with each month."}
           </p>
           <form action={setCoach} className="mt-3">
@@ -228,8 +228,8 @@ export default async function AdminMemberPage({
       <p className="mb-3 text-small text-ink/70">
         {roadmap
           ? roadmap.confirmed_at
-            ? "Published — this is what they see on Piazza and in their weekly log."
-            : "Draft — not visible to them yet."
+            ? "Published. This is what they see on Piazza and in their weekly log."
+            : "Draft, not visible to them yet."
           : "No roadmap yet. This is what comes out of the week-four 1:1."}
       </p>
       <RoadmapEditor
@@ -271,7 +271,7 @@ export default async function AdminMemberPage({
                   {audit.weakest_station_slug
                     ? (stationName[audit.weakest_station_slug] ??
                       audit.weakest_station_slug)
-                    : "—"}
+                    : ", "}
                 </strong>
                 {audit.weakest_bucket ? (
                   <span className="text-ink/60">
@@ -295,10 +295,10 @@ export default async function AdminMemberPage({
                     >
                       <p className="text-small text-ink/60">
                         {stationName[question.stationSlug] ?? question.stationSlug}{" "}
-                        — {question.prompt}
+                        {question.prompt}
                       </p>
                       <p className="mt-1 text-small text-ink">
-                        {option ? option.label : "—"}
+                        {option ? option.label : ", "}
                         {option ? (
                           <span className="font-mono ml-2 text-caption text-ink/50">
                             {option.score}/3
@@ -327,7 +327,7 @@ export default async function AdminMemberPage({
             <>
               Currently earning{" "}
               <span className="font-mono text-ink">{formatHours(weeklyRate)} hrs</span>{" "}
-              in every qualifying week — ten hours logged and the log submitted.
+              in every qualifying week. Ten hours logged and the log submitted.
             </>
           ) : (
             "Nothing earning yet. A build starts adding hours from the first qualifying week after its start date."

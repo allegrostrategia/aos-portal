@@ -177,7 +177,7 @@ export function WeekCalendar({
       </div>
 
       <p className="mt-2 text-caption text-ink/45">
-        Colour is the kind of work — Systems, Profit, Visibility. Tap a day for its entries.
+        Colour is the kind of work. Systems, Profit, Visibility. Tap a day for its entries.
       </p>
     </div>
   );

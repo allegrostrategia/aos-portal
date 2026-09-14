@@ -29,7 +29,7 @@ export async function checkInviteReadiness(): Promise<ReadinessCheck[]> {
     ok: Boolean(siteUrl && !siteUrl.includes("localhost")),
     detail: siteUrl
       ? siteUrl.includes("localhost")
-        ? `Set to ${siteUrl} — invitation emails would link to a machine only you can reach.`
+        ? `Set to ${siteUrl}. Invitation emails would link to a machine only you can reach.`
         : siteUrl
       : "NEXT_PUBLIC_SITE_URL isn't set, so invitation links would point nowhere.",
   });
@@ -39,7 +39,7 @@ export async function checkInviteReadiness(): Promise<ReadinessCheck[]> {
       label: "Service role key",
       ok: false,
       detail:
-        "Not set on this deployment. If you've just added it in Vercel, redeploy — environment variables only apply to builds made after they're saved.",
+        "Not set on this deployment. If you've just added it in Vercel, redeploy. Environment variables only apply to builds made after they're saved.",
     });
     return checks;
   }
@@ -54,7 +54,7 @@ export async function checkInviteReadiness(): Promise<ReadinessCheck[]> {
       ok: !error,
       detail: error
         ? `Set, but Supabase rejected it: ${error.message}`
-        : "Working — invitations can be sent.",
+        : "Working. Invitations can be sent.",
     });
   } catch (cause) {
     checks.push({

@@ -59,7 +59,7 @@ export async function submitAudit(
     return {
       error: `${unanswered.length} question${
         unanswered.length === 1 ? " is" : "s are"
-      } still unanswered — the roadmap is only as good as this is.`,
+      } still unanswered. The roadmap is only as good as this is.`,
     };
   }
 
@@ -117,7 +117,7 @@ export async function saveDirectoryListing(
   const badUrl = links.find((link) => !/^https?:\/\//i.test(link.url));
   if (badUrl) {
     return {
-      error: `“${badUrl.url}” doesn't look like a link — include the https:// at the front.`,
+      error: `“${badUrl.url}” doesn't look like a link. Include the https:// at the front.`,
     };
   }
 

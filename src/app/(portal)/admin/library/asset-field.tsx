@@ -249,7 +249,7 @@ export function AssetField({
 
       <p className="text-caption text-ink/60">
         {stationSlug
-          ? "Video, audio, PDF or spreadsheet. It uploads straight away — saving the form is what attaches it."
+          ? "Video, audio, PDF or spreadsheet. It uploads straight away. Saving the form is what attaches it."
           : "Pick a station above first; it decides where the file is filed."}
       </p>
     </div>

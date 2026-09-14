@@ -7,7 +7,7 @@ import { formatSessionTime } from "@/lib/time-zone";
 import { SubmissionForm } from "./submission-form";
 
 export const metadata: Metadata = {
-  title: "Hot seat — aOS",
+  title: "Hot seat · aOS",
 };
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
@@ -37,14 +37,14 @@ export default async function HotSeatPage() {
             ? `${MONTH.format(new Date(session.session_month))}`
             : "The hot seat"
         }
-        intro="One session a month, everyone together. Whoever turns up gets worked on live — five minutes each at minimum, and more when it's quieter."
+        intro="One session a month, everyone together. Whoever turns up gets worked on live. Five minutes each at minimum, and more when it's quieter."
       />
 
       {!session ? (
         <Card>
           <p className="text-small text-ink/70">
             The next session hasn&rsquo;t been scheduled yet. It&rsquo;s always
-            week one of the month — Nina will confirm the time.
+            week one of the month. Nina will confirm the time.
           </p>
         </Card>
       ) : (
@@ -54,7 +54,7 @@ export default async function HotSeatPage() {
             <p className="font-display mt-2 text-heading font-medium text-ink">
               {session.scheduled_for
                 ? formatSessionTime(session.scheduled_for)
-                : "Week one — time to be confirmed"}
+                : "Week one. Time to be confirmed"}
             </p>
             {session.zoom_url ? (
               <p className="mt-3">
@@ -85,7 +85,7 @@ export default async function HotSeatPage() {
               Nina arrives having already read your tracked time and your
               submission, with a specific direction drafted. The live part is
               confirming that direction and building against it with her
-              judgement in the room — not starting from nothing. That&rsquo;s why
+              judgement in the room, not starting from nothing. That&rsquo;s why
               the submission matters more than it looks.
             </p>
           </Card>

@@ -104,7 +104,7 @@ export function ContentForm({
             name="station_slug"
             value={stationSlug}
             onChange={(event) => setStationSlug(event.target.value)}
-            hint="Exactly one. This is how members browse — the bucket below is a tag, not a home."
+            hint="Exactly one. This is how members browse. The bucket below is a tag, not a home."
             options={[
               { value: "", label: "Choose a station" },
               ...stations.map((s) => ({ value: s.slug, label: s.name })),
@@ -179,7 +179,7 @@ export function ContentForm({
             name="format"
             value={format}
             onChange={(event) => setFormat(event.target.value as ContentFormat)}
-            hint="Set from the file when one is uploaded — change it only if that read it wrong."
+            hint="Set from the file when one is uploaded. Change it only if that read it wrong."
             options={[
               { value: "video", label: "Video" },
               { value: "pdf", label: "PDF" },
@@ -201,7 +201,7 @@ export function ContentForm({
         <Eyebrow>Visibility</Eyebrow>
         <div className="mt-2">
           <Checkbox
-            label="★ Hot-seat buildable — a real artifact gets built, not just understood"
+            label="★ Hot-seat buildable. A real artifact gets built, not just understood"
             name="is_hot_seat_buildable"
             defaultChecked={editing?.is_hot_seat_buildable ?? false}
           />

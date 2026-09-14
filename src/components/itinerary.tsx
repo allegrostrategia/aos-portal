@@ -95,7 +95,7 @@ export function Itinerary({
           it isn't a silent unknown. */}
       <div className="border-t border-dashed border-ink/25 px-5 py-4 text-small text-ink/70 sm:px-6">
         <p>
-          Miss a tracking week and nothing breaks — your roadmap is simply built
+          Miss a tracking week and nothing breaks. Your roadmap is simply built
           on less. Miss the 1:1 and Nina will find you another slot; it&rsquo;s
           the one date worth protecting, because everything after it is shaped by
           that conversation.
@@ -103,7 +103,7 @@ export function Itinerary({
         {it.joinedOffCycle ? (
           <p className="mt-3 text-ink/60">
             Your start date falls outside the usual week-2 intake, so these dates
-            are indicative — Nina will confirm them with you.
+            are indicative. Nina will confirm them with you.
           </p>
         ) : null}
       </div>

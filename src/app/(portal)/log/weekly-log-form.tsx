@@ -39,7 +39,7 @@ export function WeeklyLogForm({
 
         {roadmapItems.length === 0 ? (
           <p className="mt-3 text-small text-ink/70">
-            Your roadmap arrives at your 1:1 in week four — until then there
+            Your roadmap arrives at your 1:1 in week four. Until then there
             isn&rsquo;t a checklist to tick. Use the box below for anything worth
             remembering about the week.
           </p>
@@ -91,7 +91,7 @@ export function WeeklyLogForm({
           name="other_activity"
           rows={5}
           defaultValue={defaultOtherActivity}
-          hint="What happened outside the plan — and anything you're stuck on. Nina reads these and answers on Monday morning, so a question here is the quickest way to get one."
+          hint="What happened outside the plan, and anything you're stuck on. Nina reads these and answers on Monday morning, so a question here is the quickest way to get one."
         />
       </Card>
 
@@ -101,7 +101,7 @@ export function WeeklyLogForm({
         <div>
           <SubmitButton full={false}>Sign this week&rsquo;s log</SubmitButton>
           <p className="mt-2 text-small text-ink/60">
-            Once it&rsquo;s in, it stays as written — it&rsquo;s a dated entry,
+            Once it&rsquo;s in, it stays as written. It&rsquo;s a dated entry,
             not a document.
           </p>
         </div>

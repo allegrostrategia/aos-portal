@@ -25,7 +25,7 @@ export function SessionForm({ defaultMonth }: { defaultMonth: string }) {
         name="scheduled_for"
         type="datetime-local"
         required={false}
-        hint="Optional — members see “time to be confirmed” until this is set."
+        hint="Optional. Members see “time to be confirmed” until this is set."
       />
       <Field
         label="Zoom link"

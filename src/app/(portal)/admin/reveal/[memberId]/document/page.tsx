@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getReveal } from "@/lib/reveal/queries";
 import { formatCalendarDate } from "@/lib/time-zone";
 
-export const metadata: Metadata = { title: "Reveal — aOS" };
+export const metadata: Metadata = { title: "Reveal · aOS" };
 
 /**
  * The document itself (§1, target output in `Sample_aOS_Roadmap_Reveal.html`).
@@ -59,7 +59,7 @@ export default async function RevealDocumentPage({
       <div className="no-print mb-8 rounded-lg border border-ink/15 bg-lemon/25 px-4 py-3">
         <p className="text-small text-ink/80">
           Print this page and choose <strong className="font-medium">Save as PDF</strong>.
-          It&rsquo;s a snapshot of the 1:1 — it won&rsquo;t change as their roadmap does.
+          It&rsquo;s a snapshot of the 1:1. It won&rsquo;t change as their roadmap does.
         </p>
       </div>
 
@@ -159,7 +159,7 @@ export default async function RevealDocumentPage({
         <section className="mb-10">
           <h2 className="font-display text-heading font-medium text-ink">Your road</h2>
           <p className="text-small text-ink/60">
-            La Strada — where you&rsquo;re starting, and what&rsquo;s ahead.
+            La Strada, where you&rsquo;re starting, and what&rsquo;s ahead.
           </p>
           <p className="mt-3 text-body whitespace-pre-wrap text-ink/85">
             {reveal.roadNote}

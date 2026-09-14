@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "aOS — Allegro Strategia",
+  title: "aOS · Allegro Strategia",
   description:
     "Every month, one real thing costing you time or money gets built live, based on your real data.",
   // Apple ignores the manifest's icons and reads this instead; without it, a

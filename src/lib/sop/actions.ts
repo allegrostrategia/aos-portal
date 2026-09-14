@@ -28,11 +28,11 @@ export async function saveSop(
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) return { error: "Give it a name — that's what you'll look for later." };
+  if (!title) return { error: "Give it a name. That's what you'll look for later." };
 
   const videoUrl = String(formData.get("video_url") ?? "").trim();
   if (videoUrl && !/^https?:\/\//i.test(videoUrl)) {
-    return { error: `“${videoUrl}” doesn't look like a link — include the https:// at the front.` };
+    return { error: `“${videoUrl}” doesn't look like a link. Include the https:// at the front.` };
   }
 
   const sop = readSop({
@@ -162,7 +162,7 @@ export async function saveTemplate(
 
   const title = String(formData.get("title") ?? "").trim();
   const imagePath = String(formData.get("image_path") ?? "").trim();
-  if (!title) return { error: "Give it a name — it's what you'll look for later." };
+  if (!title) return { error: "Give it a name. It's what you'll look for later." };
   if (!imagePath) return { error: "Add the screenshot first." };
   if (!imagePath.startsWith(`${member.id}/`)) return { error: "That picture isn't yours." };
 

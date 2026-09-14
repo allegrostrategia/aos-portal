@@ -6,7 +6,7 @@ import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { formatCalendarDate, formatCalendarMonth } from "@/lib/time-zone";
 import { DrawControls, NewDrawForm } from "./draw-forms";
 
-export const metadata: Metadata = { title: "Draw — aOS admin" };
+export const metadata: Metadata = { title: "Draw · aOS admin" };
 
 type DrawRow = {
   id: string;
@@ -142,7 +142,7 @@ export default async function AdminDrawPage() {
                             detail={
                               entrants === 0
                                 ? "Entrant list not locked yet"
-                                : "Locked in — this is who's in the hat"
+                                : "Locked in. This is who's in the hat"
                             }
                           />
                           <Stat

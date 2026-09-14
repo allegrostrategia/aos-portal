@@ -5,7 +5,7 @@ import { getRecentTouchpoints } from "@/lib/admin/touchpoint";
 import { addDays } from "@/lib/onboarding/cadence";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Friday questions — aOS admin" };
+export const metadata: Metadata = { title: "Friday questions · aOS admin" };
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
 const WHEN = new Intl.DateTimeFormat("en-GB", {
@@ -36,7 +36,7 @@ export default async function TouchpointPage() {
       <PageHeader
         eyebrow="Friday questions"
         title="What members are stuck on"
-        intro="Written into “Anything else this week” on their weekly log. You answer these live in chat during the Monday window — this is the reading list, not a queue to work through."
+        intro="Written into “Anything else this week” on their weekly log. You answer these live in chat during the Monday window. This is the reading list, not a queue to work through."
       />
 
       {total === 0 ? (
@@ -97,7 +97,7 @@ export default async function TouchpointPage() {
         <Eyebrow>Answering these</Eyebrow>
         <p className="mt-2 text-small text-ink/70">
           Live in portal chat during the Monday window, by voice note if
-          that&rsquo;s quicker. Chat is Step 11 — until then these are readable
+          that&rsquo;s quicker. Chat is Step 11. Until then these are readable
           here and answerable wherever you already talk to members.
         </p>
       </Card>

@@ -67,7 +67,7 @@ export function HeadshotField({ path }: { path: string | null }) {
     setError(null);
 
     if (!isHeadshotFile(file.name) && !file.type.startsWith("image/")) {
-      setError("That doesn't look like a photo — JPEG, PNG, WebP or HEIC.");
+      setError("That doesn't look like a photo. JPEG, PNG, WebP or HEIC.");
       return;
     }
 
@@ -171,7 +171,7 @@ export function HeadshotField({ path }: { path: string | null }) {
       />
 
       <p className="text-caption text-ink/60">
-        Optional, and it&rsquo;s resized before it uploads — no need to shrink it
+        Optional, and it&rsquo;s resized before it uploads. No need to shrink it
         first.
       </p>
 

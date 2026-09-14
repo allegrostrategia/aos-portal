@@ -872,7 +872,7 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
 
   if (!isEmailConfigured()) {
     summary.errors.push(
-      "RESEND_API_KEY isn't set — planning ran, but nothing can be delivered.",
+      "RESEND_API_KEY isn't set. Planning ran, but nothing can be delivered.",
     );
   }
 

@@ -6,7 +6,7 @@ import { OnboardingPath } from "@/components/onboarding/onboarding-path";
 import { PageHeader } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Your first weeks — aOS",
+  title: "Your first weeks · aOS",
 };
 
 /**
@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
         tagline="Grand Hotel Riposo"
         intro={
           progress.allDone
-            ? "That's everything. Keep logging your time — your roadmap keeps being built from it."
+            ? "That's everything. Keep logging your time. Your roadmap keeps being built from it."
             : "Six steps, in your own time. The rest of aOS opens up as you go."
         }
       />

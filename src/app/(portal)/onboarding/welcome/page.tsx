@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Eyebrow } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Welcome session — aOS",
+  title: "Welcome session · aOS",
 };
 
 /**
@@ -29,7 +29,7 @@ export default async function WelcomeSessionPage() {
       </h1>
       <p className="mt-3 text-body text-ink/70">
         Before the audit, before anything else. This one sets out what kind of
-        space this is — the audit teaches you how it works.
+        space this is. The audit teaches you how it works.
       </p>
 
       <div className="mt-6 flex aspect-video items-center justify-center rounded-xl border border-ink/15 bg-ink/5">
@@ -48,7 +48,7 @@ export default async function WelcomeSessionPage() {
           </li>
           <li>Why you&rsquo;re here, and what&rsquo;s expected of you.</li>
           <li>
-            What this isn&rsquo;t — not advice on demand, not unlimited access
+            What this isn&rsquo;t, not advice on demand, not unlimited access
             outside the structure, and not somewhere momentum happens to you.
           </li>
           <li>The method underneath the whole approach.</li>
@@ -59,7 +59,7 @@ export default async function WelcomeSessionPage() {
         {watched ? (
           <div className="flex flex-wrap items-center gap-4">
             <p className="text-small text-ink/70">
-              You&rsquo;ve watched this — your audit is open.
+              You&rsquo;ve watched this. Your audit is open.
             </p>
             <Link
               href="/onboarding/audit"
@@ -72,7 +72,7 @@ export default async function WelcomeSessionPage() {
           <form action={markWelcomeWatched}>
             <Button type="submit">I&rsquo;ve watched this</Button>
             <p className="mt-3 text-small text-ink/60">
-              This just unlocks the next step — nobody&rsquo;s checking.
+              This just unlocks the next step. Nobody&rsquo;s checking.
             </p>
           </form>
         )}

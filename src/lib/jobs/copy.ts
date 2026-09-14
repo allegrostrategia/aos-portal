@@ -29,7 +29,7 @@ export function weeklyLogCopy(
       body: [
         `${input.firstName},`,
         `You're at ${formatMinutes(input.loggedMinutes)} logged this week. Ten hours is what makes a week count.`,
-        `Nothing to fill in and nothing to write up — start the timer when you begin something, stop it when you're done. The point isn't the total; it's that your roadmap gets built from where the time actually went rather than where you think it went.`,
+        `Nothing to fill in and nothing to write up. Start the timer when you begin something, stop it when you're done. The point isn't the total; it's that your roadmap gets built from where the time actually went rather than where you think it went.`,
         `Your log: ${input.logUrl}`,
       ],
     };
@@ -39,7 +39,7 @@ export function weeklyLogCopy(
     subject: `${formatMinutes(input.shortBy)} off a complete week`,
     body: [
       `${input.firstName},`,
-      `You're ${formatMinutes(input.shortBy)} short of ten hours, so this week won't count yet — and complete weeks are what put you in the monthly draw.`,
+      `You're ${formatMinutes(input.shortBy)} short of ten hours, so this week won't count yet, and complete weeks are what put you in the monthly draw.`,
       `If you've done the hours and just haven't logged them, you can add them after the fact. Reconstructed is worth less than tracked, but it's worth a great deal more than nothing.`,
       `Your log: ${input.logUrl}`,
     ],
@@ -67,7 +67,7 @@ export function hotSeatCopy(
           `${firstName},`,
           `The next hot seat is ${when}. One hour, everyone together, and whoever turns up gets worked on live.`,
           `There are three questions to answer beforehand: what you're stuck on, what you've already tried, and what "done" would look like by the end of your slot.`,
-          `That last one does most of the work. Five minutes is enough to build one specific thing and not enough to decide what that thing should be — so arriving with it named is the difference between building and talking.`,
+          `That last one does most of the work. Five minutes is enough to build one specific thing and not enough to decide what that thing should be, so arriving with it named is the difference between building and talking.`,
           `Submit here: ${baseUrl}/hot-seat`,
         ],
       };
@@ -78,18 +78,18 @@ export function hotSeatCopy(
         body: [
           `${firstName},`,
           `The hot seat is ${when} and yours hasn't come in yet.`,
-          `It takes a few minutes. Nina reads it alongside your tracked hours beforehand, so she arrives already knowing where your month went and what you want out of it — which is what makes a short slot worth having.`,
+          `It takes a few minutes. Nina reads it alongside your tracked hours beforehand, so she arrives already knowing where your month went and what you want out of it, which is what makes a short slot worth having.`,
           `Submit here: ${baseUrl}/hot-seat`,
         ],
       };
 
     case "hot_seat_submit_final":
       return {
-        subject: "Hot seat today — still time to submit",
+        subject: "Hot seat today. Still time to submit",
         body: [
           `${firstName},`,
           `Today's session is ${when}, and there's still time to get yours in.`,
-          `You're welcome either way — nobody is turned away for not submitting. But without one it gets worked out from scratch in the room, and that's a slower use of your five minutes than arriving with Nina already prepped.`,
+          `You're welcome either way. Nobody is turned away for not submitting. But without one it gets worked out from scratch in the room, and that's a slower use of your five minutes than arriving with Nina already prepped.`,
           `Submit here: ${baseUrl}/hot-seat`,
         ],
       };
@@ -104,7 +104,7 @@ export function hotSeatCopy(
           ? [
               `${firstName},`,
               `The hot seat is ${when}.`,
-              `Nothing more to prepare. Nina reads your submission alongside your tracked hours beforehand and comes with a direction already drafted — the live part is confirming that and building it, rather than working out what to build.`,
+              `Nothing more to prepare. Nina reads your submission alongside your tracked hours beforehand and comes with a direction already drafted. The live part is confirming that and building it, rather than working out what to build.`,
               join,
             ]
           : [
@@ -121,7 +121,7 @@ export function hotSeatCopy(
         body: [
           `${firstName},`,
           `Today, ${when}.`,
-          `Nina has your submission and your tracked hours, and comes with a direction drafted from them. Your few minutes go on confirming that and building it — not on explaining where you're up to.`,
+          `Nina has your submission and your tracked hours, and comes with a direction drafted from them. Your few minutes go on confirming that and building it, not on explaining where you're up to.`,
           join,
         ],
       };
@@ -149,7 +149,7 @@ export function chatUnreadCopy(input: {
     body: [
       `${input.firstName},`,
       `${input.fromName} sent you ${what} in the portal, and it's still unread.`,
-      `Nothing needs answering straight away — this is only here so a reply doesn't sit unseen for days.`,
+      `Nothing needs answering straight away. This is only here so a reply doesn't sit unseen for days.`,
       `Read it: ${input.chatUrl}`,
     ],
   };
@@ -172,11 +172,11 @@ export function pairingBookedCopy(input: {
     subject: `You're paired with ${input.partnerName} this month`,
     body: [
       `${input.firstName},`,
-      `This month you're paired with ${input.partnerName}. Both of you bring something you're stuck on, both of you give and get — about fifteen minutes each way.`,
+      `This month you're paired with ${input.partnerName}. Both of you bring something you're stuck on, both of you give and get. About fifteen minutes each way.`,
       input.sharedTimes
         ? `You both said ${input.sharedTimes} works.`
         : `You didn't tick any of the same slots, so you'll need to find a time between you.`,
-      `Message them in the portal to sort out when and where. There's no call link — it's your conversation to arrange.`,
+      `Message them in the portal to sort out when and where. There's no call link. It's your conversation to arrange.`,
       `Your pairing: ${input.pairingUrl}`,
     ],
   };
@@ -199,7 +199,7 @@ export function pairingStalledCopy(input: {
     body: [
       `A week into ${input.month} and this pairing hasn't been confirmed:`,
       input.names.join(" · "),
-      `Might be nothing — plenty of people meet without marking it. Worth a nudge if it's been quiet, so it doesn't just never happen.`,
+      `Might be nothing. Plenty of people meet without marking it. Worth a nudge if it's been quiet, so it doesn't just never happen.`,
       `Pairings: ${input.adminUrl}`,
     ],
   };
@@ -228,7 +228,7 @@ export function buildCheckInCopy(input: {
     body: [
       `${input.firstName},`,
       `It's been a fortnight since ${input.buildTitle} went live, and it's currently credited with saving you ${input.hoursPerWeek} hours a week.`,
-      `Is that still true? What's working, and more usefully, what isn't — has it needed fixing, has it quietly stopped running, are you doing bits of it by hand again?`,
+      `Is that still true? What's working, and more usefully, what isn't. Has it needed fixing, has it quietly stopped running, are you doing bits of it by hand again?`,
       `An honest "it didn't stick" is worth more than a polite yes. Your hours reclaimed are built on these numbers, so they're only worth having if they're real.`,
       `Reply here: ${input.chatUrl}`,
     ],

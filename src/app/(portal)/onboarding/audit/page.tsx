@@ -9,7 +9,7 @@ import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { AuditForm } from "./audit-form";
 
 export const metadata: Metadata = {
-  title: "Your audit — aOS",
+  title: "Your audit · aOS",
 };
 
 export default async function AuditPage() {
@@ -53,7 +53,7 @@ export default async function AuditPage() {
             questions happen live in that conversation rather than on a form.
           </p>
           <p className="mt-3 text-small text-ink/60">
-            Changed your mind about an answer? Mention it on the call — it&rsquo;s
+            Changed your mind about an answer? Mention it on the call. It&rsquo;s
             a point-in-time snapshot, so it isn&rsquo;t edited after the fact.
           </p>
         </Card>
@@ -74,7 +74,7 @@ export default async function AuditPage() {
       <PageHeader
         eyebrow="Grand Hotel Riposo"
         title="Your audit"
-        intro="Nine questions, one per part of the business. Answer for how things actually are rather than how you'd like them to be — this is what your roadmap gets built from, and a flattering picture only produces a roadmap for a business you don't have."
+        intro="Nine questions, one per part of the business. Answer for how things actually are rather than how you'd like them to be. This is what your roadmap gets built from, and a flattering picture only produces a roadmap for a business you don't have."
       />
 
       <AuditForm questions={AUDIT_QUESTIONS} stationNames={stationNames} />

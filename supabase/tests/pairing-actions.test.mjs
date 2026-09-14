@@ -171,7 +171,7 @@ test("with no coach flagged, the spare is left out and the notice explains", asy
   const result = await runMatching(null, form({ pairing_month: "2027-01" }));
 
   assert.match(result?.notice ?? "", /1 left unmatched/);
-  assert.match(result?.notice ?? "", /nobody is marked as the coach/);
+  assert.match(result?.notice ?? "", /nobody is marked as the coach/i);
 
   const rows = await db.query(
     `select count(*)::int c from public.pairings where pairing_month = '2027-01-01'`,

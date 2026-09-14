@@ -101,7 +101,7 @@ export async function runDrawStep(
     return {
       notice:
         (count ?? 0) > 0
-          ? "Nobody new — everyone eligible was already entered."
+          ? "Nobody new. Everyone eligible was already entered."
           : "Nobody completed the whole month, so there's nobody to enter yet.",
     };
   }

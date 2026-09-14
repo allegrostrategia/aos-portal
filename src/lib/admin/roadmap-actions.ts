@@ -50,7 +50,7 @@ export async function saveRoadmap(
   try {
     phases = JSON.parse(raw) as RoadmapPhaseInput[];
   } catch {
-    return { error: "The phases didn't parse — try again." };
+    return { error: "The phases didn't parse. Try again." };
   }
 
   const cleaned = phases
@@ -142,6 +142,6 @@ export async function saveRoadmap(
   return {
     notice: publish
       ? "Saved and visible to them."
-      : "Saved as a draft — they can't see it until you publish.",
+      : "Saved as a draft. They can't see it until you publish.",
   };
 }

@@ -87,7 +87,7 @@ export async function saveSession(
   const week = firstMondayOfMonth(sessionMonth);
   return {
     notice: scheduledFor
-      ? `Saved for ${formatSessionTime(wallClockToUtc(scheduledFor))} — UK time, which is what members see.${
+      ? `Saved for ${formatSessionTime(wallClockToUtc(scheduledFor))}. UK time, which is what members see.${
           timeChanged ? " The time moved, so reminders will go out again against the new date." : ""
         }`
       : `Saved. Week one that month begins ${week}; members see "time to be confirmed" until you set one.`,
@@ -118,7 +118,7 @@ export async function confirmChallenge(
     return { error: "No submission given." };
   }
   if (!confirmed) {
-    return { error: "The confirmed challenge is what goes into the room — it can't be blank." };
+    return { error: "The confirmed challenge is what goes into the room. It can't be blank." };
   }
 
   const supabase = await createClient();

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getCurrentMember } from "@/lib/auth/member";
 import { getArchivioEntry } from "@/lib/sop/queries";
 
-export const metadata: Metadata = { title: "SOP — aOS" };
+export const metadata: Metadata = { title: "SOP · aOS" };
 
 /**
  * The exportable version (§11).
@@ -49,7 +49,7 @@ export default async function SopPrintPage({
       <div className="no-print mb-8 rounded-lg border border-ink/15 bg-lemon/25 px-4 py-3">
         <p className="text-small text-ink/80">
           Print this page and choose <strong className="font-medium">Save as PDF</strong>{" "}
-          as the destination — on a phone, use Share then Print.
+          as the destination. On a phone, use Share then Print.
         </p>
       </div>
 

@@ -31,7 +31,7 @@ export async function addBuild(
   const from = String(formData.get("effective_from") ?? "").trim();
 
   if (!memberId) return { error: "Which member?" };
-  if (!title) return { error: "Give the build a name — it's what the member sees." };
+  if (!title) return { error: "Give the build a name. It's what the member sees." };
 
   const hours = Number(hoursRaw);
   if (!hoursRaw || !Number.isFinite(hours) || hours < 0) {
@@ -101,7 +101,7 @@ export async function changeBuildRate(
     revalidatePath("/", "layout");
     return {
       notice:
-        "Retired. Everything it already earned stays in the ledger — retiring never takes hours back.",
+        "Retired. Everything it already earned stays in the ledger. Retiring never takes hours back.",
     };
   }
 

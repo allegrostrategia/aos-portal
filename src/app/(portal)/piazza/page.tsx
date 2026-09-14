@@ -17,7 +17,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { OnboardingPath } from "@/components/onboarding/onboarding-path";
 import { InstallPrompt } from "@/components/install-prompt";
 
-export const metadata: Metadata = { title: "Piazza — aOS" };
+export const metadata: Metadata = { title: "Piazza · aOS" };
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
@@ -116,7 +116,7 @@ export default async function PiazzaPage() {
     tasks.push({
       key: "pairing",
       title: "Say when you're free for your peer call",
-      detail: "Fifteen boxes, ten seconds — it's what gets you matched.",
+      detail: "About ten seconds. It's what gets you matched.",
       href: "/pairing",
     });
   }
@@ -189,7 +189,7 @@ export default async function PiazzaPage() {
         <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 sm:inset-x-5 sm:bottom-5">
           {[
             { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones" },
-            { value: goalCount > 0 ? `${ticked}/${goalCount}` : "—", label: "weekly goals", href: "/log" },
+            { value: goalCount > 0 ? `${ticked}/${goalCount}` : ", ", label: "weekly goals", href: "/log" },
             { value: String(sessionCount), label: sessionCount === 1 ? "upcoming session" : "upcoming sessions", href: "/hot-seat" },
           ].map((stat) => (
             <Link

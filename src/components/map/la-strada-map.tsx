@@ -240,7 +240,7 @@ export function LaStradaMap({
         ref={scroller}
         tabIndex={0}
         role="region"
-        aria-label="La Strada map — use the arrow keys to move around"
+        aria-label="La Strada map. Use the arrow keys to move around"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -267,7 +267,7 @@ export function LaStradaMap({
         >
           <Image
             src="/illustrations/la-strada-map.png"
-            alt="La Strada — the town, seen from above"
+            alt="La Strada. The town, seen from above"
             width={1536}
             height={864}
             priority
@@ -354,7 +354,7 @@ export function LaStradaMap({
               beside it — neither is a station, and §3 keeps the square itself
               clear of markers, so both are labels rather than tiles. */}
           <PlaceLabel at={PIAZZA_HUB} href={locked ? undefined : "/piazza"}>
-            Piazza — Home
+            Piazza. Home
           </PlaceLabel>
           <PlaceLabel at={PIAZZA_SOCIALE} href={locked ? undefined : "/sociale"}>
             Piazza Sociale
@@ -457,7 +457,7 @@ export function LaStradaMap({
                 key={station.slug}
                 href={`/stations/${station.slug}`}
                 style={style}
-                aria-label={`${station.name}${station.visited ? " — visited" : ""}`}
+                aria-label={`${station.name}${station.visited ? ". Visited" : ""}`}
                 className="group absolute -translate-x-1/2 -translate-y-1/2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange"
               >
                 {marker}

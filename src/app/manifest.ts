@@ -16,7 +16,7 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "aOS — Allegro Strategia",
+    name: "aOS · Allegro Strategia",
     short_name: "aOS",
     description:
       "Every month, one real thing costing you time or money gets built live, based on your real data.",

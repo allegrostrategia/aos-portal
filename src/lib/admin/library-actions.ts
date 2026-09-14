@@ -50,7 +50,7 @@ export async function saveContent(
   if (!stationSlug) {
     return {
       error:
-        "Pick a station. Every training lives in exactly one — that's the organising principle, not a tag.",
+        "Pick a station. Every training lives in exactly one. That's the organising principle, not a tag.",
     };
   }
 
@@ -117,7 +117,7 @@ export async function saveContent(
   return {
     notice: payload.published_at
       ? "Saved and published."
-      : "Saved as a draft — members can't see it until it's published.",
+      : "Saved as a draft. Members can't see it until it's published.",
   };
 }
 

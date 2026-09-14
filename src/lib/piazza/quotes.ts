@@ -15,7 +15,7 @@ const QUOTES = [
   "One real thing, built, beats ten things planned.",
   "Your week already knows what to fix. Track it.",
   "Systems are how you stop being the bottleneck.",
-  "Same dreams. More done.",
+  "Time reclaimed, not time off.",
   "Build it once, properly. Then let it run.",
 ];
 

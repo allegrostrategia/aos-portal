@@ -12,7 +12,7 @@ import { allActions } from "@/lib/roadmap/shape";
 import { Badge, Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { RoadmapEditor } from "./roadmap-editor";
 
-export const metadata: Metadata = { title: "Roadmaps — aOS admin" };
+export const metadata: Metadata = { title: "Roadmaps · aOS admin" };
 
 /**
  * The Roadmaps section (3 Sep).
@@ -59,7 +59,7 @@ export default async function AdminRoadmapsPage({
       <PageHeader
         eyebrow="Admin"
         title="Roadmaps"
-        intro="Six months, month by month. Work the plan out wherever you work it out, then put it here — months hold focuses, focuses hold the actions, and each action points at a training and a week."
+        intro="Six months, month by month. Work the plan out wherever you work it out, then put it here. Months hold focuses, focuses hold the actions, and each action points at a training and a week."
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start">
@@ -97,7 +97,7 @@ export default async function AdminRoadmapsPage({
             <Card>
               <p className="text-small text-ink/70">
                 Pick somebody. Their roadmap is the self-paced track from the
-                1:1 — separate from the hot seat build, which owns their current
+                1:1. Separate from the hot seat build, which owns their current
                 focus through its own prep and confirm.
               </p>
             </Card>
@@ -128,7 +128,7 @@ export default async function AdminRoadmapsPage({
                     {roadmap.currentFocus}
                   </p>
                   <p className="mt-1 text-caption text-ink/50">
-                    Set through the hot seat&rsquo;s prep and confirm, not here —
+                    Set through the hot seat&rsquo;s prep and confirm, not here.
                     the roadmap is the self-paced track alongside it.
                   </p>
                 </Card>

@@ -19,7 +19,7 @@ import { Composer } from "./composer";
 import { LiveThread } from "./live-thread";
 import { Reactions } from "./reactions";
 
-export const metadata: Metadata = { title: "Piazza Sociale — aOS" };
+export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
 
 /**
  * A room. L'Editoriale "10": bubbles, faces, reactions.

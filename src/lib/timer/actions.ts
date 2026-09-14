@@ -156,13 +156,13 @@ export async function addManualEntry(
   const endedAt = new Date(`${date}T${endTime}`);
 
   if (Number.isNaN(startedAt.getTime()) || Number.isNaN(endedAt.getTime())) {
-    return { error: "Those times didn't parse — try again." };
+    return { error: "Those times didn't parse. Try again." };
   }
   if (endedAt <= startedAt) {
     return { error: "The finish time needs to be after the start time." };
   }
   if (startedAt > new Date()) {
-    return { error: "That's in the future — log it once it's happened." };
+    return { error: "That's in the future. Log it once it's happened." };
   }
 
   const supabase = await createClient();

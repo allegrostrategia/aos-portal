@@ -8,7 +8,7 @@ import { openDirectMessage } from "@/lib/chat/actions";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Directory — aOS" };
+export const metadata: Metadata = { title: "Directory · aOS" };
 
 /**
  * The member directory (§10).
@@ -113,14 +113,14 @@ export default async function DirectoryPage({
         >
           Your profile
         </Link>{" "}
-        — add a photo, change your bio, or update your links.
+. Add a photo, change your bio, or update your links.
       </p>
 
       {entries.length === 0 ? (
         <Card>
           <p className="text-small text-ink/70">
             {query
-              ? `Nothing matching “${query}”. Search covers names, titles and bios — there are no filters to have set wrongly.`
+              ? `Nothing matching “${query}”. Search covers names, titles and bios. There are no filters to have set wrongly.`
               : "Nobody has a profile yet. Everyone fills theirs in during their first weeks, so this fills up as people join."}
           </p>
         </Card>

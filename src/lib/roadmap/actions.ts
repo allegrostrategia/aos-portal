@@ -38,7 +38,7 @@ export async function saveRoadmapStructure(
   try {
     incoming = readRoadmap(JSON.parse(raw));
   } catch {
-    return { error: "That didn't parse — try again." };
+    return { error: "That didn't parse. Try again." };
   }
 
   if (incoming.length === 0) {
@@ -116,7 +116,7 @@ export async function saveRoadmapStructure(
   return {
     notice: publish
       ? "Published. It's on their La Strada and in their weekly log."
-      : "Saved as a draft — they can't see it until it's published.",
+      : "Saved as a draft. They can't see it until it's published.",
   };
 }
 

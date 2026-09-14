@@ -49,7 +49,7 @@ export async function saveAvailability(
   return {
     notice:
       slots.length === 0
-        ? "Saved — you're sitting this month out."
+        ? "Saved. You're sitting this month out."
         : `Saved. ${slots.length} ${slots.length === 1 ? "slot" : "slots"} to match against.`,
   };
 }

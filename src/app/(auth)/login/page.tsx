@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Sign in — aOS",
+  title: "Sign in · aOS",
 };
 
 function first(value: string | string[] | undefined): string | undefined {

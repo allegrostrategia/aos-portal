@@ -8,7 +8,7 @@ import { formatCalendarMonth } from "@/lib/time-zone";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { MatchForm } from "./match-form";
 
-export const metadata: Metadata = { title: "Pairing — aOS admin" };
+export const metadata: Metadata = { title: "Pairing · aOS admin" };
 
 /**
  * Running the month's pairing (§9).
@@ -70,7 +70,7 @@ export default async function AdminPairingPage() {
       <PageHeader
         eyebrow="Admin"
         title="Peer pairing"
-        intro="Matched by rotation, never by what anyone does for a living — so nobody is ever the one who's never picked. If the count lands odd, the spare is paired with you."
+        intro="Matched by rotation, never by what anyone does for a living, so nobody is ever the one who's never picked. If the count lands odd, the spare is paired with you."
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
@@ -88,7 +88,7 @@ export default async function AdminPairingPage() {
               value={`${answered}/${members.length}`}
               detail={
                 answered < members.length
-                  ? "Matching runs once — worth waiting on the rest."
+                  ? "Matching runs once. Worth waiting on the rest."
                   : "Everyone has answered."
               }
             />

@@ -66,7 +66,7 @@ export function StatusActions({
           <form action={rejoin} className="flex flex-col gap-2">
             <input type="hidden" name="member_id" value={memberId} />
             <p className="text-small text-ink/70">
-              Rejoining puts them back into onboarding from scratch — fresh
+              Rejoining puts them back into onboarding from scratch. Fresh
               audit, fresh roadmap, fresh six-month term. Their previous work
               stays theirs.
             </p>
@@ -81,7 +81,7 @@ export function StatusActions({
               Cancel {memberName}&rsquo;s membership
             </label>
             <p className="text-small text-ink/70">
-              Revokes access. Nothing is deleted — their logs, roadmap and
+              Revokes access. Nothing is deleted. Their logs, roadmap and
               Archivio all stay exactly where they are.
             </p>
             <input

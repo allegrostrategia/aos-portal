@@ -9,7 +9,7 @@ import { formatCalendarDate } from "@/lib/time-zone";
 import { Card, NumberedRow, PageHeader } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Archivio — aOS" };
+export const metadata: Metadata = { title: "Archivio · aOS" };
 
 type Folder = "sops" | "builds" | "templates";
 
@@ -184,7 +184,7 @@ function metaFor(entry: ArchivioEntry): string {
     return entry.sop
       ? `Built together · your SOP ${isComplete(entry.sop) ? "written" : "in progress"}`
       : entry.coach_note
-        ? "Built together · Nina's left you a note — write it up"
+        ? "Built together · Nina's left you a note. Write it up"
         : "Built together · not written up yet";
   }
   return entry.sop && !isComplete(entry.sop) ? `SOP · still to finish` : `SOP · ${when}`;

@@ -57,7 +57,7 @@ export const AUDIT_QUESTIONS: AuditQuestion[] = [
     bucket: "systems_delivery",
     prompt: "How much of your delivery runs on a written process?",
     options: standardOptions(
-      "None of it — it lives in my head",
+      "None of it. It lives in my head",
       "A few things are written down",
       "Most of it, though it needs updating",
       "All of it, and it's current",
@@ -81,7 +81,7 @@ export const AUDIT_QUESTIONS: AuditQuestion[] = [
     bucket: "visibility",
     prompt: "How consistently are you visible to the people you want to reach?",
     options: standardOptions(
-      "Rarely — it slips when I'm busy",
+      "Rarely. It slips when I'm busy",
       "In bursts",
       "Fairly steadily",
       "Consistently, and it's planned",

@@ -9,7 +9,7 @@ import { Badge, Card, PageHeader } from "@/components/ui/card";
 import { InviteForm } from "./invite-form";
 
 export const metadata: Metadata = {
-  title: "Members — aOS admin",
+  title: "Members · aOS admin",
 };
 
 const DATE = new Intl.DateTimeFormat("en-GB", {

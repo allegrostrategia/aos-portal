@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/card";
 import { DirectoryForm } from "./directory-form";
 
 export const metadata: Metadata = {
-  title: "Your profile — aOS",
+  title: "Your profile · aOS",
 };
 
 /**
@@ -33,7 +33,7 @@ export default async function DirectoryListingPage() {
       <PageHeader
         eyebrow="Piazza Sociale"
         title="Your profile"
-        intro="What would you like the membership to know about you? A photo, a short bio, and the key ways to work with you. Other members can search this — nothing else about you is visible to them."
+        intro="What would you like the membership to know about you? A photo, a short bio, and the key ways to work with you. Other members can search this. Nothing else about you is visible to them."
       />
 
       <DirectoryForm
@@ -44,7 +44,7 @@ export default async function DirectoryListingPage() {
       {/* Headshots need file upload and a storage bucket, which doesn't exist
           yet — flagged rather than quietly dropped from §10's field list. */}
       <p className="mt-6 text-small text-ink/60">
-        Photos come next — the upload needs a storage bucket that isn&rsquo;t set
+        Photos come next. The upload needs a storage bucket that isn&rsquo;t set
         up yet. Your profile works without one in the meantime.
       </p>
 

@@ -87,7 +87,7 @@ export function SopForm({
             required={false}
             defaultValue={sop.owner}
             placeholder="Client manager"
-            hint="A role rather than a name — names change, roles survive."
+            hint="A role rather than a name. Names change, roles survive."
           />
         </div>
       </Card>
