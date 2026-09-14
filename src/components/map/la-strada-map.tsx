@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { namePlacement } from "@/lib/map/markers";
 import {
   PIAZZA_HUB,
   PIAZZA_SOCIALE,
@@ -81,6 +82,8 @@ import {
  *
  * The floors are a safety net for very narrow screens, not the normal case.
  */
+// Sized against the picture layer, each with a pixel floor. Mirrored as
+// numbers in lib/map/markers.ts, whose test checks every marker fits the frame.
 const MARKER_SIZE = {
   "--tile": "max(3.5rem, 8.8cqw)",
   "--badge": "max(1.25rem, 2.6cqw)",
@@ -363,6 +366,11 @@ export function LaStradaMap({
           {placed.map((station) => {
             const pos = STATION_POSITIONS[station.slug];
             const colour = lineColourFor(station.slug) ?? "var(--aos-navy)";
+            // The top row (Studio, Cinema: y 10–11) has half a tile plus a
+            // name's height above its centre, and the map's frame clips at
+            // its edge; on a phone that cut the names in half (Dom, 14 Sep).
+            // Those names go under the tile instead. Everything else has room.
+            const nameBelow = namePlacement(pos.y) === "below";
 
             const marker = (
               <>
@@ -370,7 +378,9 @@ export function LaStradaMap({
                     reference's arrangement, and it keeps the label off the
                     photograph rather than sitting over the building. */}
                 <span
-                  className="pointer-events-none absolute bottom-full left-1/2 mb-1 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center font-medium whitespace-nowrap text-ink shadow-md"
+                  className={`pointer-events-none absolute left-1/2 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center font-medium whitespace-nowrap text-ink shadow-md ${
+                    nameBelow ? "top-full mt-1" : "bottom-full mb-1"
+                  }`}
                   style={{ fontSize: "var(--name)" }}
                 >
                   {station.name}
