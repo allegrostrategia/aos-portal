@@ -71,13 +71,19 @@ export function LiveThread({ channelId }: { channelId: string }) {
             router.refresh();
           },
         )
-        // Reactions arrive the same way. The filter is by message rather than
-        // by channel, since the reactions table doesn't carry a channel id;
-        // a refresh is cheap and the table is small, so every reaction in the
-        // publication triggers one. **Needs `message_reactions` added to the
-        // Realtime publication in the dashboard, the same step as
-        // chat_messages** — without it this handler never fires and reactions
-        // show on the next refresh instead, which still works.
+        // Reactions arrive the same way. The reactions table doesn't carry a
+        // channel id, so this is unfiltered; a refresh is cheap and the table
+        // is small, so every reaction in the publication triggers one.
+        //
+        // **`message_reactions` must be in the Realtime publication** (added
+        // in the dashboard, the same step as chat_messages). Realtime
+        // validates every binding on a channel when it joins, and one bad
+        // binding fails the whole join: a missing publication entry here
+        // would not quietly disable reactions, it would take the message
+        // listener above down with it and the thread would stop updating
+        // live. Verified against the live project on 14 Sep 2026 (both
+        // tables present, the combined join SUBSCRIBED). If reactions are
+        // ever dropped from the publication, this binding goes too.
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "message_reactions" },
