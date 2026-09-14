@@ -57,7 +57,7 @@ This is its own section rather than a line in the open list because it is a prod
 4. ~~VAPID variables in Vercel and `.env.local`~~ — done; the redeploy that inlines the public key is the push of this commit.
 5. ~~The real icon~~ — done (`b14c0a0`), favicon rebuilt from it, old blue SVG removed. **iOS caches the home-screen icon: remove and re-add the app to see it.**
 6. ~~Push on a real phone~~ — **confirmed working 14 Sep** on Dominic's iPhone, after bug 25 (group rooms have no participant rows, so the sender found nobody). The subscribe half had worked first time.
-7. **`npm run db:push` for `20260914150000_reactions_realtime.sql`** — the live-chat fix (bug 26). Until it is applied, reactions don't arrive live; messages do, because they now have their own channel.
+7. ~~`npm run db:push` for `20260914150000_reactions_realtime.sql`~~ — applied 14 Sep; pushed as `ea896f8`. **Confirmed by Dom in a two-window test: messages and reactions both arrive live.**
 8. **Phone pass — still to do:** the nav's bottom strip (C2), the map (A1), Sociale width (A2).
 
 ## L'EDITORIALE REDESIGN — built overnight 13–14 Sep, PUSHED 14 Sep after Dom's walkthrough
