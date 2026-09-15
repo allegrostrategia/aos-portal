@@ -162,3 +162,45 @@ test("a member cannot post into a direct channel they are not in", async () => {
   assert.match(result?.error ?? "", /Couldn't send/);
   assert.equal((await messages(`body = 'Butting in'`)).length, 0);
 });
+
+// Round 3, §A: a timed room. The window is data on the channel, so a test
+// can make one that is certainly shut now (tomorrow's weekday) and one that
+// is certainly open now (today's weekday, all day), without waiting for a
+// Monday. Weekly Check-Ins itself is checked in the schema tests against
+// fixed instants.
+const SHUT = "55555555-5555-5555-5555-555555555555";
+const AJAR = "66666666-6666-6666-6666-666666666666";
+// Seeded the way the migration seeds rooms: nobody creates channels through
+// the app, so there is no policy for it.
+await db.query(`
+    insert into public.chat_channels
+      (id, kind, slug, name, sort_order, window_weekday, window_start, window_end)
+    values
+      ('${SHUT}', 'group', 'shut-today', 'Shut today', 9,
+       (extract(isodow from (now() at time zone 'Europe/London'))::int % 7) + 1, '09:00', '10:00'),
+      ('${AJAR}', 'group', 'open-all-day', 'Open all day', 10,
+       extract(isodow from (now() at time zone 'Europe/London'))::int, '00:00', '23:59:59')`);
+
+test("a member posting into a timed room outside its window is told when it opens", async () => {
+  configure(db, RUTH);
+  const result = await sendMessage(null, form({ channel_id: SHUT, body: "Too early" }));
+
+  assert.match(result?.error ?? "", /closed right now\. It opens /);
+  assert.equal((await messages(`body = 'Too early'`)).length, 0);
+});
+
+test("inside the window, the same room takes the post", async () => {
+  configure(db, RUTH);
+  const result = await sendMessage(null, form({ channel_id: AJAR, body: "On time" }));
+
+  assert.equal(result, null);
+  assert.equal((await messages(`body = 'On time'`)).length, 1);
+});
+
+test("an admin posts into a shut room regardless", async () => {
+  configure(db, NINA);
+  const result = await sendMessage(null, form({ channel_id: SHUT, body: "Opening early" }));
+
+  assert.equal(result, null);
+  assert.equal((await messages(`body = 'Opening early'`)).length, 1);
+});

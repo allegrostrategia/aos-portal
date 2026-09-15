@@ -11,6 +11,10 @@ export type Channel = {
   slug: string | null;
   name: string | null;
   description: string | null;
+  /** The posting window, if the room has one (round 3, §A). See lib/chat/window. */
+  window_weekday: number | null;
+  window_start: string | null;
+  window_end: string | null;
 };
 
 export type ChatMessage = {
@@ -62,7 +66,7 @@ export async function getChannels(): Promise<Channel[]> {
 
   const { data } = await supabase
     .from("chat_channels")
-    .select("id, kind, slug, name, description")
+    .select("id, kind, slug, name, description, window_weekday, window_start, window_end")
     .order("kind")
     .order("sort_order");
 
@@ -76,7 +80,7 @@ export async function getChannel(handle: string): Promise<Channel | null> {
 
   const { data } = await supabase
     .from("chat_channels")
-    .select("id, kind, slug, name, description")
+    .select("id, kind, slug, name, description, window_weekday, window_start, window_end")
     .eq(isUuid ? "id" : "slug", handle)
     .maybeSingle();
 

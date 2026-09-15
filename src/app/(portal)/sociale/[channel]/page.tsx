@@ -13,7 +13,8 @@ import {
 } from "@/lib/chat/queries";
 import { deleteMessage, setPinned } from "@/lib/chat/actions";
 import { getHeadshotUrls } from "@/lib/directory/queries";
-import { formatSessionTimeShort } from "@/lib/time-zone";
+import { formatSessionTime, formatSessionTimeShort } from "@/lib/time-zone";
+import { windowState } from "@/lib/chat/window";
 import { Avatar } from "@/components/avatar";
 import { RoomChips, RoomList } from "@/components/chat/room-list";
 import Link from "next/link";
@@ -68,6 +69,11 @@ export default async function ChannelPage({
   ]);
   const pinnedIds = new Set(pins.map((p) => p.id));
   const isAdmin = member.role === "admin";
+
+  // A timed room (round 3, §A): readable always, writable in its window.
+  // Admins post whenever; members see the lock and when it lifts.
+  const window = windowState(channel);
+  const lockedForMe = window.kind === "closed" && !isAdmin;
 
   const title =
     channel.kind === "group"
@@ -263,10 +269,33 @@ export default async function ChannelPage({
               )}
             </div>
 
-            <Composer
-              channelId={channel.id}
-              builds={(buildRows ?? []) as { id: string; title: string }[]}
-            />
+            {lockedForMe && window.kind === "closed" ? (
+              <div className="border-t border-ink/10 bg-cream-deep px-4 py-4">
+                <Eyebrow>Closed until {formatSessionTimeShort(window.opensAt)}</Eyebrow>
+                <p className="mt-1 text-small text-ink/80">
+                  This room opens on Mondays, 2:00 to 3:30pm, for your check-in
+                  and Nina&rsquo;s reply. You can read it any time. Next:{" "}
+                  {formatSessionTime(window.opensAt)}.
+                </p>
+              </div>
+            ) : (
+              <>
+                {window.kind === "open" ? (
+                  <p className="border-t border-ink/10 bg-lemon/25 px-4 py-2 text-caption text-ink/70">
+                    Open now, until {formatSessionTimeShort(window.closesAt)}.
+                  </p>
+                ) : null}
+                {isAdmin && window.kind === "closed" ? (
+                  <p className="border-t border-ink/10 bg-lemon/25 px-4 py-2 text-caption text-ink/70">
+                    Closed to members until {formatSessionTimeShort(window.opensAt)}. You can post.
+                  </p>
+                ) : null}
+                <Composer
+                  channelId={channel.id}
+                  builds={(buildRows ?? []) as { id: string; title: string }[]}
+                />
+              </>
+            )}
           </Card>
         </div>
       </div>

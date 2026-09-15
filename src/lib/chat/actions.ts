@@ -8,6 +8,8 @@ import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pushForMessage } from "@/lib/push/send";
+import { windowState } from "@/lib/chat/window";
+import { formatSessionTime } from "@/lib/time-zone";
 
 export type ChatState = { error?: string } | null;
 
@@ -66,6 +68,26 @@ export async function sendMessage(
   }
 
   const supabase = await createClient();
+
+  // A timed room outside its window (round 3, §A). The insert policy refuses
+  // this too; this is the version that says when to come back. Admins are
+  // exempt there and here.
+  if (member.role !== "admin") {
+    const { data: channelRow } = await supabase
+      .from("chat_channels")
+      .select("window_weekday, window_start, window_end")
+      .eq("id", channelId)
+      .maybeSingle();
+    if (channelRow) {
+      const state = windowState(channelRow as Parameters<typeof windowState>[0]);
+      if (state.kind === "closed") {
+        return {
+          error: `This room is closed right now. It opens ${formatSessionTime(state.opensAt)}.`,
+        };
+      }
+    }
+  }
+
   const { data: inserted, error } = await supabase.from("chat_messages").insert({
     channel_id: channelId,
     member_id: member.id,

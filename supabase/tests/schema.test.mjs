@@ -852,10 +852,10 @@ await as(ADMIN, () => db.query(`select public.activate_member('${FRAN}')`));
 const generalId = async () => (await as(ERIN, () => db.query(
   `select id from public.chat_channels where slug='general'`))).rows[0].id;
 
-await check("the three open channels are seeded and visible to members", async () => {
+await check("the four open channels are seeded and visible to members", async () => {
   const r = await as(ERIN, () => db.query(
     `select slug from public.chat_channels where kind='group' order by sort_order`));
-  return r.rows.map((x) => x.slug).join(",") === "general,wins,time-tracking";
+  return r.rows.map((x) => x.slug).join(",") === "general,wins,time-tracking,weekly-check-ins";
 });
 
 await check("an onboarding member can reach chat — it isn't locked until active", async () => {
@@ -863,7 +863,59 @@ await check("an onboarding member can reach chat — it isn't locked until activ
   // hot seat, pairing and the draw; Piazza Sociale is open from day one.
   const r = await as(ALICE, () => db.query(
     `select count(*)::int c from public.chat_channels where kind='group'`));
-  return r.rows[0].c === 3;
+  return r.rows[0].c === 4;
+});
+
+console.log("\n— weekly check-ins: the posting window —");
+
+// Round 3, §A. The window is Monday 14:00 to 15:30 UK time. The function takes
+// the instant, so these ask about specific Mondays rather than waiting for one.
+// 2026-09-14 is a Monday; British Summer Time, so 14:00 UK is 13:00Z.
+const CHECK_INS = `(select id from public.chat_channels where slug='weekly-check-ins')`;
+const openAt = async (iso) => (await as(ERIN, () => db.query(
+  `select public.chat_channel_open(${CHECK_INS}, '${iso}'::timestamptz) as o`))).rows[0].o;
+
+await check("open on a Monday at 14:00 UK (13:00Z in summer)", async () => (await openAt("2026-09-14 13:00:00Z")) === true);
+await check("open at 15:29 UK", async () => (await openAt("2026-09-14 14:29:59Z")) === true);
+await check("closed at 15:30 UK exactly, the end is exclusive", async () => (await openAt("2026-09-14 14:30:00Z")) === false);
+await check("closed at 13:59 UK", async () => (await openAt("2026-09-14 12:59:59Z")) === false);
+await check("closed on a Tuesday at 14:00 UK", async () => (await openAt("2026-09-15 13:00:00Z")) === false);
+await check("the window follows the clock change: 14:00 UK in winter is 14:00Z", async () =>
+  // 2026-11-02 is a Monday, GMT. 13:00Z would be 13:00 UK, closed; 14:00Z is 14:00 UK, open.
+  (await openAt("2026-11-02 13:00:00Z")) === false && (await openAt("2026-11-02 14:00:00Z")) === true);
+await check("a channel with no window is always open", async () =>
+  (await as(ERIN, () => db.query(
+    `select public.chat_channel_open((select id from public.chat_channels where slug='general'), '2026-09-15 03:00:00Z') as o`))).rows[0].o === true);
+await check("an unknown channel is closed, not open by accident", async () =>
+  (await as(ERIN, () => db.query(
+    `select public.chat_channel_open('00000000-0000-0000-0000-000000000000', '2026-09-14 13:00:00Z') as o`))).rows[0].o === false);
+
+// The policy passes now(), which the harness cannot move. What it CAN prove is
+// that the window is wired into the policy at all: at whatever time the tests
+// run, a member's insert must agree with chat_channel_open(now()).
+await check("a member's post into the check-ins room is refused or accepted exactly as the window says", async () => {
+  const open = (await as(ERIN, () => db.query(
+    `select public.chat_channel_open(${CHECK_INS}) as o`))).rows[0].o;
+  try {
+    await as(ERIN, () => db.query(
+      `insert into public.chat_messages (channel_id, member_id, body)
+       values (${CHECK_INS}, '${ERIN}', 'checking in')`));
+    return open === true || { inserted: true, open };
+  } catch (e) {
+    return (open === false && e.message.includes("row-level security")) || { error: e.message, open };
+  }
+});
+await check("an admin posts into the check-ins room whatever the time", async () => {
+  await as(ADMIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values (${CHECK_INS}, '${ADMIN}', 'Check-ins are open')`));
+  return true;
+});
+await check("the window does not touch the other rooms", async () => {
+  await as(ERIN, () => db.query(
+    `insert into public.chat_messages (channel_id, member_id, body)
+     values ((select id from public.chat_channels where slug='wins'), '${ERIN}', 'a small win')`));
+  return true;
 });
 
 await check("a cancelled member reaches nothing", async () => {
