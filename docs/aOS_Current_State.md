@@ -34,12 +34,8 @@ Two commits on `main`, local: `fa28cd3` (A) and `3f5f46d` (B). Brief: `docs/aOS_
 - **A. Weekly Check-Ins.** Fourth group room, shared. Open Mondays 14:00 to 15:30 UK time (the clock change is handled: the window is a wall-clock time). Readable always; outside the window members see a locked state with the next opening, and the insert policy refuses a post that skips the screen. The window is three columns on `chat_channels`, so changing the hours is a row update, and a second timed room needs no code.
 - **B. Hot seat prep flow.** Reflection section (plus "Not sure yet" flag) beside the three unchanged questions, with the member's month-so-far above the form. Comment thread on the submission: Nina's note, member reply, two-way, no edits or deletes. Nina's note pushes the member and becomes the first task on Piazza until they open the thread. Confirmed build in its own navy box at the top; the thread folds behind "View archived comments" once confirmed. Prep sheet shows reflection, thread, note form.
 
-### Open question from the brief, not decided (A)
-**Does the Friday submission feed into the channel?** Today: members write "Anything else this week" on the weekly log (any time up to Friday sign-off); Nina reads those on `/admin/touchpoint` and answers "live in chat during the Monday window", by voice note. The new room is that Monday window, formalised. Nothing was wired between them, because the three plausible answers are different builds:
-1. **Nothing changes on Friday.** The log field stays; Nina answers in the new room on Monday, reading the touchpoint sheet beside it. What is built now.
-2. **The log field posts into the room automatically** when the window opens on Monday (a system post per member, in their name). Members can't post on Friday themselves, since the room is shut. Doable: a job at 14:00 Monday.
-3. **Friday submissions move into the room**, i.e. the log field goes and the room is also open on Fridays. That contradicts "only open Monday 2:00 to 3:30".
-Recommendation: 1 for now, 2 if Nina wants the check-ins visible to everyone (the brief's stated reason for the room being shared).
+### SETTLED (Nina, 15 Sep): the Friday reflection stays private. Nothing feeds the channel.
+The weekly log's "Anything else this week" is a private reflection, read by Nina on `/admin/touchpoint` and answered by her in the Monday room. **It is never posted into the shared Weekly Check-Ins room, automatically or otherwise.** Option 1 of the three that were on the table; the auto-post (option 2) is not "later", it is no. Confirmed by Nina directly, not a preference. Do not revisit without asking first.
 
 ### Judgement calls, flagged
 - **Admins are exempt from the window.** Nina can open the room with a word before two, or answer the last one at twenty to four. One line in the policy and one in the action if it should lock everyone.
@@ -52,7 +48,7 @@ Recommendation: 1 for now, 2 if Nina wants the check-ins visible to everyone (th
 ### Go-live steps
 1. Walk through it: Sociale → Weekly Check-Ins (locked state now; open state on a Monday afternoon or by moving the window row temporarily), `/hot-seat` as a member, the prep sheet as Nina, a note → phone push → Piazza task → reply → confirm → archived thread.
 2. `npm run db:push`, two migrations: `20260915100000_weekly_check_ins`, `20260915110000_hot_seat_prep_thread`.
-3. Decide the Friday question above.
+3. ~~Decide the Friday question~~ settled, above.
 
 ## ROUND 2 — fixes, corrections, ledger change, chat, push — built and PUSHED 14 Sep
 
