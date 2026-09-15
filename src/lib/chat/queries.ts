@@ -78,11 +78,17 @@ export async function getChannel(handle: string): Promise<Channel | null> {
   const supabase = await createClient();
   const isUuid = /^[0-9a-f-]{36}$/i.test(handle);
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("chat_channels")
     .select("id, kind, slug, name, description, window_weekday, window_start, window_end")
     .eq(isUuid ? "id" : "slug", handle)
     .maybeSingle();
+
+  // A refused query is not "no such channel", but the page can only show a
+  // 404 either way. Say what actually happened, so a column the database
+  // doesn't have yet (15 Sep: the whole of Sociale 404'd on unmigrated live
+  // data) is named in the terminal rather than left to be guessed.
+  if (error) console.error(`[chat] getChannel(${handle}): ${error.message}`);
 
   return (data as Channel | null) ?? null;
 }
