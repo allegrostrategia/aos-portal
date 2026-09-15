@@ -255,3 +255,4 @@ test("a member cannot prep, mark attendance, or write the replay note", async ()
     await assert.rejects(() => action(null, form(fields)), /REDIRECT:\/piazza/);
   }
 });
+

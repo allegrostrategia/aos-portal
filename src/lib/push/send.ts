@@ -187,3 +187,44 @@ export async function pushForReaction(messageId: string, reactorId: string, emoj
     tag: `reaction:${message.id}`,
   });
 }
+
+/**
+ * Nina's note on a hot seat submission (round 3, §B): the member, on every
+ * device, whatever their chat push setting. It is about their own session,
+ * it happens once or twice a month, and it asks them to do something before
+ * the call. A member's reply does not push Nina: the prep sheet is where she
+ * reads the thread, on her own time (rule 5).
+ */
+export async function pushForHotSeatComment(commentId: string): Promise<number> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("hot_seat_comments")
+    .select("id, submission_id, member_id, body")
+    .eq("id", commentId)
+    .maybeSingle();
+  const comment = data as { id: string; submission_id: string; member_id: string; body: string } | null;
+  if (!comment) return 0;
+
+  const { data: sub } = await admin
+    .from("hot_seat_submissions")
+    .select("member_id")
+    .eq("id", comment.submission_id)
+    .maybeSingle();
+  const owner = (sub as { member_id: string } | null)?.member_id;
+  // Only Nina's notes push, and never to herself.
+  if (!owner || owner === comment.member_id) return 0;
+
+  const { data: ownerRow } = await admin
+    .from("members")
+    .select("status")
+    .eq("id", owner)
+    .maybeSingle();
+  if ((ownerRow as { status: string } | null)?.status === "cancelled") return 0;
+
+  return sendTo([owner], {
+    title: "Nina's left a note on your hot seat",
+    body: comment.body.length > 120 ? `${comment.body.slice(0, 117)}…` : comment.body,
+    url: "/hot-seat",
+    tag: `hot-seat:${comment.submission_id}`,
+  });
+}

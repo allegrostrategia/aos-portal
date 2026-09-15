@@ -407,11 +407,26 @@ export function createShimClient(db, uid) {
       const keys = Object.keys(args);
       const call = keys.map((k, i) => `${quoteIdent(k)} => $${i + 1}`).join(", ");
       try {
-        const r = await run(
-          `select public.${quoteIdent(name)}(${call}) as result`,
-          keys.map((k) => args[k]),
+        // PostgREST shapes the response by what the function returns: a
+        // table or setof record as an array of objects, a setof scalar as an
+        // array of values (one row is still a list of one), a scalar as the
+        // bare value. Decided from the catalogue, as PostgREST decides it.
+        const { rows: [proc] } = await run(
+          `select p.proretset, t.typtype = 'c' or t.typname = 'record' as composite
+             from pg_proc p join pg_type t on t.oid = p.prorettype
+            where p.proname = $1 and p.pronamespace = 'public'::regnamespace limit 1`,
+          [name],
         );
-        return { data: r.rows[0]?.result ?? null, error: null };
+        const values = keys.map((k) => args[k]);
+        let data;
+        if (proc?.composite) {
+          const r = await run(`select to_jsonb(t) as result from public.${quoteIdent(name)}(${call}) t`, values);
+          data = r.rows.map((row) => row.result);
+        } else {
+          const r = await run(`select public.${quoteIdent(name)}(${call}) as result`, values);
+          data = proc?.proretset ? r.rows.map((row) => row.result) : (r.rows[0]?.result ?? null);
+        }
+        return { data, error: null };
       } catch (error) {
         return { data: null, error: { message: error.message } };
       }

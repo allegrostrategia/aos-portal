@@ -9,6 +9,8 @@ export type PrepSubmission = {
   challenge: string | null;
   already_tried: string | null;
   done_looks_like: string | null;
+  reflection: string | null;
+  reflection_unsure: boolean;
   submitted_at: string | null;
   suggested_challenge: string | null;
   confirmed_challenge: string | null;
@@ -33,6 +35,8 @@ export type PrepRow = {
   challenge: string | null;
   alreadyTried: string | null;
   doneLooksLike: string | null;
+  reflection: string | null;
+  reflectionUnsure: boolean;
   submittedAt: string | null;
   suggestedChallenge: string | null;
   confirmedChallenge: string | null;
@@ -63,7 +67,7 @@ export async function getSessionSubmissions(
   const { data } = await supabase
     .from("hot_seat_submissions")
     .select(
-      "id, member_id, challenge, already_tried, done_looks_like, submitted_at, suggested_challenge, confirmed_challenge, confirmed_at, attended, members(full_name, email)",
+      "id, member_id, challenge, already_tried, done_looks_like, reflection, reflection_unsure, submitted_at, suggested_challenge, confirmed_challenge, confirmed_at, attended, members(full_name, email)",
     )
     .eq("session_id", sessionId)
     .order("submitted_at", { ascending: true, nullsFirst: false });
@@ -114,6 +118,8 @@ export async function getSessionPrep(sessionId: string): Promise<PrepRow[]> {
       challenge: submission?.challenge ?? null,
       alreadyTried: submission?.already_tried ?? null,
       doneLooksLike: submission?.done_looks_like ?? null,
+      reflection: submission?.reflection ?? null,
+      reflectionUnsure: submission?.reflection_unsure ?? false,
       submittedAt: submission?.submitted_at ?? null,
       suggestedChallenge: submission?.suggested_challenge ?? null,
       confirmedChallenge: submission?.confirmed_challenge ?? null,

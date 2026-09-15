@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
+import { after } from "next/server";
+
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pushForHotSeatComment } from "@/lib/push/send";
 import { firstMondayOfMonth } from "@/lib/onboarding/cadence";
 import { formatSessionTime, wallClockToUtc } from "@/lib/time-zone";
 
@@ -235,4 +238,52 @@ export async function saveReplayNote(
 
   revalidatePath("/", "layout");
   return { notice: note ? "Saved." : "Cleared." };
+}
+
+/**
+ * Nina's note on a submission, before the call (round 3, §B). Two-way from
+ * here: the member gets a push and a flag on Piazza, and can reply. A member
+ * who never submitted has no row; the note creates one, the same way a
+ * confirmation does, so the people with nothing written can still be talked
+ * to before the session.
+ */
+export async function commentOnSubmission(
+  _prev: SessionState,
+  formData: FormData,
+): Promise<SessionState> {
+  const admin = await requireAdmin();
+
+  let submissionId = String(formData.get("submission_id") ?? "").trim();
+  const sessionId = String(formData.get("session_id") ?? "").trim();
+  const memberId = String(formData.get("member_id") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!submissionId && !(sessionId && memberId)) return { error: "No submission given." };
+  if (!body) return { error: "Write the note first." };
+
+  const supabase = await createClient();
+
+  if (!submissionId) {
+    const { data: created, error } = await supabase
+      .from("hot_seat_submissions")
+      .insert({ session_id: sessionId, member_id: memberId })
+      .select("id")
+      .maybeSingle();
+    if (error || !created) return { error: `Couldn't start their thread: ${error?.message ?? "no row"}` };
+    submissionId = (created as { id: string }).id;
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("hot_seat_comments")
+    .insert({ submission_id: submissionId, member_id: admin.id, body })
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { error: `Couldn't save the note: ${error.message}` };
+
+  const commentId = (inserted as { id: string } | null)?.id;
+  if (commentId) after(() => pushForHotSeatComment(commentId));
+
+  revalidatePath("/", "layout");
+  return { notice: "Sent. They get a notification and a flag on Piazza; their reply lands here." };
 }

@@ -3,7 +3,13 @@ import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { currentWeekStart, getRoadmapItems, getWeeklySubmission } from "@/lib/log/queries";
-import { countUpcomingSessions, getMySubmission, getUpcomingSession } from "@/lib/hot-seat/queries";
+import {
+  countUpcomingSessions,
+  getComments,
+  getMySubmission,
+  getUpcomingSession,
+  hasUnseenCoachComment,
+} from "@/lib/hot-seat/queries";
 import { getPiazzaRoadmap } from "@/lib/piazza/queries";
 import { quoteOfTheDay } from "@/lib/piazza/quotes";
 import { getMemberHours } from "@/lib/hours/queries";
@@ -83,6 +89,9 @@ export default async function PiazzaPage() {
     session ? getMySubmission(member.id, session.id) : Promise.resolve(null),
     pairing?.partnerId ? resolveNames([pairing.partnerId]) : Promise.resolve(new Map<string, string>()),
   ]);
+  // Round 3, §B: a note from Nina the member hasn't opened yet.
+  const myThread = mySubmission ? ((await getComments([mySubmission.id])).get(mySubmission.id) ?? []) : [];
+  const ninaWaiting = hasUnseenCoachComment(mySubmission, myThread);
 
   const firstName = member.full_name.split(" ")[0];
   const signedOff = Boolean(submission?.submitted_at);
@@ -101,7 +110,18 @@ export default async function PiazzaPage() {
   // The task list. Only what genuinely needs doing now.
   const dow = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 Sun … 6 Sat
   const fridayOn = dow === 5 || dow === 6 || dow === 0;
-  const tasks: { key: string; title: string; detail: string; href: string }[] = [];
+  const tasks: { key: string; title: string; detail: string; href: string; flag?: boolean }[] = [];
+  // Nina's note comes first: it is the one thing on the list that is a person
+  // waiting on them (round 3, §B).
+  if (ninaWaiting) {
+    tasks.push({
+      key: "hot-seat-note",
+      title: "Nina's left a comment on your hot seat",
+      detail: "Go and review it before the call. You can reply.",
+      href: "/hot-seat",
+      flag: true,
+    });
+  }
   if (!signedOff && fridayOn) {
     tasks.push({
       key: "log",
@@ -118,7 +138,7 @@ export default async function PiazzaPage() {
       href: "/pairing",
     });
   }
-  if (session && member.status === "active" && !mySubmission) {
+  if (session && member.status === "active" && !mySubmission?.submitted_at) {
     tasks.push({
       key: "hot-seat",
       title: "Submit your hot seat",
@@ -221,9 +241,14 @@ export default async function PiazzaPage() {
               <li key={task.key}>
                 <Link
                   href={task.href}
-                  className="flex items-center gap-4 rounded-2xl px-4 py-3.5 transition hover:bg-cream-deep"
+                  className={`flex items-center gap-4 rounded-2xl px-4 py-3.5 transition hover:bg-cream-deep ${
+                    task.flag ? "bg-lemon/30" : ""
+                  }`}
                 >
-                  <span aria-hidden className="size-5 shrink-0 rounded-full border-2 border-ink/25" />
+                  <span
+                    aria-hidden
+                    className={`size-5 shrink-0 rounded-full border-2 ${task.flag ? "border-orange bg-orange" : "border-ink/25"}`}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block text-body font-medium text-ink">{task.title}</span>
                     <span className="mt-0.5 block text-caption text-ink/55">{task.detail}</span>
@@ -259,7 +284,9 @@ export default async function PiazzaPage() {
           ) : mySubmission?.submitted_at ? (
             <>
               <p className="mt-2 text-small text-white/90">
-                Submitted. Nina confirms what gets built before the session.
+                {ninaWaiting
+                  ? "Nina's left you a note. Read it before the call."
+                  : "Submitted. Nina confirms what gets built before the session."}
               </p>
               {mySubmission.challenge ? (
                 <p className="mt-2 text-small text-white/65 italic">&ldquo;{mySubmission.challenge}&rdquo;</p>

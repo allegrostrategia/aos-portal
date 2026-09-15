@@ -5,9 +5,11 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { getMonthTimeByMember, getSessionPrep } from "@/lib/admin/hot-seat-prep";
+import { getComments } from "@/lib/hot-seat/queries";
 import { formatMinutes } from "@/lib/timer/format";
 import { Badge, Card, Eyebrow, PageHeader } from "@/components/ui/card";
-import { AttendanceForm, ConfirmForm, ReplayNoteForm } from "./prep-forms";
+import { Thread } from "@/components/hot-seat/thread";
+import { AttendanceForm, ConfirmForm, NoteForm, ReplayNoteForm } from "./prep-forms";
 
 export const metadata: Metadata = { title: "Prep · aOS admin" };
 
@@ -53,10 +55,10 @@ export default async function SessionPrepPage({
   if (!session) notFound();
 
   const rows = await getSessionPrep(session.id);
-  const times = await getMonthTimeByMember(
-    rows.map((r) => r.memberId),
-    session.session_month,
-  );
+  const [times, threads] = await Promise.all([
+    getMonthTimeByMember(rows.map((r) => r.memberId), session.session_month),
+    getComments(rows.flatMap((r) => (r.submissionId ? [r.submissionId] : []))),
+  ]);
 
   const submitted = rows.filter((r) => r.submittedAt).length;
   const locked = rows.filter((r) => r.confirmedAt).length;
@@ -159,6 +161,21 @@ export default async function SessionPrepPage({
                             </p>
                           </div>
                         ) : null}
+                        {/* Round 3: their own reading of their month. "Not
+                            sure yet" is an answer, shown as one. */}
+                        {row.reflection || row.reflectionUnsure ? (
+                          <div>
+                            <Eyebrow>Looking back at their month</Eyebrow>
+                            {row.reflectionUnsure ? (
+                              <Badge tone="gold">Not sure yet</Badge>
+                            ) : null}
+                            {row.reflection ? (
+                              <p className="mt-1 text-small whitespace-pre-wrap text-ink/80">
+                                {row.reflection}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </>
                     ) : (
                       <div>
@@ -217,6 +234,24 @@ export default async function SessionPrepPage({
                     </p>
                   </div>
                 ) : null}
+
+                {/* The thread before the call (round 3, §B). Always in full
+                    here: Nina needs the whole conversation, confirmed or not.
+                    The member's page folds it once the build is locked. */}
+                <div className="mt-4 rounded-2xl border border-ink/10 p-4">
+                  <Eyebrow className="mb-3">Before the call</Eyebrow>
+                  <Thread
+                    comments={row.submissionId ? (threads.get(row.submissionId) ?? []) : []}
+                    labelFor={(c) => (c.fromCoach ? "Nina" : firstName)}
+                  >
+                    <NoteForm
+                      submissionId={row.submissionId}
+                      sessionId={session.id}
+                      memberId={row.memberId}
+                      memberName={firstName}
+                    />
+                  </Thread>
+                </div>
 
                 <ConfirmForm
                   submissionId={row.submissionId}

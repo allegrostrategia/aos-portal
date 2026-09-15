@@ -261,6 +261,103 @@ await check("admin sees every submission for the session", async () =>
   (await as(ADMIN, () => db.query(
     `select count(*)::int c from public.hot_seat_submissions where session_id='${SESSION}'`))).rows[0].c === 1);
 
+console.log("\n— hot seat: the prep thread (round 3) —");
+
+// HAL is a fresh active member who submits, unconfirmed; ALICE's is confirmed
+// above. A fixture of this block's own, so its state is exactly what it says.
+const HAL = "14141414-1414-1414-1414-141414141414";
+await db.exec(`insert into auth.users (id, email) values ('${HAL}', 'hal@test')`);
+await as(ADMIN, () => db.query(`select public.create_member('${HAL}','hal@test','Hal', now(), now())`));
+await as(ADMIN, () => db.query(`select public.activate_member('${HAL}')`));
+const HAL_SUB = (await as(HAL, () => db.query(
+  `insert into public.hot_seat_submissions
+     (session_id, member_id, challenge, reflection, reflection_unsure, submitted_at)
+   values ('${SESSION}','${HAL}','Invoices take my Fridays', null, true, now())
+   returning id`))).rows[0].id;
+const ALICE_SUB = (await as(ADMIN, () => db.query(
+  `select id from public.hot_seat_submissions where member_id='${ALICE}'`))).rows[0].id;
+
+await check("Nina leaves a note on a member's submission", async () => {
+  await as(ADMIN, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${HAL_SUB}','${ADMIN}','Your log says Thursday afternoons, not Fridays. Look at the 2pm block.')`));
+  return (await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.hot_seat_comments where submission_id='${HAL_SUB}'`))).rows[0].c === 1;
+});
+
+await check("the member reads the note on their own submission", async () =>
+  (await as(HAL, () => db.query(
+    `select count(*)::int c from public.hot_seat_comments`))).rows[0].c === 1);
+
+await check("the member replies", async () => {
+  await as(HAL, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${HAL_SUB}','${HAL}','You are right, it is the reconciliation.')`));
+  return (await as(HAL, () => db.query(
+    `select count(*)::int c from public.hot_seat_comments`))).rows[0].c === 2;
+});
+
+await check("another member sees none of it", async () =>
+  (await as(DANA, () => db.query(
+    `select count(*)::int c from public.hot_seat_comments`))).rows[0].c === 0);
+
+await rejects("a member cannot comment on somebody else's submission", () =>
+  as(ALICE, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${HAL_SUB}','${ALICE}','Mine too')`)),
+  "row-level security");
+
+await rejects("a member cannot comment as somebody else", () =>
+  as(HAL, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${HAL_SUB}','${ADMIN}','Pretending to be Nina')`)),
+  "row-level security");
+
+await rejects("nor can an admin comment in a member's name", () =>
+  as(ADMIN, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${HAL_SUB}','${HAL}','Words put in my mouth')`)),
+  "row-level security");
+
+await rejects("once the challenge is confirmed the member's side of the thread closes", () =>
+  as(ALICE, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${ALICE_SUB}','${ALICE}','One more thing')`)),
+  "row-level security");
+
+await check("Nina can still leave a word on a confirmed one", async () => {
+  await as(ADMIN, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${ALICE_SUB}','${ADMIN}','Locked. See you Tuesday.')`));
+  return true;
+});
+
+await rejects("a blank comment is refused", () =>
+  as(ADMIN, () => db.query(
+    `insert into public.hot_seat_comments (submission_id, member_id, body)
+     values ('${HAL_SUB}','${ADMIN}','   ')`)),
+  "check constraint");
+
+await check("nobody edits or deletes a comment, Nina included: a correction is another comment", async () => {
+  await as(ADMIN, () => db.query(
+    `update public.hot_seat_comments set body = 'Rewritten' where submission_id='${HAL_SUB}'`));
+  await as(ADMIN, () => db.query(
+    `delete from public.hot_seat_comments where submission_id='${HAL_SUB}'`));
+  await as(HAL, () => db.query(
+    `delete from public.hot_seat_comments where submission_id='${HAL_SUB}'`));
+  const r = await as(ADMIN, () => db.query(
+    `select count(*)::int c, count(*) filter (where body = 'Rewritten')::int rewritten
+     from public.hot_seat_comments where submission_id='${HAL_SUB}'`));
+  return r.rows[0].c === 2 && r.rows[0].rewritten === 0;
+});
+
+await check("the member marks the thread seen on their own row", async () => {
+  await as(HAL, () => db.query(
+    `update public.hot_seat_submissions set comments_seen_at = now() where id='${HAL_SUB}'`));
+  return (await as(HAL, () => db.query(
+    `select comments_seen_at is not null as seen from public.hot_seat_submissions where id='${HAL_SUB}'`))).rows[0].seen === true;
+});
+
 console.log("\n— cancellation and rejoining —");
 
 await as(ADMIN, () => db.query(

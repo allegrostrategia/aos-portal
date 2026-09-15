@@ -4,8 +4,8 @@ import { useActionState } from "react";
 
 import { saveSubmission, type HotSeatState } from "@/lib/hot-seat/actions";
 import type { HotSeatSubmission } from "@/lib/hot-seat/queries";
-import { FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
-import { Card } from "@/components/ui/card";
+import { Checkbox, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
+import { Card, Eyebrow } from "@/components/ui/card";
 
 export function SubmissionForm({
   sessionId,
@@ -51,8 +51,34 @@ export function SubmissionForm({
           rows={3}
           required={false}
           defaultValue={submission?.done_looks_like ?? ""}
-          hint="The most useful box here. Five minutes builds one specific thing. Naming it is what makes that possible."
+          hint="The most useful box here. The live time builds one specific thing. Naming it is what makes that possible."
         />
+      </Card>
+
+      {/* Round 3, §B: the reflection. Additive; the three above are as they
+          were. The month's log is shown above this form by the page, so
+          "look back at your log" has something to look at. */}
+      <Card className="bg-lemon/25">
+        <Eyebrow tone="accent">Looking back at your month</Eyebrow>
+        <p className="mt-1 mb-3 text-small text-ink/75">
+          Your log for the month is just above. What has actually been eating
+          your time? And what would you like to make quicker, simpler or
+          automatic? It does not have to be the thing you are stuck on.
+        </p>
+        <TextArea
+          label="What your month says, and what you'd streamline"
+          name="reflection"
+          rows={4}
+          required={false}
+          defaultValue={submission?.reflection ?? ""}
+        />
+        <div className="mt-2">
+          <Checkbox
+            label="Not sure yet. Honest answer; Nina will look at the log with you."
+            name="reflection_unsure"
+            defaultChecked={submission?.reflection_unsure ?? false}
+          />
+        </div>
       </Card>
 
       <FormMessage error={state?.error} notice={state?.notice} />

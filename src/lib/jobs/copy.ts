@@ -66,8 +66,8 @@ export function hotSeatCopy(
         body: [
           `${firstName},`,
           `The next hot seat is ${when}. One hour, everyone together, and whoever turns up gets worked on live.`,
-          `There are three questions to answer beforehand: what you're stuck on, what you've already tried, and what "done" would look like by the end of your slot.`,
-          `That last one does most of the work. Five minutes is enough to build one specific thing and not enough to decide what that thing should be, so arriving with it named is the difference between building and talking.`,
+          `There are three questions to answer beforehand: what you're stuck on, what you've already tried, and what "done" would look like by the end of your slot. And a look back at your month's log: what's been eating your time, and what you'd streamline.`,
+          `That "done" question does most of the work. The live time is enough to build one specific thing and not enough to decide what that thing should be, so arriving with it named is the difference between building and talking.`,
           `Submit here: ${baseUrl}/hot-seat`,
         ],
       };
@@ -89,7 +89,7 @@ export function hotSeatCopy(
         body: [
           `${firstName},`,
           `Today's session is ${when}, and there's still time to get yours in.`,
-          `You're welcome either way. Nobody is turned away for not submitting. But without one it gets worked out from scratch in the room, and that's a slower use of your five minutes than arriving with Nina already prepped.`,
+          `You're welcome either way. Nobody is turned away for not submitting. But without one it gets worked out from scratch in the room, and that's a slower use of your time on the call than arriving with Nina already prepped.`,
           `Submit here: ${baseUrl}/hot-seat`,
         ],
       };

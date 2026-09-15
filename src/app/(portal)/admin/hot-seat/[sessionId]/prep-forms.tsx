@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 
 import {
+  commentOnSubmission,
   confirmChallenge,
   saveReplayNote,
   setAttendance,
@@ -168,6 +169,53 @@ export function ReplayNoteForm({
       <FormMessage error={state?.error} notice={state?.notice} />
       <Button type="submit" size="sm" variant="secondary" className="self-start">
         Save note
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * A note on the submission before the call (round 3, §B). The member gets a
+ * push and a Piazza flag, and can reply; the reply lands in the thread above
+ * this form on the next load. Clears itself on send.
+ */
+export function NoteForm({
+  submissionId,
+  sessionId,
+  memberId,
+  memberName,
+}: {
+  submissionId: string | null;
+  sessionId: string;
+  memberId: string;
+  memberName: string;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction] = useActionState<SessionState, FormData>(
+    async (prev, formData) => {
+      const result = await commentOnSubmission(prev, formData);
+      if (!result?.error) formRef.current?.reset();
+      return result;
+    },
+    null,
+  );
+
+  return (
+    <form ref={formRef} action={formAction} className="flex flex-col gap-2 border-t border-ink/10 pt-3">
+      <Identity submissionId={submissionId} sessionId={sessionId} memberId={memberId} />
+      <label htmlFor={`note-${memberId}`} className="text-small font-medium text-ink">
+        Note to {memberName}
+      </label>
+      <textarea
+        id={`note-${memberId}`}
+        name="body"
+        rows={2}
+        placeholder="What to look at before the call, or a question back"
+        className="w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-small text-ink placeholder:text-ink/40"
+      />
+      <FormMessage error={state?.error} notice={state?.notice} />
+      <Button type="submit" size="sm" variant="secondary" className="self-start">
+        Send note
       </Button>
     </form>
   );

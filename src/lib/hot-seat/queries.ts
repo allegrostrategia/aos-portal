@@ -17,11 +17,67 @@ export type HotSeatSubmission = {
   challenge: string | null;
   already_tried: string | null;
   done_looks_like: string | null;
+  reflection: string | null;
+  reflection_unsure: boolean;
   submitted_at: string | null;
   suggested_challenge: string | null;
   confirmed_challenge: string | null;
   confirmed_at: string | null;
+  comments_seen_at: string | null;
 };
+
+export type HotSeatComment = {
+  id: string;
+  submission_id: string;
+  member_id: string;
+  body: string;
+  created_at: string;
+  /** Nina's, as opposed to the member's. From the coach set, not the name. */
+  fromCoach: boolean;
+};
+
+/**
+ * The thread on a submission, oldest first (round 3, §B). RLS scopes it: a
+ * member gets their own submission's thread, an admin gets any. "From Nina"
+ * is decided by `coach_member_ids()`, the same way chat labels her.
+ */
+export async function getComments(submissionIds: string[]): Promise<Map<string, HotSeatComment[]>> {
+  const threads = new Map<string, HotSeatComment[]>();
+  if (submissionIds.length === 0) return threads;
+  const supabase = await createClient();
+
+  const [{ data: rows }, { data: coachRows }] = await Promise.all([
+    supabase
+      .from("hot_seat_comments")
+      .select("id, submission_id, member_id, body, created_at")
+      .in("submission_id", submissionIds)
+      .order("created_at"),
+    supabase.rpc("coach_member_ids"),
+  ]);
+  const coaches = new Set((Array.isArray(coachRows) ? coachRows : []) as string[]);
+
+  for (const row of (rows ?? []) as Omit<HotSeatComment, "fromCoach">[]) {
+    const list = threads.get(row.submission_id) ?? [];
+    list.push({ ...row, fromCoach: coaches.has(row.member_id) });
+    threads.set(row.submission_id, list);
+  }
+  return threads;
+}
+
+/**
+ * Whether Nina has left a comment the member hasn't opened yet: the Piazza
+ * flag (round 3, §B). An admin's comment newer than `comments_seen_at`.
+ */
+export function hasUnseenCoachComment(
+  submission: Pick<HotSeatSubmission, "comments_seen_at"> | null,
+  thread: HotSeatComment[],
+): boolean {
+  if (!submission) return false;
+  // Compared as instants, not strings: the two columns arrive in the same
+  // format from PostgREST, but not necessarily from every client.
+  const seen = submission.comments_seen_at ? new Date(submission.comments_seen_at).getTime() : 0;
+  return thread.some((c) => c.fromCoach && new Date(c.created_at).getTime() > seen);
+}
 
 /**
  * The session a member is heading towards.
