@@ -26,6 +26,34 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## ROUND 3 — Weekly Check-Ins channel, hot seat prep flow — BUILT 15 Sep, awaiting Dom
+
+Two commits on `main`, local: `fa28cd3` (A) and `3f5f46d` (B). Brief: `docs/aOS_Round3_CheckIns_And_HotSeat_Brief.md`. Verified: tsc, lint, build clean; **187 unit / 272 schema / 109 action**, every new test mutation-checked.
+
+### Built
+- **A. Weekly Check-Ins.** Fourth group room, shared. Open Mondays 14:00 to 15:30 UK time (the clock change is handled: the window is a wall-clock time). Readable always; outside the window members see a locked state with the next opening, and the insert policy refuses a post that skips the screen. The window is three columns on `chat_channels`, so changing the hours is a row update, and a second timed room needs no code.
+- **B. Hot seat prep flow.** Reflection section (plus "Not sure yet" flag) beside the three unchanged questions, with the member's month-so-far above the form. Comment thread on the submission: Nina's note, member reply, two-way, no edits or deletes. Nina's note pushes the member and becomes the first task on Piazza until they open the thread. Confirmed build in its own navy box at the top; the thread folds behind "View archived comments" once confirmed. Prep sheet shows reflection, thread, note form.
+
+### Open question from the brief, not decided (A)
+**Does the Friday submission feed into the channel?** Today: members write "Anything else this week" on the weekly log (any time up to Friday sign-off); Nina reads those on `/admin/touchpoint` and answers "live in chat during the Monday window", by voice note. The new room is that Monday window, formalised. Nothing was wired between them, because the three plausible answers are different builds:
+1. **Nothing changes on Friday.** The log field stays; Nina answers in the new room on Monday, reading the touchpoint sheet beside it. What is built now.
+2. **The log field posts into the room automatically** when the window opens on Monday (a system post per member, in their name). Members can't post on Friday themselves, since the room is shut. Doable: a job at 14:00 Monday.
+3. **Friday submissions move into the room**, i.e. the log field goes and the room is also open on Fridays. That contradicts "only open Monday 2:00 to 3:30".
+Recommendation: 1 for now, 2 if Nina wants the check-ins visible to everyone (the brief's stated reason for the room being shared).
+
+### Judgement calls, flagged
+- **Admins are exempt from the window.** Nina can open the room with a word before two, or answer the last one at twenty to four. One line in the policy and one in the action if it should lock everyone.
+- **"Editable by Nina" was read as "annotate", not "rewrite the member's answers."** The thread is the two-way mechanism; the three answers stay the member's words. Admin RLS would allow editing them directly, but no screen does.
+- **Nina's note pushes with no preference gate** (unlike chat, which respects `push_chat`). Once or twice a month, about their own session, asking them to do something. A member's reply does not push Nina (rule 5); it's on the prep sheet.
+- **The member's side of the thread closes when the build is confirmed.** "Archived" in the brief was read as closed. Nina can still comment. A member with more to say has the call.
+- **Per-member call minutes removed from member-facing copy**: page intro, form hint, and two reminder emails said "five minutes". The brief says that number is planning context and must not appear. The reminder *schedule* is untouched; only the sentences changed. Worth a glance at `src/lib/jobs/copy.ts` lines 69–70 and 92.
+- **Thread labels use `coach_member_ids()`**: Nina's admin row has `is_coach` set live (checked), so notes read "Nina". Dom's admin account would read as its first name.
+
+### Go-live steps
+1. Walk through it: Sociale → Weekly Check-Ins (locked state now; open state on a Monday afternoon or by moving the window row temporarily), `/hot-seat` as a member, the prep sheet as Nina, a note → phone push → Piazza task → reply → confirm → archived thread.
+2. `npm run db:push`, two migrations: `20260915100000_weekly_check_ins`, `20260915110000_hot_seat_prep_thread`.
+3. Decide the Friday question above.
+
 ## ROUND 2 — fixes, corrections, ledger change, chat, push — built and PUSHED 14 Sep
 
 **Eight commits on `main`, pushed 14 Sep** (`df57812`..`b14c0a0`), then `d1c6962` (push recipients, see bug 25) and the live-chat fix (bug 26). Brief: `docs/aOS_Round2_Fixes_And_Chat_Push_Brief.md`. Verified at the end: tsc, lint, build clean; **175 unit / 249 schema / 97 action**.
