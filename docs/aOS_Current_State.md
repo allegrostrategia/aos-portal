@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## ROUND 3 — Weekly Check-Ins channel, hot seat prep flow — BUILT 15 Sep, awaiting Dom
+## ROUND 3 — Weekly Check-Ins channel, hot seat prep flow — BUILT 15 Sep, PUSHED 17 Sep after Dom's walkthrough
 
-Two commits on `main`, local: `fa28cd3` (A) and `3f5f46d` (B). Brief: `docs/aOS_Round3_CheckIns_And_HotSeat_Brief.md`. Verified: tsc, lint, build clean; **187 unit / 272 schema / 109 action**, every new test mutation-checked.
+Commits `fa28cd3` (A), `3f5f46d` (B), plus state doc, the settled Friday decision and a getChannel error log (`aaa7875`). Migrations applied 15 Sep (after a Supabase maintenance window). **Walked through by Dom 17 Sep: reflection form, note, push, Piazza flag, reply, confirmed build, archive swap all confirmed working.** Brief: `docs/aOS_Round3_CheckIns_And_HotSeat_Brief.md`. Verified: tsc, lint, build clean; **187 unit / 272 schema / 109 action**, every new test mutation-checked.
 
 ### Built
 - **A. Weekly Check-Ins.** Fourth group room, shared. Open Mondays 14:00 to 15:30 UK time (the clock change is handled: the window is a wall-clock time). Readable always; outside the window members see a locked state with the next opening, and the insert policy refuses a post that skips the screen. The window is three columns on `chat_channels`, so changing the hours is a row update, and a second timed room needs no code.
@@ -45,10 +45,11 @@ The weekly log's "Anything else this week" is a private reflection, read by Nina
 - **Per-member call minutes removed from member-facing copy**: page intro, form hint, and two reminder emails said "five minutes". The brief says that number is planning context and must not appear. The reminder *schedule* is untouched; only the sentences changed. Worth a glance at `src/lib/jobs/copy.ts` lines 69–70 and 92.
 - **Thread labels use `coach_member_ids()`**: Nina's admin row has `is_coach` set live (checked), so notes read "Nina". Dom's admin account would read as its first name.
 
-### Go-live steps
-1. Walk through it: Sociale → Weekly Check-Ins (locked state now; open state on a Monday afternoon or by moving the window row temporarily), `/hot-seat` as a member, the prep sheet as Nina, a note → phone push → Piazza task → reply → confirm → archived thread.
-2. `npm run db:push`, two migrations: `20260915100000_weekly_check_ins`, `20260915110000_hot_seat_prep_thread`.
-3. ~~Decide the Friday question~~ settled, above.
+### Go-live steps — all done
+1. ~~Walk through it~~ — Dom, 17 Sep, every step.
+2. ~~`npm run db:push`, two migrations~~ — applied 15 Sep.
+3. ~~Decide the Friday question~~ — settled, above.
+Not yet seen in the open state: the Weekly Check-Ins room on a Monday afternoon. First real one is 21 September, 14:00.
 
 ## ROUND 2 — fixes, corrections, ledger change, chat, push — built and PUSHED 14 Sep
 
