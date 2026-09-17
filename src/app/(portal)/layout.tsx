@@ -43,7 +43,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
     member.role === "admin"
       ? [
           { href: "/admin/members", label: "Members" },
-          { href: "/admin/hot-seat", label: "Sessions" },
+          { href: "/admin/hot-seat", label: "Hot seat" },
           { href: "/admin/touchpoint", label: "Friday" },
           { href: "/admin/reminders", label: "Emails" },
           { href: "/admin/library", label: "Library" },

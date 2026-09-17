@@ -128,7 +128,7 @@ export default async function YouPage() {
           <ul className="divide-y divide-ink/6 p-2">
             {[
               ["/admin/members", "Members"],
-              ["/admin/hot-seat", "Sessions"],
+              ["/admin/hot-seat", "Hot seat"],
               ["/admin/touchpoint", "Friday question"],
               ["/admin/reminders", "Emails"],
               ["/admin/library", "Library"],
