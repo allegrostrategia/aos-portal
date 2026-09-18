@@ -28,7 +28,7 @@ export function weeklyLogCopy(
       subject: "Your week so far",
       body: [
         `${input.firstName},`,
-        `You're at ${formatMinutes(input.loggedMinutes)} logged this week. Ten hours is what makes a week count.`,
+        `You're at ${formatMinutes(input.loggedMinutes)} logged this week. Ten hours is what makes you eligible for this month's prize draw.`,
         `Nothing to fill in and nothing to write up. Start the timer when you begin something, stop it when you're done. The point isn't the total; it's that your roadmap gets built from where the time actually went rather than where you think it went.`,
         `Your log: ${input.logUrl}`,
       ],
@@ -36,10 +36,10 @@ export function weeklyLogCopy(
   }
 
   return {
-    subject: `${formatMinutes(input.shortBy)} off a complete week`,
+    subject: `${formatMinutes(input.shortBy)} off this month's prize draw`,
     body: [
       `${input.firstName},`,
-      `You're ${formatMinutes(input.shortBy)} short of ten hours, so this week won't count yet, and complete weeks are what put you in the monthly draw.`,
+      `You're ${formatMinutes(input.shortBy)} short of ten hours this week. Ten-hour weeks are what put you in the monthly prize draw; your hours reclaimed are banked either way.`,
       `If you've done the hours and just haven't logged them, you can add them after the fact. Reconstructed is worth less than tracked, but it's worth a great deal more than nothing.`,
       `Your log: ${input.logUrl}`,
     ],

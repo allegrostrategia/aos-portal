@@ -427,7 +427,7 @@ function WeekProgress({
         aria-valuenow={progress}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Progress toward a complete week"
+        aria-label="Progress toward ten hours, the prize-draw line"
       >
         <div
           className={`h-full rounded-full transition-all ${isComplete ? "bg-ink" : "bg-orange"}`}
