@@ -170,7 +170,7 @@ export default async function ArchivioPage({ searchParams }: PageProps<"/station
           href="/stations"
           className="text-small text-ink/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-ink"
         >
-          ← Return to La Strada
+          ← Return to The Map
         </Link>
       </div>
     </main>

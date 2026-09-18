@@ -9,7 +9,7 @@ import { Card, NumberedRow, PageHeader } from "@/components/ui/card";
 import { LaStradaMap } from "@/components/map/la-strada-map";
 
 export const metadata: Metadata = {
-  title: "La Strada · aOS",
+  title: "The Map · aOS",
 };
 
 /**
@@ -57,7 +57,7 @@ export default async function StationsPage({
   return (
     <main className="flex-1 py-6 sm:py-10">
       <PageHeader
-        title={listView ? "The stations" : "La Strada"}
+        title={listView ? "The stations" : "The Map"}
         tagline={listView ? "Explore. Learn. Implement." : "Your journey. Your pace."}
         intro="All trainings and resources live here. Eleven stations, each its own room."
         actions={<ViewToggle listView={listView} />}

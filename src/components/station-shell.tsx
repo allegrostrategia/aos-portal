@@ -56,7 +56,7 @@ export function StationShell({
               href="/stations"
               className="text-small text-ink/60 transition hover:text-ink"
             >
-              ← La Strada
+              ← The Map
             </Link>
           </p>
           <h1 className="font-display text-display font-medium text-ink">
@@ -117,13 +117,13 @@ export function StationShell({
         </Card>
       ) : null}
 
-      {/* 7. Return to La Strada — every station has one, so nobody gets stuck. */}
+      {/* 7. Return to The Map — every station has one, so nobody gets stuck. */}
       <div className="mt-10">
         <Link
           href="/stations"
           className="text-small text-ink/70 underline decoration-orange decoration-2 underline-offset-4 transition hover:text-ink"
         >
-          ← Return to La Strada
+          ← Return to The Map
         </Link>
       </div>
     </main>

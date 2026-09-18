@@ -33,7 +33,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
   // their own heading, and on the You screen on a phone.
   const items: NavItem[] = [
     { href: "/piazza", label: "Piazza", icon: "piazza" },
-    { href: "/stations", label: "La Strada", icon: "strada" },
+    { href: "/stations", label: "The Map", icon: "strada" },
     { href: "/sociale", label: "Sociale", icon: "sociale" },
     { href: "/log", label: "Log", icon: "log" },
     { href: "/you", label: "You", icon: "you" },

@@ -21,6 +21,12 @@ import {
 } from "@/lib/map/lines";
 
 /**
+ * **"The Map" since 18 Sep 2026.** The eleven-station journey map was called
+ * La Strada from the start; that name now belongs to the member's roadmap
+ * page. File and component names are left as they were: renaming them buys
+ * nothing and would break every link to this history.
+ *
+
  * La Strada — the town from above, with the eleven stations on it.
  *
  * §3: free-roam once active, navigated entirely by the member's own choice.
@@ -243,7 +249,7 @@ export function LaStradaMap({
         ref={scroller}
         tabIndex={0}
         role="region"
-        aria-label="La Strada map. Use the arrow keys to move around"
+        aria-label="The Map. Use the arrow keys to move around"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -270,7 +276,7 @@ export function LaStradaMap({
         >
           <Image
             src="/illustrations/la-strada-map.png"
-            alt="La Strada. The town, seen from above"
+            alt="The Map. The town, seen from above"
             width={1536}
             height={864}
             priority
