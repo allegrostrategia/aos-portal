@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## ROUND 4 — full screen-by-screen review — BUILT 18 Sep, awaiting Dom
+## ROUND 4 — full screen-by-screen review — BUILT and PUSHED 18 Sep after Dom's phone walkthrough
 
-Commits `a34648c`..`8dd6e8d`, local. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. One migration pending: `20260918100000_hot_seat_questions`.
+Commits `a34648c`..`01f1ac9`. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. One migration pending: `20260918100000_hot_seat_questions`.
 
 ### Built, by screen
 - **Global.** Header padded for the status bar (`env(safe-area-inset-top)`). The mark is the icon's own letterforms, outlined from Georgia Bold Italic (what the icon was rendered with), in orange, no square: `public/brand/aos-mark.svg`. Greeting by UK hour: buongiorno / buon pomeriggio / buonasera / buonanotte (was fixed text; item 3 answered: not built before, built now).
@@ -52,10 +52,11 @@ Commits `a34648c`..`8dd6e8d`, local. Brief: `docs/aOS_Round4_Full_Review_Brief.m
 - ~~Item 17 on own messages~~ own messages carry no name or face (Dom, 18 Sep), as in WhatsApp.
 - **Item 21, "new message"** lists members with a directory profile who don't already have a DM with you; existing DMs are in the rooms list above it.
 
-### Go-live steps
-1. Walk through it on the phone: the header under the clock, the mark, Sociale (faces, the react button, the burger), the hot seat form, a past month once there is one.
-2. `npm run db:push`, one migration.
-3. Push.
+### Go-live steps — all done 18 Sep
+1. ~~Phone walkthrough~~ — Dom, everything confirmed.
+2. ~~`npm run db:push`~~ — `20260918100000_hot_seat_questions` applied.
+3. ~~Push~~ — done.
+Not yet seen: a past month in the hot seat picker (needs a second session to exist).
 
 ## ROUND 3 — Weekly Check-Ins channel, hot seat prep flow — BUILT 15 Sep, PUSHED 17 Sep after Dom's walkthrough
 
