@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## LA STRADA — the roadmap page — BUILT 18 Sep, awaiting Dom
+## LA STRADA — the roadmap page — BUILT and PUSHED 18 Sep after Dom's walkthrough
 
-Brief: `docs/aOS_LaStrada_Roadmap_Brief.md`; mockup: `docs/aOS_Roadmap_Mockup.html`. Two commits, local: the rename (`4bae1d3`) and the page. One migration pending: `20260918120000_la_strada`. Verified: tsc, lint, build clean; **196 unit / 272 schema / 126 action**; ids, done-precedence, the publish guard and the notes policy mutation-checked. **Not yet seen rendered**: the page needs a signed-in session, so the first look is Dom's walkthrough.
+Brief: `docs/aOS_LaStrada_Roadmap_Brief.md`; mockup: `docs/aOS_Roadmap_Mockup.html`. Commits `4bae1d3` (the rename), `6a0696e` (the page), `8180061` (the start button reports its error). Migration `20260918120000_la_strada` applied. **Walked through by Dom: publish flow, ticks both ways, off-the-itinerary note, the real week count in the hero, all confirmed.** Verified: tsc, lint, build clean; **196 unit / 272 schema / 126 action**; ids, done-precedence, the publish guard and the notes policy mutation-checked. **Not yet seen rendered**: the page needs a signed-in session, so the first look is Dom's walkthrough.
 
 ### Naming
 - **The Map** is the eleven-station journey map (`/stations`). Labels, alt text and back links renamed; file and component names (`la-strada-map.tsx`, `LaStradaMap`) deliberately kept.
@@ -53,10 +53,10 @@ Brief: `docs/aOS_LaStrada_Roadmap_Brief.md`; mockup: `docs/aOS_Roadmap_Mockup.ht
 - **Hero overlay:** no "grand-hotel-riposo hero" technique existed in the code (the station header is a plain photo); built as `next/image` under `bg-navy/55`. The PNG (3.5MB) is now a 470KB JPEG at 2000px.
 - **Months not yet written:** after the last month Nina has filled in, one divider. If that's month 4 or later: "Set at your Month 3 call", with the mockup's note. Earlier: "Still being written". In edit mode the next empty month is always shown so she can fill it.
 
-### Go-live steps
-1. Walk through: as Nina, pick a member in the hero, Edit, start, theme, actions (bucket, week, training), publish; as the member, tick, untick, a note; the strip; a past-month look.
-2. `npm run db:push`, one migration.
-3. Push.
+### Go-live steps — all done 18 Sep
+1. ~~Walkthrough~~ — Dom.
+2. ~~`npm run db:push`~~ — applied.
+3. ~~Push~~ — done.
 
 ## ROUND 4 — full screen-by-screen review — BUILT and PUSHED 18 Sep after Dom's phone walkthrough
 
