@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>aOS — Your Roadmap</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #073C8C;
+    --orange: #FF6625;
+    --blush: #FFB29E;
+    --sky: #A4D3EB;
+    --gold: #FFD551;
+    --cream: #F8E6A0;
+    --offwhite: #F3F5FD;
+    --serif: 'Cormorant Garamond', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--offwhite);
+    color: var(--navy);
+    line-height: 1.5;
+    padding-bottom: 4rem;
+  }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative;
+    padding: 3.2rem 1.5rem 2.4rem;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.10) 0%, transparent 45%),
+      linear-gradient(135deg, var(--navy) 0%, #0a4bb0 55%, var(--navy) 100%);
+    /* NOTE FOR DEV: swap this gradient for the ChatGPT-generated Amalfi/hotel
+       background image (same treatment as grand-hotel-riposo hero — navy
+       overlay at ~0.55 opacity over the photo) once the asset is ready. */
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 14px);
+    pointer-events: none;
+  }
+
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    max-width: 900px;
+    margin: 0 auto 1.6rem;
+    position: relative;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--sky);
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .hero-title {
+    font-family: var(--serif);
+    font-size: clamp(1.7rem, 5vw, 2.6rem);
+    font-weight: 500;
+    max-width: 20ch;
+  }
+
+  .hero-title em { font-style: italic; font-weight: 400; }
+
+  .view-toggle {
+    display: flex;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 999px;
+    padding: 0.25rem;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  .view-toggle button {
+    border: none;
+    background: transparent;
+    color: #fff;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-family: var(--sans);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .view-toggle button.active {
+    background: var(--orange);
+  }
+
+  .hero-progress {
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: var(--sky);
+    margin-bottom: 0.5rem;
+  }
+
+  .progress-track {
+    height: 6px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 34%;
+    background: var(--orange);
+    border-radius: 999px;
+  }
+
+  /* ===== MONTH STRIP (jump nav) ===== */
+  .strip-wrap {
+    max-width: 900px;
+    margin: -1.4rem auto 2.2rem;
+    padding: 0 1.5rem;
+    position: relative;
+  }
+
+  .month-strip {
+    display: flex;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(7,60,140,0.12);
+    padding: 0.9rem 0.6rem;
+    overflow-x: auto;
+    gap: 0.2rem;
+  }
+
+  .strip-stop {
+    flex: 1 0 auto;
+    min-width: 84px;
+    text-align: center;
+    padding: 0.5rem 0.3rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--navy);
+    opacity: 0.55;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    text-decoration: none;
+    display: block;
+  }
+
+  .strip-stop .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--navy);
+    opacity: 0.3;
+    margin: 0 auto 0.4rem;
+  }
+
+  .strip-stop.done { opacity: 1; }
+  .strip-stop.done .dot { background: var(--orange); opacity: 1; }
+  .strip-stop.current { opacity: 1; background: var(--offwhite); }
+  .strip-stop.current .dot { background: var(--orange); opacity: 1; box-shadow: 0 0 0 4px rgba(255,102,37,0.18); }
+
+  /* ===== MAIN ===== */
+  main { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    background: #fff;
+    border-radius: 12px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.3rem;
+    box-shadow: 0 4px 16px rgba(7,60,140,0.06);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; color: var(--navy); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  .edit-banner {
+    display: none;
+    background: var(--gold);
+    color: var(--navy);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.55rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+  }
+
+  body.edit-mode .edit-banner { display: block; }
+
+  /* Month divider — a section break, not an accordion */
+  .month-divider {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 1.6rem 0.2rem 0.7rem;
+    scroll-margin-top: 1rem;
+  }
+
+  .month-divider:first-child { padding-top: 0.2rem; }
+
+  .month-divider-num {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--orange);
+  }
+
+  .month-divider-name {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(7,60,140,0.45);
+    font-weight: 600;
+  }
+
+  .month-divider-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(7,60,140,0.1);
+  }
+
+  /* Week card — the primary unit */
+  .week-card {
+    background: #fff;
+    border-radius: 16px;
+    margin-bottom: 0.7rem;
+    box-shadow: 0 4px 16px rgba(7,60,140,0.06);
+    overflow: hidden;
+    border: 1px solid rgba(7,60,140,0.06);
+  }
+
+  .week-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.2rem;
+    cursor: pointer;
+    gap: 1rem;
+  }
+
+  .week-card-head-left { display: flex; align-items: baseline; gap: 0.6rem; }
+
+  .week-card-title { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; }
+  .week-card-dates { font-size: 0.78rem; color: rgba(7,60,140,0.5); }
+
+  .week-chevron {
+    font-size: 0.85rem;
+    color: var(--navy);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .week-card.open .week-chevron { transform: rotate(180deg); }
+
+  .week-ring {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: conic-gradient(var(--orange) var(--pct, 0%), rgba(7,60,140,0.10) 0);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .week-ring::after {
+    content: "";
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .week-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  .week-card.open .week-card-body { max-height: 900px; }
+
+  .week-card-body-inner { padding: 0 1.2rem 1.2rem; }
+
+  /* Category badge — shown once the week is open, gives the month-theme context */
+  .category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--navy);
+    background: var(--offwhite);
+    border: 1px solid rgba(7,60,140,0.1);
+    padding: 0.3rem 0.75rem 0.3rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.9rem;
+  }
+
+  .category-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* Actions */
+  .actions-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .action-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.87rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid rgba(7,60,140,0.06);
+  }
+
+  .action-row:first-child { border-top: none; padding-top: 0; }
+
+  .bucket-pill {
+    font-size: 0.66rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    color: var(--navy);
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-top: 0.1rem;
+  }
+
+  .bucket-visibility { background: var(--sky); }
+  .bucket-offers { background: var(--orange); color: #fff; }
+  .bucket-systems { background: var(--gold); }
+  .bucket-profit { background: var(--blush); }
+
+  .edit-only { display: none; }
+  body.edit-mode .edit-only { display: inline-flex; }
+  body.edit-mode .member-only { display: none; }
+
+  .icon-btn {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    border: 1px solid rgba(7,60,140,0.15);
+    background: var(--offwhite);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--navy);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .checkbox {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid rgba(7,60,140,0.3);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .checkbox.checked {
+    background: var(--orange);
+    border-color: var(--orange);
+  }
+
+  .checkbox.checked::after {
+    content: "✓";
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .action-text.checked { text-decoration: line-through; opacity: 0.5; }
+
+  .action-main { flex: 1; }
+
+  .link-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.35rem;
+    font-size: 0.74rem;
+    color: var(--navy);
+    background: var(--offwhite);
+    border: 1px solid rgba(7,60,140,0.12);
+    padding: 0.22rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  .link-chip::before { content: "▸"; color: var(--orange); font-size: 0.7rem; }
+
+  .add-action {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--orange);
+    font-weight: 500;
+    margin-top: 0.6rem;
+    cursor: pointer;
+  }
+
+  body.edit-mode .add-action { display: flex; }
+
+  /* Off the itinerary — sits at the end of each month's group of weeks */
+  .extra-box {
+    margin: 0.3rem 0 0.4rem;
+    background: #fff;
+    border: 1px dashed rgba(7,60,140,0.25);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+  }
+
+  .extra-box-label {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--navy);
+    margin-bottom: 0.3rem;
+  }
+
+  .extra-box-sub {
+    font-size: 0.76rem;
+    color: rgba(7,60,140,0.55);
+    margin-bottom: 0.6rem;
+  }
+
+  .extra-box textarea {
+    width: 100%;
+    min-height: 54px;
+    border: 1px solid rgba(7,60,140,0.15);
+    border-radius: 8px;
+    background: var(--offwhite);
+    padding: 0.6rem 0.7rem;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    color: var(--navy);
+    resize: vertical;
+  }
+
+  .extra-box textarea::placeholder { color: rgba(7,60,140,0.35); }
+
+  .weeks-ahead-note {
+    font-size: 0.82rem;
+    color: rgba(7,60,140,0.5);
+    text-align: center;
+    padding: 1rem;
+    border: 1px dashed rgba(7,60,140,0.2);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 560px) {
+    .hero { padding: 2.2rem 1.1rem 2rem; }
+    main { padding: 0 1.1rem; }
+    .strip-wrap { padding: 0 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="hero-eyebrow">La Strada · Your Roadmap</div>
+      <div class="hero-title">Sarah's <em>six-month</em> plan</div>
+    </div>
+    <div class="view-toggle">
+      <button class="active" onclick="setView(false)">Member view</button>
+      <button onclick="setView(true)">Edit (Nina)</button>
+    </div>
+  </div>
+  <div class="hero-progress">
+    <div class="progress-label"><span>Week 6 of 24</span><span>34% complete</span></div>
+    <div class="progress-track"><div class="progress-fill"></div></div>
+  </div>
+</div>
+
+<div class="strip-wrap">
+  <div class="month-strip">
+    <a class="strip-stop done" href="#month-1"><div class="dot"></div>Month 1</a>
+    <a class="strip-stop current" href="#month-2"><div class="dot"></div>Month 2</a>
+    <a class="strip-stop" href="#month-3"><div class="dot"></div>Month 3</a>
+    <a class="strip-stop" href="#month-4"><div class="dot"></div>Month 4</a>
+    <a class="strip-stop" href="#month-4"><div class="dot"></div>Month 5</a>
+    <a class="strip-stop" href="#month-4"><div class="dot"></div>Month 6</a>
+  </div>
+</div>
+
+<main>
+  <div class="edit-banner">You're editing Sarah's roadmap — changes save instantly, no rebuild needed</div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--sky)"></div>Visibility</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Launch &amp; Offers</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Systems &amp; Delivery</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blush)"></div>Profit &amp; Pricing</div>
+  </div>
+
+  <!-- MONTH 1 -->
+  <div class="month-divider" id="month-1">
+    <span class="month-divider-num">01</span>
+    <span class="month-divider-name">Foundations</span>
+    <span class="month-divider-line"></span>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 1</span>
+        <span class="week-card-dates">7 &ndash; 13 Sept</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:100%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--orange)"></span>Foundations</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-offers">Offers</span>
+          <div class="checkbox checked" onclick="toggleCheck(this)"></div>
+          <div class="action-main"><span class="action-text checked">Write out exactly what the offer includes and who it's for</span></div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 2</span>
+        <span class="week-card-dates">14 &ndash; 20 Sept</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:100%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--orange)"></span>Foundations</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-offers">Offers</span>
+          <div class="checkbox checked" onclick="toggleCheck(this)"></div>
+          <div class="action-main">
+            <span class="action-text checked">Set the price and sense-check it against margin</span>
+            <div class="link-chip">Banco Allegro · Pricing calculator</div>
+          </div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 3</span>
+        <span class="week-card-dates">21 &ndash; 27 Sept</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:100%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--gold)"></span>Foundations</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-systems">Systems</span>
+          <div class="checkbox checked" onclick="toggleCheck(this)"></div>
+          <div class="action-main">
+            <span class="action-text checked">Set up one simple system to track leads and clients</span>
+            <div class="link-chip">Stazione Centrale · Systems 101</div>
+          </div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 4</span>
+        <span class="week-card-dates">28 Sept &ndash; 4 Oct</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:100%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--gold)"></span>Foundations</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-systems">Systems</span>
+          <div class="checkbox checked" onclick="toggleCheck(this)"></div>
+          <div class="action-main"><span class="action-text checked">Log this month's numbers in your snapshot</span></div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="extra-box">
+    <div class="extra-box-label">Off the itinerary</div>
+    <div class="extra-box-sub">Anything you did this month that wasn't on the plan</div>
+    <textarea placeholder="e.g. Landed a referral client, sorted my Instagram bio, finally cancelled that tool I never used..."></textarea>
+  </div>
+
+  <!-- MONTH 2 -->
+  <div class="month-divider" id="month-2">
+    <span class="month-divider-num">02</span>
+    <span class="month-divider-name">Visibility push</span>
+    <span class="month-divider-line"></span>
+  </div>
+
+  <div class="week-card open">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 5</span>
+        <span class="week-card-dates">5 &ndash; 11 Oct</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:100%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--sky)"></span>Visibility push</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-visibility">Visibility</span>
+          <div class="checkbox checked" onclick="toggleCheck(this)"></div>
+          <div class="action-main">
+            <span class="action-text checked">Pick 3 content pillars tied to your offer</span>
+            <div class="link-chip">La Boutique · Content that sells</div>
+          </div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card open">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 6</span>
+        <span class="week-card-dates">12 &ndash; 18 Oct</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--sky)"></span>Visibility push</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-visibility">Visibility</span>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          <div class="action-main"><span class="action-text">Batch 4 posts using your pillars</span></div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 7</span>
+        <span class="week-card-dates">19 &ndash; 25 Oct</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--blush)"></span>Profit check-in</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-profit">Profit</span>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          <div class="action-main">
+            <span class="action-text">Work out your actual margin per client</span>
+            <div class="link-chip">Farmacia · Know your numbers</div>
+          </div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 8</span>
+        <span class="week-card-dates">26 Oct &ndash; 1 Nov</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--blush)"></span>Profit check-in</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-profit">Profit</span>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          <div class="action-main"><span class="action-text">Flag anything priced below margin floor</span></div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="extra-box">
+    <div class="extra-box-label">Off the itinerary</div>
+    <div class="extra-box-sub">Anything you did this month that wasn't on the plan</div>
+    <textarea placeholder="e.g. Landed a referral client, sorted my Instagram bio, finally cancelled that tool I never used..."></textarea>
+  </div>
+
+  <!-- MONTH 3 -->
+  <div class="month-divider" id="month-3">
+    <span class="month-divider-num">03</span>
+    <span class="month-divider-name">Systems that hold</span>
+    <span class="month-divider-line"></span>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 9</span>
+        <span class="week-card-dates">2 &ndash; 8 Nov</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--gold)"></span>Systems that hold</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-systems">Systems</span>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          <div class="action-main"><span class="action-text">Write out every step from enquiry to delivery</span></div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 10</span>
+        <span class="week-card-dates">9 &ndash; 15 Nov</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <div class="category-badge"><span class="dot" style="background:var(--gold)"></span>Systems that hold</div>
+      <div class="actions-list">
+        <div class="action-row">
+          <span class="bucket-pill bucket-systems">Systems</span>
+          <div class="checkbox" onclick="toggleCheck(this)"></div>
+          <div class="action-main">
+            <span class="action-text">Automate the one step costing you the most time</span>
+            <div class="link-chip">Officina Vespa · Automation basics</div>
+          </div>
+          <div class="icon-btn edit-only">✎</div>
+        </div>
+      </div>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 11</span>
+        <span class="week-card-dates">16 &ndash; 22 Nov</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <p class="member-only" style="font-size:0.82rem; color:rgba(7,60,140,0.4); font-style:italic;">Nothing scheduled this week</p>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="week-card">
+    <div class="week-card-head" onclick="toggleWeek(this)">
+      <div class="week-card-head-left">
+        <span class="week-card-title">Week 12</span>
+        <span class="week-card-dates">23 &ndash; 29 Nov</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div class="week-ring" style="--pct:0%"></div>
+        <div class="week-chevron">▾</div>
+      </div>
+    </div>
+    <div class="week-card-body"><div class="week-card-body-inner">
+      <p class="member-only" style="font-size:0.82rem; color:rgba(7,60,140,0.4); font-style:italic;">Nothing scheduled this week</p>
+      <div class="add-action edit-only">+ Add action</div>
+    </div></div>
+  </div>
+
+  <div class="extra-box">
+    <div class="extra-box-label">Off the itinerary</div>
+    <div class="extra-box-sub">Anything you did this month that wasn't on the plan</div>
+    <textarea placeholder="e.g. Landed a referral client, sorted my Instagram bio, finally cancelled that tool I never used..."></textarea>
+  </div>
+
+  <!-- MONTHS 4-6 -->
+  <div class="month-divider" id="month-4">
+    <span class="month-divider-num">04&ndash;06</span>
+    <span class="month-divider-name">Set at your Month 3 call</span>
+    <span class="month-divider-line"></span>
+  </div>
+  <div class="weeks-ahead-note">Weeks 13&ndash;24 follow the same card pattern once they're populated at the Month 3 check-in call.</div>
+
+</main>
+
+<script>
+  function toggleWeek(headEl) {
+    headEl.parentElement.classList.toggle('open');
+  }
+  function toggleCheck(el) {
+    el.classList.toggle('checked');
+    const text = el.parentElement.querySelector('.action-text');
+    if (text) text.classList.toggle('checked');
+  }
+  function setView(editMode) {
+    document.body.classList.toggle('edit-mode', editMode);
+    document.querySelectorAll('.view-toggle button').forEach((b, i) => {
+      b.classList.toggle('active', (i === 1) === editMode);
+    });
+  }
+</script>
+
+</body>
+</html>

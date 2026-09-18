@@ -154,27 +154,29 @@ export default async function ChannelPage({
                 messages.map((message) => {
                   const mine = message.member_id === member.id;
 
-                  // Every message carries its sender's face and name, yours
-                  // included, in every kind of room (round 4, item 17). The
-                  // earlier version hid them on runs from one person and on
-                  // your own, and that read as missing.
+                  // Every received message carries its sender's face and
+                  // name, in every kind of room (round 4, item 17). Your own
+                  // carry neither, as in WhatsApp (Dom, 18 Sep): they're on
+                  // the right and in ink, which is how you know they're yours.
                   return (
                     <div
                       key={message.id}
                       className={`flex items-end gap-2.5 ${mine ? "flex-row-reverse" : ""}`}
                     >
-                      <span className="w-9 shrink-0">
-                        <Avatar
-                          name={message.authorName}
-                          src={headshots.get(message.member_id)}
-                          size="sm"
-                        />
-                      </span>
+                      {!mine ? (
+                        <span className="w-9 shrink-0">
+                          <Avatar
+                            name={message.authorName}
+                            src={headshots.get(message.member_id)}
+                            size="sm"
+                          />
+                        </span>
+                      ) : null}
 
                       <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
-                        {
-                          <p className={`mb-1 flex items-center gap-1.5 text-caption font-medium text-ink/60 ${mine ? "mr-1" : "ml-1"}`}>
-                            {mine ? "You" : message.authorName}
+                        {!mine ? (
+                          <p className="mb-1 ml-1 flex items-center gap-1.5 text-caption font-medium text-ink/60">
+                            {message.authorName}
                             {/* Nina's messages read as the coach's, not a
                                 peer's (round 2, E5). */}
                             {coaches.has(message.member_id) ? (
@@ -183,7 +185,7 @@ export default async function ChannelPage({
                               </span>
                             ) : null}
                           </p>
-                        }
+                        ) : null}
 
                         <div
                           className={`rounded-2xl px-3.5 py-2.5 ${
