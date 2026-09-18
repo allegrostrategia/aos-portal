@@ -66,8 +66,8 @@ export function hotSeatCopy(
         body: [
           `${firstName},`,
           `The next hot seat is ${when}. One hour, everyone together, and whoever turns up gets worked on live.`,
-          `There are three questions to answer beforehand: what you're stuck on, what you've already tried, and what "done" would look like by the end of your slot. And a look back at your month's log: what's been eating your time, and what you'd streamline.`,
-          `That "done" question does most of the work. The live time is enough to build one specific thing and not enough to decide what that thing should be, so arriving with it named is the difference between building and talking.`,
+          `Four questions to answer beforehand: what's making you feel stuck, what's taking up your time, what you're doing that you shouldn't be, and what you'd like the hot seat to focus on. Not sure on the last one? Say so. Nina will help you decide.`,
+          `That last question does most of the work. The live time is enough to build one specific thing and not enough to decide what that thing should be, so arriving with it named is the difference between building and talking.`,
           `Submit here: ${baseUrl}/hot-seat`,
         ],
       };

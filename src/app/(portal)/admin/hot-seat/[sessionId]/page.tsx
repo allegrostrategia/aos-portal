@@ -140,32 +140,42 @@ export default async function SessionPrepPage({
                     {row.submittedAt ? (
                       <>
                         <div>
-                          <Eyebrow>In their words</Eyebrow>
-                          <p className="mt-1 text-small text-ink/80">
-                            {row.challenge || ", "}
+                          <Eyebrow>What&rsquo;s making them feel stuck</Eyebrow>
+                          <p className="mt-1 text-small whitespace-pre-wrap text-ink/80">
+                            {row.challenge || "Nothing written"}
                           </p>
                         </div>
+                        {row.timeSink ? (
+                          <div>
+                            <Eyebrow>What&rsquo;s taking their time</Eyebrow>
+                            <p className="mt-1 text-small whitespace-pre-wrap text-ink/80">{row.timeSink}</p>
+                          </div>
+                        ) : null}
+                        {row.shouldStop ? (
+                          <div>
+                            <Eyebrow>What they shouldn&rsquo;t be doing</Eyebrow>
+                            <p className="mt-1 text-small whitespace-pre-wrap text-ink/80">{row.shouldStop}</p>
+                          </div>
+                        ) : null}
+                        {/* The two retired questions (round 4): shown only on
+                            submissions from before, which still have them. */}
                         {row.alreadyTried ? (
                           <div>
                             <Eyebrow>Already tried</Eyebrow>
-                            <p className="mt-1 text-small text-ink/80">
-                              {row.alreadyTried}
-                            </p>
+                            <p className="mt-1 text-small text-ink/80">{row.alreadyTried}</p>
                           </div>
                         ) : null}
                         {row.doneLooksLike ? (
                           <div>
                             <Eyebrow>Done would look like</Eyebrow>
-                            <p className="mt-1 text-small text-ink/80">
-                              {row.doneLooksLike}
-                            </p>
+                            <p className="mt-1 text-small text-ink/80">{row.doneLooksLike}</p>
                           </div>
                         ) : null}
-                        {/* Round 3: their own reading of their month. "Not
-                            sure yet" is an answer, shown as one. */}
+                        {/* What they'd like to hot seat. "Not sure yet" is an
+                            answer, shown as one. */}
                         {row.reflection || row.reflectionUnsure ? (
                           <div>
-                            <Eyebrow>Looking back at their month</Eyebrow>
+                            <Eyebrow>What they&rsquo;d like to hot seat</Eyebrow>
                             {row.reflectionUnsure ? (
                               <Badge tone="gold">Not sure yet</Badge>
                             ) : null}

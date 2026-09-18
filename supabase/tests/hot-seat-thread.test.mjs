@@ -169,3 +169,36 @@ test("a member cannot leave a note as Nina: the admin gate sends them home", asy
   );
   assert.equal((await getComments([await piaSub()])).get(await piaSub()).length, 3);
 });
+
+// Round 4, item 12: the four questions land in their columns.
+const { saveSubmission } = await import("../../src/lib/hot-seat/actions.ts");
+
+test("the four questions save to their own columns; the retired two are never written", async () => {
+  configure(db, QUIN);
+  const result = await saveSubmission(null, form({
+    session_id: SESSION2,
+    challenge: "Everything lands on me",
+    time_sink: "Client emails, all day",
+    should_stop: "Chasing invoices",
+    reflection: "The invoicing, probably",
+    reflection_unsure: "on",
+  }));
+  assert.equal(result?.error, undefined);
+  const row = (await db.query(
+    `select challenge, time_sink, should_stop, reflection, reflection_unsure, already_tried, done_looks_like, submitted_at
+     from public.hot_seat_submissions where session_id='${SESSION2}' and member_id='${QUIN}'`)).rows[0];
+  assert.equal(row.challenge, "Everything lands on me");
+  assert.equal(row.time_sink, "Client emails, all day");
+  assert.equal(row.should_stop, "Chasing invoices");
+  assert.equal(row.reflection, "The invoicing, probably");
+  assert.equal(row.reflection_unsure, true);
+  assert.equal(row.already_tried, null);
+  assert.equal(row.done_looks_like, null);
+  assert.ok(row.submitted_at);
+});
+
+test("the first question is the one that's required", async () => {
+  configure(db, QUIN);
+  const result = await saveSubmission(null, form({ session_id: SESSION2, challenge: "  ", time_sink: "x" }));
+  assert.match(result?.error ?? "", /feel stuck/);
+});

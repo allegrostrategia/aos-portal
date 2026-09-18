@@ -7,6 +7,11 @@ import type { HotSeatSubmission } from "@/lib/hot-seat/queries";
 import { Checkbox, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
 import { Card, Eyebrow } from "@/components/ui/card";
 
+/**
+ * The four questions (round 4, item 12; confirmed wording). The first three
+ * in cream cards; the fourth, what they'd like to hot seat, in the yellow
+ * box with the "not sure yet" tick beside it.
+ */
 export function SubmissionForm({
   sessionId,
   submission,
@@ -25,7 +30,7 @@ export function SubmissionForm({
 
       <Card>
         <TextArea
-          label="What are you stuck on?"
+          label="What is making you feel stuck at the moment?"
           name="challenge"
           rows={3}
           defaultValue={submission?.challenge ?? ""}
@@ -35,43 +40,37 @@ export function SubmissionForm({
 
       <Card>
         <TextArea
-          label="What have you already tried?"
-          name="already_tried"
+          label="What is taking up a lot of your time at the moment?"
+          name="time_sink"
           rows={3}
           required={false}
-          defaultValue={submission?.already_tried ?? ""}
-          hint="Saves the session going somewhere you've already been."
+          defaultValue={submission?.time_sink ?? ""}
+          hint="Your month's log is just above, if it helps."
         />
       </Card>
 
       <Card>
         <TextArea
-          label="What would ‘done’ look like for this session?"
-          name="done_looks_like"
+          label="What are you doing right now that you don't think you should be doing, or that someone else could do instead, that you don't enjoy?"
+          name="should_stop"
           rows={3}
           required={false}
-          defaultValue={submission?.done_looks_like ?? ""}
-          hint="The most useful box here. The live time builds one specific thing. Naming it is what makes that possible."
+          defaultValue={submission?.should_stop ?? ""}
         />
       </Card>
 
-      {/* Round 3, §B: the reflection. Additive; the three above are as they
-          were. The month's log is shown above this form by the page, so
-          "look back at your log" has something to look at. */}
       <Card className="bg-lemon/25">
-        <Eyebrow tone="accent">Looking back at your month</Eyebrow>
-        <p className="mt-1 mb-3 text-small text-ink/75">
-          Your log for the month is just above. What has actually been eating
-          your time? And what would you like to make quicker, simpler or
-          automatic? It does not have to be the thing you are stuck on.
-        </p>
-        <TextArea
-          label="What your month says, and what you'd streamline"
-          name="reflection"
-          rows={4}
-          required={false}
-          defaultValue={submission?.reflection ?? ""}
-        />
+        <Eyebrow tone="accent">What you&rsquo;d like to hot seat</Eyebrow>
+        <div className="mt-2">
+          <TextArea
+            label="Based on this, what would you like your hot seat to focus on?"
+            name="reflection"
+            rows={4}
+            required={false}
+            defaultValue={submission?.reflection ?? ""}
+            hint="If you're not sure, just say so. Nina will help you decide."
+          />
+        </div>
         <div className="mt-2">
           <Checkbox
             label="Not sure yet. Honest answer; Nina will look at the log with you."

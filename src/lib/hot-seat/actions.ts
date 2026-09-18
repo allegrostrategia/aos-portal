@@ -10,17 +10,12 @@ export type HotSeatState = { error?: string; notice?: string } | null;
 /**
  * Pre-submit for the hot seat (§5).
  *
- * Three questions only. Their tracked time for the month is pulled at prep time
- * and needs no form, and their handover pack and roadmap position are read then
- * too — so nothing here asks a member for something the product already knows.
- *
- * "What would 'done' look like?" is the one that does the real work: it scopes
- * the ask to something buildable in the time available, which is the
- * difference between a build and a conversation.
- *
- * Round 3 adds the reflection beside the three: what their own log says has
- * been eating the month and what they'd streamline, or "not sure yet", which
- * is a flag rather than words so Nina sees it as the answer it is.
+ * Four questions (round 4, item 12, replacing the original three): what's
+ * making them feel stuck, what's taking their time, what they're doing that
+ * they shouldn't be, and what they'd like the hot seat to focus on. The last
+ * takes "not sure yet" as a flag rather than words, so Nina sees it as the
+ * answer it is. Their tracked time for the month is pulled at prep time and
+ * needs no form.
  */
 export async function saveSubmission(
   _prev: HotSeatState,
@@ -37,14 +32,14 @@ export async function saveSubmission(
 
   const sessionId = String(formData.get("session_id") ?? "");
   const challenge = String(formData.get("challenge") ?? "").trim();
-  const alreadyTried = String(formData.get("already_tried") ?? "").trim();
-  const doneLooksLike = String(formData.get("done_looks_like") ?? "").trim();
+  const timeSink = String(formData.get("time_sink") ?? "").trim();
+  const shouldStop = String(formData.get("should_stop") ?? "").trim();
   const reflection = String(formData.get("reflection") ?? "").trim();
   const reflectionUnsure = formData.get("reflection_unsure") === "on";
 
   if (!sessionId) return { error: "No session to submit against." };
   if (!challenge) {
-    return { error: "Say what you're stuck on, in your own words." };
+    return { error: "Say what's making you feel stuck, in your own words." };
   }
 
   const supabase = await createClient();
@@ -67,8 +62,8 @@ export async function saveSubmission(
 
   const payload = {
     challenge,
-    already_tried: alreadyTried || null,
-    done_looks_like: doneLooksLike || null,
+    time_sink: timeSink || null,
+    should_stop: shouldStop || null,
     reflection: reflection || null,
     reflection_unsure: reflectionUnsure,
     submitted_at: new Date().toISOString(),

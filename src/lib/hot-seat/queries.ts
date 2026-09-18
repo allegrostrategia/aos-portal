@@ -17,6 +17,8 @@ export type HotSeatSubmission = {
   challenge: string | null;
   already_tried: string | null;
   done_looks_like: string | null;
+  time_sink: string | null;
+  should_stop: string | null;
   reflection: string | null;
   reflection_unsure: boolean;
   submitted_at: string | null;
@@ -154,4 +156,27 @@ export async function countUpcomingSessions(): Promise<number> {
     .select("id", { count: "exact", head: true })
     .gte("scheduled_for", new Date().toISOString());
   return count ?? 0;
+}
+
+/**
+ * Every session this member has a submission for, newest first, with the
+ * session beside it (round 4, item 10). The month picker on the hot seat
+ * page is built from this: the upcoming session, plus each month they took
+ * part in.
+ */
+export async function getMyHotSeatHistory(
+  memberId: string,
+): Promise<{ session: HotSeatSession; submission: HotSeatSubmission }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("hot_seat_submissions")
+    .select("*, hot_seat_sessions(id, session_month, scheduled_for, zoom_url)")
+    .eq("member_id", memberId)
+    .order("created_at", { ascending: false });
+
+  const rows = (data ?? []) as (HotSeatSubmission & { hot_seat_sessions: HotSeatSession | null })[];
+  return rows
+    .filter((r) => r.hot_seat_sessions)
+    .map(({ hot_seat_sessions, ...submission }) => ({ session: hot_seat_sessions!, submission }))
+    .sort((a, b) => b.session.session_month.localeCompare(a.session.session_month));
 }

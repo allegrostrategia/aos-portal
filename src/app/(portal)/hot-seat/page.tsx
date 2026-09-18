@@ -5,9 +5,11 @@ import { requireMember } from "@/lib/auth/member";
 import { markCommentsSeen } from "@/lib/hot-seat/actions";
 import {
   getComments,
+  getMyHotSeatHistory,
   getMySubmission,
   getUpcomingSession,
   hasUnseenCoachComment,
+  type HotSeatSubmission,
 } from "@/lib/hot-seat/queries";
 import { getMonthTimeByMember, type MemberMonthTime } from "@/lib/admin/hot-seat-prep";
 import { formatMinutes } from "@/lib/timer/format";
@@ -36,9 +38,23 @@ const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" 
  * How long each person gets on the call is planning context for Nina and is
  * deliberately not written here (round 3 brief).
  */
-export default async function HotSeatPage() {
+export default async function HotSeatPage({ searchParams }: PageProps<"/hot-seat">) {
   const member = await requireMember();
-  const session = await getUpcomingSession();
+  const params = await searchParams;
+  const wanted = typeof params.month === "string" ? params.month : null;
+
+  const [upcoming, history] = await Promise.all([getUpcomingSession(), getMyHotSeatHistory(member.id)]);
+
+  // The month picker (round 4, item 10): the upcoming session, plus every
+  // month they have a submission for. A past month is read-only: what they
+  // wrote, what was said, what was built.
+  const months = [
+    ...(upcoming ? [{ session: upcoming, submission: null as HotSeatSubmission | null }] : []),
+    ...history.filter((h) => h.session.id !== upcoming?.id),
+  ];
+  const chosen = wanted ? months.find((m) => m.session.session_month.startsWith(wanted)) : undefined;
+  const session = chosen?.session ?? upcoming;
+  const viewingPast = Boolean(session && upcoming && session.id !== upcoming.id) || Boolean(session && !upcoming);
   const submission = session ? await getMySubmission(member.id, session.id) : null;
 
   const [threads, times] = await Promise.all([
@@ -68,6 +84,28 @@ export default async function HotSeatPage() {
         intro="One session a month, everyone together. Whoever turns up gets worked on live, and the more you put in beforehand, the more gets built."
       />
 
+      {months.length > 1 ? (
+        <nav aria-label="Month" className="-mt-4 mb-6 flex flex-wrap gap-2">
+          {months.map((m) => {
+            const key = m.session.session_month.slice(0, 7);
+            const active = m.session.id === session?.id;
+            return (
+              <Link
+                key={m.session.id}
+                href={active ? "/hot-seat" : `/hot-seat?month=${key}`}
+                aria-current={active ? "page" : undefined}
+                className={`rounded-full px-3.5 py-1.5 text-small font-medium transition ${
+                  active ? "bg-ink text-cream" : "bg-cream-deep text-ink/75 hover:text-ink"
+                }`}
+              >
+                {MONTH.format(new Date(m.session.session_month))}
+                {m.session.id === upcoming?.id ? " · next" : ""}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
+
       {!session ? (
         <Card>
           <p className="text-small text-ink/70">
@@ -75,6 +113,45 @@ export default async function HotSeatPage() {
             week one of the month. Nina will confirm the time.
           </p>
         </Card>
+      ) : viewingPast ? (
+        <>
+          {/* A past month, read-only (round 4, item 10). */}
+          {confirmed && submission ? (
+            <Card tone="dark" className="mb-5">
+              <Eyebrow tone="light">What was built</Eyebrow>
+              <p className="font-display mt-2 text-title font-medium">{submission.confirmed_challenge}</p>
+              <p className="mt-3 text-small text-white/70">
+                {session.scheduled_for ? `Session: ${formatSessionTime(session.scheduled_for)}.` : ""}
+              </p>
+            </Card>
+          ) : null}
+          {submission ? (
+            <Card className="mb-5">
+              <Eyebrow>What you wrote</Eyebrow>
+              <dl className="mt-3 flex flex-col gap-3">
+                {[
+                  ["What was making you feel stuck", submission.challenge],
+                  ["What was taking your time", submission.time_sink],
+                  ["What you shouldn't have been doing", submission.should_stop],
+                  ["What you wanted to hot seat", submission.reflection_unsure && !submission.reflection ? "Not sure yet" : submission.reflection],
+                  ["What you'd already tried", submission.already_tried],
+                  ["What done looked like", submission.done_looks_like],
+                ]
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k as string}>
+                      <dt className="text-caption font-medium text-ink/55">{k}</dt>
+                      <dd className="mt-0.5 text-small whitespace-pre-wrap text-ink/85">{v}</dd>
+                    </div>
+                  ))}
+              </dl>
+              {!submission.submitted_at ? (
+                <p className="mt-3 text-small text-ink/60">You didn&rsquo;t submit for this one.</p>
+              ) : null}
+            </Card>
+          ) : null}
+          <Thread comments={thread} labelFor={(c) => (c.fromCoach ? "Nina" : "You")} archived />
+        </>
       ) : (
         <>
           <Card className="mb-5">
@@ -127,10 +204,11 @@ export default async function HotSeatPage() {
             <p className="mt-2 text-small text-ink/80">
               Nina arrives having already read your tracked time, your
               submission and anything the two of you said about it, with a
-              specific direction drafted. The live part is confirming that
-              direction and building against it with her judgement in the
-              room, not starting from nothing. That&rsquo;s why the submission
-              matters more than it looks.
+              specific plan of action that Nina will work on ahead of your
+              hot seat. The live part is confirming that plan and building
+              against it with her judgement in the room, not starting from
+              nothing. That&rsquo;s why the submission matters more than it
+              looks.
             </p>
           </Card>
 
