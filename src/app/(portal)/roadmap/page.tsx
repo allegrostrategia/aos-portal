@@ -8,12 +8,11 @@ import { getCurrentRoadmap, getStradaState, getTrainingOptions, isDone } from "@
 import { buildCalendar, monthName, positionOn, weekLabel, weekRange, ROADMAP_MONTHS, type RoadmapWeek } from "@/lib/roadmap/calendar";
 import { actionsByWeek, type RoadmapMonth } from "@/lib/roadmap/shape";
 import { BUCKET_ORDER, BUCKET_PILL } from "@/lib/roadmap/buckets";
-import { startRoadmap } from "@/lib/roadmap/strada-actions";
 import { firstMondayOfNextMonth } from "@/lib/onboarding/cadence";
 import { utcToWallClock } from "@/lib/time-zone";
 import { Card } from "@/components/ui/card";
 import { ActionRow, AddAction, type ActionView } from "./action-row";
-import { ItineraryNote, MonthTitle, PublishForm, StartsOnForm } from "./edit-forms";
+import { ItineraryNote, MonthTitle, PublishForm, StartForm, StartsOnForm } from "./edit-forms";
 
 export const metadata: Metadata = { title: "La Strada · aOS" };
 
@@ -176,14 +175,7 @@ export default async function RoadmapPage({ searchParams }: PageProps<"/roadmap"
                   {roadmap ? "This is a draft. " : `${firstName} has no roadmap yet. `}
                   Start it here, fill in month 1, and publish when it&rsquo;s ready. Nothing shows for {firstName} until then.
                 </p>
-                {!roadmap ? (
-                  <form action={startRoadmap}>
-                    <input type="hidden" name="member_id" value={subject.id} />
-                    <button type="submit" className="rounded-full bg-orange px-4 py-1.5 text-small font-semibold text-ink">
-                      Start {firstName}&rsquo;s roadmap
-                    </button>
-                  </form>
-                ) : null}
+                {!roadmap ? <StartForm memberId={subject.id} firstName={firstName} /> : null}
               </div>
             ) : (
               <>

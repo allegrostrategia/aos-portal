@@ -47,14 +47,14 @@ const ruth = async () => (await db.query(`select * from public.members where id=
 
 test("a member cannot start, edit or publish a roadmap: the admin gate sends them home", async () => {
   configure(db, RUTH);
-  await assert.rejects(() => startRoadmap(form({ member_id: RUTH })), /REDIRECT/);
+  await assert.rejects(() => startRoadmap(null, form({ member_id: RUTH })), /REDIRECT/);
   await assert.rejects(() => upsertAction(null, form({ roadmap_id: "x", month: "1", label: "Nope" })), /REDIRECT/);
   assert.equal(await ruthRow(), undefined);
 });
 
 test("Nina starts a draft: month 1 begins the first Monday of next month; Ruth sees nothing", async () => {
   configure(db, NINA);
-  await startRoadmap(form({ member_id: RUTH }));
+  assert.equal(await startRoadmap(null, form({ member_id: RUTH })), null);
   const row = await ruthRow();
   assert.ok(row);
   assert.equal(row.confirmed_at, null);
@@ -69,7 +69,7 @@ test("Nina starts a draft: month 1 begins the first Monday of next month; Ruth s
 
 test("starting twice does nothing", async () => {
   configure(db, NINA);
-  await startRoadmap(form({ member_id: RUTH }));
+  await startRoadmap(null, form({ member_id: RUTH }));
   assert.equal((await db.query(`select count(*)::int c from public.roadmap where member_id='${RUTH}'`)).rows[0].c, 1);
 });
 

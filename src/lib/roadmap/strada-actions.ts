@@ -105,20 +105,22 @@ function done(memberId: string) {
  * Start a member's roadmap: a draft with month 1 starting the first Monday of
  * next month. Nothing to see for the member until it's published.
  */
-export async function startRoadmap(formData: FormData): Promise<void> {
+export async function startRoadmap(_prev: StradaState, formData: FormData): Promise<StradaState> {
   await requireAdmin();
   const memberId = String(formData.get("member_id") ?? "").trim();
-  if (!memberId) return;
+  if (!memberId) return { error: "No member given." };
   const supabase = await createClient();
 
   const { data: existing } = await supabase
     .from("roadmap").select("id").eq("member_id", memberId).eq("is_current", true).maybeSingle();
-  if (existing) return;
+  if (existing) return null;
 
   const { count } = await supabase
     .from("roadmap").select("id", { count: "exact", head: true }).eq("member_id", memberId);
 
-  await supabase.from("roadmap").insert({
+  // The error is shown, not swallowed: the first press of this button on live
+  // failed on a column the database didn't have yet, and said nothing.
+  const { error } = await supabase.from("roadmap").insert({
     member_id: memberId,
     phases: [],
     reason: (count ?? 0) === 0 ? "onboarding" : "monthly_repoint",
@@ -126,7 +128,9 @@ export async function startRoadmap(formData: FormData): Promise<void> {
     is_current: true,
     starts_on: firstMondayOfNextMonth(new Date().toISOString().slice(0, 10)),
   });
+  if (error) return { error: `Couldn't start it: ${error.message}` };
   done(memberId);
+  return null;
 }
 
 /** Publish: from here the member sees it, and every edit is live. */

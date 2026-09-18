@@ -7,6 +7,7 @@ import {
   saveMonthNote,
   setMonthTitle,
   setStartsOn,
+  startRoadmap,
   type StradaState,
 } from "@/lib/roadmap/strada-actions";
 import { FormMessage } from "@/components/ui/form";
@@ -131,6 +132,20 @@ export function ItineraryNote({
       ) : (
         <p className="text-small whitespace-pre-wrap text-ink/80">{body || <span className="text-ink/40 italic">Nothing noted.</span>}</p>
       )}
+    </form>
+  );
+}
+
+/** Start a member's draft (edit mode). Says so if it can't. */
+export function StartForm({ memberId, firstName }: { memberId: string; firstName: string }) {
+  const [state, formAction] = useActionState<StradaState, FormData>(startRoadmap, null);
+  return (
+    <form action={formAction} className="flex flex-col gap-2">
+      <input type="hidden" name="member_id" value={memberId} />
+      <button type="submit" className="self-start rounded-full bg-orange px-4 py-1.5 text-small font-semibold text-ink">
+        Start {firstName}&rsquo;s roadmap
+      </button>
+      <FormMessage error={state?.error} />
     </form>
   );
 }
