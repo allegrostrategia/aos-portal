@@ -62,16 +62,22 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           and without this the printed page carries the whole navigation with
           it. `print:hidden` on each piece rather than one wrapper, because the
           content sits between them in the DOM. */}
-      {/* The wordmark, in the reference's orange. Sign-out moved to the You
-          screen, where the reference keeps it; the header carries only the
-          mark and, on desktop, who is signed in. */}
-      <header className="print:hidden">
+      {/* The mark, in the reference's orange: the home-screen icon's own
+          letterforms, outlined, without the square (round 4, item 2). Sign-out
+          moved to the You screen, where the reference keeps it; the header
+          carries only the mark and, on desktop, who is signed in.
+
+          Padded for the status bar. The viewport is `cover` and the status
+          bar translucent, so on an iPhone the page runs under the clock; the
+          inset keeps the mark below it (round 4, item 1). Inline, like the
+          bottom bar's, so nothing in the class pipeline can drop it. */}
+      <header className="print:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pt-4 pb-1 sm:pt-5">
-          <Link
-            href="/piazza"
-            className="font-display text-[1.75rem] leading-none font-medium tracking-tight text-orange"
-          >
-            aOS
+          <Link href="/piazza" className="block" aria-label="aOS. Piazza">
+            {/* A plain img: the SVG is 2KB and a static file, and next/image
+                would only add a request for the optimiser to say no. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/aos-mark.svg" alt="" className="h-6 w-auto sm:h-7" />
           </Link>
 
           <span className="hidden text-eyebrow font-medium uppercase text-ink/50 lg:inline">

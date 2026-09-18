@@ -12,6 +12,7 @@ import {
 } from "@/lib/hot-seat/queries";
 import { getPiazzaRoadmap } from "@/lib/piazza/queries";
 import { quoteOfTheDay } from "@/lib/piazza/quotes";
+import { greeting } from "@/lib/piazza/greeting";
 import { getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { getMyAvailability, getMyPairing, pairingMonth } from "@/lib/pairing/queries";
@@ -163,7 +164,7 @@ export default async function PiazzaPage() {
     <main className="flex-1 py-6 sm:py-10">
       <Eyebrow>{LONG_DATE.format(new Date())}</Eyebrow>
       <h1 className="font-display mt-2 text-display font-medium text-ink">
-        Buongiorno, {firstName}.
+        {greeting()}, {firstName}.
       </h1>
 
       {/* 1. Onboarding — while any of the six is left. Not gated on status. */}
