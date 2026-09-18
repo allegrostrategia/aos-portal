@@ -193,13 +193,12 @@ export default async function PiazzaPage() {
                 This month: {roadmap.focusStation.name} →
               </Link>
             ) : null}
-            {/* The roadmap's route in from Piazza (brief C6). Its home is the
-                Log's sign-off checklist until the full screen exists. */}
+            {/* La Strada, the roadmap page, since 18 Sep. */}
             <Link
-              href="/log"
+              href="/roadmap"
               className="underline decoration-ink/40 decoration-2 underline-offset-4 hover:decoration-ink"
             >
-              Your roadmap and log →
+              Your roadmap →
             </Link>
           </p>
         </div>

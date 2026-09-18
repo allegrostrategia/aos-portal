@@ -19,6 +19,10 @@
  * every tick made so far.
  */
 
+/** The four buckets La Strada colours actions by. Same values as the enum. */
+export const ACTION_BUCKETS = ["visibility", "launch", "systems_delivery", "profit"] as const;
+export type ActionBucket = (typeof ACTION_BUCKETS)[number];
+
 export type RoadmapAction = {
   id: string;
   label: string;
@@ -26,6 +30,8 @@ export type RoadmapAction = {
   trainingId: string | null;
   /** Which week of the month this is meant for. Null means "no week set". */
   week: number | null;
+  /** Its bucket pill on La Strada. Null falls back to the training's, then none. */
+  bucket: ActionBucket | null;
 };
 
 export type RoadmapFocus = {
@@ -56,7 +62,7 @@ function readAction(
   // Legacy items were sometimes a bare string.
   if (typeof raw === "string") {
     const label = raw.trim();
-    return label ? { id: fallbackId, label, trainingId: null, week: null } : null;
+    return label ? { id: fallbackId, label, trainingId: null, week: null, bucket: null } : null;
   }
 
   if (!raw || typeof raw !== "object") return null;
@@ -66,12 +72,14 @@ function readAction(
   if (!label) return null;
 
   const week = Number(item.week);
+  const bucket = asText(item.bucket);
 
   return {
     id: asText(item.id) || fallbackId,
     label,
     trainingId: asText(item.training_id) || asText(item.trainingId) || null,
     week: Number.isInteger(week) && week >= 1 && week <= 5 ? week : null,
+    bucket: (ACTION_BUCKETS as readonly string[]).includes(bucket) ? (bucket as ActionBucket) : null,
   };
 }
 

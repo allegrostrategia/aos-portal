@@ -10,7 +10,6 @@ import type { Member } from "@/lib/supabase/types";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { StatusActions } from "./status-actions";
 import { setCoach } from "@/lib/admin/member-actions";
-import { RoadmapEditor, type EditorPhase } from "./roadmap-editor";
 import { getCheckInsByBuild, getMemberBuilds } from "@/lib/hours/queries";
 import { formatHours } from "@/lib/hours/milestones";
 import { AddBuildForm, CoachNoteForm, RateControls } from "./build-forms";
@@ -97,13 +96,6 @@ export default async function AdminMemberPage({
     confirmed_at: string | null;
   } | null;
 
-  const editorPhases: EditorPhase[] = (roadmap?.phases ?? []).map((phase) => ({
-    title: phase.title ?? "",
-    stationSlug: phase.station_slug ?? null,
-    items: (phase.items ?? []).map((item) => item.label ?? "").filter(Boolean),
-  }));
-
-  const stations = (stationRows ?? []) as { slug: string; name: string }[];
 
   const itinerary = member.onboarding_start_date
     ? buildItinerary(member.onboarding_start_date)
@@ -225,24 +217,45 @@ export default async function AdminMemberPage({
       <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Roadmap
       </h2>
-      <p className="mb-3 text-small text-ink/70">
-        {roadmap
-          ? roadmap.confirmed_at
-            ? "Published. This is what they see on Piazza and in their weekly log."
-            : "Draft, not visible to them yet."
-          : "No roadmap yet. This is what comes out of the week-four 1:1."}
-      </p>
-      <RoadmapEditor
-        memberId={member.id}
-        memberName={member.full_name}
-        memberEmail={member.email}
-        stations={stations}
-        initialPhases={editorPhases}
-        initialFocus={roadmap?.current_focus ?? ""}
-        initialFocusStation={roadmap?.current_focus_station_slug ?? ""}
-        isPublished={Boolean(roadmap?.confirmed_at)}
-        hasHadHotSeat={Boolean(pastHotSeat)}
-      />
+      {/* Edited on La Strada itself since 18 Sep, with the toggle on Edit.
+          This is the summary and the way in. */}
+      <Card>
+        <p className="text-small text-ink/80">
+          {roadmap
+            ? roadmap.confirmed_at
+              ? "Published. It's their La Strada, and its actions are on their weekly log."
+              : "Draft. Not visible to them until it's published."
+            : "No roadmap yet. This is what comes out of the week-four 1:1."}
+        </p>
+        <p className="mt-3">
+          <Link
+            href={`/roadmap?edit=1&member=${member.id}`}
+            className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4"
+          >
+            {roadmap ? "Open La Strada to edit it" : "Start their roadmap on La Strada"}
+          </Link>
+        </p>
+        <div className="mt-5 border-t border-ink/8 pt-4">
+          <Eyebrow>This month&rsquo;s focus. The hot seat build</Eyebrow>
+          {roadmap?.current_focus ? (
+            <>
+              <p className="font-display mt-2 text-heading font-medium text-ink">{roadmap.current_focus}</p>
+              {roadmap.current_focus_station_slug ? (
+                <p className="mt-1 text-small text-ink/70">
+                  {stationName[roadmap.current_focus_station_slug] ?? roadmap.current_focus_station_slug}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-2 text-small text-ink/70">
+              {pastHotSeat ? "No build confirmed for this month yet." : "Their first hot seat hasn’t happened yet."}
+            </p>
+          )}
+          <p className="mt-2 text-caption text-ink/60">
+            Set through the hot seat&rsquo;s prep and confirm, from their tracked time. Not edited here.
+          </p>
+        </div>
+      </Card>
 
       <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Audits

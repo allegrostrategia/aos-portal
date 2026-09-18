@@ -11,11 +11,13 @@ import { usePathname } from "next/navigation";
  * bottom bar also needs no JavaScript, no drawer and no focus trapping, so it
  * works everywhere rather than nearly everywhere.
  *
- * **Five items, since L'Editoriale (13 Sep 2026).** Eight was tried on a real
- * phone and rejected as cramped. Hot seat, Milestones and Pairing lost their
- * slots and each has a card on Piazza instead — a genuine route in, not an
- * implied one, because a screen with no reliable way in is invisible however
- * good it is once you're there. The Library lives on La Strada as a toggle.
+ * **Six items, since La Strada (18 Sep 2026); five since L'Editoriale.**
+ * Eight was tried on a real phone and rejected as cramped. Hot seat,
+ * Milestones and Pairing lost their slots and each has a card on Piazza
+ * instead — a genuine route in, not an implied one, because a screen with no
+ * reliable way in is invisible however good it is once you're there. The
+ * Library lives on The Map as a toggle. La Strada, the roadmap, earned the
+ * sixth slot: it is the plan the whole programme runs on.
  *
  * Admin destinations are not in the bar at all. They sit in the sidebar on
  * desktop, under their own heading, and on the You screen on a phone.
@@ -24,7 +26,7 @@ import { usePathname } from "next/navigation";
  * always returns to Piazza, so nobody gets stuck inside a station.
  */
 
-export type NavIcon = "piazza" | "strada" | "sociale" | "log" | "you";
+export type NavIcon = "piazza" | "map" | "strada" | "sociale" | "log" | "you";
 export type NavItem = { href: string; label: string; icon?: NavIcon };
 
 function useIsCurrent() {
@@ -42,10 +44,19 @@ function Icon({ name, className = "" }: { name: NavIcon; className?: string }) {
         <path d="M10 20v-6h4v6" />
       </>
     ),
-    strada: (
+    map: (
       <>
         <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
         <path d="M9 4v14M15 6v14" />
+      </>
+    ),
+    // A road with its stops: La Strada, the plan.
+    strada: (
+      <>
+        <path d="M5 20c0-4 4-5 7-5s7-1 7-5-4-5-7-5" />
+        <circle cx="5" cy="20" r="1.5" />
+        <circle cx="12" cy="15" r="1.5" />
+        <circle cx="12" cy="5" r="1.5" />
       </>
     ),
     sociale: (

@@ -26,6 +26,38 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## LA STRADA — the roadmap page — BUILT 18 Sep, awaiting Dom
+
+Brief: `docs/aOS_LaStrada_Roadmap_Brief.md`; mockup: `docs/aOS_Roadmap_Mockup.html`. Two commits, local: the rename (`4bae1d3`) and the page. One migration pending: `20260918120000_la_strada`. Verified: tsc, lint, build clean; **196 unit / 272 schema / 126 action**; ids, done-precedence, the publish guard and the notes policy mutation-checked. **Not yet seen rendered**: the page needs a signed-in session, so the first look is Dom's walkthrough.
+
+### Naming
+- **The Map** is the eleven-station journey map (`/stations`). Labels, alt text and back links renamed; file and component names (`la-strada-map.tsx`, `LaStradaMap`) deliberately kept.
+- **La Strada** is the roadmap page, `/roadmap`, sixth nav item with its own icon (a road with stops). The admin "Roadmaps" links go to `/roadmap?edit=1`; `/admin/roadmaps` redirects there; both old editors (the standalone one and the one embedded on the admin member page) are deleted.
+
+### The data-model question, answered
+**Grouping by week works from the existing model, with two genuine gaps that needed columns, and one thing that changes meaning slightly.**
+- **Works as-is:** months → focuses → actions, each action with `week` (1 to 5 of its month). The page groups a month's actions by that field into week cards (`actionsByWeek`, already there). Focuses are invisible on the page (new actions go into the month's first focus). Nothing about the structure had to change; the bucket pill is one more optional field on the action in the jsonb.
+- **Gap 1, WHEN month 1 is.** Months were positional and "week 2" meant "week 2 of the month" with no month named; the log only ever needs "this week", so it never mattered. A page printing "Week 6 of 24" and "12 to 18 Oct" needs an anchor. New column `roadmap.starts_on`: the first Monday of month 1, set when Nina starts a roadmap (defaults to next month), editable in the hero. Older roadmaps without it fall back to the month after they were confirmed.
+- **Gap 2, "done" as a state of the action.** The weekly log records "which actions did you do this week" per week and locks a signed-off week. A tick on La Strada is about the action and can be made from any week. New table `roadmap_action_ticks`; done = an explicit tick here, else "ticked in any week's log", else no. So a member who ticked something on a Friday sign-off sees it done on La Strada without doing anything; a tick on La Strada doesn't write to the log.
+- **What changes meaning: "24 weeks".** A roadmap month is a calendar month and its weeks are the Mondays in it, four or five, as the onboarding cadence and the existing `week` field already count them. Six months is therefore 24 to 27 weeks, and the hero says "Week X of 25" (or whatever it is), not always 24. Fixed 4-week blocks would have made week 5 of a month impossible and drifted off the calendar by month 3. The mockup's dates (7 Sept, 5 Oct, 2 Nov 2026) are consistent with either reading because those months happen to have four Mondays.
+- **New, as the brief said:** `roadmap_month_notes`, one "off the itinerary" note per member per month. Member writes; Nina reads (not writes).
+
+### Judgement calls, flagged
+- **Draft until published.** The brief says edits save instantly and there is no rebuild; both true. But a roadmap Nina *starts* is a draft the member can't see until she presses "Publish to {name}" in the hero. That keeps the 1:1 as the reveal and keeps the onboarding step "Your roadmap arrives" honest. After publish, every edit is live instantly.
+- **Editing an action keeps its id**, even reworded. The old editor gave a reworded action a new id (it couldn't tell rewording from replacement on a whole-plan save). With a pencil on one action, it's an edit; the member's tick and note on it survive. Tested.
+- **Profit's colour is The Map's deep red, not blush.** The brief says both "match The Map exactly, no new colours" and "Profit (blush)". The Map paints Profit `--aos-deep-red`. Matching The Map won; one line in `lib/roadmap/buckets.ts` if blush is right.
+- **Bucket on an action** is set by Nina in the editor, falling back to the linked training's bucket, else no pill. Existing actions have none until she sets them.
+- **Nina can tick on a member's behalf** in edit mode (recorded as the member's). Nina cannot write a member's off-the-itinerary note.
+- **The mockup's italics** (month number, category badge, "Off the itinerary") were kept, though the brand rule reserves italic for quotes; the brief said to build from the mockup.
+- **Orange toggle and buttons use ink text**, not the mockup's white, per the standing accessibility decision.
+- **Hero overlay:** no "grand-hotel-riposo hero" technique existed in the code (the station header is a plain photo); built as `next/image` under `bg-navy/55`. The PNG (3.5MB) is now a 470KB JPEG at 2000px.
+- **Months not yet written:** after the last month Nina has filled in, one divider. If that's month 4 or later: "Set at your Month 3 call", with the mockup's note. Earlier: "Still being written". In edit mode the next empty month is always shown so she can fill it.
+
+### Go-live steps
+1. Walk through: as Nina, pick a member in the hero, Edit, start, theme, actions (bucket, week, training), publish; as the member, tick, untick, a note; the strip; a past-month look.
+2. `npm run db:push`, one migration.
+3. Push.
+
 ## ROUND 4 — full screen-by-screen review — BUILT and PUSHED 18 Sep after Dom's phone walkthrough
 
 Commits `a34648c`..`01f1ac9`. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. One migration pending: `20260918100000_hot_seat_questions`.

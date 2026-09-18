@@ -134,7 +134,7 @@ export default async function YouPage() {
               ["/admin/touchpoint", "Friday question"],
               ["/admin/reminders", "Emails"],
               ["/admin/library", "Library"],
-              ["/admin/roadmaps", "Roadmaps"],
+              ["/roadmap?edit=1", "Roadmaps"],
               ["/admin/reveal", "Reveal"],
               ["/admin/draw", "Draw"],
               ["/admin/pairing", "Pairs"],

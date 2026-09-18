@@ -14,7 +14,7 @@ test("the current shape reads back whole", () => {
           title: "Automate follow-up",
           station_slug: "officina-vespa",
           actions: [
-            { id: "a1", label: "Map the current flow", training_id: "t1", week: 2 },
+            { id: "a1", label: "Map the current flow", training_id: "t1", week: 2, bucket: "systems_delivery" },
           ],
         },
       ],
@@ -29,7 +29,15 @@ test("the current shape reads back whole", () => {
     label: "Map the current flow",
     trainingId: "t1",
     week: 2,
+    bucket: "systems_delivery",
   });
+});
+
+test("a bucket the enum doesn't know is read as none, not trusted", () => {
+  const months = readRoadmap([
+    { month: 1, title: "", focuses: [{ id: "f", title: "", actions: [{ id: "a", label: "x", bucket: "vibes" }] }] },
+  ]);
+  assert.equal(months[0].focuses[0].actions[0].bucket, null);
 });
 
 // The old shape is already on live. Reading it rather than migrating means no
