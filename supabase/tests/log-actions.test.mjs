@@ -135,6 +135,12 @@ test("check-ins this month counts this member's signed-off weeks, by sign-off da
   // and another member's sign-off must not count.
   assert.equal(await countCheckInsThisMonth(RUTH, today), 1);
 
+  // A week signed off last year is a check-in, but not this month's.
+  await asMember(db, RUTH, () => db.query(
+    `insert into public.weekly_submissions (member_id, week_start_date, submitted_at)
+     values ('${RUTH}', '2025-01-06', '2025-01-10 17:00Z')`));
+  assert.equal(await countCheckInsThisMonth(RUTH, today), 1);
+
   const lastMonth = new Date();
   lastMonth.setUTCMonth(lastMonth.getUTCMonth() - 1);
   assert.equal(await countCheckInsThisMonth(RUTH, lastMonth.toISOString().slice(0, 10)), 0);
