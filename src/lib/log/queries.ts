@@ -49,6 +49,27 @@ export async function getWeeklySubmission(
 }
 
 /**
+ * Weekly check-ins signed off this month (round 4, item 8): the weeks whose
+ * log was submitted with a `submitted_at` inside the calendar month. A
+ * check-in is the Friday sign-off, not a message in the Monday room.
+ */
+export async function countCheckInsThisMonth(memberId: string, today: string): Promise<number> {
+  const supabase = await createClient();
+  const from = `${today.slice(0, 7)}-01`;
+  const next = new Date(`${from}T00:00:00Z`);
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  const to = next.toISOString().slice(0, 10);
+
+  const { count } = await supabase
+    .from("weekly_submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .gte("submitted_at", `${from}T00:00:00Z`)
+    .lt("submitted_at", `${to}T00:00:00Z`);
+  return count ?? 0;
+}
+
+/**
  * This week's tracked time, grouped by category.
  *
  * Grouped here rather than in SQL because the week's entries are a handful of

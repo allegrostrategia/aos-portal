@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
-import { currentWeekStart, getRoadmapItems, getWeeklySubmission } from "@/lib/log/queries";
+import { countCheckInsThisMonth, currentWeekStart, getRoadmapItems, getWeeklySubmission } from "@/lib/log/queries";
 import {
-  countUpcomingSessions,
   getComments,
   getMySubmission,
   getUpcomingSession,
@@ -69,7 +68,7 @@ export default async function PiazzaPage() {
     submission,
     roadmapItems,
     session,
-    sessionCount,
+    checkIns,
     roadmap,
     hours,
     pairing,
@@ -79,7 +78,7 @@ export default async function PiazzaPage() {
     getWeeklySubmission(member.id, weekStart),
     getRoadmapItems(member.id),
     getUpcomingSession(),
-    countUpcomingSessions(),
+    countCheckInsThisMonth(member.id, today),
     getPiazzaRoadmap(member.id),
     getMemberHours(member.id),
     member.status === "active" ? getMyPairing(member.id, month) : Promise.resolve(null),
@@ -150,10 +149,12 @@ export default async function PiazzaPage() {
     });
   }
   if (session?.scheduled_for) {
+    // The session's own time, said as such: on its own it read as a deadline
+    // for adding it (round 4, item 9).
     tasks.push({
       key: "calendar",
       title: "Add the next hot seat to your calendar",
-      detail: formatSessionTime(session.scheduled_for),
+      detail: `The session is ${formatSessionTime(session.scheduled_for)}. One tap adds it.`,
       href: `/api/calendar/hot-seat/${session.id}`,
     });
   }
@@ -209,7 +210,9 @@ export default async function PiazzaPage() {
           {[
             { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones" },
             { value: goalCount > 0 ? `${ticked}/${goalCount}` : ", ", label: "weekly goals", href: "/log" },
-            { value: String(sessionCount), label: sessionCount === 1 ? "upcoming session" : "upcoming sessions", href: "/hot-seat" },
+            // Weekly check-ins signed off this month (round 4, item 8): replaced
+            // "upcoming sessions", which was the same number for everyone.
+            { value: String(checkIns), label: checkIns === 1 ? "check-in this month" : "check-ins this month", href: "/log" },
           ].map((stat) => (
             <Link
               key={stat.label}

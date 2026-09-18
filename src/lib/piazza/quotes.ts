@@ -5,18 +5,11 @@
  * same day and a refresh doesn't change it. Short, and in the register the
  * reference uses — "Discipline creates the freedom you want."
  *
- * **These are placeholders in the brand's voice, not Nina's words.** She
- * should own this list — it is the first sentence a member reads every day.
- * Replacing it is editing one array.
+ * One line, Nina's (round 4, item 7). The placeholders that rotated before
+ * are gone; the rotation stays, so a second line is one more entry here.
  */
 const QUOTES = [
-  "Discipline creates the freedom you want.",
-  "Small consistent steps create extraordinary results.",
-  "One real thing, built, beats ten things planned.",
-  "Your week already knows what to fix. Track it.",
-  "Systems are how you stop being the bottleneck.",
-  "Time reclaimed, not time off.",
-  "Build it once, properly. Then let it run.",
+  "Time reclaimed, freedom every day.",
 ];
 
 export function quoteOfTheDay(date = new Date()): string {

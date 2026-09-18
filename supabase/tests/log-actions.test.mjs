@@ -124,3 +124,18 @@ test("a week sent by the page is ignored — the clock decides", async () => {
   );
   assert.equal(rows.rows[0].c, 1, "only the current week should ever exist");
 });
+
+// Round 4, item 8: the Piazza stat that replaced "upcoming sessions".
+const { countCheckInsThisMonth } = await import("../../src/lib/log/queries.ts");
+
+test("check-ins this month counts this member's signed-off weeks, by sign-off date", async () => {
+  configure(db, RUTH);
+  const today = new Date().toISOString().slice(0, 10);
+  // Ruth signed off this week above; that is one. A draft (no submitted_at)
+  // and another member's sign-off must not count.
+  assert.equal(await countCheckInsThisMonth(RUTH, today), 1);
+
+  const lastMonth = new Date();
+  lastMonth.setUTCMonth(lastMonth.getUTCMonth() - 1);
+  assert.equal(await countCheckInsThisMonth(RUTH, lastMonth.toISOString().slice(0, 10)), 0);
+});

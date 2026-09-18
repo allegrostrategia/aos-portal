@@ -161,9 +161,9 @@ export function createShimClient(db, uid) {
 
     async function execute() {
       const params = [];
-      const clauses = state.filters.map(([column, value]) => {
+      const clauses = state.filters.map(([column, value, op = "="]) => {
         params.push(value);
-        return `${quoteIdent(column)} = $${params.length}`;
+        return `${quoteIdent(column)} ${op} $${params.length}`;
       });
 
       for (const [column, values] of state.inFilters) {
@@ -286,7 +286,7 @@ export function createShimClient(db, uid) {
           // is-clauses carry no parameters and simply append.
           const updateWhere = [
             ...state.filters.map(
-              ([column], i) => `${quoteIdent(column)} = $${i + 1}`,
+              ([column, , op = "="], i) => `${quoteIdent(column)} ${op} $${i + 1}`,
             ),
             ...isClauses,
           ].join(" and ");
@@ -384,6 +384,14 @@ export function createShimClient(db, uid) {
       },
       eq(column, value) {
         state.filters.push([column, value]);
+        return api;
+      },
+      gte(column, value) {
+        state.filters.push([column, value, ">="]);
+        return api;
+      },
+      lt(column, value) {
+        state.filters.push([column, value, "<"]);
         return api;
       },
       limit(n) {
