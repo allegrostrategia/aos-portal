@@ -6,7 +6,7 @@ import { OnboardingPath } from "@/components/onboarding/onboarding-path";
 import { PageHeader } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Your first weeks · aOS",
+  title: "Your onboarding steps · aOS",
 };
 
 /**
@@ -20,7 +20,7 @@ export default async function OnboardingPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
       <PageHeader
-        title="Your first weeks"
+        title="Your onboarding steps"
         tagline="Grand Hotel Riposo"
         intro={
           progress.allDone

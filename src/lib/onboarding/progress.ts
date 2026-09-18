@@ -22,13 +22,18 @@ import type { Member } from "@/lib/supabase/types";
  * product (the welcome watched on a call with Nina); a tick never *un*-does a
  * derived fact.
  *
- * Sequence, confirmed in the brief:
- *   1. Fill in the onboarding form
- *   2. Watch the onboarding video          (content: on Nina's list)
- *   3. Two weeks of time tracking          (explainer video: on Nina's list)
- *   4. Book the 1:1 call — week 4
- *   5. Roadmap arrives                     (passive: the outcome of the call)
- *   6. Submit first hot seat
+ * Sequence, reordered in round 4 (item 6):
+ *   1. Watch the onboarding video          (content: on Nina's list)
+ *   2. Fill in the onboarding form         } these two run in parallel:
+ *   3. Two weeks of time tracking          } neither waits for the other
+ *   4. Book the 1:1 call: unlocked by the FORM, not by tracking, which can
+ *      still be running in the background
+ *   5. Roadmap arrives                     (passive: derived, never ticked)
+ *   6. Submit first hot seat: LOCKED until the roadmap has arrived
+ *
+ * A locked step is shown, with why, and has no link. `next` is the first
+ * step that is neither done nor locked, so the section always points at
+ * something the member can actually do.
  */
 
 export type OnboardingStepKey = "form" | "video" | "tracking" | "call" | "roadmap" | "hot_seat";
@@ -44,6 +49,8 @@ export type OnboardingStep = {
   tickable: boolean;
   /** Something is still waiting on Nina — content, not the member. */
   pending?: string;
+  /** Can't be done yet, and this is why. A locked step has no link. */
+  locked?: string;
 };
 
 export type OnboardingProgress = {
@@ -99,28 +106,33 @@ export async function getOnboardingProgress(member: Member): Promise<OnboardingP
   const ticked = new Set(((ticks ?? []) as { step: OnboardingStepKey }[]).map((t) => t.step));
   const done = (key: OnboardingStepKey, fact: boolean) => fact || ticked.has(key);
 
+  const formDone = done("form", Boolean(audit));
+  // Derived only: a confirmed roadmap row. Not tickable, so this step
+  // changes on its own the moment Nina publishes one (round 4, item 6).
+  const roadmapDone = Boolean(roadmap);
+
   const steps: OnboardingStep[] = [
-    {
-      key: "form",
-      title: "Fill in the onboarding form",
-      description: "A short set of questions across the eleven stations. It's what your roadmap gets built from.",
-      href: "/onboarding/audit",
-      done: done("form", Boolean(audit)),
-      tickable: false,
-    },
     {
       key: "video",
       title: "Watch the onboarding video",
-      description: "What kind of space this is, and what the programme actually promises.",
+      description: "How everything here works, and what the programme actually promises. Worth watching before anything else.",
       href: "/onboarding/welcome",
       done: done("video", Boolean(member.welcome_session_watched_at)),
       tickable: true,
       pending: "Nina's recording it",
     },
     {
+      key: "form",
+      title: "Fill in the onboarding form",
+      description: "A short set of questions across the eleven stations. It's what your roadmap gets built from. Do this alongside the tracking; neither waits for the other.",
+      href: "/onboarding/audit",
+      done: formDone,
+      tickable: false,
+    },
+    {
       key: "tracking",
       title: "Two weeks of time tracking",
-      description: "Log your time and sign off two weeks. The roadmap is built from what your week actually shows.",
+      description: "Log your time and sign off two weeks. The roadmap is built from what your week actually shows. This keeps running while you do the rest.",
       href: "/log",
       done: done("tracking", ((weeks ?? []) as unknown[]).length >= 2),
       tickable: false,
@@ -129,26 +141,28 @@ export async function getOnboardingProgress(member: Member): Promise<OnboardingP
     {
       key: "call",
       title: "Book your 1:1 call",
-      description: "Week four. Nina reads your audit and your two weeks, and the two of you work out the roadmap.",
+      description: "Nina reads your form and whatever tracking you have so far, and the two of you work out the roadmap.",
       href: null,
       done: done("call", false),
       tickable: true,
+      locked: formDone ? undefined : "Fill in the onboarding form first",
     },
     {
       key: "roadmap",
       title: "Your roadmap arrives",
-      description: "The outcome of the call. Nothing for you to do here.",
+      description: "The outcome of the call. Nothing for you to do here; this ticks itself when Nina publishes it.",
       href: null,
-      done: done("roadmap", Boolean(roadmap)),
+      done: roadmapDone,
       tickable: false,
     },
     {
       key: "hot_seat",
       title: "Submit your first hot seat",
-      description: "One real thing, built live. Say what you're stuck on and what done looks like.",
+      description: "One real thing, built live. Say what's making you feel stuck and what you'd like to hot seat.",
       href: "/hot-seat",
       done: done("hot_seat", Boolean(hotSeat)),
       tickable: false,
+      locked: roadmapDone ? undefined : "Unlocks when your roadmap arrives",
     },
   ];
 
@@ -158,6 +172,6 @@ export async function getOnboardingProgress(member: Member): Promise<OnboardingP
     steps,
     completeCount,
     allDone: completeCount === steps.length,
-    next: steps.find((s) => !s.done) ?? null,
+    next: steps.find((s) => !s.done && !s.locked) ?? null,
   };
 }

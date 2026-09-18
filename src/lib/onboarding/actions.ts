@@ -163,7 +163,10 @@ export async function setOnboardingStep(formData: FormData): Promise<void> {
   const member = await requireMember();
   const step = String(formData.get("step") ?? "");
   const on = formData.get("done") === "true";
-  const allowed = ["form", "video", "tracking", "call", "roadmap", "hot_seat"];
+  // Only the two the screen offers a tick for. The others are facts in the
+  // product (a submitted form, two signed-off weeks, a published roadmap, a
+  // hot seat submission) and a tick can't stand in for them.
+  const allowed = ["video", "call"];
   if (!allowed.includes(step)) return;
 
   const supabase = await createClient();

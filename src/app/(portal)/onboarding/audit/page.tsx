@@ -62,7 +62,7 @@ export default async function AuditPage() {
             href="/onboarding"
             className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
-            ← Back to your first weeks
+            ← Back to your onboarding steps
           </Link>
         </p>
       </main>

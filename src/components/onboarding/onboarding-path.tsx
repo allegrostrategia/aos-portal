@@ -31,10 +31,10 @@ export function OnboardingPath({
     <Card>
       <div className="flex items-baseline justify-between gap-4">
         <div>
-          <Eyebrow tone="accent">Your first weeks</Eyebrow>
+          <Eyebrow tone="accent">Your onboarding steps</Eyebrow>
           <h2 className="font-display mt-1 text-heading font-medium text-ink">
             {completeCount === 0
-              ? "Six steps to being fully in"
+              ? "Six steps to complete your onboarding"
               : `${completeCount} of ${steps.length} done`}
           </h2>
         </div>
@@ -71,7 +71,9 @@ export function OnboardingPath({
                     ? "bg-orange text-white"
                     : isNext
                       ? "border-2 border-ink bg-card text-ink"
-                      : "border border-ink/25 bg-card text-ink/50"
+                      : step.locked
+                        ? "border border-dashed border-ink/25 bg-card text-ink/40"
+                        : "border border-ink/25 bg-card text-ink/50"
                 }`}
               >
                 {step.done ? "✓" : i + 1}
@@ -79,7 +81,7 @@ export function OnboardingPath({
 
               <div className={`min-w-0 flex-1 ${last ? "" : brief ? "pb-3" : "pb-5"}`}>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  {step.href && !step.done ? (
+                  {step.href && !step.done && !step.locked ? (
                     <Link
                       href={step.href}
                       className={`text-body font-medium text-ink underline-offset-4 hover:underline ${brief ? "text-small" : ""}`}
@@ -87,14 +89,27 @@ export function OnboardingPath({
                       {step.title}
                     </Link>
                   ) : (
-                    <p className={`text-body font-medium ${step.done ? "text-ink/60" : "text-ink"} ${brief ? "text-small" : ""}`}>
+                    <p className={`text-body font-medium ${step.done ? "text-ink/60" : step.locked ? "text-ink/45" : "text-ink"} ${brief ? "text-small" : ""}`}>
                       {step.title}
                     </p>
                   )}
                   <span className="text-caption text-ink/50">
-                    {step.done ? "Complete" : isNext ? "In progress" : step.href ? "Ready when you are" : "Later"}
+                    {step.done
+                      ? "Complete"
+                      : step.locked
+                        ? "Locked"
+                        : isNext
+                          ? "In progress"
+                          : step.href || step.tickable
+                            ? "Ready when you are"
+                            : "Later"}
                   </span>
                 </div>
+
+                {/* A locked step says what unlocks it (round 4, item 6). */}
+                {!brief && step.locked && !step.done ? (
+                  <p className="mt-1 text-caption text-ink/45">{step.locked}.</p>
+                ) : null}
 
                 {!brief ? (
                   <p className="mt-1 text-small text-ink/65">{step.description}</p>
@@ -104,7 +119,7 @@ export function OnboardingPath({
                   <p className="mt-1 text-caption text-ink/45">{step.pending}. Carry on regardless.</p>
                 ) : null}
 
-                {!brief && step.tickable ? (
+                {!brief && step.tickable && !step.locked ? (
                   <form action={setOnboardingStep} className="mt-2">
                     <input type="hidden" name="step" value={step.key} />
                     <input type="hidden" name="done" value={step.done ? "false" : "true"} />

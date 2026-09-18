@@ -148,6 +148,7 @@ export function createShimClient(db, uid) {
       count: null,
       head: false,
       single: null,
+      limit: null,
       insert: null,
       update: null,
       upsert: null,
@@ -316,8 +317,9 @@ export function createShimClient(db, uid) {
           )
         ).join(", ");
 
+        const limitSql = state.limit != null ? ` limit ${Number(state.limit)}` : "";
         const r = await run(
-          `select ${selected} from public.${quoteIdent(state.table)} base${whereSql}${orderSql}`,
+          `select ${selected} from public.${quoteIdent(state.table)} base${whereSql}${orderSql}${limitSql}`,
           params,
         );
         if (state.single === "maybe") {
@@ -382,6 +384,10 @@ export function createShimClient(db, uid) {
       },
       eq(column, value) {
         state.filters.push([column, value]);
+        return api;
+      },
+      limit(n) {
+        state.limit = n;
         return api;
       },
       maybeSingle() {
