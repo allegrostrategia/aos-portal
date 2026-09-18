@@ -414,9 +414,11 @@ function WeekProgress({
           </p>
         </div>
         <p className="max-w-[14rem] text-right text-small text-ink/70">
+          {/* Ten hours is the prize-draw line, not what makes a week count
+              (round 4, item 22). The ledger accrues regardless. */}
           {isComplete
-            ? "Ten hours logged. This week counts, and you’re in the draw."
-            : `${formatMinutes(remaining)} more makes it a complete week.`}
+            ? "Ten hours logged. You’re eligible for this month’s prize draw."
+            : `${formatMinutes(remaining)} more makes you eligible for this month’s prize draw.`}
         </p>
       </div>
       <div

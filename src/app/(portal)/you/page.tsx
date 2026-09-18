@@ -61,10 +61,12 @@ export default async function YouPage() {
             meta="Hours reclaimed and the road ahead"
           />
           <NumberedRow
-            href="mailto:hello@allegrostrategia.com?subject=aOS%20help"
+            // The support address (round 4, item 23). A mailto: opens the
+            // member's own mail app with the address and subject filled in.
+            href="mailto:contact@allegrobusinessservices.co.uk?subject=aOS%20help"
             leading={<RowIcon name="help" />}
             title="Help & support"
-            meta="Email Nina and the team"
+            meta="Email the team. Opens your mail app"
           />
         </ul>
       </Card>
