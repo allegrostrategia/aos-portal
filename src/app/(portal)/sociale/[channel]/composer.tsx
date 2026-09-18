@@ -321,19 +321,33 @@ export function Composer({
           </Button>
         )}
 
-        <label className="cursor-pointer rounded-full px-3.5 py-1.5 text-small font-semibold text-ink/70 transition hover:bg-cream-deep hover:text-ink">
+        {/* The picture button is an icon (round 4, item 18): the same line
+            weight as the nav's icons. The label is for screen readers and
+            the tooltip; the state still shows in words while uploading. */}
+        <label
+          title={imageBusy ? "Uploading…" : imagePreview ? "Change picture" : "Add a picture"}
+          className={`flex size-9 cursor-pointer items-center justify-center rounded-full text-ink/70 transition hover:bg-cream-deep hover:text-ink ${
+            imageBusy ? "opacity-50" : ""
+          }`}
+        >
           <input
             ref={imageInputRef}
             type="file"
             accept="image/*"
             className="sr-only"
             disabled={imageBusy}
+            aria-label={imagePreview ? "Change picture" : "Add a picture"}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void attachImage(f);
             }}
           />
-          {imageBusy ? "Uploading…" : imagePreview ? "Change picture" : "Add a picture"}
+          <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="size-5">
+            <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+            <circle cx="9" cy="10" r="1.75" />
+            <path d="m20.5 15.5-4.2-4.2a1.5 1.5 0 0 0-2.1 0L7 18.5" />
+          </svg>
+          {imageBusy ? <span className="sr-only">Uploading</span> : null}
         </label>
       </div>
 

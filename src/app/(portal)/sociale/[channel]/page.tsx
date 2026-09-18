@@ -16,7 +16,7 @@ import { getHeadshotUrls } from "@/lib/directory/queries";
 import { formatSessionTime, formatSessionTimeShort } from "@/lib/time-zone";
 import { windowState } from "@/lib/chat/window";
 import { Avatar } from "@/components/avatar";
-import { RoomChips, RoomList } from "@/components/chat/room-list";
+import { RoomChips, RoomList, RoomMenu } from "@/components/chat/room-list";
 import Link from "next/link";
 import { Card, Eyebrow } from "@/components/ui/card";
 import { Composer } from "./composer";
@@ -93,14 +93,17 @@ export default async function ChannelPage({
           <div className="mb-3">
             <RoomChips current={channel.id} />
           </div>
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <h1 className="font-display text-title font-medium text-ink">{title}</h1>
-            <Link
-              href="/sociale/search"
-              className="text-small text-ink/60 underline underline-offset-4 hover:text-ink"
-            >
-              Search
-            </Link>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h1 className="font-display min-w-0 truncate text-title font-medium text-ink">{title}</h1>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/sociale/search"
+                className="text-small text-ink/60 underline underline-offset-4 hover:text-ink"
+              >
+                Search
+              </Link>
+              <RoomMenu current={channel.id} memberId={member.id} />
+            </div>
           </div>
 
           {/* Pinned, at the top (round 2, E1). Admin pins; anyone in the room
@@ -148,31 +151,30 @@ export default async function ChannelPage({
                   Nothing here yet. Someone has to go first.
                 </p>
               ) : (
-                messages.map((message, i) => {
+                messages.map((message) => {
                   const mine = message.member_id === member.id;
-                  const prev = messages[i - 1];
-                  // Consecutive messages from one person share a face and a name.
-                  const continues = prev?.member_id === message.member_id;
 
+                  // Every message carries its sender's face and name, yours
+                  // included, in every kind of room (round 4, item 17). The
+                  // earlier version hid them on runs from one person and on
+                  // your own, and that read as missing.
                   return (
                     <div
                       key={message.id}
-                      className={`flex items-end gap-2.5 ${mine ? "flex-row-reverse" : ""} ${continues ? "-mt-1.5" : ""}`}
+                      className={`flex items-end gap-2.5 ${mine ? "flex-row-reverse" : ""}`}
                     >
-                      {!mine ? (
-                        <span className={`w-9 shrink-0 ${continues ? "invisible" : ""}`}>
-                          <Avatar
-                            name={message.authorName}
-                            src={headshots.get(message.member_id)}
-                            size="sm"
-                          />
-                        </span>
-                      ) : null}
+                      <span className="w-9 shrink-0">
+                        <Avatar
+                          name={message.authorName}
+                          src={headshots.get(message.member_id)}
+                          size="sm"
+                        />
+                      </span>
 
                       <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
-                        {!mine && !continues && channel.kind === "group" ? (
-                          <p className="mb-1 ml-1 flex items-center gap-1.5 text-caption font-medium text-ink/60">
-                            {message.authorName}
+                        {
+                          <p className={`mb-1 flex items-center gap-1.5 text-caption font-medium text-ink/60 ${mine ? "mr-1" : "ml-1"}`}>
+                            {mine ? "You" : message.authorName}
                             {/* Nina's messages read as the coach's, not a
                                 peer's (round 2, E5). */}
                             {coaches.has(message.member_id) ? (
@@ -181,7 +183,7 @@ export default async function ChannelPage({
                               </span>
                             ) : null}
                           </p>
-                        ) : null}
+                        }
 
                         <div
                           className={`rounded-2xl px-3.5 py-2.5 ${

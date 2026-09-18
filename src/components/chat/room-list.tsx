@@ -9,7 +9,8 @@ import {
   getLastReads,
   resolveNames,
 } from "@/lib/chat/queries";
-import { getHeadshotUrls } from "@/lib/directory/queries";
+import { getHeadshotUrls, searchDirectory } from "@/lib/directory/queries";
+import { openDirectMessage } from "@/lib/chat/actions";
 import { formatSessionTimeShort } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
 import { Card, Eyebrow } from "@/components/ui/card";
@@ -165,6 +166,95 @@ export async function RoomList({ current }: { current?: string }) {
 }
 
 /**
+ * The burger (round 4, item 21): every room, and everyone you could start a
+ * direct message with, behind one button in the thread's header. Additive:
+ * the chips, the sidebar list and the directory all stay. A `<details>`, so
+ * it opens and closes without JavaScript and closes itself on navigation,
+ * since the page re-renders.
+ */
+export async function RoomMenu({ current, memberId }: { current: string; memberId: string }) {
+  const [rows, people] = await Promise.all([getRoomRows(), searchDirectory("")]);
+  const others = people.filter((p) => p.memberId !== memberId);
+  // Members already in a direct room with you are reachable from the rooms
+  // list above; "new message" is for everyone else.
+  const inDirect = new Set(rows.filter((r) => r.kind === "direct").map((r) => r.name));
+  const fresh = others.filter((p) => !inDirect.has(p.displayName));
+
+  return (
+    <details className="group relative">
+      <summary
+        aria-label="Rooms and new message"
+        className="flex size-9 cursor-pointer list-none items-center justify-center rounded-full text-ink/70 transition hover:bg-cream-deep hover:text-ink group-open:bg-ink group-open:text-cream"
+      >
+        <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className="size-5">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </summary>
+      <div className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden rounded-card border border-ink/10 bg-card shadow-lift">
+        <div className="max-h-[70vh] overflow-y-auto">
+          <p className="px-4 pt-3 pb-1 text-eyebrow font-medium text-ink/45 uppercase">Rooms</p>
+          <ul className="px-2 pb-2">
+            {rows.map((row) => {
+              const active = row.id === current;
+              return (
+                <li key={row.id}>
+                  <Link
+                    href={row.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-3 rounded-2xl px-2.5 py-2 text-small transition ${
+                      active ? "bg-cream-deep font-medium text-ink" : "text-ink/80 hover:bg-cream-deep/70"
+                    }`}
+                  >
+                    {row.kind === "direct" ? (
+                      <Avatar name={row.name} src={row.headshotUrl} size="sm" className="size-7 text-[0.6rem]" />
+                    ) : (
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-cream">
+                        <span className="font-display text-small leading-none">#</span>
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate">{row.name}</span>
+                    {row.unread && !active ? <span aria-label="Unread" className="size-2 rounded-full bg-orange" /> : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="border-t border-ink/6 px-4 pt-3 pb-1 text-eyebrow font-medium text-ink/45 uppercase">New message</p>
+          {fresh.length === 0 ? (
+            <p className="px-4 pb-3 text-small text-ink/60">
+              {others.length === 0 ? "Nobody else has a profile yet." : "You have a room with everyone already."}
+            </p>
+          ) : (
+            <ul className="px-2 pb-2">
+              {fresh.map((person) => (
+                <li key={person.memberId}>
+                  <form action={openDirectMessage}>
+                    <input type="hidden" name="member_id" value={person.memberId} />
+                    <button
+                      type="submit"
+                      className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-left text-small text-ink/80 transition hover:bg-cream-deep/70"
+                    >
+                      <Avatar name={person.displayName} src={person.headshotUrl} size="sm" className="size-7 text-[0.6rem]" />
+                      <span className="min-w-0 flex-1 truncate">{person.displayName}</span>
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="border-t border-ink/6 px-4 py-3">
+            <Link href="/sociale/directory" className="text-small text-ink underline decoration-orange decoration-2 underline-offset-4">
+              The member directory
+            </Link>
+          </p>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+/**
  * The rooms as a strip of chips across the top of a thread. Phones only:
  * Sociale opens on General and this is how the other conversations are
  * reached without going back to a list first (round-2 brief, C4). Scrolls
@@ -175,15 +265,18 @@ export async function RoomChips({ current }: { current: string }) {
 
   return (
     <nav aria-label="Rooms" className="-mx-5 overflow-x-auto px-5 lg:hidden">
-      <ul className="flex w-max gap-2 pb-1">
+      {/* Every chip is the same height and the row centres them, so a chip
+          with a face in it sits level with the ones with a # (round 4,
+          item 20: the DM chip sat low). */}
+      <ul className="flex w-max items-center gap-2 pb-1">
         {rows.map((row) => {
           const active = row.id === current;
           return (
-            <li key={row.id}>
+            <li key={row.id} className="flex">
               <Link
                 href={row.href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-small font-medium whitespace-nowrap transition ${
+                className={`inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-small font-medium whitespace-nowrap transition ${
                   active ? "bg-ink text-cream" : "bg-cream-deep text-ink/75 hover:text-ink"
                 }`}
               >
@@ -200,10 +293,10 @@ export async function RoomChips({ current }: { current: string }) {
             </li>
           );
         })}
-        <li>
+        <li className="flex">
           <Link
             href="/sociale/directory"
-            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-small font-medium whitespace-nowrap text-ink/60 hover:text-ink"
+            className="inline-flex h-9 items-center rounded-full px-3.5 text-small font-medium whitespace-nowrap text-ink/60 hover:text-ink"
           >
             Everyone
           </Link>
