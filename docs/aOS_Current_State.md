@@ -31,7 +31,7 @@ This is its own section rather than a line in the open list because it is a prod
 Commits `a34648c`..`8dd6e8d`, local. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. One migration pending: `20260918100000_hot_seat_questions`.
 
 ### Built, by screen
-- **Global.** Header padded for the status bar (`env(safe-area-inset-top)`). The mark is the icon's own letterforms, outlined from Georgia Bold Italic (what the icon was rendered with), in orange, no square: `public/brand/aos-mark.svg`. Greeting by UK hour: buongiorno / buon pomeriggio / buonasera (was fixed text; item 3 answered: not built before, built now). No buonanotte (Dom, 18 Sep: it's a goodbye).
+- **Global.** Header padded for the status bar (`env(safe-area-inset-top)`). The mark is the icon's own letterforms, outlined from Georgia Bold Italic (what the icon was rendered with), in orange, no square: `public/brand/aos-mark.svg`. Greeting by UK hour: buongiorno / buon pomeriggio / buonasera / buonanotte (was fixed text; item 3 answered: not built before, built now).
 - **Onboarding.** "Your onboarding steps"; "Six steps to complete your onboarding". Order: video, form, tracking, call, roadmap, hot seat. Form and tracking parallel. Call locked until the form is in. Roadmap derived from a published roadmap only (no tick accepted). Hot seat locked until the roadmap arrives. Locked steps show why, no link.
 - **Piazza.** One quote, Nina's. "Upcoming sessions" replaced by this member's check-ins this month. Calendar task says "The session is {time}. One tap adds it."
 - **Hot seat.** Four new questions (`challenge`, `time_sink`, `should_stop`, `reflection`); `already_tried` and `done_looks_like` retired, kept, shown on the prep sheet only where present. Yellow box "What you'd like to hot seat"; "not sure yet" unchanged. Copy item 11. Month picker: upcoming plus each month with a submission; past months read-only.
@@ -46,7 +46,7 @@ Commits `a34648c`..`8dd6e8d`, local. Brief: `docs/aOS_Round4_Full_Review_Brief.m
 
 ### Judgement calls, flagged
 - **The mark is outlined from Georgia**, because that is what the icon was rendered with; it matches the icon exactly. Not Cormorant. If the icon is ever redrawn, redraw the mark from the same file.
-- ~~"Buonanotte"~~ dropped (Dom, 18 Sep): buonasera runs from 18:00 to 05:00.
+- **"Buonanotte"** for 22:00 to 05:00 stays. It's a goodbye in Italian rather than a greeting; raised, and Dom kept it on purpose (18 Sep). Not a loose end.
 - **Item 8, "weekly check-ins submitted this month"** read as Friday sign-offs of the weekly log (`weekly_submissions.submitted_at` in the month), not posts in the Monday room. Confirmed by Dom, 18 Sep.
 - **Item 12, Q1 kept the `challenge` column** rather than a new one: same question, and the prep sheet, Piazza and the confirmation all read it. So only two questions were retired; old answers to Q1 read under the new Q1 label, and old "already tried" / "done looks like" answers under their old labels where present.
 - ~~Item 17 on own messages~~ own messages carry no name or face (Dom, 18 Sep), as in WhatsApp.
