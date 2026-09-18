@@ -26,6 +26,37 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## ROUND 4 — full screen-by-screen review — BUILT 18 Sep, awaiting Dom
+
+Commits `a34648c`..`8dd6e8d`, local. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. One migration pending: `20260918100000_hot_seat_questions`.
+
+### Built, by screen
+- **Global.** Header padded for the status bar (`env(safe-area-inset-top)`). The mark is the icon's own letterforms, outlined from Georgia Bold Italic (what the icon was rendered with), in orange, no square: `public/brand/aos-mark.svg`. Greeting by UK hour: buongiorno / buon pomeriggio / buonasera / buonanotte (was fixed text; item 3 answered: not built before, built now).
+- **Onboarding.** "Your onboarding steps"; "Six steps to complete your onboarding". Order: video, form, tracking, call, roadmap, hot seat. Form and tracking parallel. Call locked until the form is in. Roadmap derived from a published roadmap only (no tick accepted). Hot seat locked until the roadmap arrives. Locked steps show why, no link.
+- **Piazza.** One quote, Nina's. "Upcoming sessions" replaced by this member's check-ins this month. Calendar task says "The session is {time}. One tap adds it."
+- **Hot seat.** Four new questions (`challenge`, `time_sink`, `should_stop`, `reflection`); `already_tried` and `done_looks_like` retired, kept, shown on the prep sheet only where present. Yellow box "What you'd like to hot seat"; "not sure yet" unchanged. Copy item 11. Month picker: upcoming plus each month with a submission; past months read-only.
+- **Sociale.** Face and name on every message, own included. Picture icon. Reactions behind one react button per message. Chips level. Burger in the thread header: rooms plus "new message" for anyone you don't have a DM with, plus the directory link.
+- **Log.** Ten hours is prize-draw eligibility, on the screen and in the nudge email.
+- **You.** Help & support mails contact@allegrobusinessservices.co.uk.
+
+### Answers to the questions in the brief
+- **9, the calendar "deadline":** real feature, test data time. The task is the `.ics` add-to-calendar link and its detail printed the session's `scheduled_for` with no framing. "Friday 18 September at 22:29" is the time Nina set on the test session. Reworded so it reads as the session time.
+- **25, the member roadmap view:** **not built, by design** (the brief parked the full Roadmap screen). A published roadmap surfaces in two places only: every action as a checkbox on the Log's sign-off checklist (with month and week labels), and Piazza's "weekly goals X/Y" stat. Piazza's "This month: {station}" link only appears when `current_focus_station_slug` is set, which the roadmap editor never sets, so in practice it doesn't show. There is no page a member can open and read their roadmap as a whole. Nothing built here; it's the parked conversation.
+- **26, creating a test roadmap:** no build. As Nina: `/admin/roadmaps?member=<id>` (or pick from the list) → "Add a month" (title) → focus title → "Add an action" (label, optional training, optional week) → "Publish to them". Then as that member: the onboarding step "Your roadmap arrives" ticks itself, Piazza's weekly-goals stat shows 0/N, and the Log's sign-off lists the actions as checkboxes.
+
+### Judgement calls, flagged
+- **The mark is outlined from Georgia**, because that is what the icon was rendered with; it matches the icon exactly. Not Cormorant. If the icon is ever redrawn, redraw the mark from the same file.
+- **"Buonanotte"** for 22:00 to 05:00: in Italian it's a goodbye, not a greeting. Kept, as the brief listed it; a one-word change if Nina would rather it stopped at buonasera.
+- **Item 8, "weekly check-ins submitted this month"** read as Friday sign-offs of the weekly log (`weekly_submissions.submitted_at` in the month), not posts in the Monday room. Posts aren't "submitted".
+- **Item 12, Q1 kept the `challenge` column** rather than a new one: same question, and the prep sheet, Piazza and the confirmation all read it. Old submissions keep their answers under the retired labels.
+- **Item 17** shows the name and face on *every* message, own included, as the brief asked; WhatsApp itself hides them on your own. Easy to hide on `mine` if it's too much.
+- **Item 21, "new message"** lists members with a directory profile who don't already have a DM with you; existing DMs are in the rooms list above it.
+
+### Go-live steps
+1. Walk through it on the phone: the header under the clock, the mark, Sociale (faces, the react button, the burger), the hot seat form, a past month once there is one.
+2. `npm run db:push`, one migration.
+3. Push.
+
 ## ROUND 3 — Weekly Check-Ins channel, hot seat prep flow — BUILT 15 Sep, PUSHED 17 Sep after Dom's walkthrough
 
 Commits `fa28cd3` (A), `3f5f46d` (B), plus state doc, the settled Friday decision and a getChannel error log (`aaa7875`). Migrations applied 15 Sep (after a Supabase maintenance window). **Walked through by Dom 17 Sep: reflection form, note, push, Piazza flag, reply, confirmed build, archive swap all confirmed working.** Brief: `docs/aOS_Round3_CheckIns_And_HotSeat_Brief.md`. Verified: tsc, lint, build clean; **187 unit / 272 schema / 109 action**, every new test mutation-checked.
