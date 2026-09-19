@@ -75,7 +75,7 @@ export const LANDSCAPE: MapArtwork = {
     // On the roof, above the STAZIONE sign rather than across it (Dom, 19 Sep).
     "stazione-centrale": { x: 38.9, y: 68 },
     // Just below the door; the label goes left of it (Dom, 19 Sep).
-    "archivio": { x: 24.8, y: 28 },
+    "archivio": { x: 24.8, y: 25 },
   },
   // Piazza Caffè is right beside the fountain; its label goes left so it
   // doesn't sit on the "Piazza. Home" label. Banco's goes left of the temple
