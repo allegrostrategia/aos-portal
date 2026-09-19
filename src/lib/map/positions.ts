@@ -69,8 +69,8 @@ export const LANDSCAPE: MapArtwork = {
     // Down onto the steps below the arch; the label goes left (Dom, 19 Sep).
     "club-allegro": { x: 26.6, y: 37 },
     "piazza-caffe": { x: 33.5, y: 47.8 },
-    // The left end of the temple's roof; the label goes left of it (below).
-    "banco-allegro": { x: 51, y: 11 },
+    // Just above the temple's door; the label goes left of it (below).
+    "banco-allegro": { x: 55.6, y: 20 },
     "la-boutique": { x: 44, y: 34 },
     // On the roof, above the STAZIONE sign rather than across it (Dom, 19 Sep).
     "stazione-centrale": { x: 38.9, y: 68 },
