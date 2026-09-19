@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE MAP — dots and cards instead of tiles — BUILT 19 Sep, awaiting Dom
+## THE MAP — dots and cards instead of tiles — BUILT and PUSHED 19 Sep; phone check on live pending
 
-Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`. One commit, local. No migration. Pictures, positions, lines and mask tests untouched in kind; four positions nudged (below). Verified: tsc, lint, build; 220 unit (55 map); rendered with the real component and built CSS at 350px and 960px with a card forced open.
+Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`. Commit `68e722b`. No migration. Pictures, positions, lines and mask tests untouched in kind; four positions nudged (below). Verified: tsc, lint, build; 220 unit (55 map); rendered with the real component and built CSS at 350px and 960px with a card forced open.
 
 ### Built
 - `station-dot.tsx`: a 14px gold dot with a 6px halo and the reference's pulse (0.7→2.1 scale, 2.4s, pure CSS, stilled under reduced motion); a pill label with the reference's numbers (11px, 0.12em tracking, 13px padding, 62% dark, white hairline); a card (230px, the reference's colours and type) with the station's photo, a kicker ("03 · Systems & Delivery"), the name in italic serif, the description cut to one line at a word past 80 characters, and the link.
