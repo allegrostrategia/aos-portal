@@ -61,6 +61,6 @@ test("the right-edge stations flip on both pictures: the case the flip exists fo
   assert.equal(flipsLabel(LANDSCAPE.stations["terrazza"], LANDSCAPE, 8), false);
   for (const artwork of [LANDSCAPE, PORTRAIT]) {
     assert.equal(flipsLabel(artwork.stations["studio-dell-architetto"], artwork, 22), true);
-    assert.equal(flipsLabel(artwork.stations["archivio"], artwork, 8), false);
+    assert.equal(flipsLabel(artwork.stations["cinema-allegro"], artwork, 14), artwork.key === "portrait");
   }
 });
