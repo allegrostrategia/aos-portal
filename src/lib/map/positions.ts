@@ -54,23 +54,28 @@ export const LANDSCAPE: MapArtwork = {
   hub: { x: 49.6, y: 48.4 },
   sociale: { x: 58, y: 60 },
   stations: {
-    "grand-hotel-riposo": { x: 12.9, y: 57.4 },
-    "studio-dell-architetto": { x: 82.8, y: 12.8 },
+    // Just below the blue awning (Dom, 19 Sep, from a screenshot).
+    "grand-hotel-riposo": { x: 12.9, y: 62 },
+    // The building's left edge, a little above it, so the label (which
+    // reaches left) sits beside the building rather than across it.
+    "studio-dell-architetto": { x: 78, y: 9 },
     "cinema-allegro": { x: 65.8, y: 30.3 },
-    "officina-vespa": { x: 66.4, y: 52.1 },
+    // Down on the road between the trees below the workshop.
+    "officina-vespa": { x: 66.4, y: 60 },
     "terrazza": { x: 86.1, y: 45 },
     "club-allegro": { x: 26.6, y: 31.9 },
     "piazza-caffe": { x: 33.5, y: 47.8 },
-    // The temple's columns rather than its pediment: up there its label met
-    // Studio's, which reaches left from the right edge.
-    "banco-allegro": { x: 55.6, y: 22 },
+    // The temple's columns; the label goes left of the building (below).
+    "banco-allegro": { x: 55.6, y: 24 },
     "la-boutique": { x: 44, y: 34 },
     "stazione-centrale": { x: 38.9, y: 73.3 },
-    "archivio": { x: 24.8, y: 17 },
+    // The building's right edge, so the label sits beside it, not on it.
+    "archivio": { x: 30, y: 18 },
   },
   // Piazza Caffè is right beside the fountain; its label goes left so it
-  // doesn't sit on the "Piazza. Home" label.
-  labelLeft: ["piazza-caffe"],
+  // doesn't sit on the "Piazza. Home" label. Banco's goes left of the temple
+  // rather than across its front (Dom, 19 Sep).
+  labelLeft: ["piazza-caffe", "banco-allegro"],
   placeLabels: true,
   mask: LANDSCAPE_MASK,
 };
