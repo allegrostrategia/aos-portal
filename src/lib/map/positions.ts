@@ -66,7 +66,8 @@ export const LANDSCAPE: MapArtwork = {
     // In from the edge far enough that the label fits on the right at 768px,
     // which is what puts it to the right of the dot (Dom, 19 Sep).
     "terrazza": { x: 80, y: 45 },
-    "club-allegro": { x: 26.6, y: 31.9 },
+    // Down onto the steps below the arch; the label goes left (Dom, 19 Sep).
+    "club-allegro": { x: 26.6, y: 37 },
     "piazza-caffe": { x: 33.5, y: 47.8 },
     // The temple's columns; the label goes left of the building (below).
     "banco-allegro": { x: 55.6, y: 24 },
@@ -79,7 +80,7 @@ export const LANDSCAPE: MapArtwork = {
   // Piazza Caffè is right beside the fountain; its label goes left so it
   // doesn't sit on the "Piazza. Home" label. Banco's goes left of the temple
   // rather than across its front (Dom, 19 Sep).
-  labelLeft: ["piazza-caffe", "banco-allegro"],
+  labelLeft: ["piazza-caffe", "banco-allegro", "club-allegro"],
   placeLabels: true,
   mask: LANDSCAPE_MASK,
 };
