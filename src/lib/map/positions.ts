@@ -63,7 +63,9 @@ export const LANDSCAPE: MapArtwork = {
     "cinema-allegro": { x: 73, y: 30 },
     // Down on the road between the trees below the workshop.
     "officina-vespa": { x: 66.4, y: 60 },
-    "terrazza": { x: 86.1, y: 45 },
+    // In from the edge far enough that the label fits on the right at 768px,
+    // which is what puts it to the right of the dot (Dom, 19 Sep).
+    "terrazza": { x: 80, y: 45 },
     "club-allegro": { x: 26.6, y: 31.9 },
     "piazza-caffe": { x: 33.5, y: 47.8 },
     // The temple's columns; the label goes left of the building (below).

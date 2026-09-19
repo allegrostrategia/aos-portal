@@ -55,8 +55,11 @@ test("the portrait's pill is a size smaller than the landscape's", () => {
 });
 
 test("the right-edge stations flip on both pictures: the case the flip exists for", () => {
+  // Terrazza is in from the landscape's edge on purpose, so its label sits
+  // on the right there (Dom, 19 Sep); on the portrait it still flips.
+  assert.equal(flipsLabel(PORTRAIT.stations["terrazza"], PORTRAIT, 8), true);
+  assert.equal(flipsLabel(LANDSCAPE.stations["terrazza"], LANDSCAPE, 8), false);
   for (const artwork of [LANDSCAPE, PORTRAIT]) {
-    assert.equal(flipsLabel(artwork.stations["terrazza"], artwork, 8), true);
     assert.equal(flipsLabel(artwork.stations["studio-dell-architetto"], artwork, 22), true);
     assert.equal(flipsLabel(artwork.stations["archivio"], artwork, 8), false);
   }
