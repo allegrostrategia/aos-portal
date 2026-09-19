@@ -2,8 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ARTWORKS, LANDSCAPE, PORTRAIT, type MapArtwork } from "@/lib/map/positions";
-import { MAP_LINES, bendFor, lineColourFor, spokePath, storyPath, strokeColourFor, yourStoryPoints } from "@/lib/map/lines";
-import { namePlacement } from "@/lib/map/markers";
+import { MAP_LINES, bendFor, spokePath, storyPath, strokeColourFor, yourStoryPoints } from "@/lib/map/lines";
+import { flipsLabel, labelMetrics } from "@/lib/map/markers";
+import { StationDot } from "./station-dot";
 
 /**
  * The Map: the eleven stations on the town, seen from above (Build Brief §3).
@@ -20,10 +21,12 @@ import { namePlacement } from "@/lib/map/markers";
  * keyboard panning the single 16:9 picture needed are gone with it. The
  * component is server-rendered as a result.
  *
- * Markers are sized against the picture: container-query units on the layer,
- * with pixel floors, so a tile is the same fraction of the map everywhere.
- * The portrait draws a bigger fraction because it is shown small. See
- * lib/map/markers for the numbers and the test that every marker fits.
+ * Markers, since the Dots brief (19 Sep): a pulsing gold dot with a pill
+ * label, and a card with the photo on hover or tap (station-dot.tsx). The
+ * photo tiles that preceded them showed eleven pictures at once and read as
+ * clutter. Labels flip to the left of their dot where the right would run
+ * off the picture; lib/map/markers decides that and tests that every one
+ * fits. The Your Story dots keep their size variable; nothing else scales.
  *
  * Lines: a coloured spoke from the fountain to each station on its line, and
  * the Your Story route along the shore between the harbour and Archivio.
@@ -32,19 +35,24 @@ import { namePlacement } from "@/lib/map/markers";
 export type MapStation = {
   slug: string;
   name: string;
-  /** The badge number, from `stations.sort_order`. */
+  /** The station's number, from `stations.sort_order`: the card's kicker. */
   number: number;
+  /** The station's description, trimmed to a line for the card. */
+  description: string | null;
 };
 
+/** The Your Story dots' size: a fraction of the picture, with a floor. */
 function sizes(artwork: MapArtwork): React.CSSProperties {
-  const t = artwork.tilePercent;
-  return {
-    "--tile": `max(${artwork.tileFloorRem}rem, ${t}cqw)`,
-    "--badge": `max(1.25rem, ${(t * 0.3).toFixed(2)}cqw)`,
-    "--badge-text": `max(0.65rem, ${(t * 0.13).toFixed(2)}cqw)`,
-    "--dot": `max(0.75rem, ${(t * 0.15).toFixed(2)}cqw)`,
-    "--name": `max(0.65rem, ${(t * 0.17).toFixed(2)}cqw)`,
-  } as React.CSSProperties;
+  return { "--dot": `max(0.75rem, ${artwork.storyDotPercent}cqw)` } as React.CSSProperties;
+}
+
+/** One line of the description: cut at a word, with an ellipsis, past 80 characters. */
+function oneLine(text: string | null): string | null {
+  if (!text) return null;
+  const t = text.trim();
+  if (t.length <= 80) return t;
+  const cut = t.slice(0, 77);
+  return `${cut.slice(0, Math.max(40, cut.lastIndexOf(" ")))}…`;
 }
 
 /** A label on the map that isn't a station — Piazza itself, and Piazza Sociale. */
@@ -91,7 +99,9 @@ function MapLayer({
   const shadowId = `map-line-shadow-${artwork.key}`;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-ink/10 bg-sky/10 ${className}`} style={{ containerType: "inline-size" }}>
+    <div className={`relative rounded-xl border border-ink/10 bg-sky/10 ${className}`} style={{ containerType: "inline-size" }}>
+      {/* No overflow clipping on the layer: a card near an edge opens past
+          it. The picture and the lines carry the rounding themselves. */}
       <Image
         src={`/illustrations/${artwork.file}`}
         alt="The Map. The town, seen from above"
@@ -99,14 +109,14 @@ function MapLayer({
         height={artwork.height}
         priority={artwork.key === "landscape"}
         sizes={artwork.key === "portrait" ? "100vw" : "(min-width: 1024px) 60rem, 100vw"}
-        className="h-auto w-full"
+        className="h-auto w-full rounded-xl"
       />
 
       {/* Lines under everything. viewBox in percentages so the coordinates
           are the same numbers as the positions; non-scaling stroke so
           `preserveAspectRatio="none"` doesn't stretch the line weight along
           with the box. */}
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full rounded-xl">
         <defs>
           {/* A soft dark shadow rather than a pale halo: half the picture is
               bright limestone and half deep blue sea, and a light casing
@@ -172,68 +182,21 @@ function MapLayer({
 
       {placed.map((station) => {
         const pos = artwork.stations[station.slug];
-        const colour = lineColourFor(station.slug) ?? "var(--aos-navy)";
-        // A name above its tile pokes out of the top of the picture for the
-        // top row, and the frame clips it; those names go under the tile.
-        const nameBelow = namePlacement(pos, artwork) === "below";
-
-        const marker = (
-          <>
-            <span
-              className={`pointer-events-none absolute left-1/2 block -translate-x-1/2 rounded-md bg-white/95 px-2 py-0.5 text-center font-medium whitespace-nowrap text-ink shadow-md ${
-                nameBelow ? "top-full mt-1" : "bottom-full mb-1"
-              }`}
-              style={{ fontSize: "var(--name)" }}
-            >
-              {station.name}
-            </span>
-
-            <span
-              aria-hidden
-              className="absolute z-10 flex items-center justify-center rounded-full font-semibold text-white shadow-md"
-              style={{
-                backgroundColor: colour,
-                width: "var(--badge)",
-                height: "var(--badge)",
-                fontSize: "var(--badge-text)",
-                // Overhanging the tile's corner by a third of itself.
-                top: "calc(var(--badge) / -3)",
-                left: "calc(var(--badge) / -3)",
-              }}
-            >
-              {station.number}
-            </span>
-
-            <span className="block overflow-hidden rounded-lg border-2 shadow-lg transition" style={{ borderColor: colour, width: "var(--tile)", aspectRatio: "8 / 7" }}>
-              <Image
-                src={`/stations/${station.slug}.jpg`}
-                alt=""
-                width={160}
-                height={140}
-                className={`size-full object-cover transition ${locked ? "" : "group-hover:scale-105"}`}
-              />
-            </span>
-          </>
-        );
-
-        const style = { ...sizes(artwork), left: `${pos.x}%`, top: `${pos.y}%` };
-
-        // Locked stations aren't links: nothing to follow, and a dead link is
-        // worse than plain text for anyone tabbing through.
-        return locked ? (
-          <span key={station.slug} style={style} className="group absolute -translate-x-1/2 -translate-y-1/2">
-            {marker}
-          </span>
-        ) : (
-          <Link
+        const line = MAP_LINES.find((l) => l.stations.includes(station.slug));
+        return (
+          <StationDot
             key={station.slug}
-            href={`/stations/${station.slug}`}
-            style={style}
-            aria-label={station.name}
-            className="group absolute -translate-x-1/2 -translate-y-1/2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange"
-          >
-            {marker}
-          </Link>
+            slug={station.slug}
+            name={station.name}
+            kicker={`${String(station.number).padStart(2, "0")} · ${line?.label ?? "Station"}`}
+            description={oneLine(station.description)}
+            x={pos.x}
+            y={pos.y}
+            flip={flipsLabel(pos, artwork, station.name.length)}
+            cardAbove={pos.y > 62}
+            metrics={labelMetrics(artwork)}
+            href={locked ? null : `/stations/${station.slug}`}
+          />
         );
       })}
 

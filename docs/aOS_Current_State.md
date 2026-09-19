@@ -26,6 +26,22 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## THE MAP — dots and cards instead of tiles — BUILT 19 Sep, awaiting Dom
+
+Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`. One commit, local. No migration. Pictures, positions, lines and mask tests untouched in kind; four positions nudged (below). Verified: tsc, lint, build; 220 unit (55 map); rendered with the real component and built CSS at 350px and 960px with a card forced open.
+
+### Built
+- `station-dot.tsx`: a 14px gold dot with a 6px halo and the reference's pulse (0.7→2.1 scale, 2.4s, pure CSS, stilled under reduced motion); a pill label with the reference's numbers (11px, 0.12em tracking, 13px padding, 62% dark, white hairline); a card (230px, the reference's colours and type) with the station's photo, a kicker ("03 · Systems & Delivery"), the name in italic serif, the description cut to one line at a word past 80 characters, and the link.
+- Interaction as the brief has it, not as the reference's script has it: hover opens the card (CSS, so keyboard focus opens it too), click goes to the station; on touch, tap opens, tap again / tap away / Escape closes, the card carries the link. Locked (onboarding) members get the dot and card with "Opens when you're active" and no link.
+- Labels flip to the left of their dot when the right would run off the picture; decided by geometry at the narrowest real width (375px phone, 768px tablet), in `lib/map/markers`. The portrait's pill is one size smaller (9.5px): at 11px "Studio dell'Architetto" and "Stazione Centrale" fit on neither side of their dot on a phone. **A 320px phone is no longer a supported case** for label fit; nothing sold today is 320.
+- Tests: fit at four widths; a new overlap test on the real dot-and-pill rectangles, which caught Studio/Cinema and Officina/Piazza Caffè meeting on the portrait (Cinema and Officina moved down a row); the mask "mostly sea" check now uses the dot's footprint.
+
+### Judgement calls, flagged
+- **No `backdrop-filter: blur`** on the pills or cards, though the reference has it. The project allows the blur in two places for phone performance; eleven blurred pills over a large photo is the case the rule protects against. The 62% dark fill carries the look. One property to restore.
+- **Dots are gold throughout**, as the reference; the per-line colour the tiles' borders carried is gone from the marker (the spokes still carry it). One line to give the dot its line's colour instead.
+- **Kicker** = number and line, since the brief didn't say.
+- **The tile-size fields** on the artworks are gone; only the Your Story dot size remains per picture.
+
 ## THE MAP — rebuilt on two pictures — BUILT and PUSHED 19 Sep; desktop confirmed by Dom, phone check on live pending
 
 Two new artworks replace the single 16:9 one: `the-map-landscape.jpg` (1536×1024, screens 768px and wider) and `the-map-portrait.jpg` (941×1672, phones, full width, no side-scroll). Both shipped as JPEG at 85 (540KB each; the PNGs were 3.9MB and 3.6MB). Decisions confirmed with Dom before building: `md` breakpoint, JPEG, bigger tiles on the portrait (14% of width, 3rem floor).

@@ -41,9 +41,8 @@ export type MapArtwork = {
   /** The bends the Your Story line takes between the harbour and Archivio. */
   storyWaypoints: MapPosition[];
   mask: LandMask;
-  /** A marker tile's width as a percentage of the picture's width, and its floor. */
-  tilePercent: number;
-  tileFloorRem: number;
+  /** The Your Story bend dots' size, as a percentage of the picture's width. */
+  storyDotPercent: number;
 };
 
 export const LANDSCAPE: MapArtwork = {
@@ -52,7 +51,7 @@ export const LANDSCAPE: MapArtwork = {
   width: 1536,
   height: 1024,
   hub: { x: 52.5, y: 49 },
-  sociale: { x: 45, y: 59 },
+  sociale: { x: 48, y: 62 },
   stations: {
     // The arcaded terraces above the marina, bottom left: where a member arrives.
     "grand-hotel-riposo": { x: 22, y: 73 },
@@ -80,8 +79,7 @@ export const LANDSCAPE: MapArtwork = {
     { x: 50, y: 94 },
   ],
   mask: LANDSCAPE_MASK,
-  tilePercent: 8.8,
-  tileFloorRem: 3.5,
+  storyDotPercent: 1.3,
 };
 
 export const PORTRAIT: MapArtwork = {
@@ -96,8 +94,11 @@ export const PORTRAIT: MapArtwork = {
     // test found Officina, Terrazza and the hotel poking out at 280px wide.
     "grand-hotel-riposo": { x: 22, y: 69 },
     "studio-dell-architetto": { x: 38, y: 13 },
-    "cinema-allegro": { x: 78, y: 12 },
-    "officina-vespa": { x: 81, y: 30 },
+    // A row below Studio: with pill labels, Studio's reaches right and
+    // Cinema's left, and at the same height they met in the middle.
+    "cinema-allegro": { x: 78, y: 18 },
+    // And a row above Piazza Caffè, whose label reaches under it otherwise.
+    "officina-vespa": { x: 81, y: 26 },
     "terrazza": { x: 87, y: 46 },
     "club-allegro": { x: 82, y: 62 },
     "piazza-caffe": { x: 24, y: 31 },
@@ -114,11 +115,8 @@ export const PORTRAIT: MapArtwork = {
     { x: 50, y: 83 },
   ],
   mask: PORTRAIT_MASK,
-  // A phone is ~390px wide: 14% is a 49px tile, about a thumb. The floor is
-  // lower than the landscape's (3rem against 3.5rem) so eleven of them and
-  // their names fit a 350px picture without piling up; found in a render.
-  tilePercent: 14,
-  tileFloorRem: 3,
+  // Shown at phone width, so the bend dots take a bigger share of it.
+  storyDotPercent: 2.1,
 };
 
 export const ARTWORKS: MapArtwork[] = [LANDSCAPE, PORTRAIT];

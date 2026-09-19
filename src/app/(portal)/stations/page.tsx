@@ -102,6 +102,7 @@ export default async function StationsPage({
             // numbering has one source rather than a second list in the map
             // config that could quietly disagree with the seeded order.
             number: station.sort_order,
+            description: station.description,
           }))}
         />
       )}

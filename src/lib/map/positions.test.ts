@@ -1,22 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { markerBox, typicalWidth } from "./markers.ts";
 import { ARTWORKS, aspectOf, mapDistance, unplacedStations } from "./positions.ts";
 
 // The eleven from the reference data migration.
-const STATIONS = [
-  "grand-hotel-riposo",
-  "studio-dell-architetto",
-  "officina-vespa",
-  "cinema-allegro",
-  "piazza-caffe",
-  "la-boutique",
-  "banco-allegro",
-  "stazione-centrale",
-  "terrazza",
-  "club-allegro",
-  "archivio",
-];
+const NAMES: Record<string, string> = {
+  "grand-hotel-riposo": "Grand Hotel Riposo",
+  "studio-dell-architetto": "Studio dell'Architetto",
+  "officina-vespa": "Officina Vespa",
+  "cinema-allegro": "Cinema Allegro",
+  "piazza-caffe": "Piazza Caffè",
+  "la-boutique": "La Boutique",
+  "banco-allegro": "Banco Allegro",
+  "stazione-centrale": "Stazione Centrale",
+  "terrazza": "Terrazza",
+  "club-allegro": "Club Allegro",
+  "archivio": "Archivio",
+};
+const STATIONS = Object.keys(NAMES);
 
 /**
  * The open square on each picture, in percent: the fountain and the stone
@@ -33,9 +35,10 @@ const SQUARE = {
 // other.
 for (const artwork of ARTWORKS) {
   const { key, stations } = artwork;
-  // A marker is ~9% of the landscape's width and ~14% of the portrait's;
-  // anything closer than that overlaps and becomes untappable.
-  const CLEAR = artwork.tilePercent + 0.5;
+  // A dot with its halo is 26px; a label beside it is what actually takes
+  // the room. Overlap is checked on the real rectangles below; this is the
+  // floor for the dots themselves, in percent of the width.
+  const CLEAR = (26 / typicalWidth(artwork)) * 100 + 0.5;
 
   test(`[${key}] every station has a position — an unplaced one would be invisible`, () => {
     assert.deepEqual(unplacedStations(STATIONS, artwork), []);
@@ -64,6 +67,27 @@ for (const artwork of ARTWORKS) {
         const [bSlug, b] = entries[j];
         const distance = mapDistance(a, b, artwork);
         assert.ok(distance > CLEAR, `${aSlug} and ${bSlug} are ${distance.toFixed(1)} apart`);
+      }
+    }
+  });
+
+  test(`[${key}] no dot-and-label pair overlaps another at the picture's usual width`, () => {
+    // The rectangles a dot and its pill actually occupy, in pixels, at the
+    // width the picture is usually seen at. What "too close" means now that
+    // markers are a dot with a name beside it rather than a square tile.
+    const width = typicalWidth(artwork);
+    const height = width * (artwork.height / artwork.width);
+    const rects = Object.entries(stations).map(([slug, pos]) => {
+      const box = markerBox(pos, artwork, NAMES[slug].length);
+      const cx = (pos.x / 100) * width;
+      const cy = (pos.y / 100) * height;
+      return { slug, l: cx - box.left, r: cx + box.right, t: cy - box.up, b: cy + box.down };
+    });
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i], b = rects[j];
+        const overlaps = a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+        assert.ok(!overlaps, `${a.slug} and ${b.slug} overlap`);
       }
     }
   });

@@ -2,92 +2,92 @@ import { LANDSCAPE, PORTRAIT, type MapArtwork, type MapPosition } from "./positi
 
 /**
  * Marker geometry, as pure numbers, so "does every marker fit inside the
- * frame" is answered by a test rather than on a phone.
+ * picture" is answered by a test rather than on a phone.
  *
- * The sizes mirror the CSS in the-map.tsx: container-query units against
- * the picture layer, each with a pixel floor. If those change, change these.
- * A marker or a name poking out of the frame is clipped silently by the
- * layer's overflow, which is how the two top-row names were cut in half on a
- * phone on 14 Sep.
+ * Since 19 Sep a marker is a dot with a pill label beside it (the Dots
+ * brief, from allegro-final-map.html), not a photo tile. The numbers mirror
+ * the reference's CSS: a 14px dot with a 6px halo, a 9px gap, an 11px
+ * uppercase label tracked at 0.12em inside 13px of padding. The portrait
+ * draws the pill a size smaller (9.5px, same proportions): at 11px, "Studio
+ * dell'Architetto" and "Stazione Centrale" fit on neither side of their dot
+ * on a 350px phone, and the reference only ever had short names.
  *
- * Every number is per artwork: the portrait picture draws bigger tiles (14%
- * of its width against 8.8%) because it is shown at phone width.
+ * A label sits to the right of its dot unless that would run off the
+ * picture at the artwork's typical width and the left would not, in which
+ * case it flips. Decided here, once, from the geometry, and read by the
+ * component and the test alike.
  */
 
-const REM = 16;
+export const DOT = 14;
+export const HALO = 6;
+export const GAP = 9;
 
-/** The picture layer's width in the case that matters for each artwork. */
-export function typicalWidth(artwork: MapArtwork): number {
-  return artwork.key === "portrait" ? 390 - 32 : 960;
+export type LabelMetrics = { font: number; padX: number; height: number; tracking: number };
+
+export function labelMetrics(artwork: MapArtwork): LabelMetrics {
+  return artwork.key === "portrait"
+    ? { font: 9.5, padX: 10, height: 23, tracking: 0.1 }
+    : { font: 11, padX: 13, height: 27, tracking: 0.12 };
 }
 
-export type MarkerSizes = {
-  tile: number;
-  badge: number;
-  badgeText: number;
-  dot: number;
-  name: number;
-};
+export function labelWidth(artwork: MapArtwork, nameChars: number): number {
+  const m = labelMetrics(artwork);
+  // Inter capitals average ~0.66em, plus the tracking.
+  return nameChars * m.font * (0.66 + m.tracking) + m.padX * 2;
+}
 
-/** Pixel sizes for a layer `width` px wide. Floors as in the CSS. */
-export function markerSizes(artwork: MapArtwork, width: number): MarkerSizes {
-  const cqw = width / 100;
-  const t = artwork.tilePercent;
-  return {
-    tile: Math.max(artwork.tileFloorRem * REM, t * cqw),
-    badge: Math.max(1.25 * REM, t * 0.3 * cqw),
-    badgeText: Math.max(0.65 * REM, t * 0.13 * cqw),
-    dot: Math.max(0.75 * REM, t * 0.15 * cqw),
-    name: Math.max(0.65 * REM, t * 0.17 * cqw),
-  };
+/**
+ * The narrowest the picture layer is drawn: a 375px phone inside the
+ * portal's 20px gutters (the smallest phone still made), and a 768px tablet
+ * for the landscape, where it first appears. Flips are decided here, at the
+ * narrowest case, so a label that fits at 390px doesn't run off at 375.
+ */
+export function minWidth(artwork: MapArtwork): number {
+  return artwork.key === "portrait" ? 375 - 40 : 768 - 40;
+}
+
+/** The picture layer's width in the common case for each artwork. */
+export function typicalWidth(artwork: MapArtwork): number {
+  return artwork.key === "portrait" ? 390 - 40 : 960;
+}
+
+function reach(artwork: MapArtwork, nameChars: number): number {
+  return DOT / 2 + GAP + labelWidth(artwork, nameChars);
+}
+
+/** Whether the label goes to the left of the dot, decided by what fits. */
+export function flipsLabel(pos: MapPosition, artwork: MapArtwork, nameChars: number): boolean {
+  const width = minWidth(artwork);
+  const cx = (pos.x / 100) * width;
+  const r = reach(artwork, nameChars);
+  const fitsRight = cx + r <= width;
+  const fitsLeft = cx - r >= 0;
+  return !fitsRight && fitsLeft;
 }
 
 export type MarkerBox = {
-  /** Distance from the marker's centre to its highest and lowest pixel. */
-  above: number;
-  below: number;
-  /** Half the marker's width at its widest — the name, always. */
-  halfWidth: number;
-  placement: "above" | "below";
+  /** Pixels the marker extends from the dot's centre in each direction. */
+  left: number;
+  right: number;
+  up: number;
+  down: number;
 };
 
-/**
- * The marker's extent in pixels for a layer `width` px wide, with the name
- * placed above the tile unless that would poke out of the top of the
- * picture, in which case it goes below. `nameChars` is the station name's
- * length; Inter averages a little over half an em per character.
- */
-export function markerBox(pos: MapPosition, artwork: MapArtwork, width: number, nameChars: number): MarkerBox {
-  const s = markerSizes(artwork, width);
-  const height = width * (artwork.height / artwork.width);
-  const tileHalfHeight = (s.tile * (7 / 8)) / 2;
-  // Line height inherits the body's 1.6; py-0.5 and a 4px margin to the tile.
-  const nameBlock = s.name * 1.6 + 4 + 4;
-  const nameWidth = nameChars * s.name * 0.56 + 16;
-  const badgeOverhang = s.badge / 3;
-
-  const cy = (pos.y / 100) * height;
-  const placement: "above" | "below" = cy - tileHalfHeight - nameBlock < 0 ? "below" : "above";
-  return {
-    above: tileHalfHeight + (placement === "above" ? nameBlock : badgeOverhang),
-    below: tileHalfHeight + (placement === "below" ? nameBlock : 0),
-    halfWidth: Math.max(s.tile / 2 + badgeOverhang, nameWidth / 2),
-    placement,
-  };
+export function markerBox(pos: MapPosition, artwork: MapArtwork, nameChars: number): MarkerBox {
+  const half = DOT / 2 + HALO;
+  const r = reach(artwork, nameChars);
+  const flip = flipsLabel(pos, artwork, nameChars);
+  const v = Math.max(half, labelMetrics(artwork).height / 2);
+  return { left: flip ? r : half, right: flip ? half : r, up: v, down: v };
 }
 
-/** Where the name sits for a marker, at the artwork's typical width. */
-export function namePlacement(pos: MapPosition, artwork: MapArtwork): "above" | "below" {
-  return markerBox(pos, artwork, typicalWidth(artwork), 22).placement;
-}
-
-/** True when the whole marker sits inside the picture: what the frame would otherwise clip. */
+/** True when the dot and its label sit inside the picture at `width` px wide. */
 export function markerFits(pos: MapPosition, artwork: MapArtwork, width: number, nameChars: number): boolean {
   const height = width * (artwork.height / artwork.width);
-  const box = markerBox(pos, artwork, width, nameChars);
+  const box = markerBox(pos, artwork, nameChars);
   const cx = (pos.x / 100) * width;
   const cy = (pos.y / 100) * height;
-  return cy - box.above >= 0 && cy + box.below <= height && cx - box.halfWidth >= 0 && cx + box.halfWidth <= width;
+  return cx - box.left >= 0 && cx + box.right <= width && cy - box.up >= 0 && cy + box.down <= height;
 }
 
 export { LANDSCAPE, PORTRAIT };

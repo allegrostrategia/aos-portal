@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { isSea, seaFraction } from "./land-mask.ts";
-import { markerSizes, typicalWidth } from "./markers.ts";
+import { DOT, HALO, typicalWidth } from "./markers.ts";
 import { ARTWORKS } from "./positions.ts";
 
 /**
@@ -27,12 +27,14 @@ import { ARTWORKS } from "./positions.ts";
 
 for (const artwork of ARTWORKS) {
   const { key, mask, stations } = artwork;
-  // The marker tile in percent of the picture, at its typical width: the
-  // patch of picture a tile actually covers.
+  // The dot and its halo in percent of the picture, at its typical width:
+  // the patch of picture a marker actually covers. (It was a photo tile,
+  // 8.8% of the width; a dot is smaller, so this is a stricter check on the
+  // anchor and a looser one on the surroundings.)
   const width = typicalWidth(artwork);
-  const s = markerSizes(artwork, width);
-  const TILE_W = (s.tile / width) * 100;
-  const TILE_H = ((s.tile * 7) / 8 / (width * (artwork.height / artwork.width))) * 100;
+  const patch = DOT + HALO * 2;
+  const TILE_W = (patch / width) * 100;
+  const TILE_H = (patch / (width * (artwork.height / artwork.width))) * 100;
 
   test(`[${key}] the mask still describes the artwork it was built from`, () => {
     const file = readFileSync(fileURLToPath(new URL(`../../../public/illustrations/${artwork.file}`, import.meta.url)));
@@ -60,7 +62,7 @@ for (const artwork of ARTWORKS) {
 
   test(`[${key}] no station marker is mostly sea`, () => {
     // The anchor can be on the last dry pixel of a jetty. What matters is the
-    // tile: a third of it in the water and it reads as floating.
+    // dot and its halo: a third of it in the water and it reads as floating.
     for (const [slug, pos] of Object.entries(stations)) {
       const wet = seaFraction(mask, pos.x, pos.y, TILE_W, TILE_H);
       assert.ok(wet < 0.34, `${slug}: ${Math.round(wet * 100)}% of its tile is over water`);
