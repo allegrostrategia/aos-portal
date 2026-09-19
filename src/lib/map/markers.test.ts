@@ -34,7 +34,7 @@ const CASES: [typeof LANDSCAPE, number][] = [
 for (const [artwork, width] of CASES) {
   test(`[${artwork.key}] every dot and its label sit inside the picture at ${width}px`, () => {
     const clipped = Object.entries(artwork.stations)
-      .filter(([slug, pos]) => !markerFits(pos, artwork, width, NAMES[slug].length))
+      .filter(([slug, pos]) => !markerFits(pos, artwork, width, NAMES[slug].length, slug))
       .map(([slug]) => slug);
     assert.deepEqual(clipped, []);
   });
@@ -54,17 +54,10 @@ test("the portrait's pill is a size smaller than the landscape's", () => {
   assert.ok(labelWidth(PORTRAIT, 22) < labelWidth(LANDSCAPE, 22));
 });
 
-test("the long names fit the phone only because of the smaller pill", () => {
-  // Studio dell'Architetto at x=38 on a 350px phone: 22 characters.
-  const pos = PORTRAIT.stations["studio-dell-architetto"];
-  assert.ok(markerFits(pos, PORTRAIT, 350, 22));
-  // At the landscape's 11px it would not fit on either side.
-  const cx = (pos.x / 100) * 350;
-  const bigReach = 14 / 2 + 9 + labelWidth(LANDSCAPE, 22);
-  assert.ok(cx + bigReach > 350 && cx - bigReach < 0);
-});
-
-test("Terrazza flips on both pictures: the case the flip exists for", () => {
-  assert.equal(flipsLabel(PORTRAIT.stations["terrazza"], PORTRAIT, 8), true);
-  assert.equal(flipsLabel(LANDSCAPE.stations["terrazza"], LANDSCAPE, 8), true);
+test("the right-edge stations flip on both pictures: the case the flip exists for", () => {
+  for (const artwork of [LANDSCAPE, PORTRAIT]) {
+    assert.equal(flipsLabel(artwork.stations["terrazza"], artwork, 8), true);
+    assert.equal(flipsLabel(artwork.stations["studio-dell-architetto"], artwork, 22), true);
+    assert.equal(flipsLabel(artwork.stations["archivio"], artwork, 8), false);
+  }
 });

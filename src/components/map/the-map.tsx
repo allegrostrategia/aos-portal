@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ARTWORKS, LANDSCAPE, PORTRAIT, type MapArtwork } from "@/lib/map/positions";
-import { MAP_LINES, bendFor, spokePath, storyPath, strokeColourFor, yourStoryPoints } from "@/lib/map/lines";
+import { MAP_LINES, bendFor, spokePath, strokeColourFor } from "@/lib/map/lines";
 import { flipsLabel, labelMetrics } from "@/lib/map/markers";
 import { StationDot } from "./station-dot";
 
@@ -26,10 +26,11 @@ import { StationDot } from "./station-dot";
  * photo tiles that preceded them showed eleven pictures at once and read as
  * clutter. Labels flip to the left of their dot where the right would run
  * off the picture; lib/map/markers decides that and tests that every one
- * fits. The Your Story dots keep their size variable; nothing else scales.
+ * fits. Nothing on the marker scales with the picture.
  *
- * Lines: a coloured spoke from the fountain to each station on its line, and
- * the Your Story route along the shore between the harbour and Archivio.
+ * Lines: a coloured spoke from the fountain to each station on its line.
+ * (Your Story ran its own dashed route along the shore on the earlier
+ * pictures; on this one its two stations are plain spokes, Dom, 19 Sep.)
  */
 
 export type MapStation = {
@@ -40,11 +41,6 @@ export type MapStation = {
   /** The station's description, trimmed to a line for the card. */
   description: string | null;
 };
-
-/** The Your Story dots' size: a fraction of the picture, with a floor. */
-function sizes(artwork: MapArtwork): React.CSSProperties {
-  return { "--dot": `max(0.75rem, ${artwork.storyDotPercent}cqw)` } as React.CSSProperties;
-}
 
 /** One line of the description: cut at a word, with an ellipsis, past 80 characters. */
 function oneLine(text: string | null): string | null {
@@ -94,8 +90,6 @@ function MapLayer({
   className: string;
 }) {
   const placed = stations.filter((s) => s.slug in artwork.stations);
-  const storyPoints = yourStoryPoints(artwork);
-  const storyLine = MAP_LINES.find((l) => l.ownRoute);
   const shadowId = `map-line-shadow-${artwork.key}`;
 
   return (
@@ -127,7 +121,7 @@ function MapLayer({
         </defs>
 
         <g filter={`url(#${shadowId})`} opacity={locked ? 0.55 : 1}>
-          {MAP_LINES.filter((line) => !line.ownRoute).map((line) =>
+          {MAP_LINES.map((line) =>
             line.stations.map((slug, index) => {
               const pos = artwork.stations[slug];
               if (!pos) return null;
@@ -145,40 +139,18 @@ function MapLayer({
             }),
           )}
 
-          {storyLine && storyPoints.length > 1 ? (
-            <path
-              d={storyPath(storyPoints)}
-              fill="none"
-              stroke={strokeColourFor(storyLine)}
-              strokeWidth={4}
-              strokeLinecap="round"
-              strokeDasharray="6 4"
-              vectorEffect="non-scaling-stroke"
-              opacity={0.9}
-            />
-          ) : null}
         </g>
 
       </svg>
 
-      {/* The bends on the story line, which the legend calls Your Story
-          Stations: they mark where it touches down, not the stations. HTML
-          rather than SVG circles: the SVG above is stretched to the picture,
-          so a circle in it is an ellipse, tall on the portrait and wide on
-          the landscape. */}
-      {storyPoints.slice(1, -1).map((point) => (
-        <span
-          key={`${point.x}-${point.y}`}
-          aria-hidden
-          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white shadow-md"
-          style={{ ...sizes(artwork), left: `${point.x}%`, top: `${point.y}%`, width: "var(--dot)", height: "var(--dot)", borderColor: "var(--aos-navy)" }}
-        />
-      ))}
-
       {/* The hub and Piazza Sociale: the open square is kept clear of markers,
           so both are labels rather than tiles. */}
-      <PlaceLabel at={artwork.hub} href={locked ? undefined : "/piazza"}>Piazza. Home</PlaceLabel>
-      <PlaceLabel at={artwork.sociale} href={locked ? undefined : "/sociale"}>Piazza Sociale</PlaceLabel>
+      {artwork.placeLabels ? (
+        <>
+          <PlaceLabel at={artwork.hub} href={locked ? undefined : "/piazza"}>Piazza. Home</PlaceLabel>
+          <PlaceLabel at={artwork.sociale} href={locked ? undefined : "/sociale"}>Piazza Sociale</PlaceLabel>
+        </>
+      ) : null}
 
       {placed.map((station) => {
         const pos = artwork.stations[station.slug];
@@ -192,7 +164,7 @@ function MapLayer({
             description={oneLine(station.description)}
             x={pos.x}
             y={pos.y}
-            flip={flipsLabel(pos, artwork, station.name.length)}
+            flip={flipsLabel(pos, artwork, station.name.length, station.slug)}
             cardAbove={pos.y > 62}
             metrics={labelMetrics(artwork)}
             href={locked ? null : `/stations/${station.slug}`}
@@ -211,10 +183,6 @@ function MapLayer({
                 <span className="text-caption whitespace-nowrap text-ink/80">{line.label}</span>
               </li>
             ))}
-            <li className="flex items-center gap-2.5">
-              <span aria-hidden className="block size-2.5 shrink-0 rounded-full border-2 bg-white" style={{ borderColor: "var(--aos-navy)" }} />
-              <span className="text-caption whitespace-nowrap text-ink/80">Your Story Stations</span>
-            </li>
           </ul>
         </div>
       ) : null}

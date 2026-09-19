@@ -26,6 +26,21 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## THE MAP — third artwork, every station its own building — BUILT 19 Sep, awaiting Dom
+
+New `the-map-landscape` (1672×941) and `the-map-portrait` (1086×1448), shipped as JPEG at 85 (~540KB each). One commit, local. No migration.
+
+### What's different about this pair
+The artwork paints every station as a named building: BANCO is the temple, CINEMA has the marquee, the blue awning says GRAND HOTEL RIPOSO, and so on; Piazza Caffè is the striped umbrellas, La Boutique the coloured shopfronts. So each dot sits on its building on each picture, and placement stopped being a judgement. Everything else was rebuilt as before: masks regenerated with each picture's SHA guard, spokes from each picture's fountain, mask and geometry tests run for both, rendered with the real component at 350px and 960px.
+
+### Decided with Dom before building
+- **Your Story is now a plain pair of spokes** (hotel and Archivio, in navy). On this picture both sit on the left above the harbour and the dashed shore route had nowhere to run. The route code, bends, bend dots and the "Your Story Stations" legend entry are gone.
+
+### Found and fixed on the way
+- **The mask generator seeded the flood fill from the hotel's navy awning**, which touches the portrait's left edge and is the sea's colour (RGB 57/105/151 vs 50/120/154). The fill now seeds only from runs of three or more candidate cells along the border: the sea meets the edge in stretches, an awning in one cell. Both masks read right afterwards.
+- **Five label collisions** caught by the overlap test (Banco/Studio on both pictures, Terrazza/Officina, Club/La Boutique, hotel/Officina): dots slid within their buildings. La Boutique's label goes left on the portrait by an explicit per-station override (`labelLeft`), a hand rule beside the geometric one, since the right would fit but meets Terrazza's.
+- **The place labels are off on the portrait** (`placeLabels: false`). At 350px the square is a hundred-pixel patch under six pills and "Piazza. Home" / "Piazza Sociale" landed on one wherever they went; both are a tap away in the bottom bar. The landscape keeps them, with Piazza Caffè's label flipped away from the hub's. The overlap test now includes them where drawn.
+
 ## THE MAP — dots and cards instead of tiles — BUILT and PUSHED 19 Sep; phone check on live pending
 
 Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`. Commit `68e722b`. No migration. Pictures, positions, lines and mask tests untouched in kind; four positions nudged (below). Verified: tsc, lint, build; 220 unit (55 map); rendered with the real component and built CSS at 350px and 960px with a card forced open.

@@ -55,8 +55,13 @@ function reach(artwork: MapArtwork, nameChars: number): number {
   return DOT / 2 + GAP + labelWidth(artwork, nameChars);
 }
 
-/** Whether the label goes to the left of the dot, decided by what fits. */
-export function flipsLabel(pos: MapPosition, artwork: MapArtwork, nameChars: number): boolean {
+/**
+ * Whether the label goes to the left of the dot: by what fits at the
+ * narrowest width, or by the artwork's say-so for a station whose label
+ * would otherwise run into a neighbour's.
+ */
+export function flipsLabel(pos: MapPosition, artwork: MapArtwork, nameChars: number, slug?: string): boolean {
+  if (slug && artwork.labelLeft?.includes(slug)) return true;
   const width = minWidth(artwork);
   const cx = (pos.x / 100) * width;
   const r = reach(artwork, nameChars);
@@ -73,18 +78,18 @@ export type MarkerBox = {
   down: number;
 };
 
-export function markerBox(pos: MapPosition, artwork: MapArtwork, nameChars: number): MarkerBox {
+export function markerBox(pos: MapPosition, artwork: MapArtwork, nameChars: number, slug?: string): MarkerBox {
   const half = DOT / 2 + HALO;
   const r = reach(artwork, nameChars);
-  const flip = flipsLabel(pos, artwork, nameChars);
+  const flip = flipsLabel(pos, artwork, nameChars, slug);
   const v = Math.max(half, labelMetrics(artwork).height / 2);
   return { left: flip ? r : half, right: flip ? half : r, up: v, down: v };
 }
 
 /** True when the dot and its label sit inside the picture at `width` px wide. */
-export function markerFits(pos: MapPosition, artwork: MapArtwork, width: number, nameChars: number): boolean {
+export function markerFits(pos: MapPosition, artwork: MapArtwork, width: number, nameChars: number, slug?: string): boolean {
   const height = width * (artwork.height / artwork.width);
-  const box = markerBox(pos, artwork, nameChars);
+  const box = markerBox(pos, artwork, nameChars, slug);
   const cx = (pos.x / 100) * width;
   const cy = (pos.y / 100) * height;
   return cx - box.left >= 0 && cx + box.right <= width && cy - box.up >= 0 && cy + box.down <= height;

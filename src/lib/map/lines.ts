@@ -1,4 +1,4 @@
-import { LANDSCAPE, type MapArtwork, type MapPosition } from "./positions.ts";
+import { LANDSCAPE, type MapPosition } from "./positions.ts";
 
 /**
  * The coloured lines on La Strada.
@@ -22,19 +22,10 @@ export type MapLine = {
   label: string;
   /** The bucket colour: badges, marker borders, and the legend swatch. */
   colour: string;
-  /**
-   * The drawn line, where it differs from the badge.
-   *
-   * Your Story is the only case: navy badges, because that is the bucket
-   * colour, and a pale line, because a bold navy route along the bottom of the
-   * picture competes with the coloured spokes for something that isn't a route
-   * through the town at all.
-   */
+  /** The drawn line, where it differs from the badge. Unused since 19 Sep. */
   lineColour?: string;
-  /** Ordered. Spokes run hub → station; Your Story runs between its own two. */
+  /** Ordered. Spokes run hub → station. */
   stations: string[];
-  /** Its own path along the bottom rather than spokes from the hub. */
-  ownRoute?: boolean;
 };
 
 export const MAP_LINES: MapLine[] = [
@@ -70,12 +61,13 @@ export const MAP_LINES: MapLine[] = [
     stations: ["la-boutique", "piazza-caffe", "banco-allegro"],
   },
   {
+    // Two plain spokes since 19 Sep (Dom's call for the third artwork): on
+    // that picture the hotel and Archivio are both on the left, above the
+    // harbour, and the dashed shore route between them had nowhere to run.
     key: "your_story",
     label: "Your Story",
     colour: "var(--aos-navy)",
-    lineColour: "var(--aos-off-white)",
     stations: ["grand-hotel-riposo", "archivio"],
-    ownRoute: true,
   },
 ];
 
@@ -132,48 +124,4 @@ export function bendFor(index: number, total: number): number {
   if (total < 2) return 0;
   const step = index - (total - 1) / 2;
   return step * 0.7;
-}
-
-/**
- * The Your Story line: harbour, along the bottom, up to Archivio.
- *
- * Drawn through its waypoints as a smooth chain of curves, so the joins don't
- * kink and the line passes through every bend.
- *
- * It has a route at all because arriving somewhere and keeping what you built
- * there are two ends of the same story. An earlier version drew nothing here on
- * the reasoning that they aren't a route between two places; that was overruled
- * on 4 Sep — the line is the point, and its absence read as an omission.
- */
-export function storyPath(points: Point[]): string {
-  if (points.length < 2) return "";
-  if (points.length === 2) {
-    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
-  }
-
-  // A Catmull-Rom spline through every point, as cubic Béziers. Passes through
-  // each bend exactly, whatever the layout: the earlier Q-then-T chain
-  // mirrored control points and worked only for a run along the bottom of a
-  // picture; on the portrait artwork, whose first leg is vertical, it threw
-  // the last segment out over the sea.
-  const p = (i: number) => points[Math.max(0, Math.min(points.length - 1, i))];
-  const parts = [`M ${points[0].x} ${points[0].y}`];
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = p(i - 1), p1 = p(i), p2 = p(i + 1), p3 = p(i + 2);
-    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-    parts.push(`C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p2.x} ${p2.y}`);
-  }
-  return parts.join(" ");
-}
-
-/** The full Your Story path on an artwork, stations and bends in order. */
-export function yourStoryPoints(artwork: MapArtwork = LANDSCAPE): Point[] {
-  const line = MAP_LINES.find((l) => l.ownRoute);
-  if (!line) return [];
-
-  const [from, to] = line.stations.map((slug) => artwork.stations[slug]);
-  if (!from || !to) return [];
-
-  return [from, ...artwork.storyWaypoints, to];
 }

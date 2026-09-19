@@ -75,16 +75,32 @@ for (let r = 0; r < ROWS; r++) {
   candidate.push(row);
 }
 
-// Only water that reaches the edge of the picture is sea.
+// Only water that reaches the edge of the picture is sea. And only where it
+// reaches the edge in a run of three or more cells: the sea meets the edge
+// along whole stretches, whereas a dark blue awning at the edge (the third
+// portrait's Grand Hotel Riposo, RGB 57/105/151 against the sea's 50/120/154,
+// which no colour rule tells apart) touches it in one.
+const MIN_RUN = 3;
 const sea = candidate.map((row) => row.map(() => false));
 const queue = [];
-for (let r = 0; r < ROWS; r++) {
-  for (let c = 0; c < COLS; c++) {
-    const onBorder = r === 0 || c === 0 || r === ROWS - 1 || c === COLS - 1;
-    if (onBorder && candidate[r][c]) {
-      sea[r][c] = true;
-      queue.push([r, c]);
-    }
+const border = [];
+for (let c = 0; c < COLS; c++) border.push([0, c]);
+for (let r = 1; r < ROWS; r++) border.push([r, COLS - 1]);
+for (let c = COLS - 2; c >= 0; c--) border.push([ROWS - 1, c]);
+for (let r = ROWS - 2; r > 0; r--) border.push([r, 0]);
+for (let i = 0; i < border.length; i++) {
+  const [r, c] = border[i];
+  if (!candidate[r][c]) continue;
+  // Any run of MIN_RUN candidate border cells through this one seeds it.
+  let longest = 0, cur = 0;
+  for (let k = -MIN_RUN + 1; k < MIN_RUN; k++) {
+    const [rr, cc] = border[(i + k + border.length) % border.length];
+    cur = candidate[rr][cc] ? cur + 1 : 0;
+    longest = Math.max(longest, cur);
+  }
+  if (longest >= MIN_RUN) {
+    sea[r][c] = true;
+    queue.push([r, c]);
   }
 }
 while (queue.length) {

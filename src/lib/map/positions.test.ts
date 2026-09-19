@@ -26,8 +26,8 @@ const STATIONS = Object.keys(NAMES);
  * Read off each picture by eye, like the positions themselves.
  */
 const SQUARE = {
-  landscape: { x: [36, 68], y: [26, 70] },
-  portrait: { x: [36, 78], y: [34, 66] },
+  landscape: { x: [44, 60], y: [38, 64] },
+  portrait: { x: [42, 68], y: [40, 64] },
 } as const;
 
 // Every geometric property is checked on both pictures, separately: the
@@ -78,11 +78,20 @@ for (const artwork of ARTWORKS) {
     const width = typicalWidth(artwork);
     const height = width * (artwork.height / artwork.width);
     const rects = Object.entries(stations).map(([slug, pos]) => {
-      const box = markerBox(pos, artwork, NAMES[slug].length);
+      const box = markerBox(pos, artwork, NAMES[slug].length, slug);
       const cx = (pos.x / 100) * width;
       const cy = (pos.y / 100) * height;
       return { slug, l: cx - box.left, r: cx + box.right, t: cy - box.up, b: cy + box.down };
     });
+    // The two place labels, where the picture draws them: ~100px pills,
+    // centred on their point.
+    if (artwork.placeLabels) {
+      for (const [slug, pos, w] of [["Piazza. Home", artwork.hub, 100], ["Piazza Sociale", artwork.sociale, 110]] as const) {
+        const cx = (pos.x / 100) * width;
+        const cy = (pos.y / 100) * height;
+        rects.push({ slug, l: cx - w / 2, r: cx + w / 2, t: cy - 12, b: cy + 12 });
+      }
+    }
     for (let i = 0; i < rects.length; i++) {
       for (let j = i + 1; j < rects.length; j++) {
         const a = rects[i], b = rects[j];
@@ -100,25 +109,7 @@ for (const artwork of ARTWORKS) {
     assert.ok(mapDistance(artwork.hub, artwork.sociale, artwork) > 6, "the two labels collide");
   });
 
-  // The line runs harbour → bends → Archivio low along the shore. If a bend
-  // drifts up into the town the line stops following the road it was drawn on.
-  test(`[${key}] the Your Story bends stay low, between its two stations`, () => {
-    const from = stations["grand-hotel-riposo"];
-    const to = stations["archivio"];
-    for (const bend of artwork.storyWaypoints) {
-      assert.ok(bend.y > from.y, "a bend rose above the harbour end");
-      // A little slack at the harbour end: on the portrait the road drops
-      // straight down from the hotel, so the first bend sits just left of it.
-      assert.ok(bend.x > from.x - 5 && bend.x < to.x, "a bend sits beyond a station");
-    }
-    const lowest = Math.max(...artwork.storyWaypoints.map((b) => b.y));
-    assert.ok(lowest > to.y, "the line never gets below Archivio, so it isn't a shore route");
-  });
 
-  test(`[${key}] the bends run in order, so the line doesn't double back`, () => {
-    const xs = artwork.storyWaypoints.map((p) => p.x);
-    assert.deepEqual(xs, [...xs].sort((a, b) => a - b));
-  });
 
   test(`[${key}] the open piazza in the middle is left clear`, () => {
     const sq = SQUARE[key];

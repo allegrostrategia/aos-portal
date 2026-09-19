@@ -6,9 +6,7 @@ import {
   bendFor,
   lineColourFor,
   spokePath,
-  storyPath,
   strokeColourFor,
-  yourStoryPoints,
 } from "./lines.ts";
 import { ARTWORKS, LANDSCAPE } from "./positions.ts";
 
@@ -86,27 +84,7 @@ test("a line with one station gets no bend — nothing to fan away from", () => 
   assert.equal(bendFor(0, 1), 0);
 });
 
-// Overruled 4 Sep: an earlier version drew nothing here, and the absence read
-// as an omission rather than a decision.
 for (const artwork of ARTWORKS) {
-  test(`[${artwork.key}] Your Story has a route, through its waypoints`, () => {
-    const points = yourStoryPoints(artwork);
-    assert.equal(points.length, 4, "harbour, two bends, Archivio");
-    assert.deepEqual(points[0], artwork.stations["grand-hotel-riposo"]);
-    assert.deepEqual(points[3], artwork.stations["archivio"]);
-
-    const path = storyPath(points);
-    assert.ok(path.startsWith("M "), "it should be a path");
-    // One cubic per leg, each ending exactly on the next point: the line
-    // passes through every bend rather than near it.
-    const legs = path.match(/C [^C]+/g) ?? [];
-    assert.equal(legs.length, 3);
-    legs.forEach((leg, i) => {
-      const p = points[i + 1];
-      assert.ok(leg.trim().endsWith(`${p.x} ${p.y}`), `leg ${i + 1} doesn't end on its bend`);
-    });
-  });
-
   test(`[${artwork.key}] every spoke starts at that picture's hub`, () => {
     for (const [slug, pos] of Object.entries(artwork.stations)) {
       const path = spokePath(pos, 0, artwork.hub);
@@ -115,23 +93,17 @@ for (const artwork of ARTWORKS) {
   });
 }
 
-test("the story line is drawn pale, while its badges stay navy", () => {
-  const story = MAP_LINES.find((l) => l.ownRoute)!;
-  assert.equal(story.colour, "var(--aos-navy)");
-  assert.notEqual(strokeColourFor(story), story.colour);
+// Your Story ran its own dashed route along the shore on the first two
+// pictures. On the third (19 Sep) its two stations sit on the same side of
+// the town above the harbour, and Dom chose plain spokes for them.
+test("Your Story is a plain pair of spokes, drawn in its own navy", () => {
+  const story = MAP_LINES.find((l) => l.key === "your_story")!;
+  assert.deepEqual(story.stations, ["grand-hotel-riposo", "archivio"]);
+  assert.equal(strokeColourFor(story), "var(--aos-navy)");
 });
 
-test("every other line is drawn in its own colour", () => {
-  for (const line of MAP_LINES.filter((l) => !l.ownRoute)) {
+test("every line is drawn in its own colour", () => {
+  for (const line of MAP_LINES) {
     assert.equal(strokeColourFor(line), line.colour, `${line.key} draws off-colour`);
   }
-});
-
-test("only one line has its own route", () => {
-  assert.equal(MAP_LINES.filter((l) => l.ownRoute).length, 1);
-});
-
-test("a path needs at least two points", () => {
-  assert.equal(storyPath([]), "");
-  assert.equal(storyPath([{ x: 1, y: 1 }]), "");
 });

@@ -74,11 +74,4 @@ for (const artwork of ARTWORKS) {
     assert.ok(!isSea(mask, artwork.sociale.x, artwork.sociale.y), "Piazza Sociale is in the sea");
   });
 
-  test(`[${key}] the Your Story bends are on land`, () => {
-    // Each bend draws a visible dot, so a bend in the water is a marker in the
-    // water. The first version's opening bend was off the end of the jetty.
-    for (const bend of artwork.storyWaypoints) {
-      assert.ok(!isSea(mask, bend.x, bend.y), `a Your Story bend at (${bend.x}, ${bend.y}) is in the water`);
-    }
-  });
 }

@@ -5,23 +5,19 @@ import type { LandMask } from "./land-mask.ts";
 /**
  * Where everything sits on The Map: two artworks, two sets of numbers.
  *
- * Since 19 Sep 2026 The Map is drawn from two pictures of the same town: a
- * landscape one (1536×1024) for screens 768px and wider, a portrait one
- * (941×1672) for phones, which then fits the width with no side-scroll. Both
- * show the same square, church, harbour and terraces from different angles,
- * so every station is in the same *place* on each but at different
- * coordinates. Percentages of each picture, placed by eye against it, then
+ * **Third artwork, 19 Sep 2026.** The Map is drawn from two pictures of the
+ * same town: a landscape one (1672×941) for screens 768px and wider, a
+ * portrait one (1086×1448) for phones, which fits the width with no
+ * side-scroll. Unlike the earlier pictures, this pair paints every station as
+ * its own building with its name on it: the temple is BANCO, the marquee
+ * says CINEMA, the blue awning says GRAND HOTEL RIPOSO, and so on. So a dot
+ * goes on its building, on each picture, and "where should this go" stopped
+ * being a judgement. Percentages of each picture, placed against it, then
  * rendered and looked at, then checked by that picture's land mask and the
  * geometry tests. Nothing here is copied from one picture to the other.
  *
- * Three rules shape both layouts:
- *   · nothing on the open square — that's the fountain and the piazza itself,
- *     and Piazza is the daily homepage rather than a station
- *   · the Your Story pair sits low and wide apart — the harbour at one end,
- *     Archivio at the other — so a line can run between them along the shore
- *     road without cutting through anything else
- *   · everything else rings the square, on the buildings and terraces, so a
- *     spoke from the middle has somewhere to land
+ * Two of the eleven have no sign: Piazza Caffè is the striped umbrellas on
+ * the square's left, La Boutique the row of coloured shopfronts behind them.
  */
 
 export type MapPosition = { x: number; y: number };
@@ -38,85 +34,78 @@ export type MapArtwork = {
   /** Chat and the directory, just off the fountain. A label, not a station. */
   sociale: MapPosition;
   stations: Record<string, MapPosition>;
-  /** The bends the Your Story line takes between the harbour and Archivio. */
-  storyWaypoints: MapPosition[];
+  /**
+   * Labels that go on the left of their dot even though the right would
+   * fit: where the right would run into a neighbour's label. The geometric
+   * rule in lib/map/markers handles the picture's edge; this handles the
+   * neighbours, by hand, checked by the overlap test.
+   */
+  labelLeft?: string[];
+  /** Whether the "Piazza. Home" and "Piazza Sociale" labels are drawn. */
+  placeLabels: boolean;
   mask: LandMask;
-  /** The Your Story bend dots' size, as a percentage of the picture's width. */
-  storyDotPercent: number;
 };
 
 export const LANDSCAPE: MapArtwork = {
   key: "landscape",
   file: "the-map-landscape.jpg",
-  width: 1536,
-  height: 1024,
-  hub: { x: 52.5, y: 49 },
-  sociale: { x: 48, y: 62 },
+  width: 1672,
+  height: 941,
+  hub: { x: 49.6, y: 48.4 },
+  sociale: { x: 58, y: 60 },
   stations: {
-    // The arcaded terraces above the marina, bottom left: where a member arrives.
-    "grand-hotel-riposo": { x: 22, y: 73 },
-    // Above the square, either side of the church.
-    "studio-dell-architetto": { x: 31, y: 13 },
-    "cinema-allegro": { x: 71, y: 12 },
-    // The terraces down the right.
-    "officina-vespa": { x: 81, y: 26 },
-    "terrazza": { x: 88, y: 45 },
-    "club-allegro": { x: 79, y: 63 },
-    // The buildings down the left.
-    "piazza-caffe": { x: 24, y: 30 },
-    "banco-allegro": { x: 19, y: 46 },
-    // Up a little from the harbour, so the hotel's name (which sits above
-    // its tile) doesn't run under this tile. Found in a render, not a test.
-    "la-boutique": { x: 31, y: 57 },
-    // The bottom, where the town meets the water.
-    "stazione-centrale": { x: 45, y: 81 },
-    "archivio": { x: 67, y: 88 },
+    "grand-hotel-riposo": { x: 12.9, y: 57.4 },
+    "studio-dell-architetto": { x: 82.8, y: 12.8 },
+    "cinema-allegro": { x: 65.8, y: 30.3 },
+    "officina-vespa": { x: 66.4, y: 52.1 },
+    "terrazza": { x: 86.1, y: 45 },
+    "club-allegro": { x: 26.6, y: 31.9 },
+    "piazza-caffe": { x: 33.5, y: 47.8 },
+    // The temple's columns rather than its pediment: up there its label met
+    // Studio's, which reaches left from the right edge.
+    "banco-allegro": { x: 55.6, y: 22 },
+    "la-boutique": { x: 44, y: 34 },
+    "stazione-centrale": { x: 38.9, y: 73.3 },
+    "archivio": { x: 24.8, y: 17 },
   },
-  storyWaypoints: [
-    // On the harbour road. (30, 89) looked like the quay's edge in a render
-    // and was water by the mask: the same mistake as the first artwork's.
-    { x: 33, y: 88 },
-    { x: 50, y: 94 },
-  ],
+  // Piazza Caffè is right beside the fountain; its label goes left so it
+  // doesn't sit on the "Piazza. Home" label.
+  labelLeft: ["piazza-caffe"],
+  placeLabels: true,
   mask: LANDSCAPE_MASK,
-  storyDotPercent: 1.3,
 };
 
 export const PORTRAIT: MapArtwork = {
   key: "portrait",
   file: "the-map-portrait.jpg",
-  width: 941,
-  height: 1672,
-  hub: { x: 57, y: 48 },
-  sociale: { x: 56, y: 62 },
+  width: 1086,
+  height: 1448,
+  hub: { x: 52.5, y: 48.3 },
+  sociale: { x: 57, y: 56.6 },
   stations: {
-    // In from the edges enough that the names fit on a 320px phone: the fit
-    // test found Officina, Terrazza and the hotel poking out at 280px wide.
-    "grand-hotel-riposo": { x: 22, y: 69 },
-    "studio-dell-architetto": { x: 38, y: 13 },
-    // A row below Studio: with pill labels, Studio's reaches right and
-    // Cinema's left, and at the same height they met in the middle.
-    "cinema-allegro": { x: 78, y: 18 },
-    // And a row above Piazza Caffè, whose label reaches under it otherwise.
-    "officina-vespa": { x: 81, y: 26 },
-    "terrazza": { x: 87, y: 46 },
-    "club-allegro": { x: 82, y: 62 },
-    "piazza-caffe": { x: 24, y: 31 },
-    "banco-allegro": { x: 18, y: 46 },
-    "la-boutique": { x: 35, y: 57 },
-    "stazione-centrale": { x: 48, y: 74 },
-    "archivio": { x: 70, y: 80 },
+    "grand-hotel-riposo": { x: 14.7, y: 62 },
+    "studio-dell-architetto": { x: 86.1, y: 14.2 },
+    "cinema-allegro": { x: 72.7, y: 26 },
+    "officina-vespa": { x: 75, y: 53.5 },
+    "terrazza": { x: 88.4, y: 40.7 },
+    "club-allegro": { x: 14.7, y: 34 },
+    "piazza-caffe": { x: 31.3, y: 47 },
+    "banco-allegro": { x: 57.6, y: 20 },
+    // The shopfronts' awnings rather than their roofs, clear of Club Allegro's
+    // label reaching in from the left edge.
+    "la-boutique": { x: 40, y: 41 },
+    "stazione-centrale": { x: 55.2, y: 68.4 },
+    "archivio": { x: 24.9, y: 20 },
   },
-  storyWaypoints: [
-    // Down the harbour road, then across the houses at the foot of the town.
-    // The first version's second bend was on the rocks at the water's edge,
-    // and the curve after it swung out over the sea.
-    { x: 21, y: 78 },
-    { x: 50, y: 83 },
-  ],
+  // At phone width six labels share the band from 20% to 50% down. La
+  // Boutique's goes left so it doesn't meet Terrazza's coming the other way.
+  labelLeft: ["la-boutique"],
+  // No "Piazza. Home" / "Piazza Sociale" labels on the phone: at 350px the
+  // square is a hundred-pixel patch under six station pills and the two
+  // labels land on one of them wherever they go. Both places are a tap away
+  // in the bottom bar. The spokes still meet at the fountain.
+  placeLabels: false,
   mask: PORTRAIT_MASK,
-  // Shown at phone width, so the bend dots take a bigger share of it.
-  storyDotPercent: 2.1,
 };
 
 export const ARTWORKS: MapArtwork[] = [LANDSCAPE, PORTRAIT];
