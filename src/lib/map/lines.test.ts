@@ -10,7 +10,11 @@ import {
   strokeColourFor,
   yourStoryPoints,
 } from "./lines.ts";
-import { PIAZZA_HUB, STATION_POSITIONS } from "./positions.ts";
+import { ARTWORKS, LANDSCAPE } from "./positions.ts";
+
+// Line membership is the same on both pictures; the coordinates are not.
+const STATION_POSITIONS = LANDSCAPE.stations;
+const PIAZZA_HUB = LANDSCAPE.hub;
 
 test("every station is on exactly one line", () => {
   for (const slug of Object.keys(STATION_POSITIONS)) {
@@ -84,16 +88,32 @@ test("a line with one station gets no bend — nothing to fan away from", () => 
 
 // Overruled 4 Sep: an earlier version drew nothing here, and the absence read
 // as an omission rather than a decision.
-test("Your Story has a route, through its waypoints", () => {
-  const points = yourStoryPoints();
-  assert.equal(points.length, 4, "harbour, two bends, Archivio");
-  assert.deepEqual(points[0], STATION_POSITIONS["grand-hotel-riposo"]);
-  assert.deepEqual(points[3], STATION_POSITIONS["archivio"]);
+for (const artwork of ARTWORKS) {
+  test(`[${artwork.key}] Your Story has a route, through its waypoints`, () => {
+    const points = yourStoryPoints(artwork);
+    assert.equal(points.length, 4, "harbour, two bends, Archivio");
+    assert.deepEqual(points[0], artwork.stations["grand-hotel-riposo"]);
+    assert.deepEqual(points[3], artwork.stations["archivio"]);
 
-  const path = storyPath(points);
-  assert.ok(path.startsWith("M "), "it should be a path");
-  assert.equal((path.match(/T /g) ?? []).length, 2, "the later bends continue smoothly");
-});
+    const path = storyPath(points);
+    assert.ok(path.startsWith("M "), "it should be a path");
+    // One cubic per leg, each ending exactly on the next point: the line
+    // passes through every bend rather than near it.
+    const legs = path.match(/C [^C]+/g) ?? [];
+    assert.equal(legs.length, 3);
+    legs.forEach((leg, i) => {
+      const p = points[i + 1];
+      assert.ok(leg.trim().endsWith(`${p.x} ${p.y}`), `leg ${i + 1} doesn't end on its bend`);
+    });
+  });
+
+  test(`[${artwork.key}] every spoke starts at that picture's hub`, () => {
+    for (const [slug, pos] of Object.entries(artwork.stations)) {
+      const path = spokePath(pos, 0, artwork.hub);
+      assert.ok(path.startsWith(`M ${artwork.hub.x} ${artwork.hub.y}`), `${slug}'s spoke doesn't leave the fountain`);
+    }
+  });
+}
 
 test("the story line is drawn pale, while its badges stay navy", () => {
   const story = MAP_LINES.find((l) => l.ownRoute)!;

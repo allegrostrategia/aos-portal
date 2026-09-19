@@ -26,6 +26,23 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## THE MAP — rebuilt on two pictures — BUILT 19 Sep, awaiting Dom
+
+Two new artworks replace the single 16:9 one: `the-map-landscape.jpg` (1536×1024, screens 768px and wider) and `the-map-portrait.jpg` (941×1672, phones, full width, no side-scroll). Both shipped as JPEG at 85 (540KB each; the PNGs were 3.9MB and 3.6MB). Decisions confirmed with Dom before building: `md` breakpoint, JPEG, bigger tiles on the portrait (14% of width, 3rem floor).
+
+### What was rebuilt, per picture
+- **Positions**: eleven stations, the hub, the Sociale label and the two Your Story bends, placed by eye against each picture, then rendered and looked at (the real component with the built CSS, at 350px and 960px), then checked by that picture's land mask and the geometry tests. Nothing copied between pictures.
+- **Land masks**: `scripts/build-map-mask.mjs landscape|portrait` → `src/lib/map/masks/*.ts`, each with its picture's SHA guard. The colour rule changed from a teal ratio to blue dominance (`B > R + 25, B ≥ G, G > R`): the portrait's horizon haze (R131 G165 B192) failed the old rule and read as land. The flood fill from the picture's edge still decides.
+- **Lines**: spokes from each picture's hub; the Your Story route is now a Catmull-Rom spline through its bends. The old Q-then-T chain mirrored control points and only worked for a run along the bottom; on the portrait, whose first leg is vertical, it threw the last segment out over the sea. The bend dots are HTML, not SVG circles, because the stretched SVG made them ellipses.
+- **Tests**: every geometry and mask test runs for both artworks (52 map tests). They caught, on the landscape, a bend in the water and two tiles too close; on the portrait, three names off the right edge at 320px. The name-below-tile flip is now decided by geometry per picture, not a threshold: on these taller pictures nothing needs to flip.
+- **Component**: `the-map.tsx`, `TheMap`, server-rendered: both layers in the HTML, one hidden per breakpoint in CSS, so the right map is there on first paint. The side-scrolling, dragging and keyboard-panning the old picture needed are gone; neither picture overflows.
+
+### Found only by rendering
+Names running under neighbouring tiles (the hotel's under La Boutique on both pictures, La Boutique's under Banco Allegro, the Sociale label over La Boutique), which no test sees: fixed by moving things, and the fit test's phone case widened to 320px. Worth keeping the scratch render around for the next time.
+
+### Go-live
+No migration. Walk through on a phone and a laptop; push.
+
 ## LA STRADA — the roadmap page — BUILT and PUSHED 18 Sep after Dom's walkthrough
 
 Brief: `docs/aOS_LaStrada_Roadmap_Brief.md`; mockup: `docs/aOS_Roadmap_Mockup.html`. Commits `4bae1d3` (the rename), `6a0696e` (the page), `8180061` (the start button reports its error). Migration `20260918120000_la_strada` applied. **Walked through by Dom: publish flow, ticks both ways, off-the-itinerary note, the real week count in the hero, all confirmed.** Verified: tsc, lint, build clean; **196 unit / 272 schema / 126 action**; ids, done-precedence, the publish guard and the notes policy mutation-checked. **Not yet seen rendered**: the page needs a signed-in session, so the first look is Dom's walkthrough.

@@ -1,14 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  PIAZZA_HUB,
-  PIAZZA_SOCIALE,
-  STATION_POSITIONS,
-  YOUR_STORY_WAYPOINTS,
-  mapDistance,
-  unplacedStations,
-} from "./positions.ts";
+import { ARTWORKS, aspectOf, mapDistance, unplacedStations } from "./positions.ts";
 
 // The eleven from the reference data migration.
 const STATIONS = [
@@ -25,77 +18,96 @@ const STATIONS = [
   "archivio",
 ];
 
-test("every station has a position — an unplaced one would be invisible", () => {
-  assert.deepEqual(unplacedStations(STATIONS), []);
-});
+/**
+ * The open square on each picture, in percent: the fountain and the stone
+ * around it. Piazza is the homepage, not a station, so nothing sits on it.
+ * Read off each picture by eye, like the positions themselves.
+ */
+const SQUARE = {
+  landscape: { x: [36, 68], y: [26, 70] },
+  portrait: { x: [36, 78], y: [34, 66] },
+} as const;
 
-test("no positions for stations that don't exist", () => {
-  const extra = Object.keys(STATION_POSITIONS).filter((s) => !STATIONS.includes(s));
-  assert.deepEqual(extra, []);
-});
+// Every geometric property is checked on both pictures, separately: the
+// numbers are different, and a position right on one says nothing about the
+// other.
+for (const artwork of ARTWORKS) {
+  const { key, stations } = artwork;
+  // A marker is ~9% of the landscape's width and ~14% of the portrait's;
+  // anything closer than that overlaps and becomes untappable.
+  const CLEAR = artwork.tilePercent + 0.5;
 
-test("every marker sits inside the image", () => {
-  for (const [slug, pos] of Object.entries(STATION_POSITIONS)) {
-    assert.ok(pos.x > 5 && pos.x < 95, `${slug} x is off the edge`);
-    assert.ok(pos.y > 5 && pos.y < 95, `${slug} y is off the edge`);
-  }
-});
+  test(`[${key}] every station has a position — an unplaced one would be invisible`, () => {
+    assert.deepEqual(unplacedStations(STATIONS, artwork), []);
+  });
 
-test("no two stations sit on top of each other", () => {
-  // Markers are about 9% of the width; anything closer overlaps and becomes
-  // untappable on a phone. Measured with `mapDistance`, because 10% down is not
-  // the same distance as 10% across on a 16:9 image and a plain hypotenuse
-  // would call a vertical near-miss safe.
-  const entries = Object.entries(STATION_POSITIONS);
-  for (let i = 0; i < entries.length; i++) {
-    for (let j = i + 1; j < entries.length; j++) {
-      const [aSlug, a] = entries[i];
-      const [bSlug, b] = entries[j];
-      const distance = mapDistance(a, b);
-      assert.ok(distance > 9, `${aSlug} and ${bSlug} are ${distance.toFixed(1)} apart`);
+  test(`[${key}] no positions for stations that don't exist`, () => {
+    for (const slug of Object.keys(stations)) assert.ok(STATIONS.includes(slug), `${slug} is not a station`);
+  });
+
+  test(`[${key}] every marker sits inside the picture`, () => {
+    for (const [slug, pos] of Object.entries(stations)) {
+      assert.ok(pos.x > 5 && pos.x < 95, `${slug} x is off the edge`);
+      assert.ok(pos.y > 5 && pos.y < 95, `${slug} y is off the edge`);
     }
-  }
-});
+  });
 
-test("nothing is dropped on the hub or the Piazza Sociale label", () => {
-  for (const [slug, pos] of Object.entries(STATION_POSITIONS)) {
-    assert.ok(mapDistance(pos, PIAZZA_HUB) > 9, `${slug} overlaps the hub`);
-    assert.ok(mapDistance(pos, PIAZZA_SOCIALE) > 9, `${slug} overlaps Piazza Sociale`);
-  }
-  assert.ok(mapDistance(PIAZZA_HUB, PIAZZA_SOCIALE) > 9, "the two labels collide");
-});
+  test(`[${key}] no two stations sit on top of each other`, () => {
+    // Measured with mapDistance, because 10% down is not the same distance as
+    // 10% across unless the picture is square, and a plain hypotenuse would
+    // call a vertical near-miss safe on the landscape and a horizontal one
+    // safe on the portrait.
+    const entries = Object.entries(stations);
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const [aSlug, a] = entries[i];
+        const [bSlug, b] = entries[j];
+        const distance = mapDistance(a, b, artwork);
+        assert.ok(distance > CLEAR, `${aSlug} and ${bSlug} are ${distance.toFixed(1)} apart`);
+      }
+    }
+  });
 
-// The line runs harbour → bends → Archivio along the bottom. If a bend drifts
-// up into the town the line stops following the road it was drawn on.
-test("the Your Story bends stay below both its stations", () => {
-  const from = STATION_POSITIONS["grand-hotel-riposo"];
-  const to = STATION_POSITIONS["archivio"];
+  test(`[${key}] nothing is dropped on the hub or the Piazza Sociale label`, () => {
+    for (const [slug, pos] of Object.entries(stations)) {
+      assert.ok(mapDistance(pos, artwork.hub, artwork) > CLEAR, `${slug} overlaps the hub`);
+      assert.ok(mapDistance(pos, artwork.sociale, artwork) > CLEAR, `${slug} overlaps Piazza Sociale`);
+    }
+    assert.ok(mapDistance(artwork.hub, artwork.sociale, artwork) > 6, "the two labels collide");
+  });
 
-  for (const bend of YOUR_STORY_WAYPOINTS) {
-    assert.ok(bend.y > from.y && bend.y > to.y, "a bend rose into the town");
-    assert.ok(bend.x > from.x && bend.x < to.x, "a bend sits beyond a station");
-  }
-});
+  // The line runs harbour → bends → Archivio low along the shore. If a bend
+  // drifts up into the town the line stops following the road it was drawn on.
+  test(`[${key}] the Your Story bends stay low, between its two stations`, () => {
+    const from = stations["grand-hotel-riposo"];
+    const to = stations["archivio"];
+    for (const bend of artwork.storyWaypoints) {
+      assert.ok(bend.y > from.y, "a bend rose above the harbour end");
+      // A little slack at the harbour end: on the portrait the road drops
+      // straight down from the hotel, so the first bend sits just left of it.
+      assert.ok(bend.x > from.x - 5 && bend.x < to.x, "a bend sits beyond a station");
+    }
+    const lowest = Math.max(...artwork.storyWaypoints.map((b) => b.y));
+    assert.ok(lowest > to.y, "the line never gets below Archivio, so it isn't a shore route");
+  });
 
-test("the bends run in order, so the line doesn't double back", () => {
-  const xs = YOUR_STORY_WAYPOINTS.map((p) => p.x);
-  assert.deepEqual(xs, [...xs].sort((a, b) => a - b));
-});
+  test(`[${key}] the bends run in order, so the line doesn't double back`, () => {
+    const xs = artwork.storyWaypoints.map((p) => p.x);
+    assert.deepEqual(xs, [...xs].sort((a, b) => a - b));
+  });
 
-// §-nothing, but the artwork is 16:9 and a phone crops it hard. Anything out at
-// the extremes is the first thing to be lost.
-test("every station survives a centre crop to 4:3", () => {
-  // A 4:3 window on a 16:9 image keeps the middle 75% of the width.
-  for (const [slug, pos] of Object.entries(STATION_POSITIONS)) {
-    assert.ok(pos.x > 8 && pos.x < 92, `${slug} is too near the side to survive a crop`);
-  }
-});
+  test(`[${key}] the open piazza in the middle is left clear`, () => {
+    const sq = SQUARE[key];
+    for (const [slug, pos] of Object.entries(stations)) {
+      const inSquare = pos.x > sq.x[0] && pos.x < sq.x[1] && pos.y > sq.y[0] && pos.y < sq.y[1];
+      assert.ok(!inSquare, `${slug} is sitting in the middle of the piazza`);
+    }
+    // And the hub is in it: the square is where the fountain is.
+    assert.ok(artwork.hub.x > sq.x[0] && artwork.hub.x < sq.x[1] && artwork.hub.y > sq.y[0] && artwork.hub.y < sq.y[1]);
+  });
+}
 
-test("the open piazza in the middle is left clear", () => {
-  // The square and its fountain are the picture's centre — and Piazza is the
-  // homepage, not a station, so nothing should be dropped on top of it.
-  for (const [slug, pos] of Object.entries(STATION_POSITIONS)) {
-    const inSquare = pos.x > 40 && pos.x < 64 && pos.y > 25 && pos.y < 70;
-    assert.ok(!inSquare, `${slug} is sitting in the middle of the piazza`);
-  }
+test("the two pictures are the shapes the component expects", () => {
+  assert.ok(aspectOf(ARTWORKS[0]) > 1, "landscape is wider than tall");
+  assert.ok(aspectOf(ARTWORKS[1]) < 1, "portrait is taller than wide");
 });

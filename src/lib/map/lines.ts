@@ -1,9 +1,4 @@
-import {
-  PIAZZA_HUB,
-  STATION_POSITIONS,
-  YOUR_STORY_WAYPOINTS,
-  type MapPosition,
-} from "./positions.ts";
+import { LANDSCAPE, type MapArtwork, type MapPosition } from "./positions.ts";
 
 /**
  * The coloured lines on La Strada.
@@ -108,7 +103,7 @@ export type Point = MapPosition;
  * nearly the same direction can be curved apart rather than laid on top of each
  * other. Deterministic — the same station always bends the same way.
  */
-export function spokePath(station: Point, bend: number, hub: Point = PIAZZA_HUB): string {
+export function spokePath(station: Point, bend: number, hub: Point = LANDSCAPE.hub): string {
   const dx = station.x - hub.x;
   const dy = station.y - hub.y;
   const length = Math.hypot(dx, dy);
@@ -142,8 +137,8 @@ export function bendFor(index: number, total: number): number {
 /**
  * The Your Story line: harbour, along the bottom, up to Archivio.
  *
- * Drawn through its waypoints as a smooth chain — `Q` for the first bend, then
- * `T` to continue with the mirrored control point, so the joins don't kink.
+ * Drawn through its waypoints as a smooth chain of curves, so the joins don't
+ * kink and the line passes through every bend.
  *
  * It has a route at all because arriving somewhere and keeping what you built
  * there are two ends of the same story. An earlier version drew nothing here on
@@ -152,31 +147,33 @@ export function bendFor(index: number, total: number): number {
  */
 export function storyPath(points: Point[]): string {
   if (points.length < 2) return "";
-
-  const [start, ...rest] = points;
-  if (rest.length === 1) {
-    return `M ${start.x} ${start.y} L ${rest[0].x} ${rest[0].y}`;
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
   }
 
-  // Control point for the first curve: pulled below the first bend so the line
-  // leaves the harbour heading along the shore rather than cutting inland.
-  const [first, ...others] = rest;
-  const control = { x: (start.x + first.x) / 2, y: Math.max(start.y, first.y) + 2 };
-
-  return [
-    `M ${start.x} ${start.y}`,
-    `Q ${control.x} ${control.y} ${first.x} ${first.y}`,
-    ...others.map((p) => `T ${p.x} ${p.y}`),
-  ].join(" ");
+  // A Catmull-Rom spline through every point, as cubic Béziers. Passes through
+  // each bend exactly, whatever the layout: the earlier Q-then-T chain
+  // mirrored control points and worked only for a run along the bottom of a
+  // picture; on the portrait artwork, whose first leg is vertical, it threw
+  // the last segment out over the sea.
+  const p = (i: number) => points[Math.max(0, Math.min(points.length - 1, i))];
+  const parts = [`M ${points[0].x} ${points[0].y}`];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = p(i - 1), p1 = p(i), p2 = p(i + 1), p3 = p(i + 2);
+    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+    parts.push(`C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p2.x} ${p2.y}`);
+  }
+  return parts.join(" ");
 }
 
-/** The full Your Story path, stations and bends in order. */
-export function yourStoryPoints(): Point[] {
+/** The full Your Story path on an artwork, stations and bends in order. */
+export function yourStoryPoints(artwork: MapArtwork = LANDSCAPE): Point[] {
   const line = MAP_LINES.find((l) => l.ownRoute);
   if (!line) return [];
 
-  const [from, to] = line.stations.map((slug) => STATION_POSITIONS[slug]);
+  const [from, to] = line.stations.map((slug) => artwork.stations[slug]);
   if (!from || !to) return [];
 
-  return [from, ...YOUR_STORY_WAYPOINTS, to];
+  return [from, ...artwork.storyWaypoints, to];
 }

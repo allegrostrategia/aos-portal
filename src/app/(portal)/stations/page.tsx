@@ -6,7 +6,7 @@ import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { stationCategory } from "@/lib/stations/categories";
 import { Card, NumberedRow, PageHeader } from "@/components/ui/card";
-import { LaStradaMap } from "@/components/map/la-strada-map";
+import { TheMap } from "@/components/map/the-map";
 
 export const metadata: Metadata = {
   title: "The Map · aOS",
@@ -93,7 +93,7 @@ export default async function StationsPage({
           </ol>
         </Card>
       ) : (
-        <LaStradaMap
+        <TheMap
           locked={!isActive}
           stations={stations.map((station) => ({
             slug: station.slug,
