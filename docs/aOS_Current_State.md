@@ -26,7 +26,7 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE MAP — rebuilt on two pictures — BUILT 19 Sep, awaiting Dom
+## THE MAP — rebuilt on two pictures — BUILT and PUSHED 19 Sep; desktop confirmed by Dom, phone check on live pending
 
 Two new artworks replace the single 16:9 one: `the-map-landscape.jpg` (1536×1024, screens 768px and wider) and `the-map-portrait.jpg` (941×1672, phones, full width, no side-scroll). Both shipped as JPEG at 85 (540KB each; the PNGs were 3.9MB and 3.6MB). Decisions confirmed with Dom before building: `md` breakpoint, JPEG, bigger tiles on the portrait (14% of width, 3rem floor).
 
@@ -41,7 +41,7 @@ Two new artworks replace the single 16:9 one: `the-map-landscape.jpg` (1536×102
 Names running under neighbouring tiles (the hotel's under La Boutique on both pictures, La Boutique's under Banco Allegro, the Sociale label over La Boutique), which no test sees: fixed by moving things, and the fit test's phone case widened to 320px. Worth keeping the scratch render around for the next time.
 
 ### Go-live
-No migration. Walk through on a phone and a laptop; push.
+No migration. Desktop confirmed locally (a laptop briefly showed the portrait; the served CSS was verified correct and it did not recur). **Phone check on the live site still to do** (local network trouble, unrelated).
 
 ## LA STRADA — the roadmap page — BUILT and PUSHED 18 Sep after Dom's walkthrough
 
