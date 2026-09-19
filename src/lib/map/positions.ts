@@ -71,7 +71,8 @@ export const LANDSCAPE: MapArtwork = {
     // The temple's columns; the label goes left of the building (below).
     "banco-allegro": { x: 55.6, y: 24 },
     "la-boutique": { x: 44, y: 34 },
-    "stazione-centrale": { x: 38.9, y: 73.3 },
+    // On the roof, above the STAZIONE sign rather than across it (Dom, 19 Sep).
+    "stazione-centrale": { x: 38.9, y: 68 },
     // The building's right edge, so the label sits beside it, not on it.
     "archivio": { x: 30, y: 18 },
   },
