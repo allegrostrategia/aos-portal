@@ -59,7 +59,8 @@ export const LANDSCAPE: MapArtwork = {
     // The building's left edge, a little above it, so the label (which
     // reaches left) sits beside the building rather than across it.
     "studio-dell-architetto": { x: 78, y: 9 },
-    "cinema-allegro": { x: 65.8, y: 30.3 },
+    // The cinema's right edge, so the label sits beside it (Dom, 19 Sep).
+    "cinema-allegro": { x: 73, y: 30 },
     // Down on the road between the trees below the workshop.
     "officina-vespa": { x: 66.4, y: 60 },
     "terrazza": { x: 86.1, y: 45 },
