@@ -93,23 +93,31 @@ export const PORTRAIT: MapArtwork = {
   hub: { x: 52.5, y: 48.3 },
   sociale: { x: 57, y: 56.6 },
   stations: {
-    "grand-hotel-riposo": { x: 14.7, y: 62 },
-    "studio-dell-architetto": { x: 86.1, y: 14.2 },
+    // Below the awning, and a little lower than that so its label clears
+    // Stazione's, which now reaches right from the roof above.
+    "grand-hotel-riposo": { x: 14.7, y: 69 },
+    // Up on the roof, clear of Banco's label (Dom, 20 Sep).
+    "studio-dell-architetto": { x: 86.1, y: 8 },
     "cinema-allegro": { x: 72.7, y: 26 },
     "officina-vespa": { x: 75, y: 53.5 },
     "terrazza": { x: 88.4, y: 40.7 },
     "club-allegro": { x: 14.7, y: 34 },
     "piazza-caffe": { x: 31.3, y: 47 },
-    "banco-allegro": { x: 57.6, y: 20 },
+    // The temple's roof; the label goes left (Dom, 20 Sep).
+    "banco-allegro": { x: 57.6, y: 14 },
     // The shopfronts' awnings rather than their roofs, clear of Club Allegro's
     // label reaching in from the left edge.
     "la-boutique": { x: 40, y: 41 },
-    "stazione-centrale": { x: 55.2, y: 68.4 },
-    "archivio": { x: 24.9, y: 20 },
+    // On the roof, and far enough left that the label fits on the right
+    // at 375px, which is what puts it there (Dom, 20 Sep).
+    "stazione-centrale": { x: 50, y: 63 },
+    // Just under the door, at its right jamb: one percent further left and
+    // the label (which goes left) would run off a 375px phone.
+    "archivio": { x: 28, y: 24.5 },
   },
   // At phone width six labels share the band from 20% to 50% down. La
   // Boutique's goes left so it doesn't meet Terrazza's coming the other way.
-  labelLeft: ["la-boutique"],
+  labelLeft: ["la-boutique", "banco-allegro", "archivio"],
   // No "Piazza. Home" / "Piazza Sociale" labels on the phone: at 350px the
   // square is a hundred-pixel patch under six station pills and the two
   // labels land on one of them wherever they go. Both places are a tap away

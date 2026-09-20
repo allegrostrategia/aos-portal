@@ -27,7 +27,8 @@ const STATIONS = Object.keys(NAMES);
  */
 const SQUARE = {
   landscape: { x: [44, 60], y: [38, 64] },
-  portrait: { x: [42, 68], y: [40, 64] },
+  // The square's foot on the portrait is the station's roofline, ~62%.
+  portrait: { x: [42, 68], y: [40, 61] },
 } as const;
 
 // Every geometric property is checked on both pictures, separately: the
