@@ -45,6 +45,10 @@ The artwork paints every station as a named building: BANCO is the temple, CINEM
 - **Five label collisions** caught by the overlap test (Banco/Studio on both pictures, Terrazza/Officina, Club/La Boutique, hotel/Officina): dots slid within their buildings. La Boutique's label goes left on the portrait by an explicit per-station override (`labelLeft`), a hand rule beside the geometric one, since the right would fit but meets Terrazza's.
 - **The place labels are off on the portrait** (`placeLabels: false`). At 350px the square is a hundred-pixel patch under six pills and "Piazza. Home" / "Piazza Sociale" landed on one wherever they went; both are a tap away in the bottom bar. The landscape keeps them, with Piazza Caffè's label flipped away from the hub's. The overlap test now includes them where drawn.
 
+## BRAND — the real logo — 20 Sep, awaiting Dom
+
+Dom's final files in `public/brand/`: the lemon-O "aOS" mark, blush on orange for the icons (`icon-192`, `icon-512`, `apple-touch-icon`, `favicon.ico`, plus `aos-icon-master.svg` as the source), and `aos-header-logo.png`, the orange letterforms on transparent, for the header. The icon files keep their names, so the manifest and the layout's `icons` metadata needed no change. The favicon Next serves is `src/app/favicon.ico` (copied from the brand folder; RGBA PNG-in-ICO, which Turbopack accepts). The header shows `aos-header.png`: the master trimmed to its letterforms (they sit in a 793×378 box on a 1000×1000 canvas, which at header height would be a 10px logo) and resized to 600px wide, twice its largest display. The two traced/extracted SVGs from before are gone. Theme colour stays navy.
+
 ## THE MAP — dots and cards instead of tiles — BUILT and PUSHED 19 Sep; phone check on live pending
 
 Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`. Commit `68e722b`. No migration. Pictures, positions, lines and mask tests untouched in kind; four positions nudged (below). Verified: tsc, lint, build; 220 unit (55 map); rendered with the real component and built CSS at 350px and 960px with a card forced open.

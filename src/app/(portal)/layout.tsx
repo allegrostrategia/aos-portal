@@ -63,10 +63,13 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
           and without this the printed page carries the whole navigation with
           it. `print:hidden` on each piece rather than one wrapper, because the
           content sits between them in the DOM. */}
-      {/* The mark, in the reference's orange: the home-screen icon's own
-          letterforms, outlined, without the square (round 4, item 2). Sign-out
-          moved to the You screen, where the reference keeps it; the header
-          carries only the mark and, on desktop, who is signed in.
+      {/* The real logo (20 Sep): the lemon-O letterforms in orange, from
+          public/brand/aos-header-logo.png, the transparent master. Served as
+          aos-header.png, the same picture trimmed to the letterforms (the
+          master has them in a 793×378 box on a 1000×1000 canvas, which at
+          28px tall would be a 10px logo) and resized to 600px wide, twice
+          the largest it is shown. Sign-out is on the You screen; the header
+          carries only the logo and, on desktop, who is signed in.
 
           Padded for the status bar. The viewport is `cover` and the status
           bar translucent, so on an iPhone the page runs under the clock; the
@@ -75,10 +78,10 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
       <header className="print:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pt-4 pb-1 sm:pt-5">
           <Link href="/piazza" className="block" aria-label="aOS. Piazza">
-            {/* A plain img: the SVG is 2KB and a static file, and next/image
-                would only add a request for the optimiser to say no. */}
+            {/* A plain img with its size declared, so the header never
+                reflows while it loads. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/aos-mark.svg" alt="" className="h-6 w-auto sm:h-7" />
+            <img src="/brand/aos-header.png" alt="" width={600} height={286} className="h-7 w-auto sm:h-8" />
           </Link>
 
           <span className="hidden text-eyebrow font-medium uppercase text-ink/50 lg:inline">
