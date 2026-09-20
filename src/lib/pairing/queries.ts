@@ -66,7 +66,7 @@ export async function getMyPairing(
 export async function getMyAvailability(
   memberId: string,
   month: string,
-): Promise<{ slots: SlotId[]; submitted: boolean }> {
+): Promise<{ slots: SlotId[]; submitted: boolean; submittedAt: string | null }> {
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -83,6 +83,7 @@ export async function getMyAvailability(
   return {
     slots: readSlots(row?.availability, month),
     submitted: Boolean(row?.submitted_at),
+    submittedAt: row?.submitted_at ?? null,
   };
 }
 

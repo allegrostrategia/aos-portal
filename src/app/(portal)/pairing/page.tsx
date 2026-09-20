@@ -201,12 +201,13 @@ export default async function PairingPage() {
 
       <SectionTitle aside={formatCalendarMonth(month)}>When could you talk?</SectionTitle>
       <Card>
-        {/* Keyed on what's saved: React 19 resets a form's DOM when its action
-            completes, which briefly unticks a controlled checkbox until the
-            next render — so the form is remounted from the fresh server props
-            instead, and what's shown after a save is what was saved. */}
+        {/* Keyed on the save itself: React 19 resets a form's DOM when its
+            action completes, which briefly unticks a controlled checkbox until
+            the next render — so the form is remounted from the fresh server
+            props on every save (the timestamp moves even when the picks
+            don't), and what's shown after a save is what was saved. */}
         <AvailabilityForm
-          key={availability.slots.join("|")}
+          key={availability.submittedAt ?? "unsaved"}
           month={month}
           selected={availability.slots}
           today={today}
