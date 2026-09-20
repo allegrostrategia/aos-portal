@@ -26,9 +26,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## PEER PAIRING — real dates and times, overlap told on the second pick — BUILT 20 Sep, awaiting Dom; `db:push` pending
+## PEER PAIRING — real dates and times, overlap told on the second pick — BUILT and PUSHED 20 Sep; both migrations applied live
 
-Brief: `docs/aOS_Peer_Pairing_Date_Availability_Brief.md`. A deliberate reversal of tested behaviour, treated like the ledger change: the weekday × part-of-day grid ("tue-pm") is gone, not kept alongside. Migration `20260921100000_pairing_date_slots.sql`. Verified: tsc, lint, build; 209 unit / 274 schema / 133 action; mutation checks on the once-only guard (removing it fails two tests) and on the service-role guard (below); the form rendered at 350px and 640px with the built CSS.
+Commits `23ce953`, `05fda70`; `20260921090000` and `20260921100000` applied via `db:push` on 20 Sep, `migration list --linked` matches. Dom's decision: the two September test pairings stay unflagged. Brief: `docs/aOS_Peer_Pairing_Date_Availability_Brief.md`. A deliberate reversal of tested behaviour, treated like the ledger change: the weekday × part-of-day grid ("tue-pm") is gone, not kept alongside. Migration `20260921100000_pairing_date_slots.sql`. Verified: tsc, lint, build; 209 unit / 274 schema / 133 action; mutation checks on the once-only guard (removing it fails two tests) and on the service-role guard (below); the form rendered at 350px and 640px with the built CSS.
 
 ### The mechanic as built
 - **A slot is one hour on one date**, UK wall clock, id `2026-10-06T14:00`. Weekdays only, 9am–8pm start times (Dom, 20 Sep — was 9–6 as built), from today onward. Stored in the same `pairing_availability.availability.slots` array — only the vocabulary changed, so `pairing_shared_slots()` needed no change. Anything not of that shape is dropped on read and on save.
