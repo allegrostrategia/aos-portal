@@ -26,11 +26,11 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE MAP — third artwork, every station its own building — BUILT 19 Sep, PUSHED 20 Sep; landscape positions signed off by Dom, portrait pass still to come
+## THE MAP — third artwork, every station its own building — BUILT 19 Sep, PUSHED 20 Sep; both pictures signed off by Dom
 
 New `the-map-landscape` (1672×941) and `the-map-portrait` (1086×1448), shipped as JPEG at 85 (~540KB each). No migration.
 
-**Landscape positions: signed off by Dom on 19 Sep** after nine rounds of screenshot-driven nudges (labels beside buildings rather than across them, dots on doors, roofs and steps; `labelLeft` for Piazza Caffè, Banco, Club Allegro, Archivio). **The portrait has not had that pass yet** and is next, as its own piece of work: it was placed and tested (mask, fit, overlap) but not reviewed dot by dot.
+**Landscape positions: signed off by Dom on 19 Sep** after nine rounds of screenshot-driven nudges (labels beside buildings rather than across them, dots on doors, roofs and steps; `labelLeft` for Piazza Caffè, Banco, Club Allegro, Archivio). **Portrait positions: signed off by Dom on 20 Sep** after one round from a phone screenshot (Stazione on the roof with the label right, Archivio under its door with the label left, Banco on the roof with the label left, Studio higher; the hotel a little lower to clear Stazione's label). Nothing open on The Map.
 
 **Dev gotcha, worth knowing:** replacing an image at the same filename leaves Next's optimiser cache (`.next/dev/cache/images`, 4-hour entries) serving the old picture through a hard refresh and a server restart. `rm -rf .next/dev/cache/images`. Live is unaffected: each deploy starts empty.
 
