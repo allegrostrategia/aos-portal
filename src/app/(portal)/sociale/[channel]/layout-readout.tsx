@@ -32,8 +32,10 @@ export function LayoutReadout() {
       taps = [...taps.filter((t) => now - t < 3000), now];
       if (taps.length >= 5) setArmed(true);
     };
-    title.addEventListener("click", onTap);
-    return () => title.removeEventListener("click", onTap);
+    // pointerup, not click: iOS Safari doesn't dispatch click on a heading
+    // that isn't styled as clickable.
+    title.addEventListener("pointerup", onTap);
+    return () => title.removeEventListener("pointerup", onTap);
   }, []);
 
   useEffect(() => {
