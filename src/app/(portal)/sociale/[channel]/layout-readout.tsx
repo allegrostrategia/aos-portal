@@ -85,11 +85,10 @@ export function LayoutReadout() {
 
   if (lines.length === 0) return null;
 
+  // In the flow, not fixed: if fixed positioning is what's wrong on the
+  // device, a fixed readout lands wherever the bar does.
   return (
-    <pre
-      className="fixed top-14 left-2 z-50 max-w-[95vw] rounded-md bg-ink/85 p-2 font-mono text-[10px] leading-tight whitespace-pre-wrap text-cream"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
-    >
+    <pre className="mb-3 rounded-md bg-ink/85 p-2 font-mono text-[10px] leading-tight whitespace-pre-wrap text-cream">
       {lines.join("\n")}
     </pre>
   );
