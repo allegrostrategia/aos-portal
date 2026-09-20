@@ -83,13 +83,25 @@ export function LayoutReadout() {
     };
   }, [armed]);
 
-  if (lines.length === 0) return null;
-
   // In the flow, not fixed: if fixed positioning is what's wrong on the
-  // device, a fixed readout lands wherever the bar does.
+  // device, a fixed readout lands wherever the bar does. The button is the
+  // trigger that cannot fail to fire; it reads as a stray dot.
   return (
-    <pre className="mb-3 rounded-md bg-ink/85 p-2 font-mono text-[10px] leading-tight whitespace-pre-wrap text-cream">
-      {lines.join("\n")}
-    </pre>
+    <>
+      {lines.length > 0 ? (
+        <pre className="mb-3 rounded-md bg-ink/85 p-2 font-mono text-[10px] leading-tight whitespace-pre-wrap text-cream">
+          {lines.join("\n")}
+        </pre>
+      ) : null}
+      <button
+        type="button"
+        aria-label="Layout readout"
+        onClick={() => setArmed(true)}
+        className="fixed right-2 z-50 size-6 rounded-full text-ink/30"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.25rem)" }}
+      >
+        ·
+      </button>
+    </>
   );
 }
