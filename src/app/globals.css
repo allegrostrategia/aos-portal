@@ -166,17 +166,20 @@ body {
    <main>, and its flex chain is allowed to shrink (flex children default to
    min-height:auto, which is what lets content push a page taller).
 
-   Sized in percent of the root, not `dvh`, and this is the part that took
-   three goes. The fixed bottom bar is positioned against the layout
-   viewport; `100dvh` in an installed iOS web app is not that height (it
-   comes out short, as if a toolbar were there), so a shell sized in dvh and a
-   bar anchored to the viewport disagreed about where the bottom was, and the
-   bar lifted — in the home-screen app only; a Safari tab agreed with itself.
-   Percent of <html> (h-full) is the layout viewport by definition, so the
-   two can't drift. Nothing here touches overflow on html or body. In a Safari
-   tab this is the toolbars-showing height, so with them collapsed the bar can
-   sit a little below the composer; the app is the target, push only works
-   there, and that is the trade. */
+   The height took four goes, and the fourth is from measurements on the
+   phone, not theory (20 Sep, the readout behind the dot). In an installed
+   iOS web app the root element is always the small viewport (screen minus
+   the status-bar band: 812 on an 874 screen), and iOS anchors a fixed bar
+   to the LARGE viewport (874) only while the document is taller than the
+   screen. So a shell sized in `dvh` or in percent of the root made the
+   document exactly 812, iOS took that as the viewport, and the bar rose by
+   the status bar's height — in the app only. `100lvh` is the large viewport
+   and is where the bar sits on every scrolling screen, so that is the
+   shell's height when standalone. In a browser tab `lvh` is the
+   toolbars-collapsed height, which would hide the composer behind the
+   toolbar, and percent of the root is right there (measured: everything
+   agrees at 676), so a tab keeps that. Nothing here touches overflow on
+   html or body. */
 html:has(main[data-chat-screen]) body {
   height: 100%;
 }
@@ -187,6 +190,11 @@ html:has(main[data-chat-screen]) .portal-shell {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+@media (display-mode: standalone) {
+  html:has(main[data-chat-screen]) .portal-shell {
+    height: 100lvh;
+  }
 }
 html:has(main[data-chat-screen]) .portal-row,
 html:has(main[data-chat-screen]) .portal-content {
