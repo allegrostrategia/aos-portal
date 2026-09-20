@@ -26,9 +26,13 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE MAP — third artwork, every station its own building — BUILT 19 Sep, awaiting Dom
+## THE MAP — third artwork, every station its own building — BUILT 19 Sep, PUSHED 20 Sep; landscape positions signed off by Dom, portrait pass still to come
 
-New `the-map-landscape` (1672×941) and `the-map-portrait` (1086×1448), shipped as JPEG at 85 (~540KB each). One commit, local. No migration.
+New `the-map-landscape` (1672×941) and `the-map-portrait` (1086×1448), shipped as JPEG at 85 (~540KB each). No migration.
+
+**Landscape positions: signed off by Dom on 19 Sep** after nine rounds of screenshot-driven nudges (labels beside buildings rather than across them, dots on doors, roofs and steps; `labelLeft` for Piazza Caffè, Banco, Club Allegro, Archivio). **The portrait has not had that pass yet** and is next, as its own piece of work: it was placed and tested (mask, fit, overlap) but not reviewed dot by dot.
+
+**Dev gotcha, worth knowing:** replacing an image at the same filename leaves Next's optimiser cache (`.next/dev/cache/images`, 4-hour entries) serving the old picture through a hard refresh and a server restart. `rm -rf .next/dev/cache/images`. Live is unaffected: each deploy starts empty.
 
 ### What's different about this pair
 The artwork paints every station as a named building: BANCO is the temple, CINEMA has the marquee, the blue awning says GRAND HOTEL RIPOSO, and so on; Piazza Caffè is the striped umbrellas, La Boutique the coloured shopfronts. So each dot sits on its building on each picture, and placement stopped being a judgement. Everything else was rebuilt as before: masks regenerated with each picture's SHA guard, spokes from each picture's fountain, mask and geometry tests run for both, rendered with the real component at 350px and 960px.
