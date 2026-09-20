@@ -26,6 +26,20 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## 20 Sep EVENING — pairing verified end to end on live; three things found on the way — PUSHED
+
+**Verified by Dom on two accounts (dom Gmail ↔ Dominic Yahoo, this month's test pairing):** save → the overlap check fires within a second (`overlap_checked_at` 20:48:02) → push on Dominic's phone, email to both, and the "both free at 7pm on Monday 21 September" sentence on the pairing card and Piazza. Every link of the chain was checked separately before it passed as a whole — the first two runs "failed" for reasons that were each real and each unrelated to the check:
+
+1. **The phone had no live push subscription.** The only row was from 14 Sep; removing and re-adding the home-screen app for the new icon discards the registration, and Apple keeps answering 201 for the dead one. Chat push was equally dead. Fixed by re-subscribing from You once the app was properly installed.
+2. **The app was opening in Safari, not standalone** — where iOS has no push APIs at all, so You said "This browser can't show notifications". Two bugs of ours behind that: (a) the toggle checked API support *before* "iPhone but not installed", so it gave the wrong message; (b) **`/manifest.webmanifest` and `/sw.js` were behind the login redirect** (proxy, unchanged since 15 Aug). Safari fetches the manifest with no cookies, so iOS never saw it and decided "Add to Home Screen" from the meta tags alone, and the service-worker update fetch could get the login page back. Both are public now (`DEVICE_PATHS` in `proxy.ts`), and Apple's own `apple-mobile-web-app-capable` goes out alongside the standard tag. Verified on the production build locally: both 200 anonymously, pages still redirect.
+3. **"No card update" was a stale client view.** Fetched live as the test account (magic link through `/auth/confirm`): the server had the sentence on both pages all along; reopening the PWA showed it.
+
+Also: **a tick flickered off after Save.** React 19 resets a form's DOM when its action completes, and a controlled checkbox shows unchecked until the next render. The form is now keyed on `submitted_at`, so every save remounts it from the fresh server props. Saves were never wrong — the rows proved that — it only looked as if they were.
+
+**Email:** Resend accepted the two pairing emails from `after()` on Vercel and both arrived. The cron's Friday reminders were the control (all `done`).
+
+**Diagnostic method worth keeping:** read the rows (`due_jobs`, `pairings`, `pairing_availability`, `push_subscriptions`) with the service role before theorising; send a push straight to the stored subscription from the laptop to split app from device; fetch the live page as the member via a one-time magic link to split server from client. The Vercel CLI needs an interactive login, so function logs weren't available.
+
 ## ADMIN — getting a locked-out member back in — BUILT and PUSHED 20 Sep
 
 Dom, 20 Sep: a test account's password was lost mid-testing, and "this is exactly the kind of thing that'll come up again with real members". No migration. Verified: tsc, lint, build; 7 new action tests (140 action total); mutation check on the admin refusal; the card rendered with a password showing.
