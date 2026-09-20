@@ -26,7 +26,7 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## SOCIALE — the room fills the screen; only the thread scrolls — BUILT 20 Sep, committed, not pushed
+## SOCIALE — the room fills the screen; only the thread scrolls — BUILT and PUSHED 20 Sep; phone check pending
 
 Dom, 20 Sep: the compose box needed a page scroll to reach, on phone and laptop alike (same DOM, both affected — the layout is `min-h-full`, so every screen grows with its content and the document scrolls, which is right everywhere except a chat). Now, like a messaging app: chips, title and composer stay put; the thread scrolls in its own box and opens at the newest message, following new ones in only if the reader was already at the bottom (`thread-scroll.tsx`).
 
