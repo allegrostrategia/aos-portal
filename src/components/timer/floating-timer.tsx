@@ -63,7 +63,7 @@ export function FloatingTimer({
 
   return (
     // Sits above the mobile bottom bar, and out of the way on desktop.
-    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:justify-end">
+    <div className="floating-timer pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:justify-end">
       {running ? (
         <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-ink/10 bg-card py-2 pr-2 pl-4 shadow-lift">
           <span

@@ -161,20 +161,24 @@ body {
 /* A chat room is the one screen that must not scroll as a page (Dom, 20 Sep:
    like any messaging app, the compose box stays put at the bottom and the
    thread scrolls in its own space). Every other screen grows with its content
-   and the document scrolls, which is right for them. So the document is pinned
+   and the document scrolls, which is right for them. So the shell is pinned
    to the viewport only while a room is on screen, keyed on the room's own
-   <main>, and the shell's flex chain is allowed to shrink (flex children
-   default to min-height:auto, which is what lets content push a page taller).
+   <main>, and its flex chain is allowed to shrink (flex children default to
+   min-height:auto, which is what lets content push a page taller).
+
+   The shell, not html or body: pinning those with overflow:hidden made the
+   fixed bottom bar float up off the bottom of an iPhone (Dom, later that
+   night), the same lift as the 14 Sep safe-area bug. Left alone, html and
+   body keep the fixed bar exactly where every other screen has it.
+
    `dvh` because the phone's browser chrome comes and goes; 100% as the
    fallback. The room itself does the rest with min-h-0 and overflow-y-auto. */
-html:has(main[data-chat-screen]) {
+html:has(main[data-chat-screen]) .portal-shell {
+  /* `flex: none`, or the shell's flex-basis (0%) beats the height below and
+     the body grows with the thread after all. */
+  flex: none;
   height: 100%;
   height: 100dvh;
-  overflow: hidden;
-}
-html:has(main[data-chat-screen]) body,
-html:has(main[data-chat-screen]) .portal-shell {
-  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -182,13 +186,26 @@ html:has(main[data-chat-screen]) .portal-row,
 html:has(main[data-chat-screen]) .portal-content {
   min-height: 0;
 }
-/* Room for the floating timer as well as the bottom bar, since the composer
-   now sits at the foot of the screen where the timer floats: 8.5rem clears
-   both on a phone; on a laptop the timer is bottom-right, 5rem clears it. */
-html:has(main[data-chat-screen]) .portal-content {
-  padding-bottom: 8.5rem;
+/* Flush: the composer sits directly on the bottom bar, no gap. The bar is
+   63px of content plus the home indicator's inset; the content's padding is
+   exactly that, and the room's own bottom padding goes. */
+@media (max-width: 63.99rem) {
+  html:has(main[data-chat-screen]) .portal-content {
+    padding-bottom: calc(63px + env(safe-area-inset-bottom, 0px));
+  }
+  html:has(main[data-chat-screen]) main[data-chat-screen] {
+    padding-bottom: 0;
+  }
+  /* The timer pill floats over the composer's buttons down there now, so in
+     a room it sits top-right, in the header band beside the logo. */
+  html:has(main[data-chat-screen]) .floating-timer {
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+    bottom: auto;
+    justify-content: flex-end;
+  }
 }
 @media (min-width: 64rem) {
+  /* The laptop timer is bottom-right; 5rem keeps the composer clear of it. */
   html:has(main[data-chat-screen]) .portal-content {
     padding-bottom: 5rem;
   }
