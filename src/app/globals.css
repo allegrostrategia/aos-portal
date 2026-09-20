@@ -166,19 +166,25 @@ body {
    <main>, and its flex chain is allowed to shrink (flex children default to
    min-height:auto, which is what lets content push a page taller).
 
-   The shell, not html or body: pinning those with overflow:hidden made the
-   fixed bottom bar float up off the bottom of an iPhone (Dom, later that
-   night), the same lift as the 14 Sep safe-area bug. Left alone, html and
-   body keep the fixed bar exactly where every other screen has it.
-
-   `dvh` because the phone's browser chrome comes and goes; 100% as the
-   fallback. The room itself does the rest with min-h-0 and overflow-y-auto. */
+   Sized in percent of the root, not `dvh`, and this is the part that took
+   three goes. The fixed bottom bar is positioned against the layout
+   viewport; `100dvh` in an installed iOS web app is not that height (it
+   comes out short, as if a toolbar were there), so a shell sized in dvh and a
+   bar anchored to the viewport disagreed about where the bottom was, and the
+   bar lifted — in the home-screen app only; a Safari tab agreed with itself.
+   Percent of <html> (h-full) is the layout viewport by definition, so the
+   two can't drift. Nothing here touches overflow on html or body. In a Safari
+   tab this is the toolbars-showing height, so with them collapsed the bar can
+   sit a little below the composer; the app is the target, push only works
+   there, and that is the trade. */
+html:has(main[data-chat-screen]) body {
+  height: 100%;
+}
 html:has(main[data-chat-screen]) .portal-shell {
   /* `flex: none`, or the shell's flex-basis (0%) beats the height below and
      the body grows with the thread after all. */
   flex: none;
   height: 100%;
-  height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
