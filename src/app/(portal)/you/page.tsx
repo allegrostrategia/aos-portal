@@ -61,6 +61,15 @@ export default async function YouPage() {
             meta="Hours reclaimed and the road ahead"
           />
           <NumberedRow
+            // /set-password takes any signed-in session, so it doubles as
+            // "change my password" — and is where a temporary password Nina
+            // handed over gets replaced.
+            href="/set-password"
+            leading={<RowIcon name="key" />}
+            title="Change your password"
+            meta="Pick a new one. Use this if you were given a temporary one"
+          />
+          <NumberedRow
             // The support address (round 4, item 23). A mailto: opens the
             // member's own mail app with the address and subject filled in.
             href="mailto:contact@allegrobusinessservices.co.uk?subject=aOS%20help"
@@ -160,7 +169,7 @@ export default async function YouPage() {
   );
 }
 
-function RowIcon({ name }: { name: "details" | "progress" | "help" | "signout" }) {
+function RowIcon({ name }: { name: "details" | "progress" | "key" | "help" | "signout" }) {
   const paths = {
     details: (
       <>
@@ -172,6 +181,12 @@ function RowIcon({ name }: { name: "details" | "progress" | "help" | "signout" }
       <>
         <path d="M4 18 10 11l4 4 6-8" />
         <path d="M16 7h4v4" />
+      </>
+    ),
+    key: (
+      <>
+        <circle cx="8" cy="14" r="4" />
+        <path d="M11 11l8-8M15 7l2 2M18 4l2 2" />
       </>
     ),
     help: (

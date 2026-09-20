@@ -26,6 +26,18 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## ADMIN — getting a locked-out member back in — BUILT 20 Sep, committed, not pushed
+
+Dom, 20 Sep: a test account's password was lost mid-testing, and "this is exactly the kind of thing that'll come up again with real members". No migration. Verified: tsc, lint, build; 7 new action tests (140 action total); mutation check on the admin refusal; the card rendered with a password showing.
+
+- **An "Access" card on the member's admin page** (`lib/admin/access-actions.ts`, `admin/members/[id]/access-actions.tsx`), two buttons:
+  - **Send a reset link** — the same recovery email `/forgot-password` sends, to the member's address, landing on `/auth/confirm?next=/set-password`. Nothing to hand over.
+  - **Set a temporary password** — written onto the auth user with the service role (`auth.admin.updateUserById`) and shown once, large and copyable, for Nina to pass on. Twelve characters from an alphabet with no 0/O/1/l/I, so it survives being read over the phone. For a dead inbox, a link that never lands, or a test account.
+- **Refused for admin accounts** (setting another admin's password is taking their account; the two admins use `/forgot-password`) **and for cancelled members** (nothing to restore). The card isn't shown for either, and the actions refuse regardless of the page.
+- **"Change your password" row on You** → `/set-password`, which already takes any signed-in session; it's where a temporary password gets replaced. Nothing forces the change — Supabase has no must-change flag; noted, not built.
+- Harness: the shim now records `auth.resetPasswordForEmail` and `auth.admin.updateUserById` (`authCalls()`), and `next/headers` is stubbed. The one-off `scripts/dev-set-password.mjs` used for the unblock is deleted now the feature exists.
+- The unblock itself: `yungsl5dom@gmail.com` was given a temporary password by script on 20 Sep (handed to Dom in chat; he'll change it).
+
 ## PEER PAIRING — real dates and times, overlap told on the second pick — BUILT and PUSHED 20 Sep; both migrations applied live
 
 Commits `23ce953`, `05fda70`; `20260921090000` and `20260921100000` applied via `db:push` on 20 Sep, `migration list --linked` matches. Dom's decision: the two September test pairings stay unflagged. Brief: `docs/aOS_Peer_Pairing_Date_Availability_Brief.md`. A deliberate reversal of tested behaviour, treated like the ledger change: the weekday × part-of-day grid ("tue-pm") is gone, not kept alongside. Migration `20260921100000_pairing_date_slots.sql`. Verified: tsc, lint, build; 209 unit / 274 schema / 133 action; mutation checks on the once-only guard (removing it fails two tests) and on the service-role guard (below); the form rendered at 350px and 640px with the built CSS.

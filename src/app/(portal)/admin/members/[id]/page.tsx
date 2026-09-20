@@ -9,6 +9,7 @@ import { buildItinerary } from "@/lib/onboarding/cadence";
 import type { Member } from "@/lib/supabase/types";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
 import { StatusActions } from "./status-actions";
+import { AccessActions } from "./access-actions";
 import { setCoach } from "@/lib/admin/member-actions";
 import { getCheckInsByBuild, getMemberBuilds } from "@/lib/hours/queries";
 import { formatHours } from "@/lib/hours/milestones";
@@ -213,6 +214,19 @@ export default async function AdminMemberPage({
           status={member.status}
         />
       </div>
+
+      {/* Not for admins (they use the sign-in page's own reset) or for the
+          cancelled (nothing to restore) — the actions refuse both; hiding the
+          card just saves Nina a click that would only say so. */}
+      {member.role !== "admin" && member.status !== "cancelled" ? (
+        <div className="mt-5">
+          <AccessActions
+            memberId={member.id}
+            memberName={member.full_name.split(" ")[0]}
+            email={member.email}
+          />
+        </div>
+      ) : null}
 
       <h2 className="font-display mt-8 mb-3 text-heading font-medium text-ink">
         Roadmap

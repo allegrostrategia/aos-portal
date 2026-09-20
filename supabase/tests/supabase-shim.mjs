@@ -116,6 +116,15 @@ function quoteIdent(name) {
   return `"${name}"`;
 }
 
+const authLog = [];
+/** What the auth API was asked to do — reset links, password sets. */
+export function authCalls() {
+  return authLog;
+}
+export function resetAuthCalls() {
+  authLog.length = 0;
+}
+
 export function createShimClient(db, uid) {
   async function run(sql, params = []) {
     // One transaction per query, with the role and the uid claim set LOCAL, so
@@ -429,6 +438,19 @@ export function createShimClient(db, uid) {
     auth: {
       async getUser() {
         return { data: { user: uid ? { id: uid } : null }, error: null };
+      },
+      // Auth calls that go to GoTrue rather than Postgres are recorded, not
+      // performed: a test asserts on what would have been sent or set.
+      async resetPasswordForEmail(email, options = {}) {
+        authLog.push({ kind: "reset_link", email, redirectTo: options.redirectTo ?? null });
+        return { data: {}, error: null };
+      },
+      admin: {
+        async updateUserById(id, attributes) {
+          if (uid !== null) throw new Error("auth.admin needs the service role");
+          authLog.push({ kind: "update_user", id, attributes });
+          return { data: { user: { id } }, error: null };
+        },
       },
     },
     from,

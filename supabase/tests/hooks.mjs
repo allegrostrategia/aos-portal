@@ -35,6 +35,7 @@ const SUBSTITUTES = new Map([
   ["@/lib/email/send", stub("email-send.mjs")],
   ["web-push", stub("web-push.mjs")],
   ["next/server", stub("next-server.mjs")],
+  ["next/headers", stub("next-headers.mjs")],
 ]);
 
 /** The first of these that exists on disk. */
