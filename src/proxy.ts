@@ -35,6 +35,19 @@ import { env } from "@/lib/env";
 const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth", "/api"];
 
 /**
+ * The two files a phone fetches on its own account, not the member's.
+ *
+ * Safari requests the web-app manifest with no cookies (the spec's default),
+ * so behind the login redirect iOS never saw it and decided "Add to Home
+ * Screen" from the meta tags alone — a standalone app on one iOS build, a
+ * Safari bookmark on another, and a bookmark has no push. The browser also
+ * re-fetches the service worker to check for updates, and one that lands on
+ * a stale session got the login page back. Both hold nothing private. Found
+ * 20 Sep, after a re-add for the new icon came back as a bookmark.
+ */
+const DEVICE_PATHS = ["/manifest.webmanifest", "/sw.js"];
+
+/**
  * Needs a session but NOT a member record: an invited member setting their first
  * password has no `members` row yet, and /no-access exists to explain exactly
  * that situation.
@@ -84,7 +97,7 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublic = matches(pathname, PUBLIC_PATHS);
+  const isPublic = matches(pathname, PUBLIC_PATHS) || DEVICE_PATHS.includes(pathname);
 
   if (!user && !isPublic && !matches(pathname, SESSION_ONLY_PATHS)) {
     const url = request.nextUrl.clone();

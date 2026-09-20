@@ -39,6 +39,11 @@ export const metadata: Metadata = {
     // and the safe-area handling already assume.
     statusBarStyle: "black-translucent",
   },
+  // Next emits the standard `mobile-web-app-capable` for `capable`; Apple's
+  // own older name goes out as well, so an iOS build that only reads that one
+  // still installs a standalone app rather than a Safari bookmark. Belt and
+  // braces alongside the manifest, which the proxy now serves anonymously.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 // Mobile is a first-class target, not a fallback — no zoom lock, and the safe
