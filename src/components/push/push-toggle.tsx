@@ -37,16 +37,21 @@ export function PushToggle() {
 
   useEffect(() => {
     void (async () => {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-        setState("unsupported");
-        return;
-      }
+      // iPhone first: in a Safari tab the push APIs don't exist at all, so
+      // the support check below would say "can't show notifications" about
+      // a phone that can — from the home-screen app. Checked first so the
+      // message says what to do (found 20 Sep, after a re-add for the new
+      // icon left the app opening in Safari).
       const iOS = /iP(hone|ad|od)/.test(navigator.userAgent);
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (navigator as { standalone?: boolean }).standalone === true;
       if (iOS && !standalone) {
         setState("needs-install");
+        return;
+      }
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        setState("unsupported");
         return;
       }
       if (Notification.permission === "denied") {
