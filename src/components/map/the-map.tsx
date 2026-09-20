@@ -164,8 +164,8 @@ function MapLayer({
             description={oneLine(station.description)}
             x={pos.x}
             y={pos.y}
+            aspect={artwork.height / artwork.width}
             flip={flipsLabel(pos, artwork, station.name.length, station.slug)}
-            cardAbove={pos.y > 62}
             metrics={labelMetrics(artwork)}
             href={locked ? null : `/stations/${station.slug}`}
           />

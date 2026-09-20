@@ -212,6 +212,26 @@ body {
 .map-stop[data-open="true"] {
   z-index: 30;
 }
+/*
+ * The card is the dot's next sibling. Closed: faded, dropped a little, and
+ * not clickable. Open on the dot's hover or focus, on the card's own hover
+ * (so the pointer can cross from dot to card), or on tap.
+ */
+.map-card {
+  opacity: 0;
+  scale: 0.98;
+  pointer-events: none;
+  transition: opacity 0.22s ease, scale 0.22s ease;
+}
+.map-stop:hover + .map-card,
+.map-stop:focus-within + .map-card,
+.map-card:hover,
+.map-card-open {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+  z-index: 40;
+}
 @media (prefers-reduced-motion: reduce) {
   .map-dot::after { animation: none; opacity: 0.5; }
 }
