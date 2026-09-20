@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 /**
  * On-device layout numbers, for when a phone disagrees with every render.
  *
- * Rendered only with `?debug=1`. Reports the three heights a fixed bar and a
+ * Rendered with `?debug=1`, or after five taps on the room's title — the
+ * installed app opens at the manifest's start_url, so a query string never
+ * reaches it, and there is no address bar to type one into. Reports the three heights a fixed bar and a
  * pinned shell can disagree about — the window, the visual viewport and the
  * root element — plus where the bar, the shell and the room's card actually
  * landed, the safe-area insets as the device resolves them, and whether the
@@ -14,9 +16,28 @@ import { useEffect, useState } from "react";
  */
 export function LayoutReadout() {
   const [lines, setLines] = useState<string[]>([]);
+  const [armed, setArmed] = useState(false);
+
+  // Five taps on the title inside three seconds.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("debug")) {
+      setArmed(true);
+      return;
+    }
+    const title = document.querySelector("main[data-chat-screen] h1");
+    if (!title) return;
+    let taps: number[] = [];
+    const onTap = () => {
+      const now = Date.now();
+      taps = [...taps.filter((t) => now - t < 3000), now];
+      if (taps.length >= 5) setArmed(true);
+    };
+    title.addEventListener("click", onTap);
+    return () => title.removeEventListener("click", onTap);
+  }, []);
 
   useEffect(() => {
-    if (!new URLSearchParams(window.location.search).has("debug")) return;
+    if (!armed) return;
 
     const probe = document.createElement("div");
     probe.style.cssText =
@@ -58,7 +79,7 @@ export function LayoutReadout() {
       window.visualViewport?.removeEventListener("scroll", read);
       probe.remove();
     };
-  }, []);
+  }, [armed]);
 
   if (lines.length === 0) return null;
 
