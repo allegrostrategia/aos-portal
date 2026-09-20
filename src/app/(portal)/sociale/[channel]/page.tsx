@@ -23,7 +23,6 @@ import { Composer } from "./composer";
 import { LiveThread } from "./live-thread";
 import { Reactions } from "./reactions";
 import { ThreadScroll } from "./thread-scroll";
-import { LayoutReadout } from "./layout-readout";
 
 export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
 
@@ -151,8 +150,6 @@ export default async function ChannelPage({
           ) : null}
 
           <LiveThread channelId={channel.id} />
-          {/* ?debug=1 only: the phone's own layout numbers (20 Sep). */}
-          <LayoutReadout />
 
           <Card padded={false} className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <ThreadScroll

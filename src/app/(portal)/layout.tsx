@@ -7,6 +7,7 @@ import {
   type NavItem,
 } from "@/components/portal-nav";
 import { FloatingTimer } from "@/components/timer/floating-timer";
+import { LayoutReadout } from "@/components/layout-readout";
 import { getRunningEntry, getTimeCategories } from "@/lib/timer/queries";
 
 /**
@@ -100,6 +101,9 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
         {/* Bottom padding clears the mobile nav bar, which is fixed — and is
             removed for print, where there is no nav bar to clear. */}
         <div className="portal-content flex min-w-0 flex-1 flex-col pb-24 lg:pb-0 print:pb-0">
+          {/* The phone's own layout numbers, behind a dot top-right (20 Sep):
+              on every screen, so a room and Piazza can be compared. */}
+          <LayoutReadout />
           {children}
         </div>
       </div>

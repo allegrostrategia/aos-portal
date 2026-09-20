@@ -24,7 +24,7 @@ export function LayoutReadout() {
       setArmed(true);
       return;
     }
-    const title = document.querySelector("main[data-chat-screen] h1");
+    const title = document.querySelector("main h1");
     if (!title) return;
     let taps: number[] = [];
     const onTap = () => {
@@ -54,9 +54,18 @@ export function LayoutReadout() {
       return `${Math.round(r.top)}→${Math.round(r.bottom)} (h${Math.round(r.height)})`;
     };
 
+    // What each viewport unit resolves to on this device.
+    const units = ["100vh", "100svh", "100lvh", "100dvh"].map((h) => {
+      const d = document.createElement("div");
+      d.style.cssText = `position:absolute;top:0;left:0;width:0;visibility:hidden;height:${h}`;
+      document.body.appendChild(d);
+      return d;
+    });
+
     const read = () => {
       const cs = getComputedStyle(probe);
       setLines([
+        `screen ${screen.height} · outerHeight ${window.outerHeight} · ${units.map((d) => `${d.style.height.slice(3)} ${d.offsetHeight}`).join(" · ")}`,
         `standalone ${window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true}`,
         `innerHeight ${window.innerHeight} · visualViewport ${Math.round(window.visualViewport?.height ?? -1)} · vv.offsetTop ${Math.round(window.visualViewport?.offsetTop ?? -1)}`,
         `html.clientHeight ${document.documentElement.clientHeight} · body ${document.body.clientHeight} · scrollY ${Math.round(window.scrollY)} · docScrollH ${document.documentElement.scrollHeight}`,
@@ -80,6 +89,7 @@ export function LayoutReadout() {
       window.visualViewport?.removeEventListener("resize", read);
       window.visualViewport?.removeEventListener("scroll", read);
       probe.remove();
+      units.forEach((d) => d.remove());
     };
   }, [armed]);
 
