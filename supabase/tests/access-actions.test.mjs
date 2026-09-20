@@ -75,6 +75,9 @@ test("a temporary password is set on that member and shown once", async () => {
   assert.equal(authCalls()[0].id, RUTH);
   const password = authCalls()[0].attributes.password;
   assert.equal(result?.password, password, "what Nina sees is what was set");
+  // An invitation never opened leaves the email unconfirmed, and Supabase
+  // refuses password sign-in for an unconfirmed email whatever the password.
+  assert.equal(authCalls()[0].attributes.email_confirm, true, "confirms the email too");
   assert.match(password, /^[a-zA-Z0-9]{12}$/);
   assert.doesNotMatch(password, /[0OIl1]/, "nothing that can be misread over the phone");
 });

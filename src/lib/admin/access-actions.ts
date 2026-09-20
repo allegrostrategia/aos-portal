@@ -118,8 +118,18 @@ export async function setTemporaryPassword(
   // for a user other than the one signed in. The admin check is above; the
   // member row was read through the admin's own session, so a made-up id
   // never reaches this line.
+  //
+  // `email_confirm`, because a member whose invitation was never opened is
+  // still "unconfirmed" to Supabase, which refuses password sign-in for them
+  // whatever password is set — found on 20 Sep with a test account invited
+  // on 3 Sep and never activated. This route exists for exactly the member
+  // whose email doesn't work, so it confirms the address Nina invited them
+  // on; the reset-link route leaves confirmation to the link, as it should.
   const password = temporaryPassword();
-  const { error } = await createAdminClient().auth.admin.updateUserById(target.id, { password });
+  const { error } = await createAdminClient().auth.admin.updateUserById(target.id, {
+    password,
+    email_confirm: true,
+  });
   if (error) return { error: `Couldn't set it: ${error.message}` };
 
   return {
