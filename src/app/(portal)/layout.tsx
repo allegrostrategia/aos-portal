@@ -56,7 +56,7 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
       : [];
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="portal-shell flex min-h-full flex-1 flex-col">
       {/* Everything in this layout is chrome, and none of it belongs on paper.
           The SOP and the reveal document both print from inside the portal —
           they are admin and member screens, so they need the layout's auth —
@@ -90,14 +90,16 @@ export default async function PortalLayout({ children }: LayoutProps<"/">) {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-5">
+      {/* The three portal-* classes are hooks for globals.css: a chat room
+          pins the document to the viewport and lets this chain shrink. */}
+      <div className="portal-row mx-auto flex w-full max-w-6xl flex-1 gap-8 px-5">
         <aside className="hidden w-44 shrink-0 py-8 lg:block print:hidden">
           <PortalNavSidebar items={items} admin={admin} className="sticky top-8" />
         </aside>
 
         {/* Bottom padding clears the mobile nav bar, which is fixed — and is
             removed for print, where there is no nav bar to clear. */}
-        <div className="flex min-w-0 flex-1 flex-col pb-24 lg:pb-0 print:pb-0">
+        <div className="portal-content flex min-w-0 flex-1 flex-col pb-24 lg:pb-0 print:pb-0">
           {children}
         </div>
       </div>

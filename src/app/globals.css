@@ -158,6 +158,42 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
+/* A chat room is the one screen that must not scroll as a page (Dom, 20 Sep:
+   like any messaging app, the compose box stays put at the bottom and the
+   thread scrolls in its own space). Every other screen grows with its content
+   and the document scrolls, which is right for them. So the document is pinned
+   to the viewport only while a room is on screen, keyed on the room's own
+   <main>, and the shell's flex chain is allowed to shrink (flex children
+   default to min-height:auto, which is what lets content push a page taller).
+   `dvh` because the phone's browser chrome comes and goes; 100% as the
+   fallback. The room itself does the rest with min-h-0 and overflow-y-auto. */
+html:has(main[data-chat-screen]) {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+html:has(main[data-chat-screen]) body,
+html:has(main[data-chat-screen]) .portal-shell {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+html:has(main[data-chat-screen]) .portal-row,
+html:has(main[data-chat-screen]) .portal-content {
+  min-height: 0;
+}
+/* Room for the floating timer as well as the bottom bar, since the composer
+   now sits at the foot of the screen where the timer floats: 8.5rem clears
+   both on a phone; on a laptop the timer is bottom-right, 5rem clears it. */
+html:has(main[data-chat-screen]) .portal-content {
+  padding-bottom: 8.5rem;
+}
+@media (min-width: 64rem) {
+  html:has(main[data-chat-screen]) .portal-content {
+    padding-bottom: 5rem;
+  }
+}
+
 @layer utilities {
   /* See --aos-glass-blur. Fill first, so the surface reads with the blur off. */
   .glass {

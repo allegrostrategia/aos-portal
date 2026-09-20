@@ -22,6 +22,7 @@ import { Card, Eyebrow } from "@/components/ui/card";
 import { Composer } from "./composer";
 import { LiveThread } from "./live-thread";
 import { Reactions } from "./reactions";
+import { ThreadScroll } from "./thread-scroll";
 
 export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
 
@@ -37,6 +38,12 @@ export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
  * On desktop the room list stays alongside. On a phone the rooms are a strip
  * of chips above the thread, so switching is one tap and Sociale never lands
  * on an empty state.
+ *
+ * The room fills the screen and does not scroll as a page (Dom, 20 Sep): the
+ * chips, title and composer stay put, and only the thread scrolls, in its own
+ * box, opening at the newest message. `data-chat-screen` on <main> is what
+ * globals.css keys on to pin the document; everything from there down to the
+ * thread is `min-h-0` so the flex chain can shrink rather than grow.
  */
 export default async function ChannelPage({
   params,
@@ -81,9 +88,9 @@ export default async function ChannelPage({
       : (partners.get(channel.id) ?? "Direct message");
 
   return (
-    <main className="flex flex-1 flex-col py-4 sm:py-10">
-      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[22rem_1fr]">
-        <div className="hidden lg:block">
+    <main data-chat-screen className="flex min-h-0 flex-1 flex-col py-4 sm:py-6">
+      <div className="grid min-h-0 min-w-0 flex-1 gap-5 lg:grid-cols-[22rem_1fr]">
+        <div className="hidden min-h-0 overflow-y-auto lg:block">
           <RoomList current={channel.id} />
         </div>
 
@@ -145,7 +152,10 @@ export default async function ChannelPage({
           <LiveThread channelId={channel.id} />
 
           <Card padded={false} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex flex-col gap-3 overflow-x-hidden overflow-y-auto p-4">
+            <ThreadScroll
+              count={messages.length}
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto p-4"
+            >
               {messages.length === 0 ? (
                 <p className="text-small text-ink/60">
                   Nothing here yet. Someone has to go first.
@@ -271,7 +281,7 @@ export default async function ChannelPage({
                   );
                 })
               )}
-            </div>
+            </ThreadScroll>
 
             {lockedForMe && window.kind === "closed" ? (
               <div className="border-t border-ink/10 bg-cream-deep px-4 py-4">

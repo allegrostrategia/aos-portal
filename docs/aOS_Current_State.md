@@ -26,6 +26,12 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## SOCIALE — the room fills the screen; only the thread scrolls — BUILT 20 Sep, committed, not pushed
+
+Dom, 20 Sep: the compose box needed a page scroll to reach, on phone and laptop alike (same DOM, both affected — the layout is `min-h-full`, so every screen grows with its content and the document scrolls, which is right everywhere except a chat). Now, like a messaging app: chips, title and composer stay put; the thread scrolls in its own box and opens at the newest message, following new ones in only if the reader was already at the bottom (`thread-scroll.tsx`).
+
+How, without touching other screens: the room's `<main data-chat-screen>` is what `globals.css` keys on (`html:has(...)`) to pin the document to `100dvh` and let the shell's flex chain shrink (`portal-shell` / `portal-row` / `portal-content` hooks in the layout, `min-h-0` down to the thread). Bottom padding in that mode clears the floating timer as well as the bar. Verified on the production build with the real session (magic link into localhost, Chrome driven over CDP): phone 390×844 and laptop 1280×800 both have document height = viewport, composer on screen, thread at the bottom; Piazza still scrolls as a page (2034px document). iOS keyboard behaviour on the pinned document is the thing to watch on the phone.
+
 ## 20 Sep EVENING — pairing verified end to end on live; three things found on the way — PUSHED
 
 **Verified by Dom on two accounts (dom Gmail ↔ Dominic Yahoo, this month's test pairing):** save → the overlap check fires within a second (`overlap_checked_at` 20:48:02) → push on Dominic's phone, email to both, and the "both free at 7pm on Monday 21 September" sentence on the pairing card and Piazza. Every link of the chain was checked separately before it passed as a whole — the first two runs "failed" for reasons that were each real and each unrelated to the check:
