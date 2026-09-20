@@ -26,7 +26,7 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## ADMIN — getting a locked-out member back in — BUILT 20 Sep, committed, not pushed
+## ADMIN — getting a locked-out member back in — BUILT and PUSHED 20 Sep
 
 Dom, 20 Sep: a test account's password was lost mid-testing, and "this is exactly the kind of thing that'll come up again with real members". No migration. Verified: tsc, lint, build; 7 new action tests (140 action total); mutation check on the admin refusal; the card rendered with a password showing.
 
