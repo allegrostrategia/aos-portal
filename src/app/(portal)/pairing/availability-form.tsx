@@ -9,8 +9,8 @@ import { FormMessage, SubmitButton } from "@/components/ui/form";
 /**
  * Picking the dates and times you're free (brief of 21 Sep 2026).
  *
- * One row per remaining weekday in the month, each holding ten hour chips.
- * The rows fold, because ten chips on twenty-two days is a long page on a
+ * One row per remaining weekday in the month, each holding twelve hour chips.
+ * The rows fold, because twelve chips on twenty-two days is a long page on a
  * phone: a day opens when tapped, and stays open when it has picks in it. The
  * chips are real checkboxes — a closed `<details>` still submits what's inside
  * it — so the form works without JavaScript; the running count and the

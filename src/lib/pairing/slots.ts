@@ -9,16 +9,16 @@
  *
  * A slot id is the UK wall-clock start, `2026-10-06T14:00` — the same shape a
  * `datetime-local` input produces, sortable as text, and readable in a database
- * row without decoding. Weekdays only, on the hour from nine to six: this is a
- * business conversation between two founders, and offering weekends or late
- * evenings invites a commitment neither of them wants to make. Either bound is
- * one constant away if Nina asks.
+ * row without decoding. Weekdays only, on the hour from nine to eight (Dom,
+ * 20 Sep: 9am–8pm, no weekends): a business conversation between two founders
+ * who may only be free after the day's work, but not on a Saturday. Either
+ * bound is one constant away.
  */
 
 export type SlotId = string;
 
-/** Start hours offered, UK time. 9am to 6pm inclusive. */
-export const SLOT_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18] as const;
+/** Start hours offered, UK time. 9am to 8pm inclusive. */
+export const SLOT_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] as const;
 
 const SLOT_SHAPE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):00$/;
 
