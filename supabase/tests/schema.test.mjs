@@ -1450,6 +1450,24 @@ await rejects("a member cannot move the proposed time unilaterally", () =>
     `update public.pairings set scheduled_for = '2026-10-20 09:00Z' where id='${PAIR_ID}'`)),
   "yours to change");
 
+await rejects("a member cannot mark the overlap check done, or undone", () =>
+  as(ERIN, () => db.query(
+    `update public.pairings set overlap_checked_at = now() where id='${PAIR_ID}'`)),
+  "yours to change");
+
+// The cron and the overlap check write with the service role, which has no
+// uid. The guard refused that until 21 Sep, and the day-7 flag never landed.
+await check("the service role — no uid at all — can set the system's columns", async () => {
+  await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  await db.query(
+    `update public.pairings set overlap_checked_at = now(), flagged_at = now() where id='${PAIR_ID}'`);
+  const r = await db.query(
+    `select overlap_checked_at is not null o, flagged_at is not null f from public.pairings where id='${PAIR_ID}'`);
+  await as(ADMIN, () => db.query(
+    `update public.pairings set overlap_checked_at = null, flagged_at = null where id='${PAIR_ID}'`));
+  return r.rows[0].o === true && r.rows[0].f === true;
+});
+
 await check("an admin can still set both", async () => {
   await as(ADMIN, () => db.query(`
     update public.pairings set flagged_at = null, scheduled_for = '2026-10-07 10:00Z'
@@ -1574,8 +1592,10 @@ await check("an admin can be made the coach", async () => {
   return r.rows[0].is_coach === true;
 });
 
+// As the admin: the constraint is what's under test, not the field guard,
+// which would refuse anyone else first.
 await rejects("an ordinary member cannot be the coach", () =>
-  db.query(`update public.members set is_coach = true where id='${ERIN}'`),
+  as(ADMIN, () => db.query(`update public.members set is_coach = true where id='${ERIN}'`)),
   "members_coach_is_admin");
 
 await rejects("there can only ever be one coach", async () => {
@@ -1586,7 +1606,7 @@ await rejects("there can only ever be one coach", async () => {
     insert into auth.users (id, email) values ('${SECOND}', 'dom@test');
     insert into public.members (id, email, full_name, role, status)
       values ('${SECOND}', 'dom@test', 'Dom', 'admin', 'active')`);
-  return db.query(`update public.members set is_coach = true where id='${SECOND}'`);
+  return as(ADMIN, () => db.query(`update public.members set is_coach = true where id='${SECOND}'`));
 }, "members_only_one_coach");
 
 // The pairing code reads "the" coach, so two would make that arbitrary again —

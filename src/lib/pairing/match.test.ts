@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { matchPairings, type PastPairing } from "./match.ts";
+import { matchPairings, type MatchInput, type PastPairing } from "./match.ts";
 
 const NINA = "nina";
 const [A, B, C, D, E] = ["a", "b", "c", "d", "e"];
@@ -9,15 +9,9 @@ const [A, B, C, D, E] = ["a", "b", "c", "d", "e"];
 function run(
   members: string[],
   history: PastPairing[] = [],
-  availability: Record<string, string[]> = {},
   coachId: string | null = NINA,
 ) {
-  return matchPairings({
-    members,
-    history,
-    availability: new Map(Object.entries(availability)),
-    coachId,
-  });
+  return matchPairings({ members, history, coachId });
 }
 
 const partnerOf = (result: ReturnType<typeof run>, member: string) =>
@@ -45,7 +39,7 @@ test("an odd group leaves nobody out — the spare gets Nina", () => {
 });
 
 test("with no coach, an odd group does leave someone out — and says so", () => {
-  const result = run([A, B, C], [], {}, null);
+  const result = run([A, B, C], [], null);
   assert.equal(result.unmatched.length, 1);
   assert.equal(result.pairs.length, 1);
 });
@@ -65,7 +59,7 @@ test("the longest-ago partner wins over a more recent one", () => {
     { month: "2026-07-01", members: [A, C] },
     { month: "2026-08-01", members: [A, D] },
   ];
-  const result = run([A, B, C, D], history, {}, null);
+  const result = run([A, B, C, D], history, null);
   assert.equal(partnerOf(result, A), B);
 });
 
@@ -75,37 +69,10 @@ test("whoever has waited longest is placed first", () => {
     { month: "2026-08-01", members: [D, E] },
   ];
   // A has never been paired at all, so A is matched before anyone else.
-  const result = run([A, B, C, D, E], history, {}, null);
+  const result = run([A, B, C, D, E], history, null);
   assert.ok(result.pairs.some((p) => p.members.includes(A)));
   assert.deepEqual(result.unmatched.length, 1);
   assert.ok(!result.unmatched.includes(A));
-});
-
-test("shared availability breaks a tie between equal partners", () => {
-  // A has met nobody; B and C are both new to A. Only C shares a slot.
-  const result = run([A, B, C, D], [], {
-    [A]: ["tue-pm", "wed-am"],
-    [B]: ["fri-eve"],
-    [C]: ["tue-pm"],
-    [D]: ["mon-am"],
-  });
-  assert.equal(partnerOf(result, A), C);
-});
-
-// Availability is a preference, not a constraint — §9 would rather two people
-// sort out a time themselves than have one of them go unpaired.
-test("no shared availability still pairs, just without a proposed time", () => {
-  const result = run([A, B], [], { [A]: ["mon-am"], [B]: ["fri-eve"] });
-  assert.equal(result.pairs.length, 1);
-  assert.deepEqual(result.pairs[0].shared, []);
-});
-
-test("shared slots come back in the grid's order, not either person's", () => {
-  const result = run([A, B], [], {
-    [A]: ["fri-eve", "mon-am"],
-    [B]: ["mon-am", "fri-eve"],
-  });
-  assert.deepEqual(result.pairs[0].shared, ["mon-am", "fri-eve"]);
 });
 
 // The coach slot rotates too: whoever got Nina last month shouldn't get her
@@ -136,9 +103,8 @@ test("the coach is never also matched as an ordinary member", () => {
 
 test("the same input always produces the same pairs", () => {
   const history: PastPairing[] = [{ month: "2026-07-01", members: [B, D] }];
-  const availability = { [A]: ["mon-am"], [C]: ["mon-am"] };
-  const first = run([A, B, C, D, E], history, availability);
-  const second = run([E, D, C, B, A], history, availability);
+  const first = run([A, B, C, D, E], history);
+  const second = run([E, D, C, B, A], history);
   assert.deepEqual(
     first.pairs.map((p) => [...p.members].sort()).sort(),
     second.pairs.map((p) => [...p.members].sort()).sort(),
@@ -148,17 +114,8 @@ test("the same input always produces the same pairs", () => {
 test("nothing about a member other than who they have met is consulted", () => {
   // The whole guard against hierarchy creeping back in: the input type has no
   // room for business type, size or anything else, and this asserts the shape
-  // rather than the behaviour — a future field would break it.
-  const input = {
-    members: [A, B],
-    history: [],
-    availability: new Map<string, string[]>(),
-    coachId: null,
-  };
-  assert.deepEqual(Object.keys(input).sort(), [
-    "availability",
-    "coachId",
-    "history",
-    "members",
-  ]);
+  // rather than the behaviour — a future field would break it. Availability
+  // left the list on 21 September 2026: picks are made after the match now.
+  const input: MatchInput = { members: [A, B], history: [], coachId: null };
+  assert.deepEqual(Object.keys(input).sort(), ["coachId", "history", "members"]);
 });

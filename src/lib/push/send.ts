@@ -31,7 +31,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * endpoint replaces it cleanly.
  */
 
-type Payload = { title: string; body: string; url: string; tag?: string };
+export type PushPayload = { title: string; body: string; url: string; tag?: string };
+type Payload = PushPayload;
 
 let warnedOnce = false;
 
@@ -50,7 +51,12 @@ function configured(): boolean {
   return true;
 }
 
-async function sendTo(memberIds: string[], payload: Payload): Promise<number> {
+/**
+ * Push one payload to every live device of the given members. The callers
+ * above decide who; this only delivers. Exported for the pairing overlap
+ * message, which decides its recipients in `@/lib/pairing/overlap`.
+ */
+export async function sendTo(memberIds: string[], payload: Payload): Promise<number> {
   if (memberIds.length === 0 || !configured()) return 0;
   const admin = createAdminClient();
 

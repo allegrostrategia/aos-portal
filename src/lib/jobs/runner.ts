@@ -20,7 +20,6 @@ import {
   renderEmail,
   weeklyLogCopy,
 } from "./copy";
-import { slotLabel, readSlots } from "@/lib/pairing/slots";
 import {
   daysBetween,
   kindsForDaysUntil,
@@ -583,7 +582,9 @@ export async function runChatNotification(
  * Tell somebody who they're paired with (§9).
  *
  * Nothing to plan: the job was queued when the pairing was made. This resolves
- * the partner and what times they both ticked, and sends.
+ * the partner and sends. Since 21 September 2026 it no longer names shared
+ * times: picks are real dates made after the match, and the overlap is its own
+ * message, sent the moment both have picked (`@/lib/pairing/overlap`).
  */
 export async function runPairingBooked(
   admin: ReturnType<typeof createAdminClient>,
@@ -613,32 +614,16 @@ export async function runPairingBooked(
     .find((id) => id !== job.member_id);
   if (!partnerId) return "skipped";
 
-  const [{ data: partner }, { data: availability }] = await Promise.all([
-    admin.from("members").select("full_name").eq("id", partnerId).maybeSingle(),
-    admin
-      .from("pairing_availability")
-      .select("member_id, availability")
-      .eq("pairing_month", row.pairing_month)
-      .in("member_id", [job.member_id, partnerId]),
-  ]);
-
-  const slots = new Map(
-    ((availability ?? []) as { member_id: string; availability: unknown }[]).map(
-      (a) => [a.member_id, readSlots(a.availability)],
-    ),
-  );
-  const mine = slots.get(job.member_id) ?? [];
-  const theirs = new Set(slots.get(partnerId) ?? []);
-  const shared = mine.filter((slot) => theirs.has(slot));
+  const { data: partner } = await admin
+    .from("members")
+    .select("full_name")
+    .eq("id", partnerId)
+    .maybeSingle();
 
   const copy = pairingBookedCopy({
     firstName: to.full_name.split(" ")[0],
     partnerName:
       (partner as { full_name: string } | null)?.full_name ?? "another member",
-    sharedTimes:
-      shared.length > 0
-        ? shared.map(slotLabel).join(", ").toLowerCase()
-        : null,
     pairingUrl: `${env.siteUrl}/pairing`,
   });
 
@@ -707,11 +692,18 @@ export async function runPairingDay7(
   // write: two overlapping cron runs would both pass the in-memory check and
   // both send. No test isolates it — the earlier check already covers the
   // single-runner case — so it is here for the race, not for the common path.
-  await admin
+  //
+  // The error is checked, and checked before the send: from 3 to 21 Sep the
+  // guard trigger refused this write for the service role, the email went
+  // anyway, and the job was marked done — so Nina was told once and the flag
+  // she'd look for on the admin page was never set. A write that fails now
+  // fails the job, visibly, and is retried.
+  const { error: flagError } = await admin
     .from("pairings")
     .update({ flagged_at: new Date().toISOString() })
     .eq("id", pairingId)
     .is("flagged_at", null);
+  if (flagError) throw new Error(`Couldn't set the day-7 flag: ${flagError.message}`);
 
   const result = await sendEmail({
     to: (nina as { email: string }).email,

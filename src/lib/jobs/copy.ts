@@ -158,14 +158,16 @@ export function chatUnreadCopy(input: {
 /**
  * You're paired with somebody this month (§9).
  *
- * Says who and when you both said you're free, and stops there. No call link,
- * because §9 is deliberate that the pair arrange that themselves — offering one
- * would quietly turn a peer conversation into a scheduled appointment.
+ * Says who, and sends them to pick their dates. Until 21 September 2026 this
+ * also named the weekday slots both had ticked; picks are now real dates chosen
+ * after the match, and the overlap is its own message (`pairingOverlapCopy`),
+ * sent the moment both have picked. No call link, because §9 is deliberate
+ * that the pair arrange that themselves — offering one would quietly turn a
+ * peer conversation into a scheduled appointment.
  */
 export function pairingBookedCopy(input: {
   firstName: string;
   partnerName: string;
-  sharedTimes: string | null;
   pairingUrl: string;
 }): EmailCopy {
   return {
@@ -173,10 +175,53 @@ export function pairingBookedCopy(input: {
     body: [
       `${input.firstName},`,
       `This month you're paired with ${input.partnerName}. Both of you bring something you're stuck on, both of you give and get. About fifteen minutes each way.`,
-      input.sharedTimes
-        ? `You both said ${input.sharedTimes} works.`
-        : `You didn't tick any of the same slots, so you'll need to find a time between you.`,
-      `Message them in the portal to sort out when and where. There's no call link. It's your conversation to arrange.`,
+      `Pick every date and time you're actually free on your pairing page. The more you pick, the better the chance of a match. The moment you've both picked, you'll both hear where you overlap.`,
+      `There's no call link. It's your conversation to arrange, and you can message them in the portal any time.`,
+      `Your pairing: ${input.pairingUrl}`,
+    ],
+  };
+}
+
+/**
+ * Both of you have picked — here's where you overlap, or that you don't.
+ *
+ * The two sentences are Nina's, verbatim from the brief. When there is more
+ * than one shared time the first (earliest) is named and the rest are counted,
+ * so the sentence stays the one she wrote.
+ */
+export function pairingOverlapCopy(input: {
+  firstName: string;
+  partnerName: string;
+  /** "2pm on Tuesday 6 October", earliest first. */
+  sharedTimes: string[];
+  pairingUrl: string;
+}): EmailCopy {
+  const partnerFirst = input.partnerName.split(" ")[0];
+  const [first, ...rest] = input.sharedTimes;
+
+  if (!first) {
+    return {
+      subject: `Time to fix a slot with ${input.partnerName}`,
+      body: [
+        `${input.firstName},`,
+        `You and ${input.partnerName} haven't both picked a time slot that you're both free — message ${partnerFirst} to work out a slot that works for you both.`,
+        `Your pairing: ${input.pairingUrl}`,
+      ],
+    };
+  }
+
+  return {
+    subject: `You and ${input.partnerName} are both free at ${first}`,
+    body: [
+      `${input.firstName},`,
+      `You and ${input.partnerName} are both free at ${first} — send them a message to confirm your call!`,
+      ...(rest.length > 0
+        ? [
+            `${rest.length === 1 ? "One other time" : `${rest.length} other times`} you both picked ${
+              rest.length === 1 ? "is" : "are"
+            } on your pairing page.`,
+          ]
+        : []),
       `Your pairing: ${input.pairingUrl}`,
     ],
   };

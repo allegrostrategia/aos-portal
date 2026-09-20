@@ -1,25 +1,30 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { isSlot } from "./slots";
-import { pairingMonth } from "./queries";
+import { getMyPairing, pairingMonth } from "./queries";
+import { checkPairingOverlap } from "./overlap";
 
 export type PairingState = { error?: string; notice?: string } | null;
 
 /**
- * Save when somebody can take a peer call (§9).
+ * Save the dates and times somebody can take a peer call (§9; brief of
+ * 21 Sep 2026).
  *
  * Slots are checked against the grid rather than stored as sent. They arrive
- * from a form and end up deciding who gets matched with whom — a stale or made
- * up key would match nothing and quietly cost somebody a pairing, which is the
- * one outcome §9 most wants to avoid.
+ * from a form and end up deciding whether two people are told they overlap — a
+ * stale or made up key would match nothing and quietly cost somebody a call.
  *
- * Submitting with nothing ticked is allowed and means "not this month". §9 folds
- * this into the existing rhythm rather than making it a chore, and a month
- * somebody genuinely can't do is an answer, not a failure to respond.
+ * Submitting with nothing picked is allowed and means "not this month". A
+ * month somebody genuinely can't do is an answer, not a failure to respond.
+ *
+ * If the member is already paired this month, the overlap check runs once the
+ * response is away: nothing happens unless their partner has picked too, and
+ * then both hear at once. See `checkPairingOverlap`.
  */
 export async function saveAvailability(
   _prev: PairingState,
@@ -30,7 +35,9 @@ export async function saveAvailability(
   const month = String(formData.get("pairing_month") ?? "").trim() || pairingMonth();
   if (!/^\d{4}-\d{2}-01$/.test(month)) return { error: "Which month?" };
 
-  const slots = formData.getAll("slots").map(String).filter(isSlot);
+  const slots = [...new Set(formData.getAll("slots").map(String))]
+    .filter((slot) => isSlot(slot, month))
+    .sort();
 
   const supabase = await createClient();
   const { error } = await supabase.from("pairing_availability").upsert(
@@ -45,12 +52,22 @@ export async function saveAvailability(
 
   if (error) return { error: `Couldn't save that: ${error.message}` };
 
+  const pairing = await getMyPairing(member.id, month);
+  if (pairing) {
+    const pairingId = pairing.id;
+    after(() => checkPairingOverlap(pairingId));
+  }
+
   revalidatePath("/pairing");
+  revalidatePath("/piazza");
   return {
     notice:
       slots.length === 0
         ? "Saved. You're sitting this month out."
-        : `Saved. ${slots.length} ${slots.length === 1 ? "slot" : "slots"} to match against.`,
+        : `Saved. ${slots.length} ${slots.length === 1 ? "time" : "times"} picked.` +
+          (pairing
+            ? " Once you've both picked, you'll both hear where you overlap."
+            : " Once you're paired and you've both picked, you'll both hear where you overlap."),
   };
 }
 

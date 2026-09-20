@@ -118,24 +118,29 @@ function quoteIdent(name) {
 
 export function createShimClient(db, uid) {
   async function run(sql, params = []) {
-    // A null uid is the service role: no role switch, so RLS doesn't apply and
-    // there's no `auth.uid()` — which is exactly how the cron's admin client
-    // behaves, and why anything using it must have done its own authorisation
-    // first.
-    if (uid === null) {
-      const result = await db.query(sql, params);
+    // One transaction per query, with the role and the uid claim set LOCAL, so
+    // both vanish at commit and nothing is left in the session for the next
+    // caller. PGlite serialises transactions, which is what makes this safe:
+    // an `after()` job still running from the previous test can't slip its
+    // service-role query between this member's `set role` and their query.
+    //
+    // A null uid is the service role: no member role, no uid — so RLS doesn't
+    // apply and `auth.uid()` is null, exactly as live. The earlier version ran
+    // service-role queries with no session changes at all, which meant they
+    // inherited whichever uid the last member query left behind; a trigger
+    // reading `auth.uid()` then saw a member, or an admin, and the day-7 flag
+    // write passed here while failing in production (see 20260921100000).
+    return db.transaction(async (tx) => {
+      if (uid === null) {
+        await tx.exec(`set local role none; select set_config('request.jwt.claim.sub', '', true);`);
+      } else {
+        await tx.exec(
+          `set local role authenticated; select set_config('request.jwt.claim.sub', '${uid}', true);`,
+        );
+      }
+      const result = await tx.query(sql, params);
       return { ...result, rows: normaliseRows(result) };
-    }
-
-    await db.exec(
-      `set role authenticated; select set_config('request.jwt.claim.sub', '${uid}', false);`,
-    );
-    try {
-      const result = await db.query(sql, params);
-      return { ...result, rows: normaliseRows(result) };
-    } finally {
-      await db.exec(`reset role;`);
-    }
+    });
   }
 
   function from(table) {
@@ -290,12 +295,20 @@ export function createShimClient(db, uid) {
             ),
             ...isClauses,
           ].join(" and ");
-          await run(
+          const returning = state.returning
+            ? ` returning ${state.columns === "*" ? "*" : state.columns}`
+            : "";
+          const result = await run(
             `update public.${quoteIdent(state.table)} set ${assignments.join(", ")}` +
-              (updateWhere ? ` where ${updateWhere}` : ""),
+              (updateWhere ? ` where ${updateWhere}` : "") +
+              returning,
             params,
           );
-          return { data: null, error: null };
+          if (!state.returning) return { data: null, error: null };
+          return {
+            data: state.single === "maybe" ? (result.rows[0] ?? null) : result.rows,
+            error: null,
+          };
         }
 
         if (state.head && state.count) {
@@ -336,8 +349,10 @@ export function createShimClient(db, uid) {
         state.columns = columns;
         state.count = options.count ?? null;
         state.head = options.head ?? false;
-        // `.insert(...).select(...)` asks for the written rows back.
-        if (state.insert || state.upsert) state.returning = true;
+        // `.insert(...).select(...)` asks for the written rows back; so does
+        // `.update(...).select(...)`, which the overlap check uses to learn
+        // whether its conditional update was the one that landed.
+        if (state.insert || state.upsert || state.update) state.returning = true;
         return api;
       },
       insert(values) {

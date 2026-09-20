@@ -11,9 +11,10 @@ export function pairingMonth(date = new Date()): string {
 export type MyPairing = {
   id: string;
   month: string;
-  scheduledFor: string | null;
   bookedAt: string | null;
   metAt: string | null;
+  /** When both had picked and the app told them where they overlap. */
+  overlapCheckedAt: string | null;
   partnerId: string | null;
 };
 
@@ -32,7 +33,7 @@ export async function getMyPairing(
 
   const { data } = await supabase
     .from("pairings")
-    .select("id, pairing_month, scheduled_for, booked_at, met_at, pairing_participants(member_id)")
+    .select("id, pairing_month, booked_at, met_at, overlap_checked_at, pairing_participants(member_id)")
     .eq("pairing_month", month)
     .maybeSingle();
 
@@ -40,9 +41,9 @@ export async function getMyPairing(
     | {
         id: string;
         pairing_month: string;
-        scheduled_for: string | null;
         booked_at: string | null;
         met_at: string | null;
+        overlap_checked_at: string | null;
         pairing_participants: { member_id: string }[];
       }
     | null;
@@ -52,9 +53,9 @@ export async function getMyPairing(
   return {
     id: row.id,
     month: row.pairing_month,
-    scheduledFor: row.scheduled_for,
     bookedAt: row.booked_at,
     metAt: row.met_at,
+    overlapCheckedAt: row.overlap_checked_at,
     partnerId:
       row.pairing_participants.find((p) => p.member_id !== memberId)?.member_id ??
       null,
@@ -80,14 +81,14 @@ export async function getMyAvailability(
     | null;
 
   return {
-    slots: readSlots(row?.availability),
+    slots: readSlots(row?.availability, month),
     submitted: Boolean(row?.submitted_at),
   };
 }
 
-/** What the pair both ticked. Empty for anyone outside the pairing. */
-export async function getSharedSlots(pairingId: string): Promise<string[]> {
+/** What the pair both picked, earliest first. Empty for anyone outside the pairing. */
+export async function getSharedSlots(pairingId: string): Promise<SlotId[]> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("pairing_shared_slots", { p_pairing_id: pairingId });
-  return Array.isArray(data) ? (data as string[]) : [];
+  return Array.isArray(data) ? [...(data as string[])].sort() : [];
 }

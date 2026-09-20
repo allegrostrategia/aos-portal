@@ -1,5 +1,3 @@
-import { sharedSlots, type SlotId } from "./slots.ts";
-
 /**
  * Who pairs with whom this month (§9).
  *
@@ -9,10 +7,11 @@ import { sharedSlots, type SlotId } from "./slots.ts";
  * never picked". Nothing here reads the audit, the roadmap, or anything else
  * about who a member is — only who they have already met, and when.
  *
- * Availability is a preference, not a constraint. Two people who have never met
- * and share no free slot still get paired, with no proposed time; §9 has them
- * arranging the call themselves anyway. Leaving somebody unmatched to satisfy a
- * calendar is the one outcome this is most meant to avoid.
+ * Availability is not an input. It was a tie-breaker until 21 September 2026,
+ * when picks became real dates chosen *after* the match (brief: the pair pick
+ * once they know who they're meeting, and are told where they overlap the
+ * moment both have). Consulting picks here would reward whoever happened to
+ * pick early, which is an accident, not a rotation.
  *
  * Deterministic throughout — same input, same pairs — so a match can be
  * explained afterwards and tested at all.
@@ -30,14 +29,12 @@ export type MatchInput = {
   /** Eligible members, in any order. */
   members: MemberId[];
   history: PastPairing[];
-  availability: Map<MemberId, SlotId[]>;
   /** Nina, for the odd one out (§9). Null if there is no coach to pair with. */
   coachId: MemberId | null;
 };
 
 export type ProposedPairing = {
   members: [MemberId, MemberId];
-  shared: SlotId[];
   withCoach: boolean;
 };
 
@@ -68,8 +65,7 @@ function lastPairedTogether(
 }
 
 export function matchPairings(input: MatchInput): MatchResult {
-  const { history, availability, coachId } = input;
-  const slotsFor = (id: MemberId) => availability.get(id) ?? [];
+  const { history, coachId } = input;
 
   // Never-paired sorts first because "" precedes any real month string.
   const waitedLongest = (a: MemberId, b: MemberId) => {
@@ -101,11 +97,7 @@ export function matchPairings(input: MatchInput): MatchResult {
 
     const partner = withCoachLongestAgo[0];
     pool = pool.filter((id) => id !== partner);
-    pairs.push({
-      members: [partner, coachId],
-      shared: sharedSlots(slotsFor(partner), slotsFor(coachId)),
-      withCoach: true,
-    });
+    pairs.push({ members: [partner, coachId], withCoach: true });
   }
 
   const paired = new Set<MemberId>();
@@ -124,25 +116,16 @@ export function matchPairings(input: MatchInput): MatchResult {
       if (byTogether !== 0) return byTogether;
 
       // 2. Then whoever has waited longest themselves.
-      //
-      // Availability isn't consulted here on purpose. It used to be, and the
-      // repair pass below already accounts for it through `cost` — no test
-      // could tell the two versions apart, which meant the branch was doing
-      // nothing except looking like it mattered.
       return waitedLongest(a, b);
     })[0];
 
     paired.add(member);
     paired.add(best);
-    pairs.push({
-      members: [member, best],
-      shared: sharedSlots(slotsFor(member), slotsFor(best)),
-      withCoach: false,
-    });
+    pairs.push({ members: [member, best], withCoach: false });
   }
 
   return {
-    pairs: improve(pairs, history, availability, slotsFor),
+    pairs: improve(pairs, history),
     unmatched: pool.filter((id) => !paired.has(id)),
   };
 }
@@ -163,18 +146,12 @@ export function matchPairings(input: MatchInput): MatchResult {
  * The coach pairing is held out. It was chosen deliberately for its own reasons
  * and swapping Nina into an ordinary pair would undo that.
  */
-function improve(
-  pairs: ProposedPairing[],
-  history: PastPairing[],
-  availability: Map<MemberId, SlotId[]>,
-  slotsFor: (id: MemberId) => SlotId[],
-): ProposedPairing[] {
+function improve(pairs: ProposedPairing[], history: PastPairing[]): ProposedPairing[] {
   const fixed = pairs.filter((p) => p.withCoach);
   let open = pairs.filter((p) => !p.withCoach);
 
   const remake = (a: MemberId, b: MemberId): ProposedPairing => ({
     members: [a, b],
-    shared: sharedSlots(slotsFor(a), slotsFor(b)),
     withCoach: false,
   });
 
@@ -212,10 +189,9 @@ function improve(
 /**
  * How bad an arrangement is, lower being better.
  *
- * Three levels, in order: how many pairs are repeats at all, how recent the
- * worst repeat is, and how many pairs have no time in common. Repeats dominate
- * because rotation is the rule; availability breaks ties because §9 would
- * rather two people sort out a time themselves than meet the same person twice.
+ * Two levels, in order: how many pairs are repeats at all, then how recent the
+ * worst repeat is. Rotation is the whole rule, so there is nothing else to
+ * weigh.
  *
  * Returned as a comparable string rather than a number so month strings can be
  * compared directly without inventing a numeric scale for dates.
@@ -227,11 +203,5 @@ function cost(pairs: ProposedPairing[], history: PastPairing[]): string {
     .sort()
     .reverse();
 
-  const withoutOverlap = pairs.filter((p) => p.shared.length === 0).length;
-
-  return [
-    String(repeats.length).padStart(4, "0"),
-    repeats[0] ?? "0000-00-00",
-    String(withoutOverlap).padStart(4, "0"),
-  ].join("|");
+  return [String(repeats.length).padStart(4, "0"), repeats[0] ?? "0000-00-00"].join("|");
 }

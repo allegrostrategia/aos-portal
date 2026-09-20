@@ -150,8 +150,8 @@ await db.exec(`
     ('${PAIRING}', '${RUTH}', '2026-09-01'),
     ('${PAIRING}', '${OMAR}', '2026-09-01');
   insert into public.pairing_availability (member_id, pairing_month, availability, submitted_at) values
-    ('${RUTH}', '2026-09-01', '{"slots":["tue-pm","thu-am"]}'::jsonb, now()),
-    ('${OMAR}', '2026-09-01', '{"slots":["tue-pm"]}'::jsonb, now());`);
+    ('${RUTH}', '2026-09-01', '{"slots":["2026-09-08T14:00","2026-09-10T09:00"]}'::jsonb, now()),
+    ('${OMAR}', '2026-09-01', '{"slots":["2026-09-08T14:00"]}'::jsonb, now());`);
 
 test("the booked-in email names the partner, not the recipient", async () => {
   const outcome = await runPairingBooked(admin, {
@@ -165,18 +165,13 @@ test("the booked-in email names the partner, not the recipient", async () => {
   assert.doesNotMatch(sent()[0].subject, /Ruth/);
 });
 
-test("it names the time they both ticked", async () => {
+// Since 21 Sep 2026 the booked-in email sends them to pick dates; the overlap
+// is its own message (pairing-overlap.test.mjs). Naming a time here would be
+// naming one they haven't picked yet.
+test("it sends them to pick their dates rather than naming a time", async () => {
   await runPairingBooked(admin, { member_id: OMAR, payload: { pairing_id: PAIRING } });
-  assert.match(sent()[0].text, /tuesday afternoon/i);
-});
-
-test("with no shared slot it says so rather than inventing one", async () => {
-  await db.query(`
-    update public.pairing_availability set availability = '{"slots":["fri-eve"]}'::jsonb
-    where member_id = '${OMAR}' and pairing_month = '2026-09-01'`);
-
-  await runPairingBooked(admin, { member_id: RUTH, payload: { pairing_id: PAIRING } });
-  assert.match(sent()[0].text, /didn't tick any of the same slots/i);
+  assert.match(sent()[0].text, /pick every date and time/i);
+  assert.doesNotMatch(sent()[0].text, /2pm|Tuesday 8 September|tue-pm/i);
 });
 
 test("no call link is offered — §9 has the pair arranging it", async () => {

@@ -81,6 +81,8 @@ export async function asMember(db, uid, fn) {
   try {
     return await fn();
   } finally {
-    await db.exec(`reset role;`);
+    // The claim goes too: a later query with no member behind it must see no
+    // uid, as the service role does in production.
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false);`);
   }
 }

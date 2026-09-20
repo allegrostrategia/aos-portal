@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { matchPairings, type PastPairing } from "@/lib/pairing/match";
-import { readSlots, type SlotId } from "@/lib/pairing/slots";
+import { checkPairingOverlap } from "@/lib/pairing/overlap";
 
 export type MatchState = { error?: string; notice?: string } | null;
 
@@ -18,8 +19,12 @@ export type MatchState = { error?: string; notice?: string } | null;
  * notice than one somebody pressed.
  *
  * Refuses to run twice for a month that already has pairings. Re-matching would
- * move people who have already been told who they're meeting, which is worse
- * than leaving a late availability submission out until next month.
+ * move people who have already been told who they're meeting.
+ *
+ * Rotation only: availability is picked after the match (brief of 21 Sep
+ * 2026), so it is no longer read here. Where both of a new pair happen to have
+ * picked already, the overlap check runs for them once the response is away —
+ * the same check a second partner's submission would trigger.
  */
 export async function runMatching(
   _prev: MatchState,
@@ -69,19 +74,9 @@ export async function runMatching(
 
   const coachId = (coachRow as { id: string } | null)?.id ?? null;
 
-  const [{ data: availabilityRows }, { data: historyRows }] = await Promise.all([
-    supabase
-      .from("pairing_availability")
-      .select("member_id, availability")
-      .eq("pairing_month", pairingMonth),
-    supabase.from("pairing_participants").select("pairing_id, member_id, pairing_month"),
-  ]);
-
-  const availability = new Map<string, SlotId[]>(
-    ((availabilityRows ?? []) as { member_id: string; availability: unknown }[]).map(
-      (row) => [row.member_id, readSlots(row.availability)],
-    ),
-  );
+  const { data: historyRows } = await supabase
+    .from("pairing_participants")
+    .select("pairing_id, member_id, pairing_month");
 
   // Every past pairing, grouped back into its two members.
   const byPairing = new Map<string, PastPairing>();
@@ -101,7 +96,6 @@ export async function runMatching(
   const result = matchPairings({
     members,
     history: [...byPairing.values()],
-    availability,
     // Null if nobody is flagged: the matching still runs, and an odd count
     // leaves one person out rather than silently handing them an admin.
     coachId,
@@ -194,6 +188,11 @@ export async function runMatching(
       };
     }
   }
+
+  // Anyone who picked their dates before the match ran: if both of a pair
+  // did, they hear where they overlap now rather than never.
+  const createdIds = created.map((pairing) => pairing.id);
+  after(() => Promise.all(createdIds.map((id) => checkPairingOverlap(id))));
 
   revalidatePath("/", "layout");
 

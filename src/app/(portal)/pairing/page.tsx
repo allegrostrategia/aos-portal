@@ -3,12 +3,11 @@ import Link from "next/link";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { getMyAvailability, getMyPairing, getSharedSlots, pairingMonth } from "@/lib/pairing/queries";
-import { datesForWeekday, SLOT_DAYS, slotLabel } from "@/lib/pairing/slots";
-import { utcToWallClock } from "@/lib/time-zone";
+import { slotLabel, slotLabelShort } from "@/lib/pairing/slots";
 import { resolveNames } from "@/lib/chat/queries";
 import { getHeadshotUrls } from "@/lib/directory/queries";
 import { markPairingMet, setPairingBooked } from "@/lib/pairing/actions";
-import { formatCalendarMonth, formatSessionTime } from "@/lib/time-zone";
+import { formatCalendarMonth, utcToWallClock } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
 import { Card, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -31,7 +30,7 @@ const ICEBREAKERS = [
  * Peer pairing (§9): monthly, one to one, mutual.
  *
  * L'Editoriale "11": the two of you side by side as photographs, who you're
- * paired with, when you both said you're free, Message and View profile, the
+ * paired with, where your picked times overlap, Message and View profile, the
  * three conversation starters, and two ticks — booked, then met.
  *
  * Matched by rotation, never by skill or business type — so this screen shows
@@ -61,18 +60,23 @@ export default async function PairingPage() {
     pairing ? getSharedSlots(pairing.id) : Promise.resolve([] as string[]),
   ]);
 
-  // "You're both free Tuesday afternoons (15, 22, 29 Sep)". Computed from
-  // what both actually ticked — scheduled_for was never written by anything,
-  // so the earlier line here never showed.
-  const sharedLine = shared
-    .map((slot) => {
-      const day = SLOT_DAYS.find((d) => slot.startsWith(`${d.key}-`));
-      const dates = day ? datesForWeekday(month, day.isoWeekday, today).map((d) => Number(d.slice(8))) : [];
-      return `${slotLabel(slot).replace(/(morning|afternoon|evening)$/, "$1s")}${dates.length ? ` (${dates.join(", ")})` : ""}`;
-    })
-    .join("; ");
   const partnerName = partnerId ? (names.get(partnerId) ?? "your partner") : null;
   const partnerFirst = partnerName?.split(" ")[0] ?? "them";
+
+  // The line under the name: the same answer the overlap message gave, read
+  // live from what both have picked (brief of 21 Sep 2026). Four states —
+  // both picked and overlap, both picked and none, you've picked and they
+  // haven't, you haven't yet. The wording of the first two is Nina's.
+  const [firstShared, ...moreShared] = shared;
+  const overlapLine = !pairing
+    ? ""
+    : pairing.overlapCheckedAt
+      ? firstShared
+        ? `You and ${partnerFirst} are both free at ${slotLabel(firstShared)} — send them a message to confirm your call!`
+        : `You and ${partnerFirst} haven't both picked a time slot that you're both free — message ${partnerFirst} to work out a slot that works for you both.`
+      : availability.submitted
+        ? `You've picked your times. Once ${partnerFirst} has too, you'll both hear where you overlap.`
+        : `Pick the dates and times you're free below. Once you've both picked, you'll both hear where you overlap.`;
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
@@ -112,13 +116,13 @@ export default async function PairingPage() {
           <Eyebrow className="mt-6">This month you&rsquo;re paired with</Eyebrow>
           <p className="font-display mt-1 text-title font-medium text-ink">{partnerName}</p>
 
-          <p className="mt-3 text-small text-ink/80">
-            {pairing.scheduledFor
-              ? `You're both free ${formatSessionTime(pairing.scheduledFor)}.`
-              : sharedLine
-                ? `You're both free ${sharedLine}.`
-                : "No time you both ticked. Pick one between you."}
-          </p>
+          <p className="mt-3 text-small text-ink/80">{overlapLine}</p>
+          {moreShared.length > 0 ? (
+            <p className="mt-1.5 text-caption text-ink/60">
+              Also both free: {moreShared.slice(0, 6).map(slotLabelShort).join(" · ")}
+              {moreShared.length > 6 ? ` · and ${moreShared.length - 6} more` : ""}
+            </p>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <OpenDirectMessage memberId={partnerId} label="Message" />
@@ -172,8 +176,8 @@ export default async function PairingPage() {
         <Card className="mb-6">
           <p className="text-small text-ink/70">
             {availability.submitted
-              ? "You're in for this month. Pairings go out once everyone's had a chance to say when they're free."
-              : "No pairing yet this month. Say when you're free below and you'll be matched."}
+              ? "You've picked your times. Pairings go out by rotation; once you're paired and you've both picked, you'll both hear where you overlap."
+              : "No pairing yet this month. Pairings go out by rotation. Pick the dates and times you're free below so you're ready."}
           </p>
         </Card>
       )}

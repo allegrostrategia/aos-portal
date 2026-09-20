@@ -16,6 +16,13 @@ import assert from "node:assert/strict";
 import "./hooks.mjs";
 import { createTestDatabase, asMember } from "./pglite.mjs";
 import { configure } from "./stubs/supabase-server.mjs";
+import { sent, reset as resetEmail } from "./stubs/email-send.mjs";
+import { reset as resetPush } from "./stubs/web-push.mjs";
+import { flushAfter } from "./stubs/next-server.mjs";
+
+process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "test-public";
+process.env.VAPID_PRIVATE_KEY = "test-private";
+process.env.VAPID_SUBJECT = "mailto:test@test";
 
 const { runMatching } = await import("../../src/lib/admin/pairing-actions.ts");
 
@@ -51,12 +58,14 @@ await asMember(db, NINA, async () => {
   // Ivy stays in onboarding: §1 locks pairing until active.
 });
 
+// Both picked before the match ran — the order the brief of 21 Sep 2026
+// doesn't expect but has to cope with: matching then owes them the overlap.
 await asMember(db, RUTH, () => db.query(`
   insert into public.pairing_availability (member_id, pairing_month, availability, submitted_at)
-  values ('${RUTH}','${MONTH_FIRST}','{"slots":["tue-pm","thu-am"]}'::jsonb, now())`));
+  values ('${RUTH}','${MONTH_FIRST}','{"slots":["2026-11-03T14:00","2026-11-05T09:00"]}'::jsonb, now())`));
 await asMember(db, OMAR, () => db.query(`
   insert into public.pairing_availability (member_id, pairing_month, availability, submitted_at)
-  values ('${OMAR}','${MONTH_FIRST}','{"slots":["tue-pm"]}'::jsonb, now())`));
+  values ('${OMAR}','${MONTH_FIRST}','{"slots":["2026-11-03T14:00"]}'::jsonb, now())`));
 
 function form(fields) {
   const data = new FormData();
@@ -80,7 +89,10 @@ test("a member cannot run the matching", async () => {
 
 test("matching pairs the active members and says so", async () => {
   configure(db, NINA);
+  resetEmail();
+  resetPush();
   const result = await runMatching(null, form({ pairing_month: MONTH }));
+  await flushAfter();
 
   assert.equal(result?.error, undefined);
   assert.match(result?.notice ?? "", /1 pairing made/);
@@ -121,6 +133,24 @@ test("the booked-in job carries the pairing it's about", async () => {
     `select id from public.pairings where pairing_month = '${MONTH_FIRST}'`,
   );
   assert.equal(payload.pairing_id, pairing.rows[0].id);
+});
+
+// The pair had both picked before Nina pressed the button, so matching is the
+// "second submission" moment for them: they hear where they overlap now.
+test("a pair who both picked before the match are told where they overlap", async () => {
+  const row = await db.query(
+    `select overlap_checked_at from public.pairings where pairing_month = '${MONTH_FIRST}'`,
+  );
+  assert.ok(row.rows[0].overlap_checked_at, "the check is recorded on the pairing");
+
+  const to = sent().map((m) => m.to).sort();
+  assert.deepEqual(to, ["omar@test", "ruth@test"]);
+  for (const mail of sent()) {
+    assert.match(mail.text, /both free at 2pm on Tuesday 3 November/);
+  }
+  // Ruth's email names Omar and not herself, and vice versa.
+  assert.match(sent().find((m) => m.to === "ruth@test").text, /You and Omar Diaz/);
+  assert.match(sent().find((m) => m.to === "omar@test").text, /You and Ruth Bell/);
 });
 
 test("the day-7 flag is queued to the admin, a week out, one per pairing", async () => {
@@ -165,7 +195,8 @@ test("an odd month pairs the spare with the coach, not with the other admin", as
 });
 
 test("with no coach flagged, the spare is left out and the notice explains", async () => {
-  await db.query(`update public.members set is_coach = false where id = '${NINA}'`);
+  await asMember(db, NINA, () =>
+    db.query(`update public.members set is_coach = false where id = '${NINA}'`));
 
   configure(db, NINA);
   const result = await runMatching(null, form({ pairing_month: "2027-01" }));

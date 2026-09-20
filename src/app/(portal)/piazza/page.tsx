@@ -14,7 +14,8 @@ import { quoteOfTheDay } from "@/lib/piazza/quotes";
 import { greeting } from "@/lib/piazza/greeting";
 import { getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
-import { getMyAvailability, getMyPairing, pairingMonth } from "@/lib/pairing/queries";
+import { getMyAvailability, getMyPairing, getSharedSlots, pairingMonth } from "@/lib/pairing/queries";
+import { slotLabelShort } from "@/lib/pairing/slots";
 import { resolveNames } from "@/lib/chat/queries";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { formatSessionTime, utcToWallClock } from "@/lib/time-zone";
@@ -85,9 +86,10 @@ export default async function PiazzaPage() {
     member.status === "active" ? getMyAvailability(member.id, month) : Promise.resolve(null),
   ]);
 
-  const [mySubmission, partnerNames] = await Promise.all([
+  const [mySubmission, partnerNames, sharedSlots] = await Promise.all([
     session ? getMySubmission(member.id, session.id) : Promise.resolve(null),
     pairing?.partnerId ? resolveNames([pairing.partnerId]) : Promise.resolve(new Map<string, string>()),
+    pairing ? getSharedSlots(pairing.id) : Promise.resolve([] as string[]),
   ]);
   // Round 3, §B: a note from Nina the member hasn't opened yet.
   const myThread = mySubmission ? ((await getComments([mySubmission.id])).get(mySubmission.id) ?? []) : [];
@@ -133,8 +135,10 @@ export default async function PiazzaPage() {
   if (availability && !availability.submitted) {
     tasks.push({
       key: "pairing",
-      title: "Say when you're free for your peer call",
-      detail: "About ten seconds. It's what gets you matched.",
+      title: "Pick when you're free for your peer call",
+      detail: pairing
+        ? "Real dates and times. The moment you've both picked, you'll both hear where you overlap."
+        : "Real dates and times, the more the better. You'll be paired by rotation.",
       href: "/pairing",
     });
   }
@@ -160,6 +164,19 @@ export default async function PiazzaPage() {
   }
 
   const partnerName = pairing?.partnerId ? (partnerNames.get(pairing.partnerId) ?? "your partner") : null;
+  const partnerFirst = partnerName?.split(" ")[0] ?? "them";
+  // The pairing card's second line, in step with the pairing page's own.
+  const pairingLine = pairing?.metAt
+    ? "Met this month."
+    : pairing?.bookedAt
+      ? "Call's in the diary."
+      : pairing?.overlapCheckedAt
+        ? sharedSlots[0]
+          ? `You're both free ${slotLabelShort(sharedSlots[0])}. Message ${partnerFirst} to confirm.`
+          : `No time you're both free yet. Message ${partnerFirst} to work one out.`
+        : availability?.submitted
+          ? `Once ${partnerFirst} has picked too, you'll both hear where you overlap.`
+          : "Pick when you're free, and you'll both hear where you overlap.";
 
   return (
     <main className="flex-1 py-6 sm:py-10">
@@ -329,16 +346,14 @@ export default async function PiazzaPage() {
           {partnerName ? (
             <>
               <p className="font-display mt-2 text-heading font-medium text-ink">{partnerName}</p>
-              <p className="mt-1 text-small text-ink/65">
-                {pairing?.metAt ? "Met this month." : pairing?.bookedAt ? "Call's in the diary." : "This month's pair."}
-              </p>
+              <p className="mt-1 text-small text-ink/65">{pairingLine}</p>
             </>
           ) : (
             <p className="mt-2 text-small text-ink/65">
               {member.status === "active"
                 ? availability?.submitted
-                  ? "You're in for this month. Pairings go out soon."
-                  : "Say when you're free and you'll be matched."
+                  ? "You've picked your times. Pairings go out by rotation."
+                  : "Pick when you're free, and you'll be paired by rotation."
                 : "Opens once you're active."}
             </p>
           )}
