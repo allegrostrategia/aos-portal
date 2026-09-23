@@ -251,7 +251,7 @@ export default async function PiazzaPage() {
           list because it is the one thing on this screen that is genuinely
           new today; it goes as soon as they read it, and lives on You after
           that. Every word of it comes from RECAP_COPY. */}
-      {unreadRecap ? <RecapCard month={unreadRecap.month} /> : null}
+      {unreadRecap ? <RecapCard month={unreadRecap.month} stats={unreadRecap.stats} /> : null}
 
       {/* 4. The task list. */}
       <SectionTitle className="mt-8" aside={tasks.length ? `${tasks.length} to do` : undefined}>

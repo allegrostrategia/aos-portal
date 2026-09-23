@@ -40,7 +40,15 @@ Brief: `docs/aOS_Monthly_Recap_Brief.md`. The third feature on the rule-2 patter
 
 ### Dom's two answers (the brief's open questions)
 - **A real read timestamp**, not "sent is read". `opened_at` is set when the member opens the recap, the same shape as chat's read tracking. It is what takes the card off Piazza and what tells Nina it landed — the admin screen shows "Read Tue 6 Oct" or "Sent …, unread".
-- **Copy is provisional and his to replace.** Every member-facing string lives in `src/lib/recap/copy.ts` and nothing composes its own sentence: a grep for any of those strings elsewhere in `src/` comes back empty, so replacing them is a one-file edit. **This wording has not been signed off and should not meet a real member as it stands.**
+- **Copy: Nina's confirmed wording is in, 23 Sep.** Every member-facing string still lives in `src/lib/recap/copy.ts` and nothing composes its own sentence. It arrived written for one member's September, so the month, the name and the figures are interpolated rather than fixed. **Two lines of it are deliberately not shipped** — see below.
+
+### The figures, and the two lines that couldn't be templated
+The card and email quote "13.5 hours tracked & 7.5 hours reclaimed". Those come from `monthly_recaps.stats`, a jsonb snapshot frozen at send (`20260923120000`), not recomputed where shown: they have to agree with the writing they announce, and a month's numbers still move afterwards (an hour logged late, a rate backdated). A test logs eight more hours for a sent month and asserts the card still reads what Nina sent.
+
+- **"Two roadmap actions are properly done too"** — templated (`One roadmap action is…` at one, dropped entirely at zero).
+- **The opening figures line is dropped when both numbers are zero**, rather than opening with "0 hours tracked this month & 0 hours reclaimed for good".
+- **"One enquiry nearly slipped through again & this time, it didn't"** — NOT shipped. It comes from that member's own Friday reflection; there is no honest way to template it, and hard-coding it would put a sentence about one person's month in everyone else's inbox.
+- **"September's actually quite good, [name]"** — shipped as the subject, with the month and name interpolated, and **flagged**: it asserts the month went well for every member who gets one. Fine while Nina sends to two test accounts; wrong the first time somebody has a bad month.
 
 ### Built
 - `monthly_recaps` — one row per member per month, `body` nullable (pasted over more than one sitting, as the reveal allows). Three states: draft (member cannot read it at all, enforced in RLS by `sent_at is not null`), sent, opened. Guard trigger: a member may set `opened_at` and nothing else — and it admits the service role (`auth.uid() is null`), the day-7 lesson applied at the time of writing rather than after.

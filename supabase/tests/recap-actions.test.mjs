@@ -132,9 +132,10 @@ test("sending emails the member and names their month, without quoting the recap
 
   assert.equal(sent().length, 1);
   assert.equal(sent()[0].to, "ruth@test");
-  assert.match(sent()[0].subject, /August/);
-  assert.match(sent()[0].text, /Ruth,/);
+  // Nina's wording, with the month and the name interpolated rather than fixed.
+  assert.equal(sent()[0].subject, "August's actually quite good, Ruth");
   assert.match(sent()[0].text, /https:\/\/aos\.test\/reviews\/2026-08/);
+  assert.match(sent()[0].text, /you earned it/);
   // The recap is a page to visit, not an email to skim: putting the writing
   // in the email would make the page pointless and the archive unread.
   assert.doesNotMatch(sent()[0].text, /eating your Tuesdays/);
@@ -191,6 +192,60 @@ test("a member can't mark somebody else's recap read", async () => {
      where member_id = '${RUTH}' and opened_at is not null`,
   );
   assert.equal(r.rows[0].c, 1, "Ruth's own read stands, and Omar changed nothing");
+});
+
+// ---------------------------------------------------------------------------
+// The figures the card and email quote
+// ---------------------------------------------------------------------------
+
+test("a member with a month behind them gets the figures in both", async () => {
+  // Omar's September: 2h tracked, a ledger week, and no roadmap actions.
+  await asMember(db, OMAR, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${OMAR}', 'finance-admin', '2026-09-01T09:00Z', '2026-09-01T11:00Z')`));
+  await db.query(`
+    insert into public.hours_ledger (member_id, week_start_date, hours, breakdown)
+    values ('${OMAR}', '2026-09-07', 2.5, '[]'::jsonb)`);
+
+  configure(db, NINA);
+  await saveRecap(null, form({ member_id: OMAR, recap_month: "2026-09-01", body: "September, written up." }));
+  resetEmail();
+  await sendRecap(null, form({ member_id: OMAR, recap_month: "2026-09-01" }));
+  await flushAfter();
+
+  const stats = (await db.query(
+    `select stats from public.monthly_recaps where member_id = '${OMAR}' and recap_month = '2026-09-01'`,
+  )).rows[0].stats;
+  assert.deepEqual(stats, { trackedHours: 2, reclaimedHours: 2.5, actionsDone: 0 });
+
+  assert.match(sent()[0].text, /2 hours tracked this month & 2\.5 hours reclaimed for good\./);
+  // Nobody is emailed "0 roadmap actions are properly done too".
+  assert.doesNotMatch(sent()[0].text, /roadmap action/);
+});
+
+test("a month with nothing in it doesn't open with a row of zeroes", async () => {
+  const copy = (await import("../../src/lib/recap/copy.ts")).RECAP_COPY.email({
+    firstName: "Omar", month: "2026-09-01", url: "https://aos.test/reviews/2026-09",
+    stats: { trackedHours: 0, reclaimedHours: 0, actionsDone: 0 },
+  });
+  assert.doesNotMatch(copy.body.join("\n"), /0 hours/);
+  assert.match(copy.body.join("\n"), /written up properly/);
+
+  configure(db, OMAR);
+  const unread = await getUnreadRecap(OMAR);
+  assert.deepEqual(unread.stats, { trackedHours: 2, reclaimedHours: 2.5, actionsDone: 0 });
+});
+
+// The numbers are quoted beside the writing, so they have to be the numbers it
+// was written from — not whatever the month adds up to when the card renders.
+test("a late entry for that month doesn't move the figures already sent", async () => {
+  await asMember(db, OMAR, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${OMAR}', 'finance-admin', '2026-09-02T09:00Z', '2026-09-02T17:00Z')`));
+
+  configure(db, OMAR);
+  const unread = await getUnreadRecap(OMAR);
+  assert.equal(unread.stats.trackedHours, 2, "still what Nina sent, not 10");
 });
 
 // ---------------------------------------------------------------------------
@@ -252,7 +307,9 @@ test("a member who tracked nothing still collates, with zeroes", async () => {
   const source = await getRecapSource(OMAR, MONTH);
   assert.ok(source);
   assert.equal(source.loggedMinutes, 0);
-  assert.equal(source.hoursReclaimedTotal, 0);
+  // Their September earned 2.5, so the running total isn't zero — but August,
+  // the month being written up, banked nothing.
+  assert.equal(source.hoursReclaimedThisMonth, 0);
   assert.deepEqual(source.reflections, []);
   assert.match(compileRecapSource(source), /None ticked off this month\./);
 });

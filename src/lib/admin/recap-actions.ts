@@ -6,10 +6,11 @@ import { after } from "next/server";
 import { requireAdmin } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getRecapSource } from "@/lib/admin/recap-source";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
 import { renderEmail } from "@/lib/jobs/copy";
-import { RECAP_COPY } from "@/lib/recap/copy";
+import { RECAP_COPY, type RecapStats } from "@/lib/recap/copy";
 import { isRecapMonth } from "@/lib/recap/month";
 import { formatCalendarDate } from "@/lib/time-zone";
 
@@ -102,10 +103,24 @@ export async function sendRecap(
   if (!existing.body?.trim()) return { error: "There's no recap written yet to send." };
   if (existing.sent_at) return { error: "Already sent. It's on their Piazza and in their profile." };
 
+  // The figures the card and email quote, frozen now: they must agree with the
+  // recap Nina wrote from them, and a month's numbers can still move afterwards
+  // (a forgotten hour logged late, a rate backdated). Null if the collator
+  // can't read the member, which the copy falls back around rather than
+  // blocking a send over a subtitle.
+  const source = await getRecapSource(memberId, month);
+  const stats = source
+    ? {
+        trackedHours: source.loggedMinutes / 60,
+        reclaimedHours: source.hoursReclaimedThisMonth,
+        actionsDone: source.actionsDone.length,
+      }
+    : null;
+
   const supabase = await createClient();
   const { data: updated, error } = await supabase
     .from("monthly_recaps")
-    .update({ sent_at: new Date().toISOString() })
+    .update({ sent_at: new Date().toISOString(), stats })
     .eq("id", existing.id)
     .is("sent_at", null)
     .select("id");
@@ -144,13 +159,14 @@ async function emailRecap(recapId: string): Promise<void> {
 
   const { data } = await admin
     .from("monthly_recaps")
-    .select("recap_month, member_id, members(full_name, email, status)")
+    .select("recap_month, member_id, stats, members(full_name, email, status)")
     .eq("id", recapId)
     .maybeSingle();
 
   const recap = data as unknown as {
     recap_month: string;
     member_id: string;
+    stats: RecapStats | null;
     members: { full_name: string; email: string; status: string } | null;
   } | null;
   if (!recap?.members) return;
@@ -160,6 +176,7 @@ async function emailRecap(recapId: string): Promise<void> {
     firstName: recap.members.full_name.split(" ")[0],
     month: recap.recap_month,
     url: `${env.siteUrl}/reviews/${recap.recap_month.slice(0, 7)}`,
+    stats: recap.stats,
   });
 
   const result = await sendEmail({

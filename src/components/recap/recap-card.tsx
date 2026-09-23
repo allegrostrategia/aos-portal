@@ -1,4 +1,4 @@
-import { RECAP_COPY } from "@/lib/recap/copy";
+import { RECAP_COPY, type RecapStats } from "@/lib/recap/copy";
 import { Card, Eyebrow } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -10,14 +10,14 @@ import { ButtonLink } from "@/components/ui/button";
  * reads every word from RECAP_COPY is easier to hand over than a block buried
  * three hundred lines into a page.
  */
-export function RecapCard({ month }: { month: string }) {
+export function RecapCard({ month, stats }: { month: string; stats: RecapStats | null }) {
   return (
     <Card tone="dark" className="mt-8">
-      <Eyebrow tone="light">{RECAP_COPY.card.eyebrow}</Eyebrow>
+      <Eyebrow tone="light">{RECAP_COPY.card.eyebrow(month)}</Eyebrow>
       <p className="font-display mt-2 text-title font-medium text-cream">
-        {RECAP_COPY.card.title(month)}
+        {RECAP_COPY.card.title}
       </p>
-      <p className="mt-2 text-small text-cream/75">{RECAP_COPY.card.body}</p>
+      <p className="mt-2 text-small text-cream/75">{RECAP_COPY.card.body(stats)}</p>
       <div className="mt-5">
         <ButtonLink href={`/reviews/${month.slice(0, 7)}`} size="sm">
           {RECAP_COPY.card.button}

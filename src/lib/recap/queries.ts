@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import type { RecapStats } from "./copy";
 
 export type MyRecap = {
   id: string;
@@ -8,7 +9,21 @@ export type MyRecap = {
   body: string;
   sentAt: string;
   openedAt: string | null;
+  /** The figures the card and email quote. Null on anything sent before them. */
+  stats: RecapStats | null;
 };
+
+/** The column is free-shape jsonb, so nothing is trusted without checking. */
+function readStats(value: unknown): RecapStats | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const num = (key: string) => (typeof raw[key] === "number" ? (raw[key] as number) : null);
+  const trackedHours = num("trackedHours");
+  const reclaimedHours = num("reclaimedHours");
+  const actionsDone = num("actionsDone");
+  if (trackedHours === null || reclaimedHours === null || actionsDone === null) return null;
+  return { trackedHours, reclaimedHours, actionsDone };
+}
 
 /**
  * A member's own recaps — the archive on You, and the read page.
@@ -28,7 +43,7 @@ export async function getMyRecaps(memberId: string): Promise<MyRecap[]> {
 
   const { data } = await supabase
     .from("monthly_recaps")
-    .select("id, recap_month, body, sent_at, opened_at")
+    .select("id, recap_month, body, sent_at, opened_at, stats")
     .eq("member_id", memberId)
     .not("sent_at", "is", null)
     .order("recap_month", { ascending: false });
@@ -39,12 +54,14 @@ export async function getMyRecaps(memberId: string): Promise<MyRecap[]> {
     body: string | null;
     sent_at: string;
     opened_at: string | null;
+    stats: unknown;
   }[]).map((row) => ({
     id: row.id,
     month: row.recap_month,
     body: row.body ?? "",
     sentAt: row.sent_at,
     openedAt: row.opened_at,
+    stats: readStats(row.stats),
   }));
 }
 
@@ -56,7 +73,7 @@ export async function getMyRecap(
 
   const { data } = await supabase
     .from("monthly_recaps")
-    .select("id, recap_month, body, sent_at, opened_at")
+    .select("id, recap_month, body, sent_at, opened_at, stats")
     .eq("member_id", memberId)
     .eq("recap_month", month)
     .not("sent_at", "is", null)
@@ -69,6 +86,7 @@ export async function getMyRecap(
         body: string | null;
         sent_at: string;
         opened_at: string | null;
+        stats: unknown;
       }
     | null;
   if (!row) return null;
@@ -79,6 +97,7 @@ export async function getMyRecap(
     body: row.body ?? "",
     sentAt: row.sent_at,
     openedAt: row.opened_at,
+    stats: readStats(row.stats),
   };
 }
 
@@ -93,7 +112,7 @@ export async function getUnreadRecap(memberId: string): Promise<MyRecap | null> 
 
   const { data } = await supabase
     .from("monthly_recaps")
-    .select("id, recap_month, body, sent_at, opened_at")
+    .select("id, recap_month, body, sent_at, opened_at, stats")
     .eq("member_id", memberId)
     .not("sent_at", "is", null)
     .is("opened_at", null)
@@ -106,6 +125,7 @@ export async function getUnreadRecap(memberId: string): Promise<MyRecap | null> 
     body: string | null;
     sent_at: string;
     opened_at: string | null;
+    stats: unknown;
   }[])[0];
   if (!row) return null;
 
@@ -115,5 +135,6 @@ export async function getUnreadRecap(memberId: string): Promise<MyRecap | null> 
     body: row.body ?? "",
     sentAt: row.sent_at,
     openedAt: row.opened_at,
+    stats: readStats(row.stats),
   };
 }
