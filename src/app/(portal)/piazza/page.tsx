@@ -16,12 +16,14 @@ import { getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { getMyAvailability, getMyPairing, getSharedSlots, pairingMonth } from "@/lib/pairing/queries";
 import { slotLabelShort } from "@/lib/pairing/slots";
+import { getUnreadRecap } from "@/lib/recap/queries";
 import { resolveNames } from "@/lib/chat/queries";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { formatSessionTime, utcToWallClock } from "@/lib/time-zone";
 import { Card, Chevron, Eyebrow, Quote, SectionTitle } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { OnboardingPath } from "@/components/onboarding/onboarding-path";
+import { RecapCard } from "@/components/recap/recap-card";
 import { InstallPrompt } from "@/components/install-prompt";
 
 export const metadata: Metadata = { title: "Piazza · aOS" };
@@ -86,10 +88,11 @@ export default async function PiazzaPage() {
     member.status === "active" ? getMyAvailability(member.id, month) : Promise.resolve(null),
   ]);
 
-  const [mySubmission, partnerNames, sharedSlots] = await Promise.all([
+  const [mySubmission, partnerNames, sharedSlots, unreadRecap] = await Promise.all([
     session ? getMySubmission(member.id, session.id) : Promise.resolve(null),
     pairing?.partnerId ? resolveNames([pairing.partnerId]) : Promise.resolve(new Map<string, string>()),
     pairing ? getSharedSlots(pairing.id) : Promise.resolve([] as string[]),
+    getUnreadRecap(member.id),
   ]);
   // Round 3, §B: a note from Nina the member hasn't opened yet.
   const myThread = mySubmission ? ((await getComments([mySubmission.id])).get(mySubmission.id) ?? []) : [];
@@ -243,6 +246,12 @@ export default async function PiazzaPage() {
           ))}
         </div>
       </section>
+
+      {/* Their monthly review, while it's unread (brief §3). Above the task
+          list because it is the one thing on this screen that is genuinely
+          new today; it goes as soon as they read it, and lives on You after
+          that. Every word of it comes from RECAP_COPY. */}
+      {unreadRecap ? <RecapCard month={unreadRecap.month} /> : null}
 
       {/* 4. The task list. */}
       <SectionTitle className="mt-8" aside={tasks.length ? `${tasks.length} to do` : undefined}>

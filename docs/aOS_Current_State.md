@@ -26,6 +26,27 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## MONTHLY RECAP — the app collates, Nina writes, the member reads — BUILT 23 Sep, committed, NOT pushed; `db:push` pending
+
+Brief: `docs/aOS_Monthly_Recap_Brief.md`. The third feature on the rule-2 pattern, after the roadmap and the reveal: aOS assembles a month of real data, Nina drafts the writing with Claude **outside** the product, the finished text is pasted back in. Nothing here calls an AI. Migration `20260923100000_monthly_recaps.sql` (**not yet applied**). Verified: tsc, lint, build; 227 unit / 284 schema / 153 action; mutation checks on the compiler (two), the guard trigger (two, run separately after the first pair masked each other), and both send guards; the member card, the read page and the admin screen rendered with the real components and built CSS.
+
+### Dom's two answers (the brief's open questions)
+- **A real read timestamp**, not "sent is read". `opened_at` is set when the member opens the recap, the same shape as chat's read tracking. It is what takes the card off Piazza and what tells Nina it landed — the admin screen shows "Read Tue 6 Oct" or "Sent …, unread".
+- **Copy is provisional and his to replace.** Every member-facing string lives in `src/lib/recap/copy.ts` and nothing composes its own sentence: a grep for any of those strings elsewhere in `src/` comes back empty, so replacing them is a one-file edit. **This wording has not been signed off and should not meet a real member as it stands.**
+
+### Built
+- `monthly_recaps` — one row per member per month, `body` nullable (pasted over more than one sitting, as the reveal allows). Three states: draft (member cannot read it at all, enforced in RLS by `sent_at is not null`), sent, opened. Guard trigger: a member may set `opened_at` and nothing else — and it admits the service role (`auth.uid() is null`), the day-7 lesson applied at the time of writing rather than after.
+- **The compiler** (`lib/recap/compile.ts`, pure and unit-tested) turns a month into one block to copy: time tracked and by category, weeks signed off, hours reclaimed this month and in total, milestones crossed with the week, roadmap actions completed, the build confirmed and its weekly rate, that month's confirmed hot seat challenge, and the private Friday reflections. **Zeroes are stated, never omitted** — a missing section invites a draft that claims something that didn't happen — and nothing in it interprets the month (a test asserts the absence of "great", "well done", …).
+- **The collator** (`lib/admin/recap-source.ts`) decides "in the month" per source and says why: entries by when the work happened, ledger and reflections by the week they belong to, sign-offs by `submitted_at` (matching the Piazza stat), actions and builds by when they were marked. An action later unticked on La Strada is removed again rather than claimed.
+- **Admin `/admin/recap`**: month chips (defaulting to the month that just ended), the member list with a Sent badge, the block with one Copy button, the paste form, the send button, and the read state afterwards. **Two steps, deliberately**: saving never reaches the member, sending is what emails and shows the card, and a sent recap can't be rewritten (a correction is a message from Nina, not a silent edit to something already read).
+- **Member**: the navy card on Piazza while unread (`components/recap/recap-card.tsx`), `/reviews/[month]` to read it — which marks it read in `after()`, once — and a **Monthly reviews** section on You listing every one, newest first, read or not. Email goes from `after()` on send, like the pairing overlap, not the 08:00 cron; it names the month and links, and deliberately does not quote the recap into an inbox.
+
+### Judgement calls, flagged
+- **The archive lists every sent recap, not only opened ones.** The brief's "moves to" is the journey from Piazza; hiding a sent recap from its own archive until it had been opened would leave a member who tapped nothing with nowhere to find it.
+- **No push.** The brief asks for email and a card. Push exists and is one line away if Nina wants it.
+- **No notification switch.** The three that exist cover recurring machinery; a once-a-month piece of writing from Nina about them personally isn't that. Revisit if a member asks.
+- **Privacy, stated rather than assumed (rule 6).** The reflections stay single-recipient — the member's own recap — which is what the brief settles. What the brief doesn't say out loud: **the block leaves aOS when Nina pastes it into Claude.** The compiled text carries its own "for Nina alone, never a shared room" label so it travels with the paste, and the admin screen says the same above the block. That is Nina's call to make knowingly, exactly as it already is for the roadmap.
+
 ## SOCIALE — the room fills the screen; only the thread scrolls — BUILT and PUSHED 20 Sep; phone check pending
 
 Dom, 20 Sep: the compose box needed a page scroll to reach, on phone and laptop alike (same DOM, both affected — the layout is `min-h-full`, so every screen grows with its content and the document scrolls, which is right everywhere except a chat). Now, like a messaging app: chips, title and composer stay put; the thread scrolls in its own box and opens at the newest message, following new ones in only if the reader was already at the bottom (`thread-scroll.tsx`).

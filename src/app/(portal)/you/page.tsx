@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { getCurrentMember } from "@/lib/auth/member";
 import { saveNotificationPreferences, signOut } from "@/lib/auth/actions";
 import { getHeadshotUrls } from "@/lib/directory/queries";
-import { formatCalendarDate } from "@/lib/time-zone";
+import { getMyRecaps } from "@/lib/recap/queries";
+import { RECAP_COPY } from "@/lib/recap/copy";
+import { formatCalendarDate, formatCalendarMonth } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
 import { Card, Eyebrow, NumberedRow, Quote } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,10 @@ export const metadata: Metadata = { title: "You · aOS" };
  */
 export default async function YouPage() {
   const member = (await getCurrentMember())!;
-  const headshots = await getHeadshotUrls([member.id]);
+  const [headshots, recaps] = await Promise.all([
+    getHeadshotUrls([member.id]),
+    getMyRecaps(member.id),
+  ]);
   const firstName = member.full_name.split(" ")[0];
 
   return (
@@ -79,6 +84,26 @@ export default async function YouPage() {
           />
         </ul>
       </Card>
+
+      {/* Monthly reviews (brief §4): every one Nina has sent, newest first,
+          and they stay. Only shown once there is one — an empty section on a
+          new member's profile promises something with no date on it. */}
+      {recaps.length > 0 ? (
+        <Card padded={false} className="mb-6">
+          <Eyebrow className="px-6 pt-5">{RECAP_COPY.archiveTitle}</Eyebrow>
+          <ul className="divide-y divide-ink/6 p-2">
+            {recaps.map((recap) => (
+              <NumberedRow
+                key={recap.id}
+                href={`/reviews/${recap.month.slice(0, 7)}`}
+                leading={<RowIcon name="review" />}
+                title={formatCalendarMonth(recap.month)}
+                meta={recap.openedAt ? "Read it again" : "New. Not read yet"}
+              />
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       <Card className="mb-6">
         <Eyebrow>Notifications</Eyebrow>
@@ -141,6 +166,7 @@ export default async function YouPage() {
               ["/admin/members", "Members"],
               ["/admin/hot-seat", "Hot seat"],
               ["/admin/touchpoint", "Friday question"],
+              ["/admin/recap", "Monthly reviews"],
               ["/admin/reminders", "Emails"],
               ["/admin/library", "Library"],
               ["/roadmap?edit=1", "Roadmaps"],
@@ -169,7 +195,7 @@ export default async function YouPage() {
   );
 }
 
-function RowIcon({ name }: { name: "details" | "progress" | "key" | "help" | "signout" }) {
+function RowIcon({ name }: { name: "details" | "progress" | "review" | "key" | "help" | "signout" }) {
   const paths = {
     details: (
       <>
@@ -181,6 +207,12 @@ function RowIcon({ name }: { name: "details" | "progress" | "key" | "help" | "si
       <>
         <path d="M4 18 10 11l4 4 6-8" />
         <path d="M16 7h4v4" />
+      </>
+    ),
+    review: (
+      <>
+        <path d="M6 3.5h9l3.5 3.5v13.5H6z" />
+        <path d="M14.5 3.5V8H19M9 12h6M9 16h4" />
       </>
     ),
     key: (

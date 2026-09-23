@@ -2444,5 +2444,100 @@ await check("realtime publication carries every table the chat subscribes to", a
   return missing.length === 0 || { have, missing };
 });
 
+console.log("\n— the monthly recap —");
+
+const RECAP_MONTH = "2026-08-01";
+
+await as(ADMIN, () => db.query(`
+  insert into public.monthly_recaps (member_id, recap_month, body)
+  values ('${ERIN}', '${RECAP_MONTH}', 'A draft Nina is still writing.')`));
+
+// A draft is Nina's working copy. Reading it early would show a member half a
+// sentence about themselves.
+await check("an unsent recap is invisible to the member it is about", async () => {
+  const mine = await as(ERIN, () => db.query(
+    `select count(*)::int c from public.monthly_recaps`));
+  const nina = await as(ADMIN, () => db.query(
+    `select count(*)::int c from public.monthly_recaps`));
+  return mine.rows[0].c === 0 && nina.rows[0].c === 1;
+});
+
+await check("once sent, the member can read it — and nobody else can", async () => {
+  await as(ADMIN, () => db.query(`
+    update public.monthly_recaps set sent_at = now()
+    where member_id = '${ERIN}' and recap_month = '${RECAP_MONTH}'`));
+
+  const mine = await as(ERIN, () => db.query(
+    `select body from public.monthly_recaps`));
+  const theirs = await as(FRAN, () => db.query(
+    `select count(*)::int c from public.monthly_recaps`));
+  return mine.rows.length === 1 && theirs.rows[0].c === 0;
+});
+
+await check("the member marks it read, once", async () => {
+  await as(ERIN, () => db.query(`
+    update public.monthly_recaps set opened_at = now()
+    where recap_month = '${RECAP_MONTH}' and opened_at is null`));
+  const r = await as(ERIN, () => db.query(
+    `select opened_at is not null o from public.monthly_recaps`));
+  return r.rows[0].o === true;
+});
+
+// RLS is row-level: without the trigger, a member allowed to mark their own
+// recap read is a member allowed to rewrite what Nina said about them.
+await rejects("a member cannot rewrite the recap", () =>
+  as(ERIN, () => db.query(`
+    update public.monthly_recaps set body = 'I had a great month, actually'
+    where recap_month = '${RECAP_MONTH}'`)),
+  "yours to change");
+
+await rejects("a member cannot unsend one", () =>
+  as(ERIN, () => db.query(`
+    update public.monthly_recaps set sent_at = null where recap_month = '${RECAP_MONTH}'`)),
+  "yours to change");
+
+await check("somebody else's recap cannot be touched at all", async () => {
+  try {
+    await as(FRAN, () => db.query(`
+      update public.monthly_recaps set opened_at = null where recap_month = '${RECAP_MONTH}'`));
+  } catch {
+    // RLS matching nothing or raising: either way the value must not change.
+  }
+  const r = await as(ERIN, () => db.query(
+    `select opened_at is not null o from public.monthly_recaps`));
+  return r.rows[0].o === true;
+});
+
+await rejects("a recap belongs to a month, not a day", () =>
+  as(ADMIN, () => db.query(`
+    insert into public.monthly_recaps (member_id, recap_month)
+    values ('${FRAN}', '2026-08-14')`)),
+  "monthly_recaps_month_is_first");
+
+await rejects("one recap per member per month", () =>
+  as(ADMIN, () => db.query(`
+    insert into public.monthly_recaps (member_id, recap_month)
+    values ('${ERIN}', '${RECAP_MONTH}')`)),
+  "monthly_recaps_member_id_recap_month_key");
+
+await rejects("an unsent recap cannot have been read", () =>
+  as(ADMIN, () => db.query(`
+    insert into public.monthly_recaps (member_id, recap_month, opened_at)
+    values ('${FRAN}', '2026-07-01', now())`)),
+  "monthly_recaps_opened_after_sent");
+
+// The cron and `after()` write with the service role, which has no JWT. A
+// guard admitting only is_portal_admin() refuses it — the bug that left the
+// day-7 pairing flag unset in production for three weeks.
+await check("the service role — no uid at all — can still write a recap", async () => {
+  await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  await db.query(`
+    update public.monthly_recaps set body = 'Rewritten by the system'
+    where recap_month = '${RECAP_MONTH}'`);
+  const r = await db.query(
+    `select body from public.monthly_recaps where recap_month = '${RECAP_MONTH}'`);
+  return r.rows[0].body === "Rewritten by the system";
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
