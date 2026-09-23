@@ -2,7 +2,12 @@
 
 import { useActionState, useState } from "react";
 
-import { saveRecap, sendRecap, type RecapState } from "@/lib/admin/recap-actions";
+import {
+  resendRecapEmail,
+  saveRecap,
+  sendRecap,
+  type RecapState,
+} from "@/lib/admin/recap-actions";
 import { Button } from "@/components/ui/button";
 import { Field, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
 
@@ -129,6 +134,55 @@ export function SendForm({
       <FormMessage error={state?.error} notice={state?.notice} />
       <SubmitButton full={false} disabled={!ready}>
         Send it
+      </SubmitButton>
+    </form>
+  );
+}
+
+/**
+ * What became of the email, and a way to try again.
+ *
+ * Shown on a recap already sent, because that is when the question comes up
+ * and there is otherwise nothing to look at: the send happens after the
+ * action has returned, so a failure can't be reported at the time.
+ */
+export function EmailStatus({
+  memberId,
+  month,
+  emailSentAt,
+  emailError,
+}: {
+  memberId: string;
+  month: string;
+  emailSentAt: string | null;
+  emailError: string | null;
+}) {
+  const [state, formAction] = useActionState<RecapState, FormData>(resendRecapEmail, null);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="member_id" value={memberId} />
+      <input type="hidden" name="recap_month" value={month} />
+
+      {emailSentAt ? (
+        <p className="text-small text-ink/70">
+          The email went. Resend accepted it — which isn&rsquo;t the same as it
+          landing, so their spam folder is still worth a mention.
+        </p>
+      ) : emailError ? (
+        <p className="rounded-lg bg-blush/30 px-3 py-2 text-small text-ink">
+          The email didn&rsquo;t go: {emailError}
+        </p>
+      ) : (
+        <p className="text-small text-ink/70">
+          No record of the email either way. This recap was sent before the
+          outcome was written down — try it again and it will say.
+        </p>
+      )}
+
+      <FormMessage error={state?.error} notice={state?.notice} />
+      <SubmitButton full={false}>
+        {emailSentAt ? "Send the email again" : "Try the email again"}
       </SubmitButton>
     </form>
   );

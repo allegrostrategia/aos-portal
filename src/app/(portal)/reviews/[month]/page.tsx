@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { after } from "next/server";
 
 import { requireMember } from "@/lib/auth/member";
 import { getMyRecap } from "@/lib/recap/queries";
@@ -20,9 +19,18 @@ export const metadata: Metadata = { title: "Your monthly review · aOS" };
  * already in the writing because she wrote it from them, and repeating them
  * around the edges would turn a letter into a dashboard.
  *
- * Reading it is what marks it read: `after()`, so the update happens once the
- * page is on its way rather than blocking it, and once only. The card on
- * Piazza goes when this lands.
+ * Reading it is what marks it read, and the mark is awaited here rather than
+ * deferred to `after()`. It was in `after()` first, and Next refuses it:
+ * "Route /reviews/[month] used `cookies()` inside `after()` while rendering" —
+ * the Supabase client reads the session from cookies, so building one in the
+ * callback throws, the update never runs, and the card sits on Piazza for
+ * ever. Nothing said so: the callback's error goes to the server log, and the
+ * test harness can't see the rule at all, because it stubs `after()` to run
+ * inline and stubs the client.
+ *
+ * Awaiting it costs one guarded, idempotent UPDATE on a page a member opens
+ * once a month, which is a better trade than a deferral that can fail
+ * silently. The card on Piazza goes when this lands.
  */
 export default async function RecapPage({ params }: PageProps<"/reviews/[month]">) {
   const member = await requireMember();
@@ -36,7 +44,7 @@ export default async function RecapPage({ params }: PageProps<"/reviews/[month]"
   const recap = await getMyRecap(member.id, month);
   if (!recap) notFound();
 
-  if (!recap.openedAt) after(() => markRecapOpened(member.id, month));
+  if (!recap.openedAt) await markRecapOpened(member.id, month);
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">

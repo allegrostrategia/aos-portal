@@ -2523,6 +2523,19 @@ await rejects("a member cannot rewrite the figures they were sent", () =>
     where recap_month = '${RECAP_MONTH}'`)),
   "yours to change");
 
+// Set first, or there is nothing to clear and the guard has nothing to catch:
+// null to null is not a change, and the first version of this test passed
+// against a guard that didn't name the column at all.
+await as(ADMIN, () => db.query(`
+  update public.monthly_recaps set email_error = 'Resend said no'
+  where recap_month = '${RECAP_MONTH}'`));
+
+await rejects("a member cannot clear the record of a failed email", () =>
+  as(ERIN, () => db.query(`
+    update public.monthly_recaps set email_error = null
+    where recap_month = '${RECAP_MONTH}'`)),
+  "yours to change");
+
 await rejects("a member cannot unsend one", () =>
   as(ERIN, () => db.query(`
     update public.monthly_recaps set sent_at = null where recap_month = '${RECAP_MONTH}'`)),

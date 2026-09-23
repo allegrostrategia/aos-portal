@@ -17,12 +17,12 @@ import assert from "node:assert/strict";
 import "./hooks.mjs";
 import { createTestDatabase, asMember } from "./pglite.mjs";
 import { configure } from "./stubs/supabase-server.mjs";
-import { sent, reset as resetEmail } from "./stubs/email-send.mjs";
+import { sent, reset as resetEmail, failNextSend } from "./stubs/email-send.mjs";
 import { flushAfter } from "./stubs/next-server.mjs";
 
 process.env.NEXT_PUBLIC_SITE_URL = "https://aos.test";
 
-const { saveRecap, sendRecap } = await import("../../src/lib/admin/recap-actions.ts");
+const { saveRecap, sendRecap, resendRecapEmail } = await import("../../src/lib/admin/recap-actions.ts");
 const { getRecapSource } = await import("../../src/lib/admin/recap-source.ts");
 const { getMyRecap, getMyRecaps, getUnreadRecap } = await import("../../src/lib/recap/queries.ts");
 const { markRecapOpened } = await import("../../src/lib/recap/mark.ts");
@@ -157,6 +157,17 @@ test("sending emails the member and names their month, without quoting the recap
   assert.doesNotMatch(sent()[0].text, /eating your Tuesdays/);
 });
 
+// The bug this answers: the first real send reached no inbox and there was no
+// way, from inside the product, to tell whether it ever left.
+test("a send that Resend accepts is recorded on the recap", async () => {
+  const r = await db.query(
+    `select email_sent_at, email_error from public.monthly_recaps
+     where member_id = '${RUTH}' and recap_month = '${MONTH}'`,
+  );
+  assert.ok(r.rows[0].email_sent_at, "the moment it was accepted");
+  assert.equal(r.rows[0].email_error, null);
+});
+
 test("a second send is refused, and sends nothing", async () => {
   configure(db, NINA);
   const result = await sendRecap(null, form({ member_id: RUTH, recap_month: MONTH }));
@@ -208,6 +219,52 @@ test("a member can't mark somebody else's recap read", async () => {
      where member_id = '${RUTH}' and opened_at is not null`,
   );
   assert.equal(r.rows[0].c, 1, "Ruth's own read stands, and Omar changed nothing");
+});
+
+test("a failed email says so on the recap, and can be tried again", async () => {
+  configure(db, NINA);
+  failNextSend("Resend said no");
+  resetEmail();
+
+  const first = await resendRecapEmail(null, form({ member_id: RUTH, recap_month: MONTH }));
+  assert.match(first?.error ?? "", /Resend said no/);
+  let row = (await db.query(
+    `select email_sent_at, email_error from public.monthly_recaps
+     where member_id = '${RUTH}' and recap_month = '${MONTH}'`,
+  )).rows[0];
+  assert.equal(row.email_sent_at, null, "a failure doesn't leave a success behind it");
+  assert.match(row.email_error, /Resend said no/);
+
+  // And the retry clears it rather than leaving a stale complaint on the row.
+  // (The stub records the attempt whether or not it succeeds, so the outbox is
+  // cleared here to count the retry's own send.)
+  resetEmail();
+  const second = await resendRecapEmail(null, form({ member_id: RUTH, recap_month: MONTH }));
+  assert.equal(second?.error, undefined);
+  assert.match(second?.notice ?? "", /accepted it/);
+  row = (await db.query(
+    `select email_sent_at, email_error from public.monthly_recaps
+     where member_id = '${RUTH}' and recap_month = '${MONTH}'`,
+  )).rows[0];
+  assert.ok(row.email_sent_at);
+  assert.equal(row.email_error, null);
+  assert.equal(sent().length, 1, "the retry actually sent one");
+});
+
+test("the email can't be retried on a recap that was never sent", async () => {
+  configure(db, NINA);
+  await saveRecap(null, form({ member_id: RUTH, recap_month: "2026-07-01", body: "A draft." }));
+  const result = await resendRecapEmail(null, form({ member_id: RUTH, recap_month: "2026-07-01" }));
+  assert.match(result?.error ?? "", /hasn't been sent/);
+  assert.equal(sent().length, 0);
+});
+
+test("a member cannot make the app email them again", async () => {
+  configure(db, RUTH);
+  await assert.rejects(
+    () => resendRecapEmail(null, form({ member_id: RUTH, recap_month: MONTH })),
+    /REDIRECT:\/piazza/,
+  );
 });
 
 // ---------------------------------------------------------------------------

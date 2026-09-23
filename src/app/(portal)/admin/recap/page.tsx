@@ -8,7 +8,7 @@ import { compileRecapSource } from "@/lib/recap/compile";
 import { isRecapMonth, lastCompleteMonth, monthOf, shiftMonth } from "@/lib/recap/month";
 import { formatCalendarMonth, formatSessionTimeShort } from "@/lib/time-zone";
 import { Badge, Card, Eyebrow, PageHeader, Stat } from "@/components/ui/card";
-import { RecapForm, SendForm, SourceBlock } from "./recap-forms";
+import { EmailStatus, RecapForm, SendForm, SourceBlock } from "./recap-forms";
 
 export const metadata: Metadata = { title: "Monthly reviews · aOS admin" };
 
@@ -55,7 +55,7 @@ export default async function AdminRecapPage({
     member
       ? supabase
           .from("monthly_recaps")
-          .select("body, personal_line, sent_at, opened_at")
+          .select("body, personal_line, sent_at, opened_at, email_sent_at, email_error")
           .eq("member_id", member.id)
           .eq("recap_month", month)
           .maybeSingle()
@@ -68,6 +68,8 @@ export default async function AdminRecapPage({
         personal_line: string | null;
         sent_at: string | null;
         opened_at: string | null;
+        email_sent_at: string | null;
+        email_error: string | null;
       }
     | null;
 
@@ -203,17 +205,30 @@ export default async function AdminRecapPage({
               </Card>
 
               {existing?.sent_at ? (
-                <Card>
-                  <Stat
-                    label="Sent"
-                    value={formatSessionTimeShort(existing.sent_at)}
-                    detail={
-                      existing.opened_at
-                        ? `They read it ${formatSessionTimeShort(existing.opened_at)}.`
-                        : "Not read yet. The card stays on their Piazza until they do."
-                    }
-                  />
-                </Card>
+                <>
+                  <Card>
+                    <Stat
+                      label="Sent"
+                      value={formatSessionTimeShort(existing.sent_at)}
+                      detail={
+                        existing.opened_at
+                          ? `They read it ${formatSessionTimeShort(existing.opened_at)}.`
+                          : "Not read yet. The card stays on their Piazza until they do."
+                      }
+                    />
+                  </Card>
+                  <Card>
+                    <Eyebrow>The email</Eyebrow>
+                    <div className="mt-3">
+                      <EmailStatus
+                        memberId={member.id}
+                        month={month}
+                        emailSentAt={existing.email_sent_at}
+                        emailError={existing.email_error}
+                      />
+                    </div>
+                  </Card>
+                </>
               ) : (
                 <Card>
                   <Eyebrow>3 · Send it</Eyebrow>

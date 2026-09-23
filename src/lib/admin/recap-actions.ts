@@ -31,7 +31,7 @@ async function loadRecap(memberId: string, month: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("monthly_recaps")
-    .select("id, body, personal_line, sent_at, opened_at")
+    .select("id, body, personal_line, sent_at, opened_at, email_sent_at, email_error")
     .eq("member_id", memberId)
     .eq("recap_month", month)
     .maybeSingle();
@@ -42,6 +42,8 @@ async function loadRecap(memberId: string, month: string) {
         personal_line: string | null;
         sent_at: string | null;
         opened_at: string | null;
+        email_sent_at: string | null;
+        email_error: string | null;
       }
     | null;
 }
@@ -161,18 +163,52 @@ export async function sendRecap(
 }
 
 /**
+ * Try the email again on a recap already sent.
+ *
+ * Sending is once-only and the recap can't be rewritten, but the email is a
+ * separate thing that can fail on its own — a provider hiccup, a bounce, a
+ * key rotated between one send and the next. Without this the only retry is
+ * writing a second recap for the same month, which the unique index refuses,
+ * so the member simply never hears. Nothing about the recap changes; the
+ * email goes again and the outcome is recorded again.
+ */
+export async function resendRecapEmail(
+  _prev: RecapState,
+  formData: FormData,
+): Promise<RecapState> {
+  await requireAdmin();
+
+  const memberId = String(formData.get("member_id") ?? "").trim();
+  const month = String(formData.get("recap_month") ?? "").trim();
+  if (!memberId || !isRecapMonth(month)) return { error: "Which recap?" };
+
+  const existing = await loadRecap(memberId, month);
+  if (!existing?.sent_at) return { error: "That recap hasn't been sent yet." };
+
+  const outcome = await emailRecap(existing.id);
+
+  revalidatePath("/admin/recap");
+  return outcome.ok
+    ? { notice: "Sent again. Resend accepted it." }
+    : { error: `Still not going: ${outcome.error}` };
+}
+
+/**
  * The email, sent out of band.
  *
  * Service role, because it reads the member's address after the admin's own
- * request has gone. A failure is logged, not retried: the recap is on their
- * Piazza either way, which is the copy of this message that matters.
+ * request has gone. The recap is on their Piazza either way, which is the
+ * copy of this message that matters — but what happened to the email is now
+ * written onto the row rather than only into a log nobody can read from
+ * inside the product (Dom, 23 Sep: the first real send reached no inbox and
+ * there was no way to tell where it stopped).
  *
  * Not gated on a notification switch. The three that exist are for the
  * recurring machinery — reminders, chat, pairing — and a once-a-month piece
  * of writing about them personally, from Nina, is not that. Worth revisiting
  * if a member ever asks.
  */
-async function emailRecap(recapId: string): Promise<void> {
+async function emailRecap(recapId: string): Promise<{ ok: boolean; error?: string }> {
   const admin = createAdminClient();
 
   const { data } = await admin
@@ -188,8 +224,24 @@ async function emailRecap(recapId: string): Promise<void> {
     personal_line: string | null;
     members: { full_name: string; email: string; status: string } | null;
   } | null;
-  if (!recap?.members) return;
-  if (recap.members.status === "cancelled") return;
+
+  // Every way out of here is recorded, including the quiet ones: "no email
+  // arrived" and "we decided not to send" look identical from the outside.
+  const record = async (fields: { email_sent_at?: string | null; email_error: string | null }) => {
+    await admin
+      .from("monthly_recaps")
+      .update({ email_sent_at: null, ...fields })
+      .eq("id", recapId);
+  };
+
+  if (!recap?.members) {
+    await record({ email_error: "Couldn't read the member this recap belongs to." });
+    return { ok: false, error: "Couldn't read the member this recap belongs to." };
+  }
+  if (recap.members.status === "cancelled") {
+    await record({ email_error: "Membership is cancelled, so nothing was sent." });
+    return { ok: false, error: "Membership is cancelled, so nothing was sent." };
+  }
 
   const copy = RECAP_COPY.email({
     firstName: recap.members.full_name.split(" ")[0],
@@ -204,5 +256,13 @@ async function emailRecap(recapId: string): Promise<void> {
     subject: copy.subject,
     text: renderEmail(copy),
   });
-  if (!result.ok) console.error("[recap] email failed", recapId, result.error);
+
+  if (!result.ok) {
+    console.error("[recap] email failed", recapId, result.error);
+    await record({ email_error: result.error ?? "The sender gave no reason." });
+    return { ok: false, error: result.error ?? "The sender gave no reason." };
+  }
+
+  await record({ email_sent_at: new Date().toISOString(), email_error: null });
+  return { ok: true };
 }
