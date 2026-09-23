@@ -1842,6 +1842,24 @@ await check("but they can rename their own SOP", async () => {
   return r.rows[0].title === "Better name";
 });
 
+// The other half of the same guard, and the second time this shape has cost
+// an hour: it returned early for is_portal_admin() and nothing else, so the
+// service role — no JWT, no uid — was refused exactly like a member. Nothing
+// writes this table that way today; this is here so the first thing that does
+// isn't met with "not yours to change" (23 Sep).
+await check("the service role can confirm a build and rename it", async () => {
+  await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  await db.query(`
+    update public.handover_pack
+       set title = 'Enquiry follow-up automation', confirmed_at = now()
+     where id = '${WRITE_UP}'`);
+  const r = await db.query(
+    `select title, confirmed_at is not null c from public.handover_pack where id='${WRITE_UP}'`);
+  // Put back, so the rest of the section reads against what it expects.
+  await db.query(`update public.handover_pack set title = 'Enquiry follow-up build' where id='${WRITE_UP}'`);
+  return r.rows[0].title === "Enquiry follow-up automation" && r.rows[0].c === true;
+});
+
 await check("the write-up survives the relabel attempt intact", async () => {
   const r = await as(ADMIN, () => db.query(
     `select source, title, drafted_by from public.handover_pack where id = '${WRITE_UP}'`));
