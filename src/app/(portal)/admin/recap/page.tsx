@@ -55,7 +55,7 @@ export default async function AdminRecapPage({
     member
       ? supabase
           .from("monthly_recaps")
-          .select("body, sent_at, opened_at")
+          .select("body, personal_line, sent_at, opened_at")
           .eq("member_id", member.id)
           .eq("recap_month", month)
           .maybeSingle()
@@ -63,7 +63,12 @@ export default async function AdminRecapPage({
   ]);
 
   const existing = (existingRow?.data ?? null) as
-    | { body: string | null; sent_at: string | null; opened_at: string | null }
+    | {
+        body: string | null;
+        personal_line: string | null;
+        sent_at: string | null;
+        opened_at: string | null;
+      }
     | null;
 
   // Who's still waiting, at a glance: written up or not, for the same month.
@@ -191,6 +196,7 @@ export default async function AdminRecapPage({
                     memberId={member.id}
                     month={month}
                     body={existing?.body ?? ""}
+                    personalLine={existing?.personal_line ?? ""}
                     sent={Boolean(existing?.sent_at)}
                   />
                 </div>

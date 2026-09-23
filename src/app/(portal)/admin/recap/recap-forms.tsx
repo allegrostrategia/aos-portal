@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 
 import { saveRecap, sendRecap, type RecapState } from "@/lib/admin/recap-actions";
 import { Button } from "@/components/ui/button";
-import { FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
+import { Field, FormMessage, SubmitButton, TextArea } from "@/components/ui/form";
 
 /**
  * The source block, with the one button this screen exists for.
@@ -48,11 +48,13 @@ export function RecapForm({
   memberId,
   month,
   body,
+  personalLine,
   sent,
 }: {
   memberId: string;
   month: string;
   body: string;
+  personalLine: string;
   sent: boolean;
 }) {
   const [state, formAction] = useActionState<RecapState, FormData>(saveRecap, null);
@@ -64,6 +66,11 @@ export function RecapForm({
           Sent, so it reads the same to them as it does here. Anything that needs
           correcting is a message, not a rewrite.
         </p>
+        {personalLine ? (
+          <p className="rounded-lg bg-cream-deep px-3 py-2 text-small text-ink/80">
+            Subject: {personalLine}
+          </p>
+        ) : null}
         <pre className="rounded-xl bg-cream-deep p-4 text-body leading-relaxed whitespace-pre-wrap text-ink">
           {body}
         </pre>
@@ -75,6 +82,18 @@ export function RecapForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="member_id" value={memberId} />
       <input type="hidden" name="recap_month" value={month} />
+      {/* One sentence, written per member. It is the subject line and the
+          email's opening, and it is where anything drawn from their own month
+          belongs — a sentence about one person's September can't be a
+          template. */}
+      <Field
+        label="Your line"
+        name="personal_line"
+        defaultValue={personalLine}
+        maxLength={120}
+        placeholder="One enquiry nearly slipped through again & this time, it didn't."
+        hint="The email's subject and first line, in your words. Under 120 characters. Leave it blank and the email falls back to “Your September review”."
+      />
       <TextArea
         label="The recap, as they'll read it"
         name="body"

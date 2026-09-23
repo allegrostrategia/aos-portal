@@ -116,11 +116,25 @@ test("an empty recap can't be sent", async () => {
   assert.equal(sent().length, 0);
 });
 
+test("a line too long to be a subject is refused, not cut in half", async () => {
+  configure(db, NINA);
+  const result = await saveRecap(
+    null,
+    form({ member_id: RUTH, recap_month: MONTH, body: "Fine.", personal_line: "x".repeat(121) }),
+  );
+  assert.match(result?.error ?? "", /under 120/);
+});
+
 test("sending emails the member and names their month, without quoting the recap", async () => {
   configure(db, NINA);
   await saveRecap(
     null,
-    form({ member_id: RUTH, recap_month: MONTH, body: "August was the month the follow-up stopped eating your Tuesdays." }),
+    form({
+      member_id: RUTH,
+      recap_month: MONTH,
+      body: "August was the month the follow-up stopped eating your Tuesdays.",
+      personal_line: "One enquiry nearly slipped through again & this time, it didn't.",
+    }),
   );
   resetEmail();
 
@@ -132,8 +146,10 @@ test("sending emails the member and names their month, without quoting the recap
 
   assert.equal(sent().length, 1);
   assert.equal(sent()[0].to, "ruth@test");
-  // Nina's wording, with the month and the name interpolated rather than fixed.
-  assert.equal(sent()[0].subject, "August's actually quite good, Ruth");
+  // Her own sentence, verbatim, as the subject — and as the line under the
+  // greeting. This is where anything drawn from their own month belongs.
+  assert.equal(sent()[0].subject, "One enquiry nearly slipped through again & this time, it didn't.");
+  assert.match(sent()[0].text, /^Ruth,\n\nOne enquiry nearly slipped through again/);
   assert.match(sent()[0].text, /https:\/\/aos\.test\/reviews\/2026-08/);
   assert.match(sent()[0].text, /you earned it/);
   // The recap is a page to visit, not an email to skim: putting the writing
@@ -218,6 +234,10 @@ test("a member with a month behind them gets the figures in both", async () => {
   )).rows[0].stats;
   assert.deepEqual(stats, { trackedHours: 2, reclaimedHours: 2.5, actionsDone: 0 });
 
+  // No line written this time: the subject falls back, and never to a
+  // sentence claiming the month went well.
+  assert.equal(sent()[0].subject, "Your September review, Omar");
+  assert.match(sent()[0].text, /^Omar,/);
   assert.match(sent()[0].text, /2 hours tracked this month & 2\.5 hours reclaimed for good\./);
   // Nobody is emailed "0 roadmap actions are properly done too".
   assert.doesNotMatch(sent()[0].text, /roadmap action/);
@@ -227,6 +247,7 @@ test("a month with nothing in it doesn't open with a row of zeroes", async () =>
   const copy = (await import("../../src/lib/recap/copy.ts")).RECAP_COPY.email({
     firstName: "Omar", month: "2026-09-01", url: "https://aos.test/reviews/2026-09",
     stats: { trackedHours: 0, reclaimedHours: 0, actionsDone: 0 },
+    personalLine: null,
   });
   assert.doesNotMatch(copy.body.join("\n"), /0 hours/);
   assert.match(copy.body.join("\n"), /written up properly/);

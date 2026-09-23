@@ -31,12 +31,18 @@ async function loadRecap(memberId: string, month: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("monthly_recaps")
-    .select("id, body, sent_at, opened_at")
+    .select("id, body, personal_line, sent_at, opened_at")
     .eq("member_id", memberId)
     .eq("recap_month", month)
     .maybeSingle();
   return data as
-    | { id: string; body: string | null; sent_at: string | null; opened_at: string | null }
+    | {
+        id: string;
+        body: string | null;
+        personal_line: string | null;
+        sent_at: string | null;
+        opened_at: string | null;
+      }
     | null;
 }
 
@@ -49,9 +55,16 @@ export async function saveRecap(
   const memberId = String(formData.get("member_id") ?? "").trim();
   const month = String(formData.get("recap_month") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const personalLine = String(formData.get("personal_line") ?? "").trim();
 
   if (!memberId) return { error: "Which member?" };
   if (!isRecapMonth(month)) return { error: "Which month?" };
+  // It is the subject line, and a subject past about eighty characters is cut
+  // off mid-sentence in most inboxes. Refused rather than trimmed: half of
+  // Nina's sentence is worse than being asked for a shorter one.
+  if (personalLine.length > 120) {
+    return { error: `That line is ${personalLine.length} characters. It's the subject line too, so it needs to be under 120.` };
+  }
 
   const existing = await loadRecap(memberId, month);
   if (existing?.sent_at) {
@@ -65,7 +78,12 @@ export async function saveRecap(
 
   const supabase = await createClient();
   const { error } = await supabase.from("monthly_recaps").upsert(
-    { member_id: memberId, recap_month: month, body: body || null },
+    {
+      member_id: memberId,
+      recap_month: month,
+      body: body || null,
+      personal_line: personalLine || null,
+    },
     { onConflict: "member_id,recap_month" },
   );
 
@@ -159,7 +177,7 @@ async function emailRecap(recapId: string): Promise<void> {
 
   const { data } = await admin
     .from("monthly_recaps")
-    .select("recap_month, member_id, stats, members(full_name, email, status)")
+    .select("recap_month, member_id, stats, personal_line, members(full_name, email, status)")
     .eq("id", recapId)
     .maybeSingle();
 
@@ -167,6 +185,7 @@ async function emailRecap(recapId: string): Promise<void> {
     recap_month: string;
     member_id: string;
     stats: RecapStats | null;
+    personal_line: string | null;
     members: { full_name: string; email: string; status: string } | null;
   } | null;
   if (!recap?.members) return;
@@ -177,6 +196,7 @@ async function emailRecap(recapId: string): Promise<void> {
     month: recap.recap_month,
     url: `${env.siteUrl}/reviews/${recap.recap_month.slice(0, 7)}`,
     stats: recap.stats,
+    personalLine: recap.personal_line,
   });
 
   const result = await sendEmail({

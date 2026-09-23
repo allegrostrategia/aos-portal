@@ -2509,6 +2509,20 @@ await rejects("a member cannot rewrite the recap", () =>
     where recap_month = '${RECAP_MONTH}'`)),
   "yours to change");
 
+// Every column added to this table is a column the member can rewrite unless
+// the guard names it. `personal_line` is the email's subject, in Nina's words.
+await rejects("a member cannot rewrite Nina's subject line", () =>
+  as(ERIN, () => db.query(`
+    update public.monthly_recaps set personal_line = 'Anything I like'
+    where recap_month = '${RECAP_MONTH}'`)),
+  "yours to change");
+
+await rejects("a member cannot rewrite the figures they were sent", () =>
+  as(ERIN, () => db.query(`
+    update public.monthly_recaps set stats = '{"trackedHours":999}'::jsonb
+    where recap_month = '${RECAP_MONTH}'`)),
+  "yours to change");
+
 await rejects("a member cannot unsend one", () =>
   as(ERIN, () => db.query(`
     update public.monthly_recaps set sent_at = null where recap_month = '${RECAP_MONTH}'`)),

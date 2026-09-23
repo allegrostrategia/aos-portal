@@ -12,17 +12,18 @@ import type { EmailCopy } from "@/lib/jobs/copy";
  * it. The figures come from `stats`, frozen on the recap when it was sent, so
  * they always agree with the writing they announce.
  *
- * Two lines of the confirmed copy are deliberately **not** here, because they
- * cannot be true for everybody (raised with Dom, 23 Sep):
+ * Two lines of the confirmed copy could not live here, because they cannot be
+ * true for everybody (raised with Dom, 23 Sep):
  *
  *   · "Two roadmap actions are properly done too" — templated below, and
  *     dropped entirely for a member who finished none, rather than emailing
  *     them a zero.
- *   · "One enquiry nearly slipped through again & this time, it didn't" —
- *     drawn from that member's own Friday reflection. There is no honest way
- *     to template it, and sending it to everybody would be a sentence about
- *     one person's month in everyone else's inbox. Left out pending a per-
- *     recap line Nina writes herself.
+ *   · "One enquiry nearly slipped through again & this time, it didn't", and
+ *     the subject's "September's actually quite good" — one is about a single
+ *     person's month, the other judges every month it is sent about. Both are
+ *     now **`personalLine`**: one sentence Nina writes per recap, used verbatim
+ *     as the subject and as the email's opening hook. The templated subject
+ *     below is only the fallback for a recap sent without one.
  *
  * Replacing any of this is still an edit to this file alone: no screen, action
  * or email composes its own sentence.
@@ -69,12 +70,20 @@ export const RECAP_COPY = {
     month: string;
     url: string;
     stats: RecapStats | null;
+    /** Nina's sentence for this member's month. Verbatim, never interpolated. */
+    personalLine: string | null;
   }): EmailCopy {
     const { stats } = input;
+    const line = input.personalLine?.trim() || null;
 
     return {
-      subject: `${monthName(input.month)}'s actually quite good, ${input.firstName}`,
+      // Hers where she wrote one. The fallback keeps the shape of her copy
+      // without its judgement — "actually quite good" is not something a
+      // template can promise about somebody's month.
+      subject: line ?? `Your ${monthName(input.month)} review, ${input.firstName}`,
       body: [
+        `${input.firstName},`,
+        ...(line ? [line] : []),
         // Dropped when there is nothing to report, rather than opening with
         // "0 hours tracked this month & 0 hours reclaimed for good" — which is
         // the same rule as the actions line below, and the honest version of
