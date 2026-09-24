@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
-import { checkInviteReadiness } from "@/lib/admin/diagnostics";
+import { checkEmailReadiness, checkInviteReadiness } from "@/lib/admin/diagnostics";
 import { createClient } from "@/lib/supabase/server";
 import type { Member } from "@/lib/supabase/types";
 import { Badge, Card, PageHeader } from "@/components/ui/card";
@@ -41,7 +41,7 @@ export default async function AdminMembersPage() {
 
   const members = (data ?? []) as Member[];
   const today = new Date().toISOString().slice(0, 10);
-  const readiness = await checkInviteReadiness();
+  const readiness = [...(await checkInviteReadiness()), ...checkEmailReadiness()];
 
   return (
     <main className="flex-1 py-8 sm:py-10">

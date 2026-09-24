@@ -27,6 +27,41 @@ export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+/**
+ * What this runtime can actually see, for when "the key is set" and "the app
+ * says it isn't" are both true (23 Sep: the cron sent three emails at 08:58
+ * and a Server Action four hours later said the key was missing).
+ *
+ * **Names and lengths only, never a value.** A secret that ends up in a
+ * database column or a log is a secret that has leaked, and this text goes
+ * into both.
+ *
+ * Three things it settles at a glance:
+ *   · whether *any* secret is visible here, or none — context versus variable
+ *   · whether a name near-misses: `RESEND_API_KEY ` with a trailing space, or
+ *     a lowercase twin, are invisible in a dashboard and exact here
+ *   · how many variables this runtime has at all, which differs sharply
+ *     between two deployments of the same code
+ */
+export function envFingerprint(): string {
+  const names = Object.keys(process.env);
+
+  const nearMisses = names
+    .filter((name) => /resend/i.test(name) || /^\s|\s$/.test(name))
+    .map((name) => JSON.stringify(name));
+
+  const known = ["RESEND_API_KEY", "SUPABASE_SERVICE_ROLE_KEY", "VAPID_SUBJECT", "NEXT_PUBLIC_SITE_URL", "EMAIL_FROM", "VERCEL_ENV", "VERCEL_URL"]
+    .map((name) => {
+      const value = process.env[name];
+      // VERCEL_ENV and VERCEL_URL name the deployment, so those are printed:
+      // two projects serving one product is the shape that fits the evidence.
+      const show = name === "VERCEL_ENV" || name === "VERCEL_URL";
+      return `${name}=${value === undefined ? "absent" : show ? value : `${value.length} chars`}`;
+    });
+
+  return `${names.length} vars | ${known.join(" · ")} | resend-ish or padded names: ${nearMisses.join(", ") || "none"}`;
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -44,7 +79,8 @@ export async function sendEmail({
     return {
       ok: false,
       error:
-        "RESEND_API_KEY isn't set on this deployment, so no product email can be sent.",
+        "RESEND_API_KEY isn't set on this deployment, so no product email can be sent. " +
+        `What this runtime sees: ${envFingerprint()}`,
     };
   }
 
