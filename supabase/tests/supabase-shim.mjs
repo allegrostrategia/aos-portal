@@ -331,7 +331,12 @@ export function createShimClient(db, uid) {
         const selected = (
           await Promise.all(
             splitColumns(state.columns).map(async (part) => {
-              const embed = /^(\w+)\((.+)\)$/.exec(part);
+              // `members!inner(...)` is the same embed with a join hint on
+              // it. The hint changes which rows PostgREST returns when the
+              // relation is missing; every embed here is on a NOT NULL
+              // foreign key, where inner and left agree, so it is parsed and
+              // dropped rather than implemented.
+              const embed = /^(\w+)(?:!inner|!left)?\((.+)\)$/.exec(part);
               return embed
                 ? await embedSql(db, state.table, embed[1], embed[2])
                 : part;
@@ -416,6 +421,10 @@ export function createShimClient(db, uid) {
       },
       lt(column, value) {
         state.filters.push([column, value, "<"]);
+        return api;
+      },
+      lte(column, value) {
+        state.filters.push([column, value, "<="]);
         return api;
       },
       limit(n) {

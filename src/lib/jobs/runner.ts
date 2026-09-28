@@ -16,6 +16,7 @@ import {
   chatUnreadCopy,
   hotSeatCopy,
   pairingBookedCopy,
+  roadmapIdleCopy,
   pairingStalledCopy,
   renderEmail,
   weeklyLogCopy,
@@ -733,6 +734,144 @@ export async function runPairingDay7(
  */
 const CHECK_IN_AFTER_DAYS = 14;
 
+/** A week away from La Strada before the first nudge (round 6 §2). */
+const ROADMAP_IDLE_DAYS = 7;
+
+/**
+ * Who hasn't looked at their roadmap in a week (round 6 §2).
+ *
+ * "Interacted" is the latest of three marks, not just the page view: opening
+ * La Strada (`roadmap_seen`), ticking an action (`roadmap_action_ticks`) and
+ * writing an off-the-itinerary note (`roadmap_month_notes`) all count. Only
+ * the first had no record before today; using all three is what stops the
+ * nudge going to somebody who spent Tuesday ticking things off.
+ *
+ * **Only members with a published roadmap.** Nudging someone toward a page
+ * that says "no roadmap yet" would be asking them to fix Nina's homework.
+ *
+ * Re-sent weekly while they stay away, and stopped by any of the three marks,
+ * because the dedupe key carries the week it was sent for: a member idle for
+ * a month gets four, on four different keys, and one visit ends it.
+ */
+// Exported for the same reason the handlers are: who this reaches is the half
+// that fails silently, and `runDueJobs` can't be driven from the harness —
+// its pending-jobs query uses PostgREST's `or(...)`, which the fixture would
+// have to reimplement.
+export async function planRoadmapIdle(today: string): Promise<number> {
+  const admin = createAdminClient();
+  const cutoff = addDays(today, -ROADMAP_IDLE_DAYS);
+
+  const [{ data: roadmapRows }, { data: seenRows }, { data: tickRows }, { data: noteRows }] =
+    await Promise.all([
+      admin
+        .from("roadmap")
+        .select("id, member_id, members!inner(status, role)")
+        .eq("is_current", true)
+        .not("confirmed_at", "is", null),
+      admin.from("roadmap_seen").select("member_id, last_seen_at"),
+      admin.from("roadmap_action_ticks").select("member_id, updated_at"),
+      admin.from("roadmap_month_notes").select("roadmap_id, updated_at"),
+    ]);
+
+  const roadmaps = ((roadmapRows ?? []) as unknown as {
+    id: string;
+    member_id: string;
+    members: { status: string; role: string } | null;
+  }[]).filter((r) => r.members?.status === "active" && r.members?.role === "member");
+  if (roadmaps.length === 0) return 0;
+
+  // The latest mark per member, whichever kind it was.
+  const latest = new Map<string, string>();
+  const mark = (memberId: string, at: string | null | undefined) => {
+    if (!at) return;
+    const current = latest.get(memberId);
+    if (!current || at > current) latest.set(memberId, at);
+  };
+  for (const row of (seenRows ?? []) as { member_id: string; last_seen_at: string }[]) {
+    mark(row.member_id, row.last_seen_at);
+  }
+  for (const row of (tickRows ?? []) as { member_id: string; updated_at: string }[]) {
+    mark(row.member_id, row.updated_at);
+  }
+  const memberByRoadmap = new Map(roadmaps.map((r) => [r.id, r.member_id]));
+  for (const row of (noteRows ?? []) as { roadmap_id: string; updated_at: string }[]) {
+    const memberId = memberByRoadmap.get(row.roadmap_id);
+    if (memberId) mark(memberId, row.updated_at);
+  }
+
+  // Never been in at all counts as away: a published roadmap nobody has
+  // opened is the case this is most for.
+  const idle = roadmaps.filter((r) => (latest.get(r.member_id) ?? "").slice(0, 10) <= cutoff);
+  if (idle.length === 0) return 0;
+
+  const rows = idle.map((r) => ({
+    kind: "roadmap_idle" as const,
+    member_id: r.member_id,
+    due_on: today,
+    // The week, not the day: one nudge per member per week for as long as
+    // they stay away, rather than one every morning.
+    dedupe_key: `roadmap_idle:${r.member_id}:${mondayOf(today)}`,
+    payload: {},
+  }));
+
+  const { data: inserted } = await admin
+    .from("due_jobs")
+    .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
+    .select("id");
+
+  return (inserted ?? []).length;
+}
+
+/**
+ * Send it — and check again at send time.
+ *
+ * The second check is the one that matters: a member who opens La Strada
+ * between the 08:00 planning and the send should not be told they have been
+ * away, and that is a real gap on a morning when the queue is long.
+ */
+export async function runRoadmapIdle(
+  admin: ReturnType<typeof createAdminClient>,
+  job: { member_id: string },
+): Promise<"sent" | "skipped" | "failed"> {
+  const [{ data: member }, { data: seen }] = await Promise.all([
+    admin
+      .from("members")
+      .select("email, full_name, status, notify_reminders")
+      .eq("id", job.member_id)
+      .maybeSingle(),
+    admin
+      .from("roadmap_seen")
+      .select("last_seen_at")
+      .eq("member_id", job.member_id)
+      .maybeSingle(),
+  ]);
+
+  const to = member as
+    | { email: string; full_name: string; status: string; notify_reminders: boolean }
+    | null;
+  if (!to || to.status !== "active") return "skipped";
+  if (!to.notify_reminders) return "skipped";
+
+  const lastSeen = (seen as { last_seen_at: string } | null)?.last_seen_at;
+  if (lastSeen && lastSeen > new Date(Date.now() - ROADMAP_IDLE_DAYS * 86_400_000).toISOString()) {
+    return "skipped";
+  }
+
+  const copy = roadmapIdleCopy({
+    firstName: to.full_name.split(" ")[0],
+    roadmapUrl: `${env.siteUrl}/roadmap`,
+  });
+
+  const result = await sendEmail({
+    to: to.email,
+    subject: copy.subject,
+    text: renderEmail(copy),
+  });
+  if (!result.ok) throw new Error(result.error ?? "Send failed");
+
+  return "sent";
+}
+
 async function planBuildCheckIns(today: string): Promise<number> {
   const admin = createAdminClient();
   const cutoff = addDays(today, -CHECK_IN_AFTER_DAYS);
@@ -874,7 +1013,8 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
     (await planHotSeatReminders(today)) +
     (await planHoursLedger(today)) +
     (await planChatNotifications(new Date())) +
-    (await planBuildCheckIns(today));
+    (await planBuildCheckIns(today)) +
+    (await planRoadmapIdle(today));
 
   const admin = createAdminClient();
 
@@ -936,6 +1076,8 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
         outcome = await runPairingBooked(admin, job);
       } else if (job.kind === "pairing_day7") {
         outcome = await runPairingDay7(admin, job);
+      } else if (job.kind === "roadmap_idle") {
+        outcome = await runRoadmapIdle(admin, job);
       } else if (job.kind === "build_check_in") {
         outcome = await runBuildCheckIn(admin, job);
       } else {

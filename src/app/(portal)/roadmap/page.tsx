@@ -12,6 +12,7 @@ import { firstMondayOfNextMonth } from "@/lib/onboarding/cadence";
 import { utcToWallClock } from "@/lib/time-zone";
 import { Card } from "@/components/ui/card";
 import { ActionRow, AddAction, type ActionView } from "./action-row";
+import { recordRoadmapSeen } from "@/lib/roadmap/strada-actions";
 import { ItineraryNote, MonthTitle, PublishForm, StartForm, StartsOnForm } from "./edit-forms";
 
 export const metadata: Metadata = { title: "La Strada · aOS" };
@@ -65,6 +66,12 @@ export default async function RoadmapPage({ searchParams }: PageProps<"/roadmap"
   const calendar = startsOn ? buildCalendar(startsOn) : null;
   const position = calendar ? positionOn(calendar, today) : null;
   const currentWeekIndex = position?.kind === "during" ? position.week.index : position?.kind === "after" ? Infinity : 0;
+
+  // "Away from La Strada for a week" needs a record of having been here
+  // (round 6 §2). Awaited rather than deferred: an `after()` callback that
+  // builds a Supabase client reads cookies, which Next refuses during a
+  // render — the same trap the recap's read tracking fell into on 23 Sep.
+  if (!isAdmin && visible) await recordRoadmapSeen();
 
   const monthsByNumber = new Map((roadmap?.months ?? []).map((m) => [m.month, m]));
   const populated = [...monthsByNumber.keys()].filter((n) => (monthsByNumber.get(n)?.focuses.some((f) => f.actions.length > 0) || monthsByNumber.get(n)?.title));

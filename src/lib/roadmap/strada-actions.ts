@@ -289,3 +289,21 @@ export async function saveMonthNote(_prev: StradaState, formData: FormData): Pro
   revalidatePath("/roadmap");
   return { notice: body ? "Saved." : "Cleared." };
 }
+
+/**
+ * Record that the member looked at their own roadmap (round 6 §2).
+ *
+ * From the page's render, like a station visit: opening La Strada is the
+ * event, and arriving from Piazza's link counts as much as tapping the nav.
+ *
+ * Only their own, and only a member's. An admin reading somebody's plan in
+ * edit mode is not that member visiting it — recording it would silence the
+ * very nudge the brief asks for, and do it invisibly.
+ */
+export async function recordRoadmapSeen(): Promise<void> {
+  const member = await requireMember();
+  if (member.role === "admin" || member.status !== "active") return;
+
+  const supabase = await createClient();
+  await supabase.rpc("record_roadmap_seen");
+}

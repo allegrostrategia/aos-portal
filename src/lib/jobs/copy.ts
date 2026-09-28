@@ -228,6 +228,32 @@ export function pairingOverlapCopy(input: {
 }
 
 /**
+ * A week away from La Strada (round 6 §2).
+ *
+ * Nina's words, and the tone is the point: it offers the way out in its own
+ * second sentence. A nudge that only says "you haven't been in" reads as a
+ * telling-off to the member having the worst week, who is exactly the member
+ * it most wants back.
+ *
+ * It does not name how many days, or how many times it has been sent. Both
+ * would turn a reminder into a tally.
+ */
+export function roadmapIdleCopy(input: {
+  firstName: string;
+  roadmapUrl: string;
+}): EmailCopy {
+  return {
+    subject: "Your roadmap's still there",
+    body: [
+      `${input.firstName},`,
+      `Just a reminder to come and check in on your roadmap — we noticed you haven't been in for about a week.`,
+      `If you're just having a busy week, no worries, ignore this one and we'll check back in with you next week. But if something's changed since your roadmap was built, let us know in your weekly check-in so we can make it accurate for you again.`,
+      `Your roadmap: ${input.roadmapUrl}`,
+    ],
+  };
+}
+
+/**
  * A pairing that hasn't happened, a week in — for Nina, not for the pair.
  *
  * Framed as something to look at rather than something wrong. §9 tracks met and
