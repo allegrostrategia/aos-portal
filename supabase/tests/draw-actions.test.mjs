@@ -26,6 +26,9 @@ const { createDraw, runDrawStep } = await import(
 const NINA = "11111111-1111-1111-1111-111111111111";
 const MARA = "22222222-2222-2222-2222-222222222222";
 const OTTO = "33333333-3333-3333-3333-333333333333";
+// Logs, but never a full ten-hour week: the negative case the bar still has
+// to exclude now that one week is enough (round 6 §3).
+const PIA = "44444444-4444-4444-4444-444444444444";
 
 const db = await createTestDatabase();
 
@@ -33,6 +36,7 @@ await db.exec(`
   insert into auth.users (id, email) values
     ('${NINA}', 'nina@allegro.test'),
     ('${MARA}', 'mara@test'),
+    ('${PIA}', 'pia@test'),
     ('${OTTO}', 'otto@test');
   insert into public.members (id, email, full_name, role, status)
     values ('${NINA}', 'nina@allegro.test', 'Nina', 'admin', 'active');
@@ -43,9 +47,13 @@ await asMember(db, NINA, async () => {
     `select public.create_member('${MARA}','mara@test','Mara', now(), now())`,
   );
   await db.query(
+    `select public.create_member('${PIA}','pia@test','Pia', now(), now())`,
+  );
+  await db.query(
     `select public.create_member('${OTTO}','otto@test','Otto', now(), now())`,
   );
   await db.query(`select public.activate_member('${MARA}')`);
+  await db.query(`select public.activate_member('${PIA}')`);
   await db.query(`select public.activate_member('${OTTO}')`);
 });
 
@@ -65,6 +73,13 @@ await asMember(db, OTTO, () =>
     select '${OTTO}', 'client-sessions', d, d + interval '11 hours'
     from (values (timestamptz '2026-02-02 09:00+00'), (timestamptz '2026-02-09 09:00+00'),
                  (timestamptz '2026-02-16 09:00+00')) as v(d)`),
+);
+
+// Nine hours in one week: logged, tracked, and still short of the bar.
+await asMember(db, PIA, () =>
+  db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${PIA}', 'client-sessions', '2026-02-03 09:00+00', '2026-02-03 18:00+00')`),
 );
 
 function form(fields) {
@@ -111,18 +126,21 @@ test("a member cannot set up a draw — redirected, not served", async () => {
   );
 });
 
-test("locking entries enters only the member who completed the month", async () => {
+// Round 6 §3: one ten-hour week is the bar. Mara logged four, Otto three,
+// Pia one week of nine hours. The first two are in; the bar still means
+// something, which is what Pia is here to prove.
+test("locking entries enters everyone with a ten-hour week, and nobody else", async () => {
   configure(db, NINA);
   const id = await drawId("2026-02-01");
   const result = await runDrawStep(null, form({ draw_id: id, intent: "open" }));
 
   assert.equal(result?.error, undefined);
-  assert.equal(result?.notice, "1 member entered.");
+  assert.equal(result?.notice, "2 members entered.");
 
   const entered = await db.query(
-    `select member_id from public.draw_entries where draw_id = '${id}'`,
+    `select member_id from public.draw_entries where draw_id = '${id}' order by member_id`,
   );
-  assert.deepEqual(entered.rows.map((r) => r.member_id), [MARA]);
+  assert.deepEqual(entered.rows.map((r) => r.member_id).sort(), [MARA, OTTO].sort());
 });
 
 test("locking again says nobody new, not nobody eligible", async () => {
@@ -167,7 +185,10 @@ test("drawing picks the winner from the entrants", async () => {
   const drawn = await db.query(
     `select winner_member_id, drawn_at from public.draws where id = '${id}'`,
   );
-  assert.equal(drawn.rows[0].winner_member_id, MARA);
+  // One of the entrants, not a fixed one: with two in the hat this is the
+  // first version of this test that could tell a draw from a function
+  // returning the only row it had.
+  assert.ok([MARA, OTTO].includes(drawn.rows[0].winner_member_id));
   assert.ok(drawn.rows[0].drawn_at);
 });
 

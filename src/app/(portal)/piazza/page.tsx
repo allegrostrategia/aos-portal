@@ -17,6 +17,7 @@ import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { getMyAvailability, getMyPairing, getSharedSlots, pairingMonth } from "@/lib/pairing/queries";
 import { slotLabelShort } from "@/lib/pairing/slots";
 import { getUnreadRecap } from "@/lib/recap/queries";
+import { getDrawStanding } from "@/lib/draw/queries";
 import { resolveNames } from "@/lib/chat/queries";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { formatSessionTime, utcToWallClock } from "@/lib/time-zone";
@@ -74,6 +75,7 @@ export default async function PiazzaPage() {
     checkIns,
     roadmap,
     hours,
+    draw,
     pairing,
     availability,
   ] = await Promise.all([
@@ -84,6 +86,7 @@ export default async function PiazzaPage() {
     countCheckInsThisMonth(member.id, today),
     getPiazzaRoadmap(member.id),
     getMemberHours(member.id),
+    getDrawStanding(member.id, `${today.slice(0, 7)}-01`),
     member.status === "active" ? getMyPairing(member.id, month) : Promise.resolve(null),
     member.status === "active" ? getMyAvailability(member.id, month) : Promise.resolve(null),
   ]);
@@ -289,6 +292,29 @@ export default async function PiazzaPage() {
           </ul>
         </Card>
       )}
+
+      {/* This month's prize draw (round 6 §3). One ten-hour week is the bar,
+          which is what the reminder emails and the log's card have always
+          said — the draw itself was requiring every week of the month until
+          28 Sep, and now matches. Shown to active members only: the draw is
+          theirs, and an onboarding member has nothing to be in yet. */}
+      {member.status === "active" ? (
+        <Card className={`mt-8 ${draw.isIn ? "border-orange/40 bg-lemon/25" : ""}`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <Eyebrow>This month&rsquo;s prize</Eyebrow>
+              <p className="mt-1 text-body text-ink">{draw.prize}.</p>
+            </div>
+            <p className="max-w-[16rem] text-small text-ink/70 sm:text-right">
+              {draw.isIn
+                ? draw.completeWeeks === 1
+                  ? "You’re in. One ten-hour week this month did it."
+                  : `You’re in. ${draw.completeWeeks} ten-hour weeks this month.`
+                : "One ten-hour week this month puts you in. The hours you’ve reclaimed are banked either way."}
+            </p>
+          </div>
+        </Card>
+      ) : null}
 
       {/* 5. The three cards that lost a nav slot. Real routes in. */}
       <div className="mt-8 grid gap-5 sm:grid-cols-3">

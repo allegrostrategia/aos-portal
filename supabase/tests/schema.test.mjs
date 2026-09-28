@@ -618,21 +618,40 @@ await rejects("a member cannot read someone else's completed weeks", () =>
     `select public.complete_weeks_in_month('${BOB}','2026-02-01'::date)`)),
   "Only an admin");
 
-await check("eligibility: four of four weeks puts Bob in", async () => {
+await check("eligibility: Bob's four ten-hour weeks put him in", async () => {
   const r = await as(ADMIN, () => db.query(
     `select complete_weeks, weeks_required, is_eligible
      from public.draw_eligibility('2026-02-01'::date) where member_id='${BOB}'`));
   const row = r.rows[0];
-  return row.complete_weeks === 4 && row.weeks_required === 4 && row.is_eligible === true;
+  return row.complete_weeks === 4 && row.weeks_required === 1 && row.is_eligible === true;
 });
 
-await check("eligibility: the same four weeks are NOT a full March", async () => {
-  // Bob logged nothing in March, so this is really asserting the bar moves with
-  // the month rather than being a fixed four.
+// Round 6 §3: the bar is ONE ten-hour week, not every week of the month.
+// It was every week until 28 Sep, while all three member-facing sentences
+// said otherwise — so this is the promise, tested.
+await check("eligibility: a single ten-hour week is enough", async () => {
+  const ONE_WEEK = "21212121-2121-2121-2121-212121212121";
+  await db.exec(`
+    insert into auth.users (id, email) values ('${ONE_WEEK}', 'oneweek@test');
+    insert into public.members (id, email, full_name, role, status)
+      values ('${ONE_WEEK}', 'oneweek@test', 'One Week', 'member', 'active')`);
+  await as(ONE_WEEK, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${ONE_WEEK}','client-sessions','2026-02-09 09:00Z','2026-02-09 20:00Z')`));
+
   const r = await as(ADMIN, () => db.query(
-    `select weeks_required, is_eligible
+    `select complete_weeks, is_eligible
+     from public.draw_eligibility('2026-02-01'::date) where member_id='${ONE_WEEK}'`));
+  return r.rows[0].complete_weeks === 1 && r.rows[0].is_eligible === true;
+});
+
+await check("eligibility: a month with no ten-hour week is still out", async () => {
+  // Bob logged nothing in March. Nine hours in a week wouldn't do it either:
+  // the ten-hour bar inside complete_weeks_in_month is unchanged.
+  const r = await as(ADMIN, () => db.query(
+    `select complete_weeks, is_eligible
      from public.draw_eligibility('2026-03-01'::date) where member_id='${BOB}'`));
-  return r.rows[0].weeks_required === 5 && r.rows[0].is_eligible === false;
+  return r.rows[0].complete_weeks === 0 && r.rows[0].is_eligible === false;
 });
 
 await check("eligibility lists active members only — no onboarding, no cancelled", async () => {
@@ -664,9 +683,18 @@ await as(ADMIN, () => db.query(`
 const FEB_DRAW = "55555555-5555-5555-5555-555555555555";
 const MAR_DRAW = "66666666-6666-6666-6666-666666666666";
 
-await check("opening entries enters the eligible members", async () =>
-  (await as(ADMIN, () => db.query(
-    `select public.open_draw_entries('${FEB_DRAW}') n`))).rows[0].n === 1);
+await check("opening entries enters the eligible members", async () => {
+  // Two now: Bob's four ten-hour weeks and One Week's single one, which is
+  // the round 6 bar. Asserted by who rather than how many, so the next
+  // fixture member doesn't silently change what this test means.
+  await as(ADMIN, () => db.query(`select public.open_draw_entries('${FEB_DRAW}')`));
+  const r = await as(ADMIN, () => db.query(
+    `select m.full_name from public.draw_entries e
+     join public.members m on m.id = e.member_id
+     where e.draw_id='${FEB_DRAW}' order by m.full_name`));
+  return JSON.stringify(r.rows.map((x) => x.full_name)) === '["Bob","One Week"]'
+    || { got: r.rows.map((x) => x.full_name) };
+});
 
 await check("the entry records the weeks that earned it", async () =>
   (await as(ADMIN, () => db.query(
@@ -685,9 +713,17 @@ await rejects("a draw nobody entered refuses to pick a winner", () =>
   as(ADMIN, () => db.query(`select public.draw_winner('${MAR_DRAW}')`)),
   "Nobody is entered");
 
-await check("drawing picks a winner from the entrants", async () =>
-  (await as(ADMIN, () => db.query(
-    `select (public.draw_winner('${FEB_DRAW}')).winner_member_id w`))).rows[0].w === BOB);
+await check("drawing picks a winner from the entrants", async () => {
+  // Two entrants now, so the winner is genuinely random — which is what this
+  // was always meant to assert. With one entrant it could not tell a real
+  // draw from a function that returned the only row it had.
+  const w = (await as(ADMIN, () => db.query(
+    `select (public.draw_winner('${FEB_DRAW}')).winner_member_id w`))).rows[0].w;
+  const entrants = (await as(ADMIN, () => db.query(
+    `select member_id from public.draw_entries where draw_id='${FEB_DRAW}'`)))
+    .rows.map((r) => r.member_id);
+  return entrants.includes(w) || { winner: w, entrants };
+});
 
 // The one that actually matters: a retried request must not produce a second,
 // different winner.
