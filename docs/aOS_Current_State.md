@@ -26,6 +26,22 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## ROUND 6 — check-in nudge, inactivity nudge, the prize bar, Sociale — §2–4 BUILT 28 Sep, committed, NOT pushed; §1 waiting on Dom
+
+Brief: `docs/aOS_Round6_Checkin_Prize_Chat_Brief.md`. Three migrations pending (`20260928120000`, `20260928130000`). Verified: tsc, lint, build; 238 unit / 289 schema / 167 action; mutation checks on every new rule.
+
+### §1 Friday check-in nudge — NOT BUILT, flagged back
+The brief reads "check-in" as the Weekly Check-Ins room and suggests copy telling members to "pop your update into Sociale before then". **That room is write-locked outside Mondays 2–3:30pm** (`chat_channel_open` in the insert policy, plus the friendly refusal in `sendMessage`), so the email would send members somewhere that refuses them. And "check-in" already means the Friday weekly-log sign-off everywhere else in the product — `countCheckInsThisMonth` says so in a comment, and the Piazza stat labelled "check-ins this month" counts submissions. **Read as a Friday nudge to sign off the log**, which is also the only reading a member can act on the day it arrives. Second problem either way: `log_reminder_endweek` already goes out on Fridays to anyone under ten hours, so an unconditional second one means two emails on one morning, against this codebase's own line on reminder noise. Recommended: one Friday message leading with the check-in, adding the hours line only when they are short. **Waiting on Dom.**
+
+### §2 Roadmap inactivity nudge
+Nothing recorded when a member last *read* their roadmap, so `roadmap_seen` does (one row per member, written only through `record_roadmap_seen()` so it cannot be backdated to duck the nudge). "Interacted" is the latest of three marks — opening it, ticking an action, writing a month note — because somebody who spent Tuesday ticking things off has not been away. Queued by the daily cron for members with a **published** roadmap only, re-sent weekly while they stay away (the dedupe key carries the week), and re-checked at send time, since planning is 08:00 and a member who opens La Strada before the send should not be told they have been gone. Copy is Nina's, including the second sentence that offers the way out.
+
+### §3 The prize bar — a contradiction, not just a wiring job
+`draw_eligibility` required a ten-hour week in **every** Monday-week of the month. The log's card and both reminder emails have always said **one** week. So the product promised a bar four to five times easier than the one it applied, and wiring Piazza to the copy alone would have made the promise louder while the draw kept refusing people. The function now takes one complete week (`20260928120000`), and Piazza carries the prize and the member's standing, reading the same database function the draw runs on. Four existing tests changed meaning and now assert intent — entries by who is in rather than how many, the winner by coming from the entrant list (with two entrants, that finally distinguishes a real draw from a function returning its only row), plus a new fixture member who logs nine hours so the bar still excludes somebody.
+
+### §4 Sociale
+La Strada's hero photograph reused as the wallpaper — it is the Amalfi coastline the brief asks for, already brand-approved, already carrying the aOS mark on the sail — at 8% with the colour pulled out, fixed behind the scrolling thread. A run of messages from one sender is drawn once: face and name at the top, tail on the last bubble, tighter spacing between; five minutes ends a run as well as a change of sender (pure, tested). Own messages move to the brand navy. **Two things the render caught that the code did not:** a pale bubble over the wallpaper stopped reading as a bubble at 390px, so received bubbles gained a hairline; and the avatar, hung off the last bubble as a messaging app would, landed beside the timestamp and reaction row rather than beside anything it named — so the face sits at the top of a run instead. Six seeded messages used for the render were removed from the live room afterwards.
+
 ## THE EMAIL THAT WASN'T BROKEN — 28 Sep, committed and PUSHED
 
 **Nothing was wrong with the key or the code. The send was running somewhere without it, and the email has since been received end to end on production (Dom, 28 Sep).**
