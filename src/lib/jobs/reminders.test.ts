@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   COMPLETE_WEEK_MINUTES,
+  isShortOfCompleteWeek,
   MIDWEEK_BEHIND_MINUTES,
   isoWeekday,
   reminderKindForDate,
@@ -67,23 +68,25 @@ test("the mid-week nudge only fires when meaningfully behind", () => {
   assert.equal(shouldSendReminder("log_reminder_midweek", 400), false);
 });
 
-test("the end-of-week reminder only fires if the week still won't count", () => {
-  assert.equal(shouldSendReminder("log_reminder_endweek", 480), true);
-  assert.equal(
-    shouldSendReminder("log_reminder_endweek", COMPLETE_WEEK_MINUTES - 1),
-    true,
-  );
-  assert.equal(
-    shouldSendReminder("log_reminder_endweek", COMPLETE_WEEK_MINUTES),
-    false,
-  );
-  assert.equal(shouldSendReminder("log_reminder_endweek", 900), false);
+// Round 6 §1: Friday is the check-in nudge now, so it goes to everybody —
+// signing the week off is what Nina reads over the weekend, and that is
+// worth saying to somebody who logged plenty as much as to somebody who
+// didn't. What stays conditional is the hours paragraph inside it.
+test("the Friday email goes to everyone, however much they logged", () => {
+  for (const logged of [0, 480, COMPLETE_WEEK_MINUTES, 900]) {
+    assert.equal(shouldSendReminder("log_reminder_endweek", logged), true);
+  }
 });
 
-test("someone already past ten hours is never chased", () => {
-  for (const kind of ["log_reminder_midweek", "log_reminder_endweek"] as const) {
-    assert.equal(shouldSendReminder(kind, COMPLETE_WEEK_MINUTES + 60), false);
-  }
+test("the hours paragraph is the part that's conditional", () => {
+  assert.equal(isShortOfCompleteWeek(480), true);
+  assert.equal(isShortOfCompleteWeek(COMPLETE_WEEK_MINUTES - 1), true);
+  assert.equal(isShortOfCompleteWeek(COMPLETE_WEEK_MINUTES), false);
+  assert.equal(isShortOfCompleteWeek(900), false);
+});
+
+test("someone already past ten hours is still never chased mid-week", () => {
+  assert.equal(shouldSendReminder("log_reminder_midweek", COMPLETE_WEEK_MINUTES + 60), false);
 });
 
 test("remaining never goes negative", () => {

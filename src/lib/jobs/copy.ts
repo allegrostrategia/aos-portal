@@ -35,12 +35,27 @@ export function weeklyLogCopy(
     };
   }
 
+  // Friday, and since round 6 §1 this is the check-in nudge: sign the week
+  // off so it is ready for Monday's Q&A. It goes to everyone, and the hours
+  // paragraph is the part that only appears when it is true — one Friday
+  // email rather than two (Dom, 28 Sep).
+  //
+  // It does **not** ask anyone to post in the Weekly Check-Ins room: that
+  // room is write-locked until Monday 2pm, so an email telling them to put
+  // something there before then would send them at a door that is shut.
+  const short = input.shortBy > 0;
+
   return {
-    subject: `${formatMinutes(input.shortBy)} off this month's prize draw`,
+    subject: "Sign off your week before Monday",
     body: [
       `${input.firstName},`,
-      `You're ${formatMinutes(input.shortBy)} short of ten hours this week. Ten-hour weeks are what put you in the monthly prize draw; your hours reclaimed are banked either way.`,
-      `If you've done the hours and just haven't logged them, you can add them after the fact. Reconstructed is worth less than tracked, but it's worth a great deal more than nothing.`,
+      `Sign off this week's log today and answer the Friday question while the week is still fresh. Nina reads them over the weekend and answers in the Weekly Check-Ins room on Monday, 2 to 3:30.`,
+      ...(short
+        ? [
+            `You're ${formatMinutes(input.shortBy)} short of ten hours this week. Ten-hour weeks are what put you in the monthly prize draw; your hours reclaimed are banked either way.`,
+            `If you've done the hours and just haven't logged them, you can add them after the fact. Reconstructed is worth less than tracked, but it's worth a great deal more than nothing.`,
+          ]
+        : []),
       `Your log: ${input.logUrl}`,
     ],
   };

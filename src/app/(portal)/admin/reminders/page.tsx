@@ -53,12 +53,22 @@ export default async function ReminderPreviewPage() {
       }),
     },
     {
-      label: "Weekly log · Friday",
-      note: "Only if the week still won't count. Shown 2h short.",
+      label: "Check-in · Friday",
+      note: "Everyone, every Friday. Shown 2h short of ten hours.",
       copy: weeklyLogCopy("log_reminder_endweek", {
         firstName,
         loggedMinutes: 480,
         shortBy: 120,
+        logUrl: `${base}/log`,
+      }),
+    },
+    {
+      label: "Check-in · Friday, ten hours already logged",
+      note: "The same email without its hours paragraph.",
+      copy: weeklyLogCopy("log_reminder_endweek", {
+        firstName,
+        loggedMinutes: 660,
+        shortBy: 0,
         logUrl: `${base}/log`,
       }),
     },

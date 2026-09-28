@@ -27,6 +27,7 @@ const {
   runPairingDay7,
   runChatNotification,
   runHoursLedger,
+  runReminder,
 } = await import("../../src/lib/jobs/runner.ts");
 
 // The stub directly: a relative import would bypass the hook that substitutes
@@ -139,6 +140,57 @@ test("a retired build isn't asked about — there's nothing left to answer", asy
 
   assert.equal(outcome, "skipped");
   assert.equal(sent().length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Friday: the check-in nudge (round 6 §1)
+//
+// One email, to everybody, leading with the sign-off — and the hours
+// paragraph only where it is true. Both faces of it are tested here because
+// the conditional half is exactly the kind that quietly inverts.
+// ---------------------------------------------------------------------------
+
+const FRIDAY_WEEK = "2026-09-21"; // a Monday; the week Friday belongs to
+
+test("Friday asks for the sign-off, and names Monday rather than the room's door", async () => {
+  reset();
+  await asMember(db, OMAR, () => db.query(`
+    insert into public.time_entries (member_id, category_slug, started_at, ended_at)
+    values ('${OMAR}', 'client-sessions', '2026-09-22 09:00Z', '2026-09-22 20:00Z')`));
+
+  const outcome = await runReminder(admin, {
+    id: "job-friday-full",
+    kind: "log_reminder_endweek",
+    member_id: OMAR,
+    payload: { week_start: FRIDAY_WEEK },
+  });
+
+  assert.equal(outcome, "sent", "eleven hours logged, and still asked to sign off");
+  assert.equal(sent()[0].subject, "Sign off your week before Monday");
+  assert.match(sent()[0].text, /answer the Friday question/);
+  assert.match(sent()[0].text, /Monday, 2 to 3:30/);
+  // The hours paragraph has no business here: they are past ten.
+  assert.doesNotMatch(sent()[0].text, /short of ten hours/);
+  assert.doesNotMatch(sent()[0].text, /prize draw/);
+  // And it never sends them at a door that is shut until Monday afternoon.
+  assert.doesNotMatch(sent()[0].text, /Sociale/);
+  assert.doesNotMatch(sent()[0].text, /post|pop your update/i);
+});
+
+test("the same email carries the hours paragraph when they're short", async () => {
+  reset();
+  const outcome = await runReminder(admin, {
+    id: "job-friday-short",
+    kind: "log_reminder_endweek",
+    member_id: RUTH,
+    payload: { week_start: FRIDAY_WEEK },
+  });
+
+  assert.equal(outcome, "sent");
+  assert.equal(sent()[0].subject, "Sign off your week before Monday");
+  assert.match(sent()[0].text, /answer the Friday question/);
+  assert.match(sent()[0].text, /10h short of ten hours this week/);
+  assert.match(sent()[0].text, /prize draw/);
 });
 
 // ---------------------------------------------------------------------------
