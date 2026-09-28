@@ -23,6 +23,7 @@ import { Composer } from "./composer";
 import { LiveThread } from "./live-thread";
 import { Reactions } from "./reactions";
 import { ThreadScroll } from "./thread-scroll";
+import { endsGroup, startsGroup } from "@/lib/chat/grouping";
 
 export const metadata: Metadata = { title: "Piazza Sociale · aOS" };
 
@@ -152,39 +153,62 @@ export default async function ChannelPage({
           <LiveThread channelId={channel.id} />
 
           <Card padded={false} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {/* The wallpaper sits on this wrapper rather than inside the
+                scroller, so it stays put while the thread moves over it
+                (round 6 §4). */}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <div aria-hidden className="chat-wallpaper pointer-events-none absolute inset-0" />
             <ThreadScroll
               count={messages.length}
-              className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto p-4"
+              className="relative flex min-h-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto p-4"
             >
               {messages.length === 0 ? (
                 <p className="text-small text-ink/60">
                   Nothing here yet. Someone has to go first.
                 </p>
               ) : (
-                messages.map((message) => {
+                messages.map((message, index) => {
                   const mine = message.member_id === member.id;
 
+                  // One person's run of messages is drawn once (round 6 §4).
+                  // The rule itself lives in lib/chat/grouping, where it can
+                  // be tested — a grouped thread and an ungrouped one both
+                  // look plausible, and only the boundaries tell them apart.
+                  const opensRun = startsGroup(messages[index - 1], message);
+                  const closesRun = endsGroup(message, messages[index + 1]);
+
                   // Every received message carries its sender's face and
-                  // name, in every kind of room (round 4, item 17). Your own
-                  // carry neither, as in WhatsApp (Dom, 18 Sep): they're on
-                  // the right and in ink, which is how you know they're yours.
+                  // name, in every kind of room (round 4, item 17) — once
+                  // per group since round 6. Your own carry neither, as in
+                  // WhatsApp (Dom, 18 Sep): they're on the right and in the
+                  // brand navy, which is how you know they're yours.
                   return (
                     <div
                       key={message.id}
-                      className={`flex items-end gap-2.5 ${mine ? "flex-row-reverse" : ""}`}
+                      className={`flex items-end gap-2.5 ${mine ? "flex-row-reverse" : ""} ${
+                        opensRun && index > 0 ? "mt-3" : ""
+                      }`}
                     >
                       {!mine ? (
-                        <span className="w-9 shrink-0">
-                          <Avatar
-                            name={message.authorName}
-                            src={headshots.get(message.member_id)}
-                            size="sm"
-                          />
+                        // Face and name together at the top of the group.
+                        // A messaging app usually hangs the face off the last
+                        // bubble, and that doesn't work here: the row is
+                        // bottom-aligned and each message carries a timestamp
+                        // and a reaction row under it, so the avatar landed
+                        // beside those instead of beside anything it named.
+                        <span className="w-9 shrink-0 self-start">
+                          {opensRun ? (
+                            <Avatar
+                              name={message.authorName}
+                              src={headshots.get(message.member_id)}
+                              size="sm"
+                            />
+                          ) : null}
                         </span>
                       ) : null}
 
                       <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
-                        {!mine ? (
+                        {!mine && opensRun ? (
                           <p className="mb-1 ml-1 flex items-center gap-1.5 text-caption font-medium text-ink/60">
                             {message.authorName}
                             {/* Nina's messages read as the coach's, not a
@@ -198,12 +222,19 @@ export default async function ChannelPage({
                         ) : null}
 
                         <div
-                          className={`rounded-2xl px-3.5 py-2.5 ${
+                          className={`relative rounded-2xl px-3.5 py-2.5 ${
+                            closesRun
+                              ? `bubble-tail ${mine ? "bubble-tail-mine" : "bubble-tail-theirs"}`
+                              : ""
+                          } ${
                             mine
-                              ? "rounded-br-md bg-ink text-cream"
+                              ? "bg-navy text-cream"
                               : coaches.has(message.member_id)
-                                ? "rounded-bl-md border border-orange/50 bg-lemon/40 text-ink"
-                                : "rounded-bl-md bg-cream-deep text-ink"
+                                ? "border border-orange/50 bg-lemon/70 text-ink"
+                                // A hairline, because the wallpaper behind it
+                                // means a pale fill alone no longer says
+                                // "bubble" — it read as loose text at 390px.
+                                : "border border-ink/8 bg-cream-deep text-ink"
                           }`}
                         >
                           {message.image_path ? (
@@ -282,6 +313,7 @@ export default async function ChannelPage({
                 })
               )}
             </ThreadScroll>
+            </div>
 
             {lockedForMe && window.kind === "closed" ? (
               <div className="border-t border-ink/10 bg-cream-deep px-4 py-4">

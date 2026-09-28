@@ -225,6 +225,45 @@ html:has(main[data-chat-screen]) .portal-content {
   }
 }
 
+/* The wallpaper behind a chat thread (round 6 §4).
+   La Strada's hero photograph, reused rather than sourced again: it is the
+   Amalfi coastline the brief asks for, it is already brand-approved, and it
+   already carries the aOS mark on the sail and the awnings. Held at 8% with
+   the colour pulled out of it, so it reads as texture rather than as a
+   picture competing with the bubbles — at that weight the text contrast over
+   cream is unchanged. Fixed behind a scrolling thread, as a messaging app
+   does, rather than scrolling with it. */
+.chat-wallpaper {
+  background-image: url("/illustrations/roadmap-hero.jpg");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.08;
+  filter: grayscale(0.4) sepia(0.25);
+}
+
+/* A bubble's tail. `background: inherit` takes the bubble's own fill, so the
+   three kinds — yours, theirs, and Nina's — each get a tail without three
+   rules. Drawn only on the last bubble of a group, which is where a real
+   messaging app puts it. */
+.bubble-tail::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 0.6rem;
+  height: 0.85rem;
+  background: inherit;
+}
+.bubble-tail-mine::after {
+  right: -0.45rem;
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  border-bottom-right-radius: 0.35rem;
+}
+.bubble-tail-theirs::after {
+  left: -0.45rem;
+  clip-path: polygon(100% 0, 0 100%, 100% 100%);
+  border-bottom-left-radius: 0.35rem;
+}
+
 @layer utilities {
   /* See --aos-glass-blur. Fill first, so the surface reads with the blur off. */
   .glass {
