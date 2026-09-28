@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { envFingerprint, isEmailConfigured } from "@/lib/email/send";
+import { isEmailConfigured } from "@/lib/email/send";
 
 export type ReadinessCheck = {
   label: string;
@@ -73,16 +73,12 @@ export async function checkInviteReadiness(): Promise<ReadinessCheck[]> {
 /**
  * Can this deployment send product email?
  *
- * Added 24 September, for a contradiction: the daily cron sent three emails at
- * 08:58 and a Server Action four hours later reported `RESEND_API_KEY` missing
- * — the same name, read from the same module, in what should be the same
- * environment. The same function's write to the database succeeded, so it was
- * not "this context can't read secrets".
- *
- * So this says what the runtime actually sees, rather than what it ought to.
- * Names and lengths only; `envFingerprint()` never returns a value. It renders
- * beside the invitation checks because that panel is already where "is this
- * deployment wired up" gets answered.
+ * Added 24 September, during an evening spent on an email that turned out not
+ * to be broken: the send was running on a deployment without the key. The
+ * environment dump that found that is gone (28 Sep, once it had done its
+ * job); this row stays, because "can this deployment send email" is a
+ * question worth one glance before Nina writes to a member, and it belongs
+ * beside the invitation checks that already answer "is this wired up".
  */
 export function checkEmailReadiness(): ReadinessCheck[] {
   const configured = isEmailConfigured();
@@ -93,7 +89,7 @@ export function checkEmailReadiness(): ReadinessCheck[] {
       ok: configured,
       detail: configured
         ? `RESEND_API_KEY is set here (${process.env.RESEND_API_KEY?.length ?? 0} characters). Whether Resend accepts it shows on the recap itself after a send.`
-        : `RESEND_API_KEY is not set in this runtime. ${envFingerprint()}`,
+        : "RESEND_API_KEY is not set in this runtime. If this isn't production, that's deliberate — check the banner at the top of the screen.",
     },
   ];
 }
