@@ -19,6 +19,8 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+import { DeploymentBanner } from "@/components/deployment-banner";
+
 export const metadata: Metadata = {
   title: "aOS · Allegro Strategia",
   description:
@@ -61,7 +63,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en-GB"
       className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {/* Every screen, signed in or not: a preview deployment reads and
+            writes the same live database, and an installed home-screen app
+            has no address bar to say which one you opened (28 Sep). */}
+        <DeploymentBanner />
+        {children}
+      </body>
     </html>
   );
 }

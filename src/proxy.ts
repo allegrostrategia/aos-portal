@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { env } from "@/lib/env";
+import { deploymentOf, shouldRefuseUnconfigured } from "@/lib/deployment";
 
 /**
  * Runs before every page request (Next 16's replacement for `middleware.ts`).
@@ -61,6 +62,21 @@ function matches(pathname: string, paths: string[]): boolean {
 }
 
 export async function proxy(request: NextRequest) {
+  const deployment = deploymentOf(process.env.VERCEL_ENV);
+
+  // A deployment with no database is a mistake, and it should look like one
+  // rather than like the app (Dom, 28 Sep: previews keep no Supabase keys, so
+  // "they should fail loudly if something tries"). Said in words here, because
+  // the alternative is a stack trace from the first query and a white screen
+  // for whoever opened the wrong link.
+  if (shouldRefuseUnconfigured(deployment, env.isSupabaseConfigured)) {
+    return new NextResponse(
+      `This is a ${deployment} deployment of aOS with no database configured, on purpose.\n\n` +
+        `Nothing here is the live app. Go to https://aos.allegrostrategia.com.\n`,
+      { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } },
+    );
+  }
+
   // Lets `npm run dev` work before the Supabase credentials are pasted in.
   if (!env.isSupabaseConfigured) {
     return NextResponse.next({ request });

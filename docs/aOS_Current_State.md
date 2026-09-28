@@ -26,6 +26,18 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## THE EMAIL THAT WASN'T BROKEN — 28 Sep, committed and PUSHED
+
+**Nothing was wrong with the key, the code or Vercel's config. The retry ran on a preview deployment.** `RESEND_API_KEY` is scoped to Production only; `SUPABASE_SERVICE_ROLE_KEY` and the public Supabase keys were scoped to Production *and* Preview. So the preview build read and wrote the live database happily — the recap, the `stats` snapshot, `opened_at`, the recorded `email_error` — and failed on exactly one thing, the email. The 08:58 cron always runs on production, which is why it sent three that morning. Dom found the scoping difference in Vercel; the fingerprint's `VERCEL_ENV` was what it would have confirmed.
+
+**How a preview got opened without anyone noticing:** a web manifest's `start_url` is relative, so an installed home-screen app is pinned to whatever origin it was added from — and the app was removed and re-added twice on 20 Sep during the push-notification work. A standalone window has no address bar. The same shape as the viewport bug: the device was telling the truth and nothing was showing it.
+
+**Both fixes, on Dom's call:**
+- **A red banner on every screen of any deployment that isn't production**, server-rendered from `VERCEL_ENV`, in the document flow rather than fixed (a second fixed element after the four-attempt viewport saga was not worth it). Local dev stays quiet — the address bar already says localhost. Rules are pure and unit-tested in `lib/deployment.ts`; verified by running the production build twice, once with `VERCEL_ENV=preview` (banner) and once with `production` (none), and measured at 390px for horizontal overflow: none.
+- **Previews keep no Supabase keys at all** (Dom: "we don't test on preview links, so previews don't need a working database"). `src/proxy.ts` now answers every request on a deployed-but-unconfigured build with a plain 503 naming the deployment and pointing at the live domain, instead of a stack trace from the first query. Verified by building with the keys stripped from `.env.local` and serving it: `/`, `/piazza` and `/manifest.webmanifest` all 503 with the message; `.env.local` restored and checksum-matched afterwards.
+
+**Still to do in Vercel, by Dom** (below), and worth knowing: existing preview deployments keep the env they were built with, so the preview already on a device stays alive until it is redeployed or deleted.
+
 ## RECAP — FIRST REAL SEND, AND THE TWO FAULTS IT FOUND — 23 Sep, committed, NOT pushed
 
 Dom sent Dominic's September recap on live. The archive on You was right; two things were not.
