@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 30 September 2026
 
-**Two things are built and NOT pushed: Step 13's flourishes with the log's week navigation, and the reporting tool's Stage 1 (ten migrations, not applied anywhere).** Nina has reviewed and approved the reporting schema; Dom runs the migrations. Everything before those is pushed and applied. Everything up to `6d7a3cf` is on `main` (this doc's own update aside). Test suite re-run on 30 Sep after the reporting work: **281 unit / 289 + 84 schema / 169 action**, build and lint clean. (The 84 are the reporting suite, its own file; 281 includes the 34 formula tests.)
+**All migrations are applied, including the reporting tool's ten, verified on live. Two things are built and NOT yet pushed to `main`: Step 13's flourishes with the log's week navigation, and the reporting tool's Stage 1.** Nina reviewed and approved the reporting schema on 30 Sep. Everything up to `6d7a3cf` is on `main` (this doc's own update aside). Test suite re-run on 30 Sep after the reporting work: **281 unit / 289 + 84 schema / 169 action**, build and lint clean. (The 84 are the reporting suite, its own file; 281 includes the 34 formula tests.)
 
 Since the last big handoff, five things landed: **peer pairing on real dates** (pick slots after the match; both told where they overlap the moment the second one picks), **the monthly recap** (aOS collates the month, Nina writes it outside the app, pastes it back, sends — verified end to end on live including the email), **admin password recovery**, **the deployment banner and keyless previews**, and **round 6** (Friday check-in email, roadmap inactivity nudge, the prize bar, the Sociale redesign).
 
@@ -43,9 +43,9 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE REPORTING TOOL — STAGE 1 BUILT 30 Sep; reviewed and approved by Nina; NOT pushed, migrations NOT applied
+## THE REPORTING TOOL — STAGE 1 BUILT 30 Sep; reviewed and approved by Nina; migrations APPLIED, code NOT pushed
 
-Commits `4562f5d`, `0ee528b`, `b83f06c`, `14a8720`, `7d476ea`. **Ten migrations, seventeen `report_` tables, 1,994 lines of SQL — none of it applied anywhere but the local test database.** Brief at `docs/reporting/reporting-tool-brief.md`, mockups beside it. Stage 1 of §11 is foundations only: tables, RLS, the metric list, roles and access, and the shared formula module. **No screens.**
+Commits `4562f5d`, `0ee528b`, `b83f06c`, `14a8720`, `7d476ea`. **Ten migrations, seventeen `report_` tables, 1,994 lines of SQL — applied to live on 30 Sep after Nina's review.** Brief at `docs/reporting/reporting-tool-brief.md`, mockups beside it. Stage 1 of §11 is foundations only: tables, RLS, the metric list, roles and access, and the shared formula module. **No screens.**
 
 **The identity decision, confirmed by Nina 30 Sep — do not change without asking.** Retainer clients, Chiarezza attendees and Elize get an `auth.users` account and **no `members` row**. The weak reason is that a members row might make them admin; it wouldn't, `role` defaults to `member`. **The real reason is that `has_portal_access()` is a membership gate, not an authentication one, and three shared surfaces read it with no ownership check at all** — `can_see_channel()` grants every *group* channel, `member_profiles` is the directory, and `draws` and `hot_seat_sessions` are open to anyone passing it. `has_portal_access()` is `status <> 'cancelled'`, so *every* status admits them. One members row inserted for convenience puts a paying retainer client inside Piazza Sociale. **Asserted by test, not by comment**: each of the three signs in and must read zero rows from all five surfaces, which are seeded with real content first.
 
@@ -69,7 +69,7 @@ Commits `4562f5d`, `0ee528b`, `b83f06c`, `14a8720`, `7d476ea`. **Ten migrations,
 
 **A note on where work comes from.** The Stage 1 drafts at `docs/reporting/stage1-draft-*` were written in a different Claude session and are now deleted. A later message from that session reported ten migrations, a seed, routing and 335 passing tests as done and committed at `9f2a86c`. **None of it existed** — not in the working tree, not on `origin`, no such object in the repo, no second checkout on the machine. Treat a report of completed work from anywhere outside this repo as a claim to verify, not a state to build on.
 
-**Still to do:** Dom runs `npm run db:push`; nothing is pushed. Then Stage 2 (§11.2): the tab row, entry pages for Social Media, Email, Leads & Conversions, Offers and Financials, the Overview report, Draft/Published, strategist notes — retainer clients first, so Elize can test on real data before any member sees it.
+**Still to do:** the code is committed and not pushed. Then Stage 2 (§11.2): the tab row, entry pages for Social Media, Email, Leads & Conversions, Offers and Financials, the Overview report, Draft/Published, strategist notes — retainer clients first, so Elize can test on real data before any member sees it.
 
 ## STEP 13 FLOURISHES + THE LOG'S WEEK NAVIGATION — BUILT 30 Sep, committed, NOT pushed
 
@@ -615,7 +615,9 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Forty-one on disk; thirty-one applied to live. The ten dated `20260930` are the reporting tool's Stage 1 and are NOT applied** — reviewed and approved by Nina 30 Sep, waiting on Dom to run `db:push` in his own terminal (it hangs from a non-interactive shell and exits 0 having done nothing). Of the applied thirty-one, the CLI's history agrees. The fourteen from 1–3 Sep (six dated `20260901`, eight dated `20260903`) went in by hand through the SQL Editor while the CLI couldn't connect; the seventeen before them went through the CLI normally.
+**Sixty-eight on disk, all sixty-eight applied to live, and `migration list --linked` shows `local == remote` for every one.** The ten dated `20260930` (the reporting tool's Stage 1) went in on 30 Sep via `npm run db:push` from Claude Code's shell, which worked normally this time, and were verified over PostgREST afterwards rather than on the exit code: `report_metrics` answers with 174 rows to the service role and **zero to anon**, so RLS is live and not just local.
+
+**This section said "thirty-one" from early September until 30 Sep, and then briefly "forty-one".** The first was stale; the second was me adding ten to the stale number instead of running `ls`. It has now been counted. Same failure as the "thirteen"/"fourteen" note below, in the same paragraph that warns about it — **count the files, every time.** The fourteen from 1–3 Sep (six dated `20260901`, eight dated `20260903`) went in by hand through the SQL Editor while the CLI couldn't connect; the seventeen before them went through the CLI normally.
 
 **This said "thirteen" for a week — it was always fourteen.** Counted from memory rather than from `ls`. A repair list off by one is exactly the kind of stale number somebody acts on, which is what the paragraph below is about.
 
