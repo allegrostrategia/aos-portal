@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 30 September 2026
 
-**Everything built is pushed and applied. Working tree clean, nothing waiting on a decision.** Latest commit `7c2ac07`. Test suite: **239 unit / 289 schema / 169 action**, build and lint clean.
+**Everything built is pushed and applied. Working tree clean, nothing waiting on a decision.** Everything up to `6d7a3cf` is on `main` (this doc's own update aside). Test suite re-run on 30 Sep: **239 unit / 289 schema / 169 action**, build and lint clean.
 
 Since the last big handoff, five things landed: **peer pairing on real dates** (pick slots after the match; both told where they overlap the moment the second one picks), **the monthly recap** (aOS collates the month, Nina writes it outside the app, pastes it back, sends — verified end to end on live including the email), **admin password recovery**, **the deployment banner and keyless previews**, and **round 6** (Friday check-in email, roadmap inactivity nudge, the prize bar, the Sociale redesign).
 
@@ -52,6 +52,8 @@ The brief reads "check-in" as the Weekly Check-Ins room and suggests copy tellin
 
 ### §2 Roadmap inactivity nudge
 Nothing recorded when a member last *read* their roadmap, so `roadmap_seen` does (one row per member, written only through `record_roadmap_seen()` so it cannot be backdated to duck the nudge). "Interacted" is the latest of three marks — opening it, ticking an action, writing a month note — because somebody who spent Tuesday ticking things off has not been away. Queued by the daily cron for members with a **published** roadmap only, re-sent weekly while they stay away (the dedupe key carries the week), and re-checked at send time, since planning is 08:00 and a member who opens La Strada before the send should not be told they have been gone. Copy is Nina's, including the second sentence that offers the way out.
+
+**It has fired for real.** 30 September, 08:58: one `roadmap_idle` job, to Dominic's test account, status `done` — the nudge works end to end in production. Note what it could not know: `roadmap_seen` only started recording on 28 September, so at that moment "never opened it" and "opened it before we started recording" were the same thing, and every member with a published roadmap looked idle. That only mattered at rollout, and rollout has now passed with no real members — from here, no row genuinely means they have not been in. **If the table is ever introduced under a live cohort again, the first week of nudges would be wrong**, and that is the moment to add a grace window rather than now.
 
 ### §3 The prize bar — a contradiction, not just a wiring job
 `draw_eligibility` required a ten-hour week in **every** Monday-week of the month. The log's card and both reminder emails have always said **one** week. So the product promised a bar four to five times easier than the one it applied, and wiring Piazza to the copy alone would have made the promise louder while the draw kept refusing people. The function now takes one complete week (`20260928120000`), and Piazza carries the prize and the member's standing, reading the same database function the draw runs on. Four existing tests changed meaning and now assert intent — entries by who is in rather than how many, the winner by coming from the entrant list (with two entrants, that finally distinguishes a real draw from a function returning its only row), plus a new fixture member who logs nine hours so the bar still excludes somebody.
