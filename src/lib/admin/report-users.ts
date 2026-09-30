@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/member";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { isSendableOrigin, localOriginRefusal } from "./invite-origin";
 import { validateReportClient } from "./report-client-input";
 
 /**
@@ -62,6 +63,9 @@ export async function inviteReportClient(
   const origin = (await headers()).get("origin") ?? env.siteUrl;
   if (!origin) {
     return { error: "NEXT_PUBLIC_SITE_URL isn't set, so the invitation link would point nowhere." };
+  }
+  if (!isSendableOrigin(origin)) {
+    return { error: localOriginRefusal(origin) };
   }
 
   const admin = createAdminClient();
@@ -155,6 +159,9 @@ export async function assignReportTeamMember(
     const origin = (await headers()).get("origin") ?? env.siteUrl;
     if (!origin) {
       return { error: "NEXT_PUBLIC_SITE_URL isn't set, so the invitation link would point nowhere." };
+    }
+    if (!isSendableOrigin(origin)) {
+      return { error: localOriginRefusal(origin) };
     }
 
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {

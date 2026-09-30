@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/member";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { isSendableOrigin, localOriginRefusal } from "./invite-origin";
 
 export type InviteState = {
   error?: string;
@@ -67,6 +68,9 @@ export async function inviteMember(
       error:
         "NEXT_PUBLIC_SITE_URL isn't set, so the invitation link would point nowhere.",
     };
+  }
+  if (!isSendableOrigin(origin)) {
+    return { error: localOriginRefusal(origin) };
   }
 
   const admin = createAdminClient();
