@@ -125,3 +125,17 @@ export function bendFor(index: number, total: number): number {
   const step = index - (total - 1) / 2;
   return step * 0.7;
 }
+
+/**
+ * Roughly how long a spoke is, in viewBox units — enough to set the dash for
+ * the self-drawing animation (Step 13's "blueprint" flourish).
+ *
+ * The chord plus a little, rather than the true arc length of the quadratic:
+ * the dash only has to be **at least** the path length for the line to start
+ * fully hidden, and overshooting by a few percent costs nothing while
+ * integrating a Bézier for a decoration would be the wrong amount of effort.
+ * Pure, so the map can stay server-rendered — no measuring in the browser.
+ */
+export function spokeLength(station: Point, hub: Point): number {
+  return Math.hypot(station.x - hub.x, station.y - hub.y) * 1.2;
+}

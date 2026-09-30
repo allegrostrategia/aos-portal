@@ -25,6 +25,7 @@ import { Card, Chevron, Eyebrow, Quote, SectionTitle } from "@/components/ui/car
 import { ButtonLink } from "@/components/ui/button";
 import { OnboardingPath } from "@/components/onboarding/onboarding-path";
 import { RecapCard } from "@/components/recap/recap-card";
+import { FlipNumber } from "@/components/flourish/flip-number";
 import { InstallPrompt } from "@/components/install-prompt";
 
 export const metadata: Metadata = { title: "Piazza · aOS" };
@@ -230,7 +231,7 @@ export default async function PiazzaPage() {
             card — the blur variable only matters over imagery. */}
         <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 sm:inset-x-5 sm:bottom-5">
           {[
-            { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones" },
+            { value: `${formatHours(monthHours)}h`, label: "reclaimed this month", href: "/milestones", flip: true },
             { value: goalCount > 0 ? `${ticked}/${goalCount}` : ", ", label: "weekly goals", href: "/log" },
             // Weekly check-ins signed off this month (round 4, item 8): replaced
             // "upcoming sessions", which was the same number for everyone.
@@ -241,7 +242,9 @@ export default async function PiazzaPage() {
               href={stat.href}
               className="rounded-2xl bg-cream px-3 py-3 text-center shadow-soft transition hover:bg-card sm:px-4"
             >
-              <p className="font-mono text-heading text-ink tabular-nums sm:text-title">{stat.value}</p>
+              <p className="font-mono text-heading text-ink tabular-nums sm:text-title">
+                {stat.flip ? <FlipNumber value={stat.value} /> : stat.value}
+              </p>
               <p className="mt-0.5 text-[0.62rem] leading-tight font-medium tracking-wide text-ink/60 uppercase sm:text-eyebrow">
                 {stat.label}
               </p>
@@ -363,7 +366,9 @@ export default async function PiazzaPage() {
 
         <Card className="flex flex-col">
           <Eyebrow>Hours reclaimed</Eyebrow>
-          <p className="font-mono mt-2 text-title text-ink">{formatHours(hours.total)}</p>
+          <p className="font-mono mt-2 text-title text-ink">
+            <FlipNumber value={formatHours(hours.total)} />
+          </p>
           <p className="mt-1 text-small text-ink/65">
             {milestone.next === null
               ? "Every milestone passed."

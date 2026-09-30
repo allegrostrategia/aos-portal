@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ARTWORKS, LANDSCAPE, PORTRAIT, type MapArtwork } from "@/lib/map/positions";
-import { MAP_LINES, bendFor, spokePath, strokeColourFor } from "@/lib/map/lines";
+import { MAP_LINES, bendFor, spokeLength, spokePath, strokeColourFor } from "@/lib/map/lines";
 import { flipsLabel, labelMetrics } from "@/lib/map/markers";
 import { StationDot } from "./station-dot";
 
@@ -121,13 +121,24 @@ function MapLayer({
         </defs>
 
         <g filter={`url(#${shadowId})`} opacity={locked ? 0.55 : 1}>
-          {MAP_LINES.map((line) =>
+          {MAP_LINES.map((line, lineIndex) =>
             line.stations.map((slug, index) => {
               const pos = artwork.stations[slug];
               if (!pos) return null;
+              // Each spoke inks itself in from the fountain outwards, a line
+              // at a time (Step 13). The dash is this path's own length
+              // because they are all different lengths, and one number would
+              // leave the short ones finished early and the long ones cut.
+              const length = spokeLength(pos, artwork.hub);
               return (
                 <path
                   key={`${line.key}-${slug}`}
+                  className="draw-line"
+                  style={{
+                    strokeDasharray: length,
+                    strokeDashoffset: length,
+                    animationDelay: `${lineIndex * 90 + index * 45}ms`,
+                  }}
                   d={spokePath(pos, bendFor(index, line.stations.length), artwork.hub)}
                   fill="none"
                   stroke={strokeColourFor(line)}

@@ -338,6 +338,53 @@ html:has(main[data-chat-screen]) .portal-content {
   pointer-events: auto;
   z-index: 40;
 }
+/* ---------------------------------------------------------------------------
+   Step 13 flourishes
+   Three of them, all CSS, all optional by construction: remove the class and
+   the thing underneath still reads. Each one runs once, on arrival, and none
+   of them moves anything a finger might be aiming at.
+   --------------------------------------------------------------------------- */
+
+/* FATTO. The stamp a signed-off week gets (build brief §Piazza).
+   Pressed rather than faded in: down onto the page, slightly overshooting,
+   landing crooked the way a real stamp does. */
+@keyframes fatto-press {
+  0%   { opacity: 0; transform: rotate(-14deg) scale(2.1); }
+  55%  { opacity: 1; transform: rotate(-7deg) scale(0.93); }
+  75%  { transform: rotate(-7deg) scale(1.04); }
+  100% { opacity: 1; transform: rotate(-7deg) scale(1); }
+}
+.fatto {
+  animation: fatto-press 480ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* A split-flap counter. Each digit falls into place, one after the next,
+   left to right, the way a departure board settles. */
+@keyframes flip-digit {
+  0%   { opacity: 0; transform: translateY(-0.55em) rotateX(70deg); }
+  60%  { opacity: 1; transform: translateY(0.06em) rotateX(-8deg); }
+  100% { opacity: 1; transform: translateY(0) rotateX(0); }
+}
+.flip-digit {
+  display: inline-block;
+  animation: flip-digit 420ms cubic-bezier(0.25, 0.8, 0.35, 1) both;
+  transform-origin: 50% 0;
+}
+
+/* A line that draws itself, for the map's spokes: the blueprint being
+   inked in. The dash length is set per path in the markup, because each
+   spoke is a different length and one number cannot fit them all. */
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+.draw-line {
+  animation: draw-line 1100ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .map-dot::after { animation: none; opacity: 0.5; }
+  /* All three land in their finished state instead of arriving in it. */
+  .fatto { animation: none; transform: rotate(-7deg); }
+  .flip-digit { animation: none; }
+  .draw-line { animation: none; stroke-dashoffset: 0; }
 }

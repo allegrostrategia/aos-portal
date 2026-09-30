@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentMember } from "@/lib/auth/member";
 import { asJourneyOrder, getMemberHours } from "@/lib/hours/queries";
 import { formatHours, milestoneJourney, milestoneProgress } from "@/lib/hours/milestones";
+import { FlipNumber } from "@/components/flourish/flip-number";
 import { formatCalendarDate } from "@/lib/time-zone";
 import { Card, Eyebrow, PageHeader } from "@/components/ui/card";
 import { MilestonePath } from "@/components/milestones/milestone-path";
@@ -63,7 +64,7 @@ export default async function MilestonesPage() {
       <Card className="mb-6 bg-sky/15">
         <Eyebrow>Total</Eyebrow>
         <p className="font-mono mt-1 text-title text-ink">
-          {formatHours(journey.total)} hrs
+          <FlipNumber value={`${formatHours(journey.total)} hrs`} />
         </p>
         {hours.weeklyRate > 0 ? (
           <p className="mt-2 text-small text-ink/70">
