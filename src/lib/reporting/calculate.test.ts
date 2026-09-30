@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { calculate, calculateOffer, type Lookup } from "./calculate.ts";
-import { CALC_COVERAGE, type OfferMonth } from "./formulas.ts";
+import { CALC_COVERAGE, PULLED_COVERAGE, type OfferMonth } from "./formulas.ts";
 import { CATEGORIES } from "./categories.ts";
 
 /**
@@ -25,8 +25,8 @@ test("every key this produces is a real calculated metric", () => {
     const produced = calculate(category.key, { value: none, previous: none });
     for (const key of Object.keys(produced)) {
       assert.ok(
-        key in CALC_COVERAGE,
-        `${category.key} produces "${key}", which is not a calculated metric`,
+        key in CALC_COVERAGE || key in PULLED_COVERAGE,
+        `${category.key} produces "${key}", which is neither calculated nor pulled`,
       );
     }
   }
@@ -125,10 +125,34 @@ test("client experience takes new clients from Leads, not its own box", () => {
   assert.equal(Number(out.client_experience_issues_per_10_clients!.toFixed(2)), 1.25);
 });
 
+test("financials pulls its revenue from the offers, never from a box", () => {
+  // §5.10's table marks "Revenue from offers" as Pulled, and report_values
+  // refuses to store a pulled metric — so reading it as a typed field would
+  // leave Revenue and Profit as dashes on a month with offers in it.
+  const out = calculate("financials", {
+    value: from({ financials_fixed_costs: 3200 }),
+    previous: none,
+    offerRows: OFFERS,
+  });
+  assert.equal(out.financials_revenue_from_offers, 24850);
+  assert.equal(out.financials_total_revenue, 24850);
+  assert.equal(out.financials_profit, 21650);
+});
+
+test("with no offers set up, revenue is a dash rather than zero", () => {
+  const out = calculate("financials", {
+    value: from({ financials_fixed_costs: 3200 }),
+    previous: none,
+    offerRows: [],
+  });
+  assert.equal(out.financials_revenue_from_offers, null);
+  assert.equal(out.financials_total_revenue, null);
+});
+
 test("financials", () => {
   const out = calculate("financials", {
+    offerRows: OFFERS,
     value: from({
-      financials_revenue_from_offers: 24850,
       financials_fixed_costs: 3200,
       financials_variable_costs: 6100,
       financials_team_costs: 4230,

@@ -802,3 +802,34 @@ export const CALC_COVERAGE: Record<string, string> = {
   launches_live_attendees_needed: "launch.planner",
   launches_sign_ups_needed: "launch.planner",
 };
+
+/**
+ * The metrics that are neither typed nor calculated, but read from somewhere
+ * else (§5's "Pulled", and §4's "enter once, use everywhere").
+ *
+ * Separate from CALC_COVERAGE because they are a different kind of thing: a
+ * calculated metric is arithmetic over this month's figures, a pulled one is
+ * the same figure appearing on a second screen. Both are produced by
+ * calculate(), and both are checked against the seed in formulas.test.ts.
+ */
+export const PULLED_COVERAGE: Record<string, string> = {
+  leads_conversions_new_leads_from_ads: "ads_leads",
+  client_experience_new_clients: "leads_conversions_new_clients",
+  financials_revenue_from_offers: "offers.totalRevenue",
+};
+
+/**
+ * Pulled metrics with nothing behind them yet, named rather than left to be
+ * discovered.
+ *
+ * `client_experience_active_clients_at_start` is "last month's active at
+ * end", which is last month's CALCULATED figure — and §5.8 also says "the
+ * very first month asks for active clients at start as a one-off input".
+ * Those two together need a field that is pulled in most months and typed in
+ * one, which the schema currently refuses: report_values will not store a
+ * pulled metric at all. It needs a decision from Nina rather than a guess,
+ * and Client Experience is Stage 3, so it waits.
+ */
+export const PULLED_NOT_IMPLEMENTED: string[] = [
+  "client_experience_active_clients_at_start",
+];

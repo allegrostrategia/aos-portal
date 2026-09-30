@@ -5,6 +5,8 @@ import { test } from "node:test";
 import {
   ads,
   CALC_COVERAGE,
+  PULLED_COVERAGE,
+  PULLED_NOT_IMPLEMENTED,
   clientExperience,
   divide,
   email,
@@ -489,4 +491,33 @@ test("every calculated metric in the seed has a formula behind it", async () => 
 
   const orphaned = Object.keys(CALC_COVERAGE).filter((k) => !calcKeys.includes(k));
   assert.deepEqual(orphaned, [], "formulas for metrics that are no longer in the seed");
+});
+
+test("every pulled metric either has a source or is named as not having one", async () => {
+  // A pulled metric is the same figure showing on a second screen. It cannot
+  // be stored — report_values refuses one — so if nothing produces it, the
+  // screen shows a dash forever and nothing complains. That is exactly what
+  // happened to financials_revenue_from_offers, which made Revenue and Profit
+  // blank on a month with offers entered.
+  const seed = await readFile(
+    new URL("../../../supabase/migrations/20260930123000_report_metrics_seed.sql", import.meta.url),
+    "utf8",
+  );
+
+  const pulledKeys = [...seed.matchAll(/^ {2}\('([a-z0-9_]+)', '[a-z_]+', '[^']*', 'pulled'/gm)]
+    .map((m) => m[1]);
+
+  assert.ok(pulledKeys.length >= 3, `parsed only ${pulledKeys.length} pulled metrics`);
+
+  const unaccounted = pulledKeys.filter(
+    (k) => !(k in PULLED_COVERAGE) && !PULLED_NOT_IMPLEMENTED.includes(k),
+  );
+  assert.deepEqual(unaccounted, [], "pulled metrics with no source and no note saying so");
+
+  // The known gap stays a known gap: if it is implemented, this fails and the
+  // list gets tidied rather than quietly keeping a stale exception.
+  for (const key of PULLED_NOT_IMPLEMENTED) {
+    assert.ok(pulledKeys.includes(key), `${key} is listed as unimplemented but is not a pulled metric`);
+    assert.ok(!(key in PULLED_COVERAGE), `${key} is both implemented and listed as not`);
+  }
 });

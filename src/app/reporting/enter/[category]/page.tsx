@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { EntryForm } from "@/components/reporting/entry-form";
+import { OffersEntry } from "@/components/reporting/offers-entry";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
@@ -53,6 +54,56 @@ export default async function EnterCategoryPage({
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
   ]);
 
+  const previousLabel = ctx.month.previous
+    ? monthLabel(ctx.month.previous).split(" ")[0]
+    : null;
+
+  // Offers is the one Stage 2 category whose figures hang off a row rather
+  // than off the month (§5.9), so it has its own screen. The generic form
+  // below would write one figure per metric per month and quietly merge
+  // four offers into one.
+  if (category.key === "offers") {
+    const offers = data.entities.filter((e) => e.entity_type === "offer");
+    const cell = (source: typeof data.values, key: string, id: string) =>
+      [`${key}|${id}`, source.get(key, id)] as const;
+    const KEYS = [
+      "offers_units_sold",
+      "offers_revenue_this_month",
+      "offers_hours_spent_delivering",
+      "offers_other_direct_costs",
+    ];
+
+    return (
+      <ReportShell
+        ctx={ctx}
+        active={category.key}
+        path={`/reporting/enter/${category.slug}`}
+        title="Enter your data"
+        tagline={`${category.label} · ${ctx.month.label}`}
+        actions={
+          <PublishBadge
+            kind={ctx.workspace.kind}
+            publishedAt={data.period?.published_at ?? null}
+          />
+        }
+      >
+        <OffersEntry
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          previousLabel={previousLabel}
+          currency={ctx.workspace.currency}
+          offers={offers}
+          values={Object.fromEntries(
+            offers.flatMap((o) => KEYS.map((k) => cell(data.values, k, o.id))),
+          )}
+          previous={Object.fromEntries(
+            offers.flatMap((o) => KEYS.map((k) => cell(data.previous, k, o.id))),
+          )}
+        />
+      </ReportShell>
+    );
+  }
+
   const core = metrics.filter((m) => m.input_type === "core");
   const optional = metrics.filter((m) => m.input_type === "optional");
   const calculated = metrics.filter((m) => m.input_type === "calc");
@@ -93,9 +144,7 @@ export default async function EnterCategoryPage({
         categoryLabel={category.label}
         workspaceId={ctx.workspace.id}
         month={ctx.month.month}
-        previousLabel={
-          ctx.month.previous ? monthLabel(ctx.month.previous).split(" ")[0] : null
-        }
+        previousLabel={previousLabel}
         currency={ctx.workspace.currency}
         core={core}
         optional={optional}

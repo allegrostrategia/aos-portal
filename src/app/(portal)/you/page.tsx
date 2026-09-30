@@ -173,6 +173,7 @@ export default async function YouPage() {
               ["/admin/reveal", "Reveal"],
               ["/admin/draw", "Draw"],
               ["/admin/pairing", "Pairs"],
+              ["/admin/reporting", "Reporting clients"],
             ].map(([href, label]) => (
               <NumberedRow key={href} href={href} title={label} />
             ))}

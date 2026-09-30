@@ -185,6 +185,9 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
         other: v("leads_conversions_new_leads_from_other"),
       };
       return {
+        // Pulled from Ads (§5.6's table). Emitted so the Leads page can show
+        // the figure without a second box for it.
+        leads_conversions_new_leads_from_ads: v("ads_leads") ?? null,
         leads_conversions_total_leads: leads.total(sources),
         leads_conversions_call_show_up_rate: leads.callShowUpRate(
           v("leads_conversions_calls_held"),
@@ -222,6 +225,7 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
       const newClients = v("leads_conversions_new_clients");
       const atEnd = clientExperience.activeClientsAtEnd(start, newClients, left);
       return {
+        client_experience_new_clients: newClients ?? null,
         client_experience_active_clients_at_end: atEnd,
         client_experience_retention_rate: clientExperience.retentionRate(start, left),
         client_experience_churn_rate: clientExperience.churnRate(left, start),
@@ -251,7 +255,12 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
 
     case "financials": {
       const month = {
-        revenueFromOffers: v("financials_revenue_from_offers"),
+        // PULLED from Offers, never typed (§5.10's own table, and §4's
+        // "enter once, use everywhere"). Reading the metric key here would
+        // always be null, because report_values refuses to store a pulled
+        // figure — so Revenue and Profit would be a dash on every month that
+        // had offers entered perfectly well.
+        revenueFromOffers: offers.totalRevenue(input.offerRows ?? []),
         otherIncome: v("financials_other_income"),
         fixedCosts: v("financials_fixed_costs"),
         variableCosts: v("financials_variable_costs"),
@@ -260,6 +269,7 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
         cashInBank: v("financials_cash_in_bank_at_month_end"),
       };
       return {
+        financials_revenue_from_offers: month.revenueFromOffers,
         financials_total_revenue: financials.totalRevenue(month),
         financials_total_costs: financials.totalCosts(month),
         financials_profit: financials.profit(month),
