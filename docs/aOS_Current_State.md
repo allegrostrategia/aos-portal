@@ -3,6 +3,23 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 30 September 2026
+
+**Everything built is pushed and applied. Working tree clean, nothing waiting on a decision.** Latest commit `7c2ac07`. Test suite: **239 unit / 289 schema / 169 action**, build and lint clean.
+
+Since the last big handoff, five things landed: **peer pairing on real dates** (pick slots after the match; both told where they overlap the moment the second one picks), **the monthly recap** (aOS collates the month, Nina writes it outside the app, pastes it back, sends — verified end to end on live including the email), **admin password recovery**, **the deployment banner and keyless previews**, and **round 6** (Friday check-in email, roadmap inactivity nudge, the prize bar, the Sociale redesign).
+
+**Three bugs found in production along the way, all fixed and all the same shape — something failing silently:** the day-7 pairing flag had never been set (a guard trigger refusing the service role); the recap's read tracking never ran (`cookies()` inside `after()`, which Next forbids during a render); and an email that looked broken was fine all along, being sent from a preview deployment that had no Resend key. Each one is written up in its own section below, with what the test harness could not have caught.
+
+**What is not verified, and why:**
+- The **Weekly Check-Ins room has never been seen in its open state** — it unlocks Mondays 2–3:30pm UK and nobody has been in it during a window.
+- The **Friday check-in email** first goes out in its merged form on **2 October**. The wording is mine, not Nina's, and she may want to rewrite it.
+- The **hot seat month picker** needs a second month of sessions before it shows anything.
+- **Milestone rewards** are deferred, not dropped — see the section below.
+- The **audit questions** are still placeholders waiting on Nina, as are her content lists (quotes, videos).
+
+**Live data is all test accounts.** Two member test accounts (`yungsl5dom@`, `dominicchentrens@`), Nina's own member account, and two admin accounts. No real members yet.
+
 ## What's genuinely built and live
 - **Infrastructure:** Supabase, GitHub, Vercel, all connected, `aos.allegrostrategia.com` live.
 - **Steps 1–7:** schema/auth/RLS, design system, onboarding, Piazza + La Strada, weekly log/timer, hot seat, training library. All verified against the live database. Audit questions are still placeholders pending Nina.
@@ -56,7 +73,7 @@ La Strada's hero photograph reused as the wallpaper — it is the Amalfi coastli
 
 **Done in Vercel by Dom, 28 Sep:** `SUPABASE_SERVICE_ROLE_KEY` unscoped from Preview (the other two already were). **The `envFingerprint` diagnostic has been removed** now it has served its purpose; the "Email sending" readiness row on `/admin/members` stays, without the environment dump. Banner, keyless refusal and the received email all verified by Dom.
 
-## RECAP — FIRST REAL SEND, AND THE TWO FAULTS IT FOUND — 23 Sep, committed, NOT pushed
+## RECAP — FIRST REAL SEND, AND THE TWO FAULTS IT FOUND — 23 Sep, PUSHED; migration applied
 
 Dom sent Dominic's September recap on live. The archive on You was right; two things were not.
 
@@ -66,7 +83,7 @@ Dom sent Dominic's September recap on live. The archive on You was right; two th
 
 Both new columns joined the guard's blocklist in the same migration. Mutation checks: removing the error recording fails the retry test; removing either column from the guard fails its own test — and the guard test had to be fixed first, because clearing a null changes nothing, so it passed against a guard that didn't name the column at all.
 
-## SEPTEMBER TEST DATA + THE BUILD GUARD — 23 Sep, committed, NOT pushed
+## SEPTEMBER TEST DATA + THE BUILD GUARD — 23 Sep, PUSHED; guard migration applied
 
 **Seeded on Dominic's account (approved line by line first), so the recap has something real to compile:** nine September time entries (13h 30m — Client Sessions 5h, Ads/Marketing 2h, Course/Client Admin 2h, Sales calls 2h, Finance admin 1h 30m, Other admin 1h); weeks of 7 and 14 Sep signed off, each with a written Friday reflection; the 14 Sep log's ticks reset from five junk test actions to the two real ones; "Set up client onboarding process" and "Review Current Pricing Structure" ticked on La Strada; the `test`/`test 2` ticks turned off; September's confirmed hot seat challenge rewritten from the literal string "test". Hours reclaimed accrued through `accrue_hours_for_week` rather than hand-written ledger rows: 7.5 for September. **Milestones deliberately left reading "None this month"** — the line needs 50 banked hours and fabricating them would put invented history in a real table (Dom).
 
@@ -74,7 +91,7 @@ Both new columns joined the guard's blocklist in the same migration. Mutation ch
 
 **Guard fix (`20260923110000`, not applied):** the second guard admitting only `is_portal_admin()`. Nothing writes `handover_pack` with the service role today, so this closes a latent trap rather than a live fault; the member-side blocklist is byte-identical and its existing tests still pass, with one new case for the service role (removing the clause fails it). **Audit result: two other guards share the shape** — `guard_roadmap_note_member_update` and `protect_member_admin_fields` (members: role, status, lifecycle). Neither is written by the system today. Left alone deliberately: the members one is the guard whose blocklist is most worth keeping strict, and the right moment to loosen either is when something actually needs to write them.
 
-## MONTHLY RECAP — the app collates, Nina writes, the member reads — BUILT 23 Sep, committed, NOT pushed; `db:push` pending
+## MONTHLY RECAP — the app collates, Nina writes, the member reads — BUILT and PUSHED 23 Sep; all four migrations applied; verified end to end on live 28 Sep
 
 Brief: `docs/aOS_Monthly_Recap_Brief.md`. The third feature on the rule-2 pattern, after the roadmap and the reveal: aOS assembles a month of real data, Nina drafts the writing with Claude **outside** the product, the finished text is pasted back in. Nothing here calls an AI. Migration `20260923100000_monthly_recaps.sql` (**not yet applied**). Verified: tsc, lint, build; 227 unit / 284 schema / 153 action; mutation checks on the compiler (two), the guard trigger (two, run separately after the first pair masked each other), and both send guards; the member card, the read page and the admin screen rendered with the real components and built CSS.
 
@@ -104,7 +121,7 @@ The card and email quote "13.5 hours tracked & 7.5 hours reclaimed". Those come 
 - **No notification switch.** The three that exist cover recurring machinery; a once-a-month piece of writing from Nina about them personally isn't that. Revisit if a member asks.
 - **Privacy, stated rather than assumed (rule 6).** The reflections stay single-recipient — the member's own recap — which is what the brief settles. What the brief doesn't say out loud: **the block leaves aOS when Nina pastes it into Claude.** The compiled text carries its own "for Nina alone, never a shared room" label so it travels with the paste, and the admin screen says the same above the block. That is Nina's call to make knowingly, exactly as it already is for the roadmap.
 
-## SOCIALE — the room fills the screen; only the thread scrolls — BUILT and PUSHED 20 Sep; phone check pending
+## SOCIALE — the room fills the screen; only the thread scrolls — BUILT and PUSHED 20 Sep; confirmed on the phone after three attempts (see the viewport note)
 
 Dom, 20 Sep: the compose box needed a page scroll to reach, on phone and laptop alike (same DOM, both affected — the layout is `min-h-full`, so every screen grows with its content and the document scrolls, which is right everywhere except a chat). Now, like a messaging app: chips, title and composer stay put; the thread scrolls in its own box and opens at the newest message, following new ones in only if the reader was already at the bottom (`thread-scroll.tsx`).
 
@@ -181,11 +198,11 @@ The artwork paints every station as a named building: BANCO is the temple, CINEM
 - **Five label collisions** caught by the overlap test (Banco/Studio on both pictures, Terrazza/Officina, Club/La Boutique, hotel/Officina): dots slid within their buildings. La Boutique's label goes left on the portrait by an explicit per-station override (`labelLeft`), a hand rule beside the geometric one, since the right would fit but meets Terrazza's.
 - **The place labels are off on the portrait** (`placeLabels: false`). At 350px the square is a hundred-pixel patch under six pills and "Piazza. Home" / "Piazza Sociale" landed on one wherever they went; both are a tap away in the bottom bar. The landscape keeps them, with Piazza Caffè's label flipped away from the hub's. The overlap test now includes them where drawn.
 
-## BRAND — the real logo — 20 Sep, awaiting Dom
+## BRAND — the real logo — 20 Sep, confirmed by Dom and PUSHED
 
 Dom's final files in `public/brand/`: the lemon-O "aOS" mark, blush on orange for the icons (`icon-192`, `icon-512`, `apple-touch-icon`, `favicon.ico`, plus `aos-icon-master.svg` as the source), and `aos-header-logo.png`, the orange letterforms on transparent, for the header. The icon files keep their names, so the manifest and the layout's `icons` metadata needed no change. The favicon Next serves is `src/app/favicon.ico` (copied from the brand folder; RGBA PNG-in-ICO, which Turbopack accepts). The header shows `aos-header.png`: the master trimmed to its letterforms (they sit in a 793×378 box on a 1000×1000 canvas, which at header height would be a 10px logo) and resized to 600px wide, twice its largest display. The two traced/extracted SVGs from before are gone. Theme colour stays navy.
 
-## THE MAP — dots and cards instead of tiles — BUILT and PUSHED 19 Sep; phone check on live pending
+## THE MAP — dots and cards instead of tiles — BUILT and PUSHED 19 Sep; confirmed by Dom
 
 Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`. Commit `68e722b`. No migration. Pictures, positions, lines and mask tests untouched in kind; four positions nudged (below). Verified: tsc, lint, build; 220 unit (55 map); rendered with the real component and built CSS at 350px and 960px with a card forced open.
 
@@ -201,7 +218,7 @@ Brief: `docs/aOS_TheMap_Dots_Brief.md`; reference: `docs/allegro-final-map.html`
 - **Kicker** = number and line, since the brief didn't say.
 - **The tile-size fields** on the artworks are gone; only the Your Story dot size remains per picture.
 
-## THE MAP — rebuilt on two pictures — BUILT and PUSHED 19 Sep; desktop confirmed by Dom, phone check on live pending
+## THE MAP — rebuilt on two pictures — BUILT and PUSHED 19 Sep; both confirmed by Dom
 
 Two new artworks replace the single 16:9 one: `the-map-landscape.jpg` (1536×1024, screens 768px and wider) and `the-map-portrait.jpg` (941×1672, phones, full width, no side-scroll). Both shipped as JPEG at 85 (540KB each; the PNGs were 3.9MB and 3.6MB). Decisions confirmed with Dom before building: `md` breakpoint, JPEG, bigger tiles on the portrait (14% of width, 3rem floor).
 
@@ -252,7 +269,7 @@ Brief: `docs/aOS_LaStrada_Roadmap_Brief.md`; mockup: `docs/aOS_Roadmap_Mockup.ht
 
 ## ROUND 4 — full screen-by-screen review — BUILT and PUSHED 18 Sep after Dom's phone walkthrough
 
-Commits `a34648c`..`01f1ac9`. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. One migration pending: `20260918100000_hot_seat_questions`.
+Commits `a34648c`..`01f1ac9`. Brief: `docs/aOS_Round4_Full_Review_Brief.md`. Verified: tsc, lint, build clean; **189 unit / 272 schema / 118 action**. `20260918100000_hot_seat_questions` was pending when this was written and has long since been applied.
 
 ### Built, by screen
 - **Global.** Header padded for the status bar (`env(safe-area-inset-top)`). The mark is the icon's own letterforms, outlined from Georgia Bold Italic (what the icon was rendered with), in orange, no square: `public/brand/aos-mark.svg`. Greeting by UK hour: buongiorno / buon pomeriggio / buonasera / buonanotte (was fixed text; item 3 answered: not built before, built now).
