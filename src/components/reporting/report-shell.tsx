@@ -56,7 +56,7 @@ export function ReportShell({
               {tagline ? <Eyebrow className="mt-2">{tagline}</Eyebrow> : null}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
               {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
               <MonthPicker ctx={ctx} path={path} />
               {actions}
@@ -130,8 +130,12 @@ function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey }) {
  * way to move by one.
  */
 function MonthPicker({ ctx, path }: { ctx: ReportContext; path: string }) {
+  // Hidden on a phone: the two chevrons cost about 72px next to a 150px
+  // month pill and a business pill, and the dropdown already moves by one.
+  // A choice about a small screen, not a fix for an overflow — measured at
+  // 390px, the page does not overflow either way.
   const arrow =
-    "flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-cream-deep";
+    "hidden size-9 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-cream-deep sm:flex";
 
   return (
     <div className="flex items-center gap-1">
@@ -201,7 +205,7 @@ function WorkspacePicker({ ctx }: { ctx: ReportContext }) {
   return (
     <details className="group relative">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 text-small font-medium text-ink">
-        <span className="max-w-40 truncate">{ctx.workspace.business_name}</span>
+        <span className="max-w-32 truncate sm:max-w-40">{ctx.workspace.business_name}</span>
         <Arrow direction="down" className="size-3.5 opacity-60" />
       </summary>
       <ul className="absolute right-0 z-20 mt-2 max-h-72 w-60 overflow-y-auto rounded-2xl border border-ink/10 bg-card p-1.5 shadow-lift">

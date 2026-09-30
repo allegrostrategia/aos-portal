@@ -296,3 +296,32 @@ export function calculateOffer(
     ),
   };
 }
+
+/**
+ * A lookup that knows where a metric's figures actually live.
+ *
+ * Most figures hang off the month. Social Media's hang off a platform, which
+ * is the cost of the decision to store them per platform from the start
+ * (§5.2: "Instagram first; TikTok and LinkedIn added later using the same
+ * structure"). Without this, every caller has to remember which category is
+ * the exception, and the one that forgets silently reads null and prints a
+ * dash on a month that has figures in it.
+ *
+ * `entityFor` answers "which entity holds this kind of thing", so the rule
+ * lives here once rather than as a string test on the key in four screens.
+ */
+export function entityAwareLookup(
+  read: (metricKey: string, entityId?: string | null) => number | null,
+  metricEntityType: Map<string, string | null>,
+  entityFor: (entityType: string) => string | null,
+): Lookup {
+  return (metricKey: string) => {
+    const entityType = metricEntityType.get(metricKey) ?? null;
+    if (!entityType) return read(metricKey);
+    const entityId = entityFor(entityType);
+    // No entity set up yet means nothing has been entered against one, and a
+    // month-level row is the older shape — try it rather than returning null
+    // and claiming a filled-in month is empty.
+    return entityId ? read(metricKey, entityId) : read(metricKey);
+  };
+}

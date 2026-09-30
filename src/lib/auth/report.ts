@@ -37,6 +37,15 @@ export interface ReportUser {
   grants: ReportGrant[];
   /** True for Nina. Admins reach every workspace without a grant of their own. */
   isAdmin: boolean;
+  /**
+   * What to sign their work with, for an admin.
+   *
+   * Comes from their `members` row, which only an admin has here — everyone
+   * else's name is on their `report_access` grant, because they have no
+   * members row by design. Null when neither exists, and the caller decides
+   * what to fall back to rather than this inventing a name.
+   */
+  name: string | null;
 }
 
 /**
@@ -87,7 +96,7 @@ export const getReportUser = cache(async (): Promise<ReportUser | null> => {
 
   if (grants.length === 0 && !isAdmin) return null;
 
-  return { id: user.id, grants, isAdmin };
+  return { id: user.id, grants, isAdmin, name: member?.full_name ?? null };
 });
 
 /**
