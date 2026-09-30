@@ -118,8 +118,15 @@ export async function inviteMember(
 
   if (rpcError) {
     // Undo the invitation. Without this we'd leave an auth user with no member
-    // row — someone who can accept an invitation, set a password, and land on
-    // /no-access with no way forward, and whose email can't be re-invited.
+    // row and no reporting grant either — someone who can accept an
+    // invitation, set a password, and land on /no-access with no way forward,
+    // and whose email can't be re-invited.
+    //
+    // NOT a general rule that every auth user needs a members row: since
+    // 30 Sep 2026 retainer clients, Chiarezza attendees and Elize
+    // deliberately have none, and reach the app through report_access
+    // instead (src/lib/admin/report-users.ts invites those). This rollback is
+    // about THIS flow, which promised a membership and failed to create it.
     await admin.auth.admin.deleteUser(userId);
 
     return {

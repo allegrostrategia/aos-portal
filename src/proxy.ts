@@ -127,11 +127,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // A signed-in member landing on the login screen is almost always a stale tab
+  // A signed-in user landing on the login screen is almost always a stale tab
   // or a bookmark. /auth/* is excluded — those routes complete a sign-in.
+  //
+  // Sent to "/" rather than straight to /piazza: since 30 Sep 2026 not every
+  // login is a member. A retainer client bounced to /piazza would be bounced
+  // on again by requireMember(), landing on /no-access with a working
+  // account. The root page is the one place that knows which door, and it
+  // can afford the database lookup that this proxy deliberately cannot.
   if (user && (pathname === "/login" || pathname === "/forgot-password")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/piazza";
+    url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }

@@ -207,6 +207,17 @@ as $$
         or w.access_end_date is null
         or w.access_end_date >= current_date
       )
+      -- Rule 7: cancelling revokes access and keeps every record. For an aOS
+      -- member the reporting tool is one more area of a membership, so it
+      -- goes when the membership does — their figures stay, exactly as their
+      -- log and roadmap do. A retainer or Chiarezza login has no members row
+      -- and no membership to lose, and a team assignment is Allegro's, so
+      -- neither is subject to this.
+      and (
+        ra.role = 'team'
+        or w.kind <> 'aos_member'
+        or public.has_portal_access()
+      )
   );
 $$;
 
@@ -238,6 +249,11 @@ as $$
         ra.role = 'team'
         or w.access_end_date is null
         or w.access_end_date >= current_date
+      )
+      and (
+        ra.role = 'team'
+        or w.kind <> 'aos_member'
+        or public.has_portal_access()
       )
   );
 $$;

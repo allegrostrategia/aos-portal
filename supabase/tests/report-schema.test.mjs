@@ -572,6 +572,41 @@ await check("their data is kept, not deleted (§2)", async () =>
   (await count(NINA, `select count(*)::int c from public.report_workspaces where id = '${WS_C}'`)) === 1);
 
 // ---------------------------------------------------------------------------
+console.log("\n— cancellation (CLAUDE.md rule 7) —");
+// ---------------------------------------------------------------------------
+
+await check("a cancelled aOS member loses their reporting access too", async () => {
+  // For a member, reporting is one more area of the membership, so it goes
+  // when the membership does. Found while writing the routing resolver: this
+  // is the one place report_can_view() has to consult has_portal_access(),
+  // and it would otherwise have let a cancelled member keep reading.
+  const before = await count(MEMBER, `select count(*)::int c from public.report_values`);
+  await as(NINA, () => db.query(
+    `update public.members set status = 'cancelled' where id = '${MEMBER}'`));
+  const after = await count(MEMBER, `select count(*)::int c from public.report_values`);
+  const canView = (await one(MEMBER, `select public.report_can_view('${WS_M}') v`)).v;
+  return before === 1 && after === 0 && canView === false;
+});
+
+await check("their figures are kept, and Nina still reads them", async () =>
+  (await count(NINA,
+    `select count(*)::int c from public.report_values where workspace_id = '${WS_M}'`)) === 1);
+
+await check("rejoining restores it, same row", async () => {
+  await as(NINA, () => db.query(
+    `update public.members set status = 'onboarding' where id = '${MEMBER}'`));
+  return (await count(MEMBER, `select count(*)::int c from public.report_values`)) === 1;
+});
+
+await check("a retainer client has no membership to lose", async () =>
+  // No members row at all, so has_portal_access() is false for them always.
+  // If the new clause were not scoped to kind, this would be zero.
+  (await count(RETAINER, `select count(*)::int c from public.report_workspaces`)) === 2);
+
+await check("Elize's assignment is not a membership either", async () =>
+  (await count(ELIZE, `select count(*)::int c from public.report_workspaces`)) === 1);
+
+// ---------------------------------------------------------------------------
 console.log("\n— launches —");
 // ---------------------------------------------------------------------------
 
