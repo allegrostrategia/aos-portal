@@ -43,6 +43,21 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
+## STEP 13 FLOURISHES + THE LOG'S WEEK NAVIGATION — BUILT 30 Sep, committed, NOT pushed
+
+Commits `f3a9497` and `8f55ebc`. No migration. Verified: tsc, lint, build; 247 unit / 289 schema / 169 action; every screen rendered, including two caught mid-animation.
+
+**Week navigation on the log (Dom's ask).** `?week=` picks the Monday. The current week is the only one that can be changed — a past week loses the timer tab, the manual-entry button, delete, note editing and the sign-off form, **removed rather than disabled**, and a week that closed unsigned says so rather than offering to sign it late. Boundaries are a pure tested module (`lib/log/weeks.ts`): a future week and a week before they joined both fall back to the current one. **Day links carry the week** — without that, tapping a day in September threw you back to this week, which the rendered HTML caught rather than the types.
+
+**Three flourishes from Step 13, all CSS, all droppable** — remove the class and the thing underneath still reads. Each runs once on arrival, and all three are stilled under `prefers-reduced-motion`, following the map dot's pulse.
+- **FATTO stamp** on a signed-off week, pressed on crooked, hidden from screen readers since the card beside it already says the week is signed.
+- **Flip-board counters** on the three hours-reclaimed numbers (Piazza's strip, Piazza's card, the milestones headline). Server-rendered, no count-up loop; the whole value is in the DOM for a screen reader with the characters hidden, so it is announced as "7.5" rather than digit by digit. Only the hours flip — the other two stats change by one and would look fussy.
+- **Self-drawing map lines**: each spoke inks itself from the fountain outwards, its dash set to its own length because one number leaves short spokes finished early and long ones cut.
+
+**The Vespa intro video is skipped** — no asset yet (Dom). The rest of Step 13 is done.
+
+**Found while rendering:** the Piazza prize card reads "test." for September, because that month's `draws` row has the literal prize "test" from earlier testing. The fallback copy only applies when no draw row exists. Nina should set the real prize on the row in `/admin/draw`, or delete it.
+
 ## ROUND 6 — check-in nudge, inactivity nudge, the prize bar, Sociale — ALL FOUR BUILT and PUSHED 28 Sep; both migrations applied
 
 Brief: `docs/aOS_Round6_Checkin_Prize_Chat_Brief.md`. Commits `60e0db6`..`fa63506`; migrations `20260928120000` and `20260928130000` applied (table, function and enum value all confirmed live afterwards). **`npm run db:push` hung twice from a non-interactive shell** — stalling straight after failing to read `~/.supabase/profile`, printing nothing, exiting 0 having done nothing, while Postgres answered on its own port in 86ms and REST returned 200. Dom ran it in his own terminal and it went through. Worth remembering: that command may now need a real TTY. Verified: tsc, lint, build; 238 unit / 289 schema / 167 action; mutation checks on every new rule.
