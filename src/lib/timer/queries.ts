@@ -117,8 +117,18 @@ export type WeekTotal = {
  * entries behind it.
  */
 export async function getThisWeekTotal(memberId: string): Promise<WeekTotal> {
+  return getWeekTotal(memberId, mondayOf(new Date().toISOString().slice(0, 10)));
+}
+
+/**
+ * Any week's total, for the log's week navigation (Dom, 30 Sep): a member
+ * pages back through the weeks they have already lived, read-only.
+ */
+export async function getWeekTotal(
+  memberId: string,
+  weekStart: string,
+): Promise<WeekTotal> {
   const supabase = await createClient();
-  const weekStart = mondayOf(new Date().toISOString().slice(0, 10));
 
   const { data } = await supabase
     .from("weekly_time_totals")

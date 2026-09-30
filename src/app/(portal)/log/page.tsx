@@ -6,21 +6,21 @@ import { deleteEntry, updateEntryNote } from "@/lib/timer/actions";
 import {
   COMPLETE_WEEK_MINUTES,
   getRunningEntry,
-  getThisWeekTotal,
   getTimeCategories,
   getWeekEntries,
+  getWeekTotal,
 } from "@/lib/timer/queries";
 import { formatMinutes, weekProgress } from "@/lib/timer/format";
 import {
-  currentWeekStart,
   getRoadmapItems,
   getWeekCategoryTotals,
   getWeeklySubmission,
 } from "@/lib/log/queries";
 import { primingForWeek } from "@/lib/log/priming";
-import { addDays } from "@/lib/onboarding/cadence";
+import { dayWithin, resolveWeek, type WeekView } from "@/lib/log/weeks";
 import { utcToWallClock } from "@/lib/time-zone";
-import { Card, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
+import { Card, Chevron, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
+import { FattoStamp } from "@/components/flourish/fatto-stamp";
 import { ManualEntryForm } from "./manual-entry-form";
 import { WeeklyLogForm } from "./weekly-log-form";
 import { TimerPanel } from "./timer-panel";
@@ -80,15 +80,24 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
   const member = await requireMember();
   const params = await searchParams;
 
-  const weekStart = currentWeekStart();
-  const weekEnd = addDays(weekStart, 6);
   const today = utcToWallClock(new Date()).slice(0, 10);
 
-  const tab: Tab =
+  // Which week is being read (Dom, 30 Sep). The current one is the only one
+  // still being written: a past week is a record, so everything that changes
+  // something is gone from it rather than disabled — a form that refuses is
+  // worse than a form that isn't there.
+  const view = resolveWeek(
+    typeof params.week === "string" ? params.week : undefined,
+    today,
+    member.join_date,
+  );
+  const { weekStart, weekEnd, isCurrent } = view;
+
+  const wantedTab =
     params.tab === "timer" || params.tab === "insights" ? params.tab : "log";
-  // Only days in this week are selectable; anything else falls back to today.
-  const requested = typeof params.day === "string" ? params.day : today;
-  const day = requested >= weekStart && requested <= weekEnd ? requested : today;
+  // The timer is about now, so it has no meaning in a week that has ended.
+  const tab: Tab = wantedTab === "timer" && !isCurrent ? "log" : wantedTab;
+  const day = dayWithin(view, typeof params.day === "string" ? params.day : undefined, today);
 
   const [
     categories,
@@ -101,14 +110,14 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
   ] = await Promise.all([
     getTimeCategories(),
     getWeekEntries(member.id, weekStart),
-    getThisWeekTotal(member.id),
+    getWeekTotal(member.id, weekStart),
     getRunningEntry(member.id),
     getWeekCategoryTotals(member.id, weekStart),
     getRoadmapItems(member.id),
     getWeeklySubmission(member.id, weekStart),
   ]);
 
-  const priming = primingForWeek(member.onboarding_start_date, today);
+  const priming = isCurrent ? primingForWeek(member.onboarding_start_date, today) : null;
   const labelFor = (slug: string) =>
     categories.find((c) => c.slug === slug)?.label ?? slug;
 
@@ -129,7 +138,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
   // separate chore, so it appears here — the screen members already open weekly.
   // Only for active members: pairing is locked until active (§1).
   const pairingAvailability =
-    member.status === "active"
+    member.status === "active" && isCurrent
       ? await getMyAvailability(member.id, pairingMonth())
       : null;
 
@@ -142,9 +151,9 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
     <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
       <PageHeader title="Your log" tagline="Reflect. Focus. Make it count." />
 
-      <p className="mb-4 text-center text-small font-medium text-ink">{range}</p>
+      <WeekNav view={view} range={range} />
 
-      <Tabs tab={tab} day={day} />
+      <Tabs tab={tab} day={day} week={view} />
 
       {tab === "timer" ? (
         <>
@@ -218,6 +227,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
               selected={day}
               today={today}
               tab={tab}
+              week={isCurrent ? undefined : weekStart}
             />
           </Card>
 
@@ -277,22 +287,30 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
                         <span className="font-mono text-small text-ink tabular-nums">
                           {entry.ended_at ? formatMinutes(entry.duration_minutes ?? 0) : ", "}
                         </span>
-                        <form action={deleteEntry}>
-                          <input type="hidden" name="id" value={entry.id} />
-                          <button
-                            type="submit"
-                            className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
-                            aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
-                          >
-                            Delete
-                          </button>
-                        </form>
+                        {isCurrent ? (
+                          <form action={deleteEntry}>
+                            <input type="hidden" name="id" value={entry.id} />
+                            <button
+                              type="submit"
+                              className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
+                              aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
+                            >
+                              Delete
+                            </button>
+                          </form>
+                        ) : null}
                       </div>
                     </div>
 
                     {/* A plain <details> rather than a client component: no
                         JavaScript to load, works before hydration, and keeps the
-                        note as genuinely optional furniture. */}
+                        note as genuinely optional furniture. In a past week the
+                        note is read as written, with nothing to write into. */}
+                    {!isCurrent ? (
+                      entry.note ? (
+                        <p className="mt-1 text-caption text-ink/70 italic">{entry.note}</p>
+                      ) : null
+                    ) : (
                     <details className="group mt-1">
                       <summary className="cursor-pointer list-none text-caption text-ink/50 transition hover:text-ink">
                         {entry.note ? (
@@ -322,40 +340,63 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
                         </button>
                       </form>
                     </details>
+                    )}
                   </li>
                 ))}
               </ul>
             </>
           )}
 
-          <div className="mt-6">
-            <ManualEntryForm categories={categories} today={day} />
-          </div>
+          {isCurrent ? (
+            <div className="mt-6">
+              <ManualEntryForm categories={categories} today={day} />
+            </div>
+          ) : null}
 
-          <SectionTitle className="mt-10">Sign off the week</SectionTitle>
+          <SectionTitle className="mt-10">
+            {isCurrent ? "Sign off the week" : "How the week was signed off"}
+          </SectionTitle>
 
           {submitted ? (
             <Card>
-              <Eyebrow>Signed</Eyebrow>
-              <p className="mt-2 text-small text-ink/80">
-                This week&rsquo;s log is in. Your time keeps tracking. The entry
-                itself stays as written.
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <Eyebrow>Signed</Eyebrow>
+                  <p className="mt-2 text-small text-ink/80">
+                    {isCurrent
+                      ? "This week’s log is in. Your time keeps tracking. The entry itself stays as written."
+                      : "Signed off and left alone, as written at the time."}
+                  </p>
+                </div>
+                <FattoStamp className="mt-1 shrink-0" />
+              </div>
               {submission?.other_activity ? (
                 <p className="mt-3 border-l-2 border-orange/40 pl-3 text-small text-ink/70 italic">
                   {submission.other_activity}
                 </p>
               ) : null}
             </Card>
-          ) : (
+          ) : isCurrent ? (
             <WeeklyLogForm
               roadmapItems={roadmapItems}
               defaultOtherActivity={submission?.other_activity ?? ""}
               actionsTaken={submission?.actions_taken ?? {}}
             />
+          ) : (
+            // A week that closed unsigned stays unsigned. Saying so plainly
+            // beats an empty space, and beats a form that would rewrite
+            // history if it were offered.
+            <Card>
+              <Eyebrow>Not signed</Eyebrow>
+              <p className="mt-2 text-small text-ink/80">
+                This week went by without a sign-off. The time logged in it
+                still counts — hours reclaimed are banked from the ledger, not
+                from the sign-off.
+              </p>
+            </Card>
           )}
 
-          {running ? (
+          {running && isCurrent ? (
             <p className="mt-6 text-small text-ink/60">
               A timer is still running. It&rsquo;ll count once you stop it.
             </p>
@@ -367,18 +408,21 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
 }
 
 /** Log / Timer / Insights, as links — each tab is a URL. */
-function Tabs({ tab, day }: { tab: Tab; day: string }) {
+function Tabs({ tab, day, week }: { tab: Tab; day: string; week: WeekView }) {
   const tabs: { key: Tab; label: string }[] = [
     { key: "log", label: "Log" },
-    { key: "timer", label: "Timer" },
+    // The timer runs now. In a week that has ended there is nothing for it
+    // to do, so it isn't offered rather than being offered and refusing.
+    ...(week.isCurrent ? [{ key: "timer" as const, label: "Timer" }] : []),
     { key: "insights", label: "Insights" },
   ];
+  const weekParam = week.isCurrent ? "" : `&week=${week.weekStart}`;
   return (
     <nav aria-label="Log sections" className="mb-5 flex gap-2">
       {tabs.map((t) => (
         <Link
           key={t.key}
-          href={`/log?day=${day}${t.key === "log" ? "" : `&tab=${t.key}`}`}
+          href={`/log?day=${day}${t.key === "log" ? "" : `&tab=${t.key}`}${weekParam}`}
           aria-current={tab === t.key ? "page" : undefined}
           className={`rounded-full px-4 py-1.5 text-small font-medium transition ${
             tab === t.key ? "bg-ink text-cream" : "bg-cream-deep text-ink/70 hover:text-ink"
@@ -387,6 +431,49 @@ function Tabs({ tab, day }: { tab: Tab; day: string }) {
           {t.label}
         </Link>
       ))}
+    </nav>
+  );
+}
+
+/**
+ * Paging between weeks (Dom, 30 Sep).
+ *
+ * Arrows either side of the date range, and a way back to this week from
+ * wherever they have got to. The read-only state is said in words under it
+ * rather than left to be inferred from a missing button.
+ */
+function WeekNav({ view, range }: { view: WeekView; range: string }) {
+  const arrow = "flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-cream-deep";
+  return (
+    <nav aria-label="Which week" className="mb-4 flex flex-col items-center gap-1">
+      <div className="flex w-full items-center justify-between gap-2">
+        {view.previous ? (
+          <Link href={`/log?week=${view.previous}`} aria-label="The week before" className={arrow}>
+            <Chevron className="rotate-180" />
+          </Link>
+        ) : (
+          <span aria-hidden className="size-9 shrink-0" />
+        )}
+
+        <p className="text-center text-small font-medium text-ink">{range}</p>
+
+        {view.next ? (
+          <Link href={`/log?week=${view.next}`} aria-label="The week after" className={arrow}>
+            <Chevron />
+          </Link>
+        ) : (
+          <span aria-hidden className="size-9 shrink-0" />
+        )}
+      </div>
+
+      {view.isCurrent ? null : (
+        <p className="text-caption text-ink/60">
+          A week you&rsquo;ve already lived — reading only.{" "}
+          <Link href="/log" className="underline underline-offset-2 hover:text-ink">
+            Back to this week
+          </Link>
+        </p>
+      )}
     </nav>
   );
 }

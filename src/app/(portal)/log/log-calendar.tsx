@@ -48,12 +48,15 @@ export function WeekCalendar({
   selected,
   today,
   tab,
+  week,
 }: {
   weekStart: string;
   entries: TimeEntry[];
   categories: TimeCategory[];
   selected: DayKey;
   today: DayKey;
+  /** Carried through every day link, or a day in a past week jumps to this one. */
+  week?: string;
   tab: string;
 }) {
   const byslug = new Map(categories.map((c) => [c.slug, c]));
@@ -90,7 +93,7 @@ export function WeekCalendar({
           return (
             <Link
               key={day}
-              href={`/log?day=${day}${tab !== "log" ? `&tab=${tab}` : ""}`}
+              href={`/log?day=${day}${tab !== "log" ? `&tab=${tab}` : ""}${week ? `&week=${week}` : ""}`}
               aria-current={current ? "date" : undefined}
               aria-label={`${LETTERS[i]}, ${day}${minutes ? `, ${formatMinutes(minutes)} logged` : ""}`}
               className="flex flex-col items-center gap-1"
