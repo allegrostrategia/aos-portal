@@ -78,9 +78,16 @@ alter table public.report_reminders enable row level security;
 create policy report_csv_imports_all_admin
   on public.report_csv_imports for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
-create policy report_csv_imports_editors
-  on public.report_csv_imports for all to authenticated
-  using (public.report_can_edit(workspace_id))
+-- Read and add, never change or remove. This is the audit trail that says
+-- where a figure came from — "a wrong number was uploaded from this file on
+-- this date" is the question it exists to answer, and a row an editor can
+-- tidy away answers it only until somebody tidies. Rule 7, applied to the
+-- record of an action rather than to a member's content.
+create policy report_csv_imports_select_editors
+  on public.report_csv_imports for select to authenticated
+  using (public.report_can_edit(workspace_id));
+create policy report_csv_imports_insert_editors
+  on public.report_csv_imports for insert to authenticated
   with check (public.report_can_edit(workspace_id));
 
 create policy report_column_maps_all_admin

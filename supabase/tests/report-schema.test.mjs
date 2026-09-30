@@ -673,6 +673,23 @@ await check("an editor records what an import filled", async () => {
   return (await count(ELIZE, `select count(*)::int c from public.report_csv_imports`)) === 1;
 });
 
+await check("an editor cannot delete or rewrite the record of an import", async () => {
+  // Note the shape of the refusal: with no DELETE or UPDATE policy, Postgres
+  // matches no rows rather than raising. The statement succeeds and changes
+  // nothing, which is why this is asserted on the row afterwards and not on
+  // an exception — an "it threw" test here would have passed for the wrong
+  // reason, or rather, would have failed while the behaviour was correct.
+  await as(ELIZE, () => db.query(
+    `delete from public.report_csv_imports where workspace_id = '${WS_R}'`));
+  await as(ELIZE, () => db.query(
+    `update public.report_csv_imports set file_name = 'something-else.csv'
+     where workspace_id = '${WS_R}'`));
+
+  const rows = await as(ELIZE, () => db.query(
+    `select file_name from public.report_csv_imports where workspace_id = '${WS_R}'`));
+  return rows.rows.length === 1 && rows.rows[0].file_name === "meta-content-sep.csv";
+});
+
 await check("the reminder log is not readable by a client", async () => {
   await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
   await db.query(
