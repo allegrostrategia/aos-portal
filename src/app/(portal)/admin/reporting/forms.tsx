@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,14 @@ export function NewClientForm() {
     null,
   );
 
+  // Which kind is selected decides whether the end-date field exists at all.
+  // The first version showed it always, labelled "Chiarezza only", and the
+  // action then refused any submission that had something in it — which on
+  // 30 September left Dom on a form he could not get past, with an error
+  // about a field he had not meant to fill. A field that does not apply is
+  // not rendered; the same rule §13 sets for the client switcher.
+  const [kind, setKind] = useState<"retainer" | "chiarezza">("retainer");
+
   return (
     <form action={action} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -30,7 +38,10 @@ export function NewClientForm() {
           <select
             id="kind"
             name="kind"
-            defaultValue="retainer"
+            value={kind}
+            onChange={(event) =>
+              setKind(event.target.value as "retainer" | "chiarezza")
+            }
             className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 text-body text-ink outline-none focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
           >
             <option value="retainer">Retainer client</option>
@@ -44,12 +55,15 @@ export function NewClientForm() {
           required
           hint="The earliest month you will enter data for."
         />
-        <Field
-          label="Access ends (Chiarezza only)"
-          name="access_end_date"
-          type="month"
-          hint="Leave empty for a retainer client."
-        />
+        {kind === "chiarezza" ? (
+          <Field
+            label="Access ends"
+            name="access_end_date"
+            type="month"
+            required
+            hint="Their login stops working after this month. Their data is kept."
+          />
+        ) : null}
       </div>
 
       <Footer state={state} label="Send invitation" />

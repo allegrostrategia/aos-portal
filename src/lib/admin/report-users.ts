@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/member";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { validateReportClient } from "./report-client-input";
 
 /**
  * Creating the reporting tool's logins.
@@ -30,16 +31,6 @@ export type ReportInviteState = {
   notice?: string;
 } | null;
 
-type WorkspaceKind = "retainer" | "aos_member" | "chiarezza";
-
-const KINDS: WorkspaceKind[] = ["retainer", "aos_member", "chiarezza"];
-
-/** First of the month, because every month column in the schema is. */
-function firstOfMonth(value: string): string | null {
-  if (!/^\d{4}-\d{2}(-\d{2})?$/.test(value)) return null;
-  return `${value.slice(0, 7)}-01`;
-}
-
 /**
  * Invite a reporting client and create their workspace in one go.
  *
@@ -54,44 +45,19 @@ export async function inviteReportClient(
   // A Server Action is a public endpoint; this cannot rely on the page.
   await requireAdmin();
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const displayName = String(formData.get("display_name") ?? "").trim();
-  const businessName = String(formData.get("business_name") ?? "").trim();
-  const kind = String(formData.get("kind") ?? "") as WorkspaceKind;
-  const currency = String(formData.get("currency") ?? "GBP").trim() || "GBP";
-  const firstMonthRaw = String(formData.get("first_month") ?? "").trim();
-  const accessEndRaw = String(formData.get("access_end_date") ?? "").trim();
+  const checked = validateReportClient({
+    email: String(formData.get("email") ?? ""),
+    displayName: String(formData.get("display_name") ?? ""),
+    businessName: String(formData.get("business_name") ?? ""),
+    kind: String(formData.get("kind") ?? ""),
+    firstMonth: String(formData.get("first_month") ?? ""),
+    accessEnd: String(formData.get("access_end_date") ?? ""),
+    currency: String(formData.get("currency") ?? "GBP"),
+  });
 
-  if (!email || !displayName || !businessName) {
-    return { error: "An email address, a contact name and a business name are all needed." };
-  }
-
-  if (!KINDS.includes(kind)) {
-    return { error: "Pick whether this is a retainer client, an aOS member or a Chiarezza attendee." };
-  }
-
-  const firstMonth = firstOfMonth(firstMonthRaw);
-  if (!firstMonth) {
-    return { error: "Give the first month this client has data for, as YYYY-MM." };
-  }
-
-  // Only Chiarezza expires — the database says so too, with a check
-  // constraint, so this is the friendly half of the same rule.
-  if (accessEndRaw && kind !== "chiarezza") {
-    return { error: "Only a Chiarezza attendee's access has an end date." };
-  }
-  if (kind === "chiarezza" && !accessEndRaw) {
-    return { error: "A Chiarezza attendee needs the date their access ends." };
-  }
-
-  // An aOS member already has a login and a members row; their workspace
-  // attaches to it rather than inviting them again.
-  if (kind === "aos_member") {
-    return {
-      error:
-        "An aOS member already has a login. Use “Add reporting” on their member record instead, so their workspace attaches to the account they have.",
-    };
-  }
+  if ("error" in checked) return { error: checked.error };
+  const { email, displayName, businessName, kind, firstMonth, accessEndDate, currency } =
+    checked.plan;
 
   const origin = (await headers()).get("origin") ?? env.siteUrl;
   if (!origin) {
@@ -133,7 +99,7 @@ export async function inviteReportClient(
     p_owner_display_name: displayName,
     p_first_month: firstMonth,
     p_currency: currency,
-    ...(accessEndRaw ? { p_access_end_date: firstOfMonth(accessEndRaw) ?? accessEndRaw } : {}),
+    ...(accessEndDate ? { p_access_end_date: accessEndDate } : {}),
   });
 
   if (rpcError) {
