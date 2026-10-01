@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { getWorkspace } from "./queries.ts";
+import { canEdit } from "./access.ts";
 
 /**
  * Offers: their setup, and their monthly figures.
@@ -36,12 +37,13 @@ async function editableWorkspace(workspaceId: string) {
   if (!workspace) return { error: "You don't have access to that client." } as const;
 
   const grant = reportUser.grants.find((g) => g.workspace_id === workspaceId);
-  const canEdit =
-    reportUser.isAdmin ||
-    grant?.role === "team" ||
-    (grant?.role === "client" && workspace.kind !== "retainer");
+  const mayEdit = canEdit({
+    role: grant?.role ?? null,
+    kind: workspace.kind,
+    isAdmin: reportUser.isAdmin,
+  });
 
-  if (!canEdit) {
+  if (!mayEdit) {
     return { error: "Your report is filled in by your strategist." } as const;
   }
   return { reportUser, workspace } as const;

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { categoryByKey } from "./categories.ts";
 import { firstOfMonth } from "./months.ts";
 import { getWorkspace } from "./queries.ts";
+import { canWriteStrategistNote } from "./access.ts";
 
 /**
  * Notes, and publishing.
@@ -51,8 +52,12 @@ export async function saveStrategistNote(
   if (!workspace) return { error: "You don't have access to that client." };
 
   const grant = reportUser.grants.find((g) => g.workspace_id === workspaceId);
-  const isTeam = reportUser.isAdmin || grant?.role === "team";
-  if (!isTeam) {
+  const mayWrite = canWriteStrategistNote({
+    role: grant?.role ?? null,
+    kind: workspace.kind,
+    isAdmin: reportUser.isAdmin,
+  });
+  if (!mayWrite) {
     // §8's table: for an aOS member the equivalent is their own reflection,
     // which is a different note type and a different screen.
     return { error: "Only your strategist writes this note." };

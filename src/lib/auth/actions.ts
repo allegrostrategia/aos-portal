@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
+import { safeNextPath } from "./landing";
 import { headers } from "next/headers";
 
 import { requireMember } from "@/lib/auth/member";
@@ -32,23 +34,16 @@ function friendlyAuthError(message: string): string {
   return "Something went wrong signing you in. Try again, and let us know if it keeps happening.";
 }
 
-/**
- * Only internal paths are accepted as a post-login destination, so a crafted
- * ?next=https://elsewhere can't turn the login form into an open redirect.
- */
-function safeRedirectPath(value: FormDataEntryValue | null): string {
-  const path = typeof value === "string" ? value : "";
-  if (path.startsWith("/") && !path.startsWith("//")) return path;
-  return "/piazza";
-}
-
 export async function signIn(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = safeRedirectPath(formData.get("next"));
+  // Defaults to "/", which is the one place that knows whether this login
+  // is a member or a reporting client. It used to default to /piazza, which
+  // sent a retainer client straight to /no-access.
+  const next = safeNextPath(formData.get("next"));
 
   if (!email || !password) {
     return { error: "Enter both your email and password." };

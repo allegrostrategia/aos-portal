@@ -10,6 +10,7 @@ import { getMetrics, getWorkspace } from "./queries.ts";
 import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { isInternalReportPath } from "./paths.ts";
+import { canEdit } from "./access.ts";
 
 /**
  * Saving a month's figures.
@@ -49,12 +50,13 @@ export async function saveCategoryValues(
   }
 
   const grant = reportUser.grants.find((g) => g.workspace_id === workspaceId);
-  const canEdit =
-    reportUser.isAdmin ||
-    grant?.role === "team" ||
-    (grant?.role === "client" && workspace.kind !== "retainer");
+  const mayEdit = canEdit({
+    role: grant?.role ?? null,
+    kind: workspace.kind,
+    isAdmin: reportUser.isAdmin,
+  });
 
-  if (!canEdit) {
+  if (!mayEdit) {
     // A retainer client viewing their own report. §2: they comment, Allegro
     // enters. The database would refuse this too.
     return { error: "Your report is filled in by your strategist." };

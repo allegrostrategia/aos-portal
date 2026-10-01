@@ -6,6 +6,7 @@ import { requireReportUser, type ReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspace, type ReportWorkspace } from "./queries.ts";
 import { resolveMonth, type MonthView } from "./months.ts";
+import { canEdit, canPublish } from "./access.ts";
 
 /**
  * Which business, which month, and what this person may do — resolved once.
@@ -87,19 +88,18 @@ export async function resolveReportContext(
 
   const grant = reportUser.grants.find((g) => g.workspace_id === workspace.id);
 
-  // A retainer client views and comments; they never enter figures (§2's role
-  // table). A team assignment always edits. An admin edits everything.
-  const canEdit =
-    reportUser.isAdmin ||
-    grant?.role === "team" ||
-    (grant?.role === "client" && workspace.kind !== "retainer");
+  const access = {
+    role: grant?.role ?? null,
+    kind: workspace.kind,
+    isAdmin: reportUser.isAdmin,
+  };
 
   return {
     reportUser,
     workspace,
     month,
-    canEdit,
-    canPublish: reportUser.isAdmin,
+    canEdit: canEdit(access),
+    canPublish: canPublish(access),
     showWorkspacePicker: choices.length > 1,
     choices,
   };

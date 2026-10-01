@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/auth/member";
 import { getReportUser } from "@/lib/auth/report";
+import { landingPath } from "@/lib/auth/landing";
 
 /**
  * aOS is members-only — there is no public marketing page here, that's
@@ -17,22 +18,23 @@ import { getReportUser } from "@/lib/auth/report";
  * proxy can stay optimistic and do no database work.
  */
 export default async function RootPage() {
-  const member = await getCurrentMember();
+  const [member, reportUser] = await Promise.all([
+    getCurrentMember(),
+    getReportUser(),
+  ]);
 
-  // A member goes to the portal, reporting or not — for them it is one more
-  // area of the membership, reached from inside.
-  if (member && member.status !== "cancelled") redirect("/piazza");
-
-  const reportUser = await getReportUser();
-  if (reportUser) redirect("/reporting");
-
-  // Cancelled, or an invited account whose member record does not exist yet.
-  if (member) redirect("/no-access");
-
+  // A session is what separates "nothing here for you" from "please sign in",
+  // and getCurrentMember() returns null for both.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  redirect(user ? "/no-access" : "/login");
+  redirect(
+    landingPath({
+      memberStatus: member?.status ?? null,
+      hasReportAccess: reportUser !== null,
+      signedIn: user !== null,
+    }),
+  );
 }
