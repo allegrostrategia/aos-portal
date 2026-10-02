@@ -75,80 +75,87 @@ export function EntryForm(props: EntryFormProps) {
   const coreLeft = props.core.filter((m) => (values[m.key] ?? "").trim() === "").length;
 
   return (
-    <form action={action} className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <form action={action} className="flex flex-col gap-6">
       <input type="hidden" name="workspace_id" value={props.workspaceId} />
       <input type="hidden" name="month" value={props.month} />
       <input type="hidden" name="category" value={props.category} />
 
-      <div className="flex flex-col gap-6">
-        <Card>
-          <SectionTitle
-            aside={
-              coreLeft === 0
-                ? "All filled in"
-                : `${coreLeft} still to fill in`
-            }
-          >
-            {props.categoryLabel}
-          </SectionTitle>
+      {/* The grid holds the inputs and the panel and NOTHING ELSE.
+          A sticky element is contained by its own containing block, and
+          when the save bar was a third item in this grid that block
+          included the save bar's row — so a panel taller than the viewport
+          slid down over the buttons and made them unclickable. Found by Dom
+          mid-walkthrough on 2 Oct. The save bar is a sibling now, so the
+          panel physically cannot reach it at any height. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-6">
+          <Card>
+            <SectionTitle
+              aside={
+                coreLeft === 0
+                  ? "All filled in"
+                  : `${coreLeft} still to fill in`
+              }
+            >
+              {props.categoryLabel}
+            </SectionTitle>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {props.core.map((metric) => (
-              <NumberField
-                key={metric.key}
-                metric={metric}
-                value={values[metric.key] ?? ""}
-                onChange={(raw) => set(metric.key, raw)}
-                previous={props.previous[metric.key] ?? null}
-                previousLabel={props.previousLabel}
-                currency={props.currency}
-              />
-            ))}
-          </div>
-        </Card>
-
-        {props.optional.length > 0 ? (
-          <Card padded={false}>
-            {/* §4: "Everything else sits behind '+ Add more detail
-                (optional)'." A <details> rather than a toggle so it works
-                before hydration and keeps its state without any of ours. */}
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center gap-2 p-5 text-body font-medium text-ink sm:p-6">
-                <span
-                  aria-hidden
-                  className="flex size-6 items-center justify-center rounded-full bg-cream-deep text-ink/70"
-                >
-                  +
-                </span>
-                Add more detail (optional)
-              </summary>
-              <div className="grid gap-4 px-5 pb-5 sm:grid-cols-2 sm:px-6 sm:pb-6 xl:grid-cols-3">
-                {props.optional.map((metric) => (
-                  <NumberField
-                    key={metric.key}
-                    metric={metric}
-                    value={values[metric.key] ?? ""}
-                    onChange={(raw) => set(metric.key, raw)}
-                    previous={props.previous[metric.key] ?? null}
-                    previousLabel={props.previousLabel}
-                    currency={props.currency}
-                  />
-                ))}
-              </div>
-            </details>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {props.core.map((metric) => (
+                <NumberField
+                  key={metric.key}
+                  metric={metric}
+                  value={values[metric.key] ?? ""}
+                  onChange={(raw) => set(metric.key, raw)}
+                  previous={props.previous[metric.key] ?? null}
+                  previousLabel={props.previousLabel}
+                  currency={props.currency}
+                />
+              ))}
+            </div>
           </Card>
-        ) : null}
+
+          {props.optional.length > 0 ? (
+            <Card padded={false}>
+              {/* §4: "Everything else sits behind '+ Add more detail
+                  (optional)'." A <details> rather than a toggle so it works
+                  before hydration and keeps its state without any of ours. */}
+              <details className="group">
+                <summary className="flex cursor-pointer list-none items-center gap-2 p-5 text-body font-medium text-ink sm:p-6">
+                  <span
+                    aria-hidden
+                    className="flex size-6 items-center justify-center rounded-full bg-cream-deep text-ink/70"
+                  >
+                    +
+                  </span>
+                  Add more detail (optional)
+                </summary>
+                <div className="grid gap-4 px-5 pb-5 sm:grid-cols-2 sm:px-6 sm:pb-6 xl:grid-cols-3">
+                  {props.optional.map((metric) => (
+                    <NumberField
+                      key={metric.key}
+                      metric={metric}
+                      value={values[metric.key] ?? ""}
+                      onChange={(raw) => set(metric.key, raw)}
+                      previous={props.previous[metric.key] ?? null}
+                      previousLabel={props.previousLabel}
+                      currency={props.currency}
+                    />
+                  ))}
+                </div>
+              </details>
+            </Card>
+          ) : null}
+        </div>
+
+        <WorkedOut
+          metrics={props.calculated}
+          results={results}
+          currency={props.currency}
+        />
       </div>
 
-      <WorkedOut
-        metrics={props.calculated}
-        results={results}
-        currency={props.currency}
-      />
-
-      <div className="lg:col-span-2">
-        <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
-      </div>
+      <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
     </form>
   );
 }
@@ -226,7 +233,11 @@ function WorkedOut({
   if (metrics.length === 0) return null;
 
   return (
-    <aside className="lg:sticky lg:top-6 lg:self-start">
+  // Sticky only where there is a second column to sit beside; and capped
+    // to the screen with its own scroll, because a sticky element taller
+    // than the viewport sticks with its lower half permanently below the
+    // fold and no way to reach it.
+    <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:self-start lg:overflow-y-auto">
       <div className="rounded-card border border-gold/40 bg-lemon/60 p-5 shadow-soft sm:p-6">
         <h2 className="font-display text-heading font-medium text-ink">
           Worked out for you
