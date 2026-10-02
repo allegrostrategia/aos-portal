@@ -131,9 +131,27 @@ test("the arrows walk the published list, not the calendar", () => {
   assert.equal(june.next, "2026-08-01");
 });
 
-test("asking for an unpublished month by URL falls back to a published one", () => {
-  const view = resolveMonth("2026-09", TODAY, FIRST, ["2026-08-01"]);
-  assert.equal(view.month, "2026-08-01");
+test("an unpublished month asked for by URL stays on screen as itself", () => {
+  // So the page can say it is not ready yet. Quietly swapping it for
+  // August would answer a question nobody asked and leave the URL
+  // disagreeing with the heading. RLS still returns nothing for it.
+  // 2 October, so September is a completed month and in range — which is
+  // the situation on the live walkthrough. With TODAY at 30 September it
+  // would not be, and would correctly fall back instead.
+  const view = resolveMonth("2026-09", "2026-10-02", FIRST, ["2026-08-01"]);
+  assert.equal(view.month, "2026-09-01");
+  assert.deepEqual(view.options.map((o) => o.month), ["2026-08-01"], "still only offered August");
+  assert.equal(view.previous, "2026-08-01", "the arrow points back to a published month");
+  assert.equal(view.next, null);
+});
+
+test("a month outside the workspace's range still falls back", () => {
+  // A hand-edited or stale URL should land somewhere real.
+  assert.equal(resolveMonth("2030-01", "2026-10-02", FIRST, ["2026-08-01"]).month, "2026-08-01");
+  // A month that has not finished yet is out of range too, however close.
+  assert.equal(resolveMonth("2026-10", "2026-10-02", FIRST, ["2026-08-01"]).month, "2026-08-01");
+  assert.equal(resolveMonth("1999-01", TODAY, FIRST, ["2026-08-01"]).month, "2026-08-01");
+  assert.equal(resolveMonth("nonsense", TODAY, FIRST, ["2026-08-01"]).month, "2026-08-01");
 });
 
 test("nothing published yet is a real state, not a crash", () => {

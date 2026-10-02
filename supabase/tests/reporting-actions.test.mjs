@@ -520,10 +520,22 @@ test("a retainer client is offered published months only", async () => {
   assert.equal(ctx.showDraftState, false, "no DRAFT label for a client");
 });
 
-test("a client asking for an unpublished month by URL gets a published one", async () => {
+test("a client asking for an unpublished month is told it is not ready", async () => {
   configure(db, CLIENT);
   const ctx = await resolveReportContext({ month: "2026-09" }, "2026-10-02");
-  assert.equal(ctx.month.month, AUG);
+
+  assert.equal(ctx.month.month, SEP, "stays on the month they asked for");
+  assert.equal(ctx.monthPublished, false, "which is what makes the page say so");
+  assert.equal(ctx.showDraftState, false, "and still no DRAFT label");
+  assert.deepEqual(ctx.month.options.map((o) => o.month), [AUG], "only August is offered");
+
+  // And nothing of September reaches them, which is RLS's job, not the
+  // page's.
+  assert.equal(
+    await count(CLIENT, `select count(*)::int c from public.report_values
+      where workspace_id = '${WS}' and month = '${SEP}'`),
+    0,
+  );
 });
 
 test("an editor still sees every month, and the draft state", async () => {

@@ -107,7 +107,14 @@ export function resolveMonth(
       .reverse();
 
     const asked = firstOfMonth(requested);
-    const month = asked && months.includes(asked) ? asked : (months[0] ?? latest);
+
+    // An in-range month that simply is not published stays on screen as
+    // itself, so the page can say it is not ready yet. Swapping it for the
+    // newest published one would answer a different question than the one
+    // asked and leave the URL disagreeing with the heading. Anything
+    // outside the workspace's range, or unparseable, still falls back.
+    const inRange = asked !== null && asked >= first && asked <= latest;
+    const month = inRange ? asked : (months[0] ?? latest);
     const index = months.indexOf(month);
 
     return {
@@ -116,8 +123,19 @@ export function resolveMonth(
       // Walk the allowed list, not the calendar: the months a client can
       // see need not be consecutive, and stepping to an unpublished one
       // would put them back where they started.
-      previous: index >= 0 && index < months.length - 1 ? months[index + 1] : null,
-      next: index > 0 ? months[index - 1] : null,
+      // Walk the allowed list, not the calendar: the months a client can
+      // see need not be consecutive, and stepping to an unpublished one
+      // would put them back where they started. When the month on screen
+      // is not in the list at all — an unpublished one reached by URL —
+      // the arrows point at the nearest published months either side.
+      previous:
+        index >= 0
+          ? (index < months.length - 1 ? months[index + 1] : null)
+          : (months.find((m) => m < month) ?? null),
+      next:
+        index >= 0
+          ? (index > 0 ? months[index - 1] : null)
+          : ([...months].reverse().find((m) => m > month) ?? null),
       options: months.map((m) => ({ month: m, label: monthLabel(m) })),
     };
   }
