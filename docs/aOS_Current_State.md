@@ -1,11 +1,15 @@
-# aOS — current state (3 September 2026)
+# aOS — current state (2 October 2026)
 *If this chat ever needs to hand off to a fresh one: drop in this file plus `CLAUDE.md`, the Build Brief, the Training Library doc, and whatever the latest Dom Build Plan looks like (that file is now owned by Claude Code directly, not maintained here). This document is the "where we actually left off," not the full spec.*
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
-## WHERE WE ARE — 30 September 2026
+## WHERE WE ARE — 2 October 2026
 
-**All migrations are applied, including the reporting tool's ten, verified on live. Two things are built and NOT yet pushed to `main`: Step 13's flourishes with the log's week navigation, and the reporting tool's Stage 1.** Nina reviewed and approved the reporting schema on 30 Sep. Everything up to `6d7a3cf` is on `main` (this doc's own update aside). Test suite re-run on 30 Sep after the reporting work: **281 unit / 289 + 84 schema / 169 action**, build and lint clean. (The 84 are the reporting suite, its own file; 281 includes the 34 formula tests.)
+**All sixty-eight migrations are applied and verified on live. Everything up to `99b1c00` is pushed; one commit (`3798361`, the reporting end-to-end test) is local only.** Test suite on 2 Oct: **363 unit / 289 + 84 schema / 182 action**, build, typecheck and lint clean.
+
+**The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
+
+**What Stage 2 is waiting on is Dom, not code.** Its finish line (§11.2) is a real retainer client with two past months entered and one published, on the live site. The automated half of that walkthrough now runs as a test; the half that needs a person — creating the client, which emails a real invitation, and looking at real figures on a real screen — has not happened yet.
 
 Since the last big handoff, five things landed: **peer pairing on real dates** (pick slots after the match; both told where they overlap the moment the second one picks), **the monthly recap** (aOS collates the month, Nina writes it outside the app, pastes it back, sends — verified end to end on live including the email), **admin password recovery**, **the deployment banner and keyless previews**, and **round 6** (Friday check-in email, roadmap inactivity nudge, the prize bar, the Sociale redesign).
 
@@ -13,12 +17,14 @@ Since the last big handoff, five things landed: **peer pairing on real dates** (
 
 **What is not verified, and why:**
 - The **Weekly Check-Ins room has never been seen in its open state** — it unlocks Mondays 2–3:30pm UK and nobody has been in it during a window.
-- The **Friday check-in email** first goes out in its merged form on **2 October**. The wording is mine, not Nina's, and she may want to rewrite it.
+- The **Friday check-in email** went out in its merged form for the first time on **2 October** — unconfirmed whether it arrived or read well. The wording is mine, not Nina's.
 - The **hot seat month picker** needs a second month of sessions before it shows anything.
 - **Milestone rewards** are deferred, not dropped — see the section below.
 - The **audit questions** are still placeholders waiting on Nina, as are her content lists (quotes, videos).
 
 **Live data is all test accounts.** Two member test accounts (`yungsl5dom@`, `dominicchentrens@`), Nina's own member account, and two admin accounts. No real members yet.
+
+**On the reporting side there is one test workspace**, "Test Client", owned by `contact+test2@allegrobusinessservices.co.uk` — a working retainer-client login Dom controls, kept deliberately because it is the only way to see the product as a client sees it. It has a password set by Claude Code and not recorded anywhere; use `/forgot-password` to take it over. A second, `nina+test@`, was created by mistake and deleted on 30 Sep along with its workspace.
 
 ## What's genuinely built and live
 - **Infrastructure:** Supabase, GitHub, Vercel, all connected, `aos.allegrostrategia.com` live.
@@ -26,6 +32,8 @@ Since the last big handoff, five things landed: **peer pairing on real dates** (
 - **Step 8 (admin panel) — complete.** Member lifecycle, roadmap editor, **content upload** (browser-straight-to-storage via signed URL — a Server Action body can't carry a video), **the monthly draw**, and **hot seat challenge review** (the prep sheet lists every active member, not just those who submitted — §5's fallback was unreachable otherwise).
 - **Step 10 core — the hours-reclaimed ledger.** Dated rate history per build plus an append-only weekly ledger, so retiring a build never shrinks hours already banked. Accrual runs off `due_jobs`, replans four weeks back daily, idempotent on (member, week). **Two gates, both required and both settled: ten hours logged AND the log submitted.**
 - **Step 11 — complete and verified live.** Chat (channels, DMs, voice notes through a signed-URL route, Realtime, read state, unread email), the member directory (search, listings, chat-through button), and peer pairing (availability grid, rotation matcher, both notification emails, day-7 flag, coach branch).
+- **Steps 12–13 — done.** The reveal document, the flourishes (flip counters, the FATTO stamp, self-drawing map lines) and the log's week navigation. The Vespa intro video is skipped — no asset.
+- **The reporting tool, Stages 1 and 2.** A second product inside aOS for clients who are not members. Live, with its own section below.
 - **Installable to the home screen.** Manifest, real brand icons, and an install prompt — a button where the browser supports it, Share → Add to Home Screen on iOS, which has no install API at all. Confirmed on a real iPhone.
 
 ## Verified live, by hand, with real accounts and real email
@@ -43,37 +51,76 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE REPORTING TOOL — STAGE 1 BUILT 30 Sep; reviewed and approved by Nina; migrations APPLIED, code NOT pushed
+## THE REPORTING TOOL — STAGES 1 AND 2 BUILT, PUSHED, MIGRATIONS APPLIED (30 Sep – 2 Oct)
 
-Commits `4562f5d`, `0ee528b`, `b83f06c`, `14a8720`, `7d476ea`. **Ten migrations, seventeen `report_` tables, 1,994 lines of SQL — applied to live on 30 Sep after Nina's review.** Brief at `docs/reporting/reporting-tool-brief.md`, mockups beside it. Stage 1 of §11 is foundations only: tables, RLS, the metric list, roles and access, and the shared formula module. **No screens.**
+Brief: `docs/reporting/reporting-tool-brief.md`, mockups beside it. A second product inside aOS: a monthly report for **retainer clients, who are not aOS members**, plus self-serve versions for members and Chiarezza attendees. Commits `4562f5d` → `3798361`.
 
-**The identity decision, confirmed by Nina 30 Sep — do not change without asking.** Retainer clients, Chiarezza attendees and Elize get an `auth.users` account and **no `members` row**. The weak reason is that a members row might make them admin; it wouldn't, `role` defaults to `member`. **The real reason is that `has_portal_access()` is a membership gate, not an authentication one, and three shared surfaces read it with no ownership check at all** — `can_see_channel()` grants every *group* channel, `member_profiles` is the directory, and `draws` and `hot_seat_sessions` are open to anyone passing it. `has_portal_access()` is `status <> 'cancelled'`, so *every* status admits them. One members row inserted for convenience puts a paying retainer client inside Piazza Sociale. **Asserted by test, not by comment**: each of the three signs in and must read zero rows from all five surfaces, which are seeded with real content first.
+**Read the brief's §11 for the stages.** Stage 1 (foundations) and Stage 2 (core report for retainer clients) are done. Stage 3 onwards is not started.
 
-**The consequence, and why routing changed.** The codebase assumed every auth user had a members row. A retainer client would have looped `/login` → `/piazza` → `requireMember()` → `/no-access` holding a working account. So `src/lib/auth/report.ts` is the second resolver, `src/app/reporting` is its own route group outside `(portal)`, and **`src/app/page.tsx` is now the one place that decides which door** — the proxy's post-login redirect goes to `/` instead of hardcoding `/piazza`. `src/lib/admin/report-users.ts` invites these logins and deliberately never calls `create_member()`.
+### The identity decision — confirmed by Nina 30 Sep, do not change without asking
 
-**Publishing is Nina's alone (her decision, 30 Sep).** Guard triggers on `report_periods` and `report_launches` cover INSERT as well as UPDATE, so a team member cannot create a period that arrives already published. Elize drafts everything else.
+Retainer clients, Chiarezza attendees and Elize get an `auth.users` account and **no `members` row**. The weak reason is that a members row might make them an admin; it wouldn't, `role` defaults to `member`. **The real reason is that `has_portal_access()` is a MEMBERSHIP gate, not an authentication one, and three shared surfaces read it with no ownership check:** `can_see_channel()` grants every *group* channel, `member_profiles` is the directory, and `draws` and `hot_seat_sessions` are open to anyone passing it. It is `status <> 'cancelled'`, so *every* status admits them. One members row created for convenience puts a paying client inside Piazza Sociale.
 
-**Two bugs found and fixed before anything ran.** `report_can_view()` never consulted `has_portal_access()`, so a **cancelled aOS member kept their reporting access** — rule 7 says cancelling revokes it. The clause is scoped to `kind = 'aos_member'` and the client role, so retainer and Chiarezza logins (no membership to lose) and Elize's assignment are untouched. And `report_csv_imports` carried a `for all` policy, so an editor could delete the audit trail of which upload filled which field; now select and insert only. **The second was found by listing policies out of the database rather than reading the files** — worth repeating as a technique.
+Asserted by test, not comment: each of the three signs in and must read zero rows from all five surfaces, which are seeded with real content first.
 
-**The metric list is generated, not typed.** `scripts/generate-report-metrics-seed.mjs` reads §5's tables out of the brief; §6's launch fields are listed explicitly because 6.3 and 6.5 are prose. 174 rows. The schema test runs it with `--check`, so hand-editing the migration fails the build. **It caught three unit errors on its own**: net follower growth and net list growth are counts not percentages, and profit margin was reading as currency.
+**The consequence, and why routing has a second resolver.** The codebase assumed every auth user had a members row. `src/lib/auth/report.ts` is the resolver for the ones that don't, `src/app/reporting` is its own route group outside `(portal)`, and **`src/lib/auth/landing.ts` is now the single answer to "where does this login go"** — used by the root page, with the proxy and the sign-in action both pointing at `/`.
 
-**The formula module** (`src/lib/reporting/formulas.ts`) is pure and is Stage 1's finish line per §11. Three conventions written at the top: missing means missing (everything returns `null`, §4 wants a dash — a dash says "we don't know", 0% says "we know, and it's nothing"); **percentages are 0–100 throughout**, keyboard to screen, so there is nowhere for a hundredfold error to hide; money is ex-VAT. `CALC_COVERAGE` maps all 77 calculated metrics to the function producing them and is checked against the seed both ways — **it found §6.3's per-stage open and click rates had no implementation at all.**
+### What is built
 
-**Two mockup arithmetic errors.** §12 already records the launch planner showing 600 sign-ups where §6.6's formula gives 1,277. **The second is new: mockup 2 prints a 6.9% engagement rate where §5.2's formula gives 9.34%** — 6.9% is likes and comments over reach, leaving out the saves and shares the formula includes. Built to the brief, both wrong figures pinned by tests. Dom is raising the mockup itself with Nina; **do not "fix" the formula to match the mockup.**
+- **17 `report_` tables**, ten migrations, all applied. §9's data model exactly.
+- **174 metrics**, generated from the brief's §5 tables by `scripts/generate-report-metrics-seed.mjs`. **Do not hand-edit the seed migration** — the schema test runs the generator with `--check` and fails if you do.
+- **`src/lib/reporting/formulas.ts`** — every calculation in §5 and §6, pure, 34 tests against the brief's own worked examples. Three conventions written at the top: missing returns `null` (a dash, never 0%), **percentages are 0–100 throughout**, money is ex-VAT.
+- **`calculate.ts`** is the bridge from named arguments to metric keys; **both the entry screen's live card and the report go through it**, which is what §9 asks for.
+- **Entry screens** for Social Media, Email, Leads & Conversions, Offers and Financials — one generic page driven by `report_metrics`, plus a dedicated Offers screen because its figures hang off a row rather than a month.
+- **The Overview**, strategist notes, draft/publish, and an admin screen at `/admin/reporting` for creating clients and assigning team members.
 
-**Brand, settled by Nina 30 Sep:** Stage 2 keeps the approved mockups' **layout** exactly and renders it in the current L'Editoriale brand — cream surfaces, ink text, orange pills with ink text. **Do not rebuild the layout, and do not drift back to the mockups' cool off-white and white cards**, which are the pre-13-Sep look. The brief's own §3 brand table is the old palette and is superseded by CLAUDE.md.
+### Decisions worth not relitigating
 
-**Judgement calls Nina agreed:** a launch carries its own `published_at` on the same rule as a month (the brief is silent, and the alternative was a retainer client watching Elize type); social-media metrics are per-platform entities, since §5.2 says Instagram first with others "using the same structure". **`owner_user_id` is deliberately not unique** — nobody knows whether a retainer client runs two businesses, and workspace and login are already separate concepts, so a second one needs no migration.
+- **Publishing is Nina's alone** (her call, 30 Sep). Guard triggers cover INSERT as well as UPDATE, so a team member cannot create an already-published period.
+- **`owner_user_id` is deliberately not unique** — nobody knows whether a retainer client runs two businesses, and workspace and login are already separate concepts, so a second one needs no migration.
+- **Launches carry their own `published_at`**, on the same rule as a month. The brief is silent; the alternative was a client watching their launch page fill in mid-entry.
+- **Social Media figures are stored per platform**, created on first save as "Instagram", so a second platform later is a new row and not a backfill.
+- **Brand**: keep the approved mockups' *layout*, render it in L'Editoriale (Nina, 30 Sep). The brief's own §3 palette table is the pre-13-Sep look and is superseded by `CLAUDE.md`. **Do not rebuild the layout.**
 
-**Verification: 281 unit / 289 + 84 schema / 169 action, lint and build clean.** Every access rule is asserted as that actual person over RLS. **Twenty-nine mutations, applied one at a time, all caught** — giving a retainer client a members row, making every month look published, letting a team member publish, removing the service-role escape, dropping the cancellation clause, the planner producing the mockup's 600, overall margin degrading to a simple average, cost per lead counting awareness spend again. Two initially showed as uncaught and in both cases **the test was right and my expectation of which test should fail was wrong**; the harness itself had two bugs, including `$$` being an escape in a JS replacement string, silently corrupting the SQL.
+### Two mockup arithmetic errors — build to the brief, not the mockup
 
-**A note on where work comes from.** The Stage 1 drafts at `docs/reporting/stage1-draft-*` were written in a different Claude session and are now deleted. A later message from that session reported ten migrations, a seed, routing and 335 passing tests as done and committed at `9f2a86c`. **None of it existed** — not in the working tree, not on `origin`, no such object in the repo, no second checkout on the machine. Treat a report of completed work from anywhere outside this repo as a claim to verify, not a state to build on.
+§12 already records the launch planner showing 600 sign-ups where §6.6's formula gives **1,277**. The second was found on 30 Sep: **mockup 2 prints a 6.9% engagement rate where §5.2's formula gives 9.34%** — 6.9% is likes and comments over reach, leaving out the saves and shares the formula includes. Both wrong figures are pinned by tests. Dom is raising the mockups with Nina separately; **do not "fix" the formulas to match them.**
 
-**Still to do:** the code is committed and not pushed. Then Stage 2 (§11.2): the tab row, entry pages for Social Media, Email, Leads & Conversions, Offers and Financials, the Overview report, Draft/Published, strategist notes — retainer clients first, so Elize can test on real data before any member sees it.
+### Open questions and known gaps
 
-## STEP 13 FLOURISHES + THE LOG'S WEEK NAVIGATION — BUILT 30 Sep, committed, NOT pushed
+- **`client_experience_active_clients_at_start` cannot be built as specified.** §5.8 calls it "last month's active at end" *and* says "the very first month asks for active clients at start as a one-off input" — a field pulled in most months and typed in one, which the schema refuses outright (`report_values` will not store a pulled metric). Needs Nina's decision. Named in `PULLED_NOT_IMPLEMENTED` with a test that fails if someone quietly implements it. Stage 3.
+- **Publishing does not email the client.** §8 wants it. A retainer client has no `members` row, so their address is in `auth.users` and needs the service role. The publish card says so rather than implying otherwise.
+- **`report_values`' unique rule is on a `coalesce()` expression**, which PostgREST cannot target with an upsert, so saving is read-then-write. A `nulls not distinct` index would make it one upsert — worth bundling with the next migration Nina reviews.
+- **Nina has two auth accounts** (`nin…@gmail.com` from 3 Sep, never confirmed, and one on the Allegro domain). Not urgent.
+- Stage 3 owns the charts, target bars, traffic lights and "Look at these first" — all of which need targets, benchmarks and twelve months of history.
 
-Commits `f3a9497` and `8f55ebc`. No migration. Verified: tsc, lint, build; 247 unit / 289 schema / 169 action; every screen rendered, including two caught mid-animation.
+### Bugs found and fixed along the way, by shape
+
+Worth knowing because the shapes recur:
+
+- **A pulled metric with nothing behind it.** `financials_revenue_from_offers` is PULLED, and `report_values` refuses to store a pulled figure — so reading it as a typed field returned null forever and **Revenue and Profit showed a dash on a month with offers entered perfectly well.** There is now a `PULLED_COVERAGE` map checked against the seed both ways.
+- **A cancelled member kept reporting access.** `report_can_view()` never consulted `has_portal_access()`. Fixed, scoped to `kind = 'aos_member'` and the client role so retainer and Chiarezza logins are untouched.
+- **An append-only audit trail that wasn't.** `report_csv_imports` had a `for all` policy. Found by listing policies out of the database rather than reading the files — a technique worth repeating.
+- **Three places deciding where a login goes.** The sign-in action still sent everyone to `/piazza`, so a retainer client's first sign-in landed on "Your account isn't ready yet". Now one tested function.
+- **A rule copied four times.** Who may edit a workspace was written out in the page context and three actions. Now `src/lib/reporting/access.ts`, tested.
+- **A form inside a form.** The offer setup form was nested inside the monthly figures form — invalid HTML, failing hydration — with a comment above it claiming it sat beside rather than inside. The Next dev overlay had been reporting it; nobody was reading the log.
+- **An invitation link that only works on the sender's machine.** `NEXT_PUBLIC_SITE_URL` is localhost locally and invites build their link from the request origin, so a test invite works perfectly for whoever sent it and is dead for a client. All three invite paths now refuse. **Send invitations from the live site.**
+- **A Chiarezza-only field on every kind of client**, which the action then refused to accept a value in — leaving a dead-end form. The field is conditional now and a stray value is ignored rather than fatal.
+
+### What was verified, and how
+
+- **Signed in as a retainer client in a real browser** (1 Oct) and read the HTML the server sent: zero `/admin` links, no `/admin/` anywhere in the source, no `?workspace=` parameter, no trace of a second client that genuinely existed at the time, and no "Enter data", "Save draft" or publish control. `/admin/reporting`, `/admin/members`, `/piazza`, `/you` and `/sociale` all redirect to `/no-access` — **refused, not hidden from the nav.** Their own business name *is* present, which is the positive control.
+- **The whole month, through the real actions** (`supabase/tests/reporting-actions.test.mjs`, 13 assertions): create client, set up an offer, enter its month, enter four categories, write a note, publish, unpublish, second month — as Nina and as the client, with real RLS.
+- **Rendered at 1440 and 390** and looked at.
+
+### Two traps in the tooling, found the hard way
+
+- **Chrome headless has a 500px floor on `--window-size`.** A "390px" screenshot is a cropped desktop render, which looked exactly like a horizontal-overflow bug and cost three wrong fixes before a numeric readout on the page showed `viewport 500`. Screenshot phones over the DevTools protocol with `Emulation.setDeviceMetricsOverride`.
+- **The PGlite shim disagreed with production in three ways**, each making a correct thing look broken: no `.returns<T>()`; foreign keys for embeds guessed from the table name (`report_workspaces` → `report_workspace_id`, when the column is `workspace_id`); and `upsert` with no explicit target treated as a plain insert when PostgREST resolves it on the primary key. All three fixed in the shim. **When a test disagrees with live, suspect the harness as readily as the code.**
+
+## STEP 13 FLOURISHES + THE LOG'S WEEK NAVIGATION — BUILT 30 Sep, PUSHED 30 Sep
+
+Commits `f3a9497` and `8f55ebc`. No migration. Pushed 30 Sep with the reporting work. Verified: tsc, lint, build; 247 unit / 289 schema / 169 action; every screen rendered, including two caught mid-animation.
 
 **Week navigation on the log (Dom's ask).** `?week=` picks the Monday. The current week is the only one that can be changed — a past week loses the timer tab, the manual-entry button, delete, note editing and the sign-off form, **removed rather than disabled**, and a week that closed unsigned says so rather than offering to sign it late. Boundaries are a pure tested module (`lib/log/weeks.ts`): a future week and a week before they joined both fall back to the current one. **Day links carry the week** — without that, tapping a day in September threw you back to this week, which the rendered HTML caught rather than the types.
 
@@ -641,13 +688,20 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
 - **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
 - **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
+- **When a test disagrees with live, suspect the harness as readily as the code.** The PGlite shim diverged from PostgREST three separate ways in one afternoon — a types-only method it didn't have, a foreign key it guessed from a table name, and an upsert default it got wrong — and every one of them made correct code look broken. Fix the harness; it is supposed to bend, not the app.
+- **Measure the viewport before believing a screenshot.** Chrome headless has a 500px floor on `--window-size`, so a "390px" shot is a cropped desktop render. That looked exactly like a horizontal-overflow bug and cost three wrong fixes. Put a numeric readout on the page, or drive `Emulation.setDeviceMetricsOverride` over the DevTools protocol.
+- **Read the dev server's log, not just the screen.** A nested `<form>` was failing hydration and the Next overlay had been saying "3 Issues" for an hour before anybody looked.
+- **A comment claiming the code does something is not evidence that it does.** Two bugs this week sat directly under comments asserting the opposite — a setup form "beside, not inside" the one it was nested in, and a guard whose stated column rules it didn't enforce. Treat such a comment as a bug report, the same way the column-ownership rule above says to.
 - For a build this size, start a fresh session per major step or per day rather than one marathon.
 
 ## Right now, exactly
-**Steps 1–11 are done**, including the two-week check-in and Step 9's Archivio.
 
-Next: **the admin Roadmaps section** and the richer roadmap structure it needs (months → focuses → actions, each action linked to a training, with its own comment box and a week-number dropdown). Then **the send-handler tests**. Then Step 10's remainder and Steps 12–13.
+**Steps 1–13 are done.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones.
 
-**Before anything else: three migrations are waiting to be pasted** — see Migrations above. Archivio and the check-in are built but won't work on live until they are.
+**The live work is the reporting tool.** Stages 1 and 2 are built, pushed and applied. Stage 2's finish line is a real retainer client with two past months entered and one published — see its section above for what is left and who has to do it.
 
-**To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.**
+**The next piece of building is Stage 3** (§11.3): Funnels, Ads, Client Experience and Trial Reels; targets, the benchmarks admin, traffic lights, and the "Look at these first" panel. Nothing blocks starting it, but Stage 2 should be walked through on real data first — the brief sequences the stages that way on purpose, so the entry-to-publish path is proved on real figures before more surface is added on top.
+
+**One decision is needed before Stage 3 touches Client Experience:** `client_experience_active_clients_at_start`, which §5.8 specifies two incompatible ways. See the reporting section.
+
+**To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.
