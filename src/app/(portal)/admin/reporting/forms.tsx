@@ -8,6 +8,7 @@ import { Field } from "@/components/ui/form";
 import {
   assignReportTeamMember,
   inviteReportClient,
+  saveWorkspaceSettings,
   type ReportInviteState,
 } from "@/lib/admin/report-users";
 
@@ -107,5 +108,50 @@ function Footer({ state, label }: { state: ReportInviteState; label: string }) {
         {label}
       </Button>
     </div>
+  );
+}
+
+/**
+ * Correcting a client's details after the fact.
+ *
+ * The first month is the one that matters: set it to the month you created
+ * them in and every completed month becomes unselectable, which is exactly
+ * what happened to the first test client. It is admin-only in the database,
+ * so this form is only rendered on a screen that already requires an admin.
+ */
+export function EditWorkspaceForm({
+  workspaceId,
+  businessName,
+  currency,
+  firstMonth,
+}: {
+  workspaceId: string;
+  businessName: string;
+  currency: string;
+  /** `YYYY-MM-DD`; the input wants `YYYY-MM`. */
+  firstMonth: string;
+}) {
+  const [state, action] = useActionState<ReportInviteState, FormData>(
+    saveWorkspaceSettings,
+    null,
+  );
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="workspace_id" value={workspaceId} />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Business name" name="business_name" defaultValue={businessName} required />
+        <Field label="Currency" name="currency" defaultValue={currency} required />
+        <Field
+          label="First month with figures"
+          name="first_month"
+          type="month"
+          defaultValue={firstMonth.slice(0, 7)}
+          required
+          hint="The earliest month the picker will offer."
+        />
+      </div>
+      <Footer state={state} label="Save details" />
+    </form>
   );
 }

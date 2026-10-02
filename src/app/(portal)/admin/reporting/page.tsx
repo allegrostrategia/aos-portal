@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
-import { NewClientForm, AssignTeamForm } from "./forms";
+import { NewClientForm, AssignTeamForm, EditWorkspaceForm } from "./forms";
 
 export const metadata: Metadata = {
   title: "Reporting clients · aOS admin",
@@ -151,6 +151,20 @@ export default async function AdminReportingPage() {
               </dl>
 
               <details className="group mt-4 border-t border-ink/8 pt-3">
+                <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
+                  Edit details
+                </summary>
+                <div className="mt-3">
+                  <EditWorkspaceForm
+                    workspaceId={workspace.id}
+                    businessName={workspace.business_name}
+                    currency={workspace.currency}
+                    firstMonth={workspace.first_month}
+                  />
+                </div>
+              </details>
+
+              <details className="group mt-3 border-t border-ink/8 pt-3">
                 <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
                   Assign someone to this client
                 </summary>

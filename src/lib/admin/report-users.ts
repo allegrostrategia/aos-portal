@@ -188,3 +188,71 @@ export async function assignReportTeamMember(
 
   return { notice: `${displayName} can now work on this client's report.` };
 }
+
+/**
+ * Correct a client's details after they were created.
+ *
+ * There was no way to do this at all until 2 October, which is how a test
+ * workspace ended up with its first month set to the month it was created
+ * in — making every completed month unselectable, and the mistake
+ * unfixable through the product.
+ *
+ * `first_month` is admin-only in the database (the guard trigger on
+ * report_workspaces), so this is too. `kind`, the owner and the Chiarezza
+ * access window are deliberately NOT editable here: changing the kind of a
+ * workspace that already has figures in it changes who may read them.
+ */
+export async function saveWorkspaceSettings(
+  _prev: ReportInviteState,
+  formData: FormData,
+): Promise<ReportInviteState> {
+  await requireAdmin();
+
+  const workspaceId = String(formData.get("workspace_id") ?? "").trim();
+  const businessName = String(formData.get("business_name") ?? "").trim();
+  const currency = String(formData.get("currency") ?? "").trim().toUpperCase();
+  const firstMonthRaw = String(formData.get("first_month") ?? "").trim();
+
+  if (!workspaceId) return { error: "Which client?" };
+  if (!businessName) return { error: "A client needs a business name." };
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    return { error: "Currency should be a three-letter code, like GBP." };
+  }
+
+  const match = /^(\d{4})-(\d{2})/.exec(firstMonthRaw);
+  const month = Number(match?.[2]);
+  if (!match || month < 1 || month > 12) {
+    return { error: "Give the first month as YYYY-MM." };
+  }
+  const firstMonth = `${match[1]}-${match[2]}-01`;
+
+  const supabase = await createClient();
+
+  // Moving the first month forward past figures that already exist would
+  // hide them: the month picker only offers months from here on, so they
+  // would still be in the database and unreachable on every screen.
+  const { data: earliest } = await supabase
+    .from("report_values")
+    .select("month")
+    .eq("workspace_id", workspaceId)
+    .order("month")
+    .limit(1)
+    .maybeSingle<{ month: string }>();
+
+  if (earliest && earliest.month < firstMonth) {
+    return {
+      error: `There are already figures for ${earliest.month.slice(0, 7)}. Moving the first month later than that would hide them.`,
+    };
+  }
+
+  const { error } = await supabase
+    .from("report_workspaces")
+    .update({ business_name: businessName, currency, first_month: firstMonth })
+    .eq("id", workspaceId);
+
+  if (error) return { error: `Couldn't save: ${error.message}` };
+
+  revalidatePath("/admin/reporting");
+  revalidatePath("/reporting", "layout");
+  return { notice: `${businessName} updated.` };
+}
