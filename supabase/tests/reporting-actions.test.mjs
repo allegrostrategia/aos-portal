@@ -25,6 +25,7 @@ const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts"
 const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offer-actions.ts");
 const { saveStrategistNote, publishMonth, unpublishMonth } =
   await import("../../src/lib/reporting/note-actions.ts");
+const { saveWorkspaceSettings } = await import("../../src/lib/admin/report-users.ts");
 const { calculate } = await import("../../src/lib/reporting/calculate.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -320,4 +321,131 @@ test("September's figures can be compared against August's", async () => {
     previous: (k) => (k === "email_list_size_at_month_end" ? aug.v : null),
   });
   assert.equal(growth.email_net_list_growth, 358);
+});
+
+// ---------------------------------------------------------------------------
+// Correcting a client's details.
+//
+// These drive the real action, not a copy of its rule. The first version of
+// this had a unit test over a re-implementation of the comparison, which
+// would have passed happily with the guard deleted — exactly the shape the
+// standing rule about proving a test can fail is there to catch.
+// ---------------------------------------------------------------------------
+
+test("the first month can be moved earlier, which only widens the picker", async () => {
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching",
+      currency: "GBP", first_month: "2026-07",
+    })),
+  );
+  assert.equal(result?.error, undefined, result?.error);
+
+  const [ws] = await rows(NINA,
+    `select first_month::text m from public.report_workspaces where id = '${WS}'`);
+  assert.equal(ws.m, "2026-07-01");
+});
+
+test("moving it past existing figures is refused, and nothing changes", async () => {
+  // August and September both hold figures by now, and August is published.
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Renamed In The Attempt",
+      currency: "USD", first_month: "2026-09",
+    })),
+  );
+
+  assert.match(result?.error ?? "", /already/);
+  assert.match(result?.error ?? "", /2026-08/, "it names the month in the way");
+
+  const [ws] = await rows(NINA, `
+    select first_month::text m, business_name, currency
+    from public.report_workspaces where id = '${WS}'`);
+  assert.equal(ws.m, "2026-07-01", "first month untouched");
+  assert.equal(ws.business_name, "Bella Rossi Coaching", "and so is everything else");
+  assert.equal(ws.currency, "GBP");
+});
+
+test("a month with only a note in it still blocks the move", async () => {
+  // report_values is not the only table keyed by month. Checking it alone
+  // would let a note, a published period or a Trial Reels list be stranded.
+  const JUL = "2026-07-01";
+  await as(NINA, () =>
+    saveStrategistNote(null, form({
+      workspace_id: WS, month: JUL, category: "",
+      body: "July, which has a note and no figures.",
+    })),
+  );
+
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching",
+      currency: "GBP", first_month: "2026-08",
+    })),
+  );
+
+  assert.match(result?.error ?? "", /2026-07/, "names July, which only has a note");
+  assert.match(result?.error ?? "", /note/);
+});
+
+test("a workspace id that matches nothing does not report success", async () => {
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: "00000000-0000-0000-0000-00000000dead",
+      business_name: "Ghost Ltd", currency: "GBP", first_month: "2026-01",
+    })),
+  );
+  assert.match(result?.error ?? "", /could not be found/);
+  assert.equal(result?.notice, undefined, "and it certainly does not say 'updated'");
+});
+
+test("only an admin can correct a client's details", async () => {
+  await assert.rejects(
+    () => as(CLIENT, () =>
+      saveWorkspaceSettings(null, form({
+        workspace_id: WS, business_name: "Mine Now",
+        currency: "GBP", first_month: "2026-01",
+      })),
+    ),
+    /REDIRECT/,
+    "requireAdmin() redirects rather than returning an error",
+  );
+
+  const [ws] = await rows(NINA,
+    `select business_name from public.report_workspaces where id = '${WS}'`);
+  assert.equal(ws.business_name, "Bella Rossi Coaching");
+});
+
+test("the currency has to look like a currency", async () => {
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching",
+      currency: "pounds", first_month: "2026-07",
+    })),
+  );
+  assert.match(result?.error ?? "", /three-letter code/);
+});
+
+test("a read that fails stops the save rather than passing the guard", async () => {
+  // Fault injection, because there is no other way to make one of the four
+  // checks error. Without the error branch, a failed read looks exactly
+  // like "nothing in the way" and the whole guard becomes decorative —
+  // which is what the first version of this action did.
+  await db.exec(`alter table public.report_top_items rename column month to month_renamed`);
+  try {
+    const result = await as(NINA, () =>
+      saveWorkspaceSettings(null, form({
+        workspace_id: WS, business_name: "Bella Rossi Coaching",
+        currency: "GBP", first_month: "2026-09",
+      })),
+    );
+    assert.match(result?.error ?? "", /Couldn't check report_top_items/);
+    assert.equal(result?.notice, undefined);
+  } finally {
+    await db.exec(`alter table public.report_top_items rename column month_renamed to month`);
+  }
+
+  const [ws] = await rows(NINA,
+    `select first_month::text m from public.report_workspaces where id = '${WS}'`);
+  assert.equal(ws.m, "2026-07-01", "and nothing was saved");
 });

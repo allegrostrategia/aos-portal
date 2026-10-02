@@ -228,29 +228,63 @@ export async function saveWorkspaceSettings(
 
   const supabase = await createClient();
 
-  // Moving the first month forward past figures that already exist would
-  // hide them: the month picker only offers months from here on, so they
-  // would still be in the database and unreachable on every screen.
-  const { data: earliest } = await supabase
-    .from("report_values")
-    .select("month")
-    .eq("workspace_id", workspaceId)
-    .order("month")
-    .limit(1)
-    .maybeSingle<{ month: string }>();
+  // Moving the first month forward past anything that already exists would
+  // hide it: the month picker only offers months from here on, so those rows
+  // stay in the database and disappear from every screen — data loss where
+  // nothing is deleted and nothing warns.
+  //
+  // Every table that is keyed by month, not just the figures. A published
+  // period, a strategist note and a Trial Reels list are all just as
+  // strandable, and checking only report_values would let two of the three
+  // through.
+  const MONTHLY_TABLES = [
+    { table: "report_values", noun: "figures" },
+    { table: "report_periods", noun: "a report" },
+    { table: "report_notes", noun: "a note" },
+    { table: "report_top_items", noun: "a Trial Reels list" },
+  ] as const;
 
-  if (earliest && earliest.month < firstMonth) {
+  const earliest: { month: string; noun: string }[] = [];
+  for (const { table, noun } of MONTHLY_TABLES) {
+    const { data, error: readError } = await supabase
+      .from(table)
+      .select("month")
+      .eq("workspace_id", workspaceId)
+      .order("month")
+      .limit(1)
+      .maybeSingle<{ month: string }>();
+
+    // A failed read must not read as "nothing in the way". Without this the
+    // guard passes on any error and the whole check is decorative.
+    if (readError) {
+      return { error: `Couldn't check ${table} before saving: ${readError.message}` };
+    }
+    if (data?.month) earliest.push({ month: data.month, noun });
+  }
+
+  const blocking = earliest
+    .filter((e) => e.month < firstMonth)
+    .sort((a, b) => a.month.localeCompare(b.month))[0];
+
+  if (blocking) {
     return {
-      error: `There are already figures for ${earliest.month.slice(0, 7)}. Moving the first month later than that would hide them.`,
+      error: `There is already ${blocking.noun} for ${blocking.month.slice(0, 7)}. Moving the first month later than that would hide it.`,
     };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("report_workspaces")
     .update({ business_name: businessName, currency, first_month: firstMonth })
-    .eq("id", workspaceId);
+    .eq("id", workspaceId)
+    .select("id");
 
   if (error) return { error: `Couldn't save: ${error.message}` };
+
+  // An id that matches nothing updates nothing and reports no error, so
+  // without this a mistyped workspace cheerfully says "updated".
+  if (!updated || updated.length !== 1) {
+    return { error: "That client could not be found, so nothing was saved." };
+  }
 
   revalidatePath("/admin/reporting");
   revalidatePath("/reporting", "layout");
