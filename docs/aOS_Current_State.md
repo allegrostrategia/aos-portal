@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 2 October 2026
 
-**All sixty-eight migrations are applied and verified on live. Everything up to `99b1c00` is pushed; one commit (`3798361`, the reporting end-to-end test) is local only.** Test suite on 2 Oct: **363 unit / 289 + 84 schema / 182 action**, build, typecheck and lint clean.
+**All sixty-eight migrations are applied and verified on live. Everything is pushed; nothing is sitting locally.** Test suite on 2 Oct: **363 unit / 289 + 84 schema / 182 action**, build, typecheck and lint clean.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -32,7 +32,7 @@ Since the last big handoff, five things landed: **peer pairing on real dates** (
 - **Step 8 (admin panel) — complete.** Member lifecycle, roadmap editor, **content upload** (browser-straight-to-storage via signed URL — a Server Action body can't carry a video), **the monthly draw**, and **hot seat challenge review** (the prep sheet lists every active member, not just those who submitted — §5's fallback was unreachable otherwise).
 - **Step 10 core — the hours-reclaimed ledger.** Dated rate history per build plus an append-only weekly ledger, so retiring a build never shrinks hours already banked. Accrual runs off `due_jobs`, replans four weeks back daily, idempotent on (member, week). **Two gates, both required and both settled: ten hours logged AND the log submitted.**
 - **Step 11 — complete and verified live.** Chat (channels, DMs, voice notes through a signed-URL route, Realtime, read state, unread email), the member directory (search, listings, chat-through button), and peer pairing (availability grid, rotation matcher, both notification emails, day-7 flag, coach branch).
-- **Steps 12–13 — done.** The reveal document, the flourishes (flip counters, the FATTO stamp, self-drawing map lines) and the log's week navigation. The Vespa intro video is skipped — no asset.
+- **Step 12 done; Step 13 done but for one piece.** The reveal document, the flourishes (flip counters, the FATTO stamp, self-drawing map lines) and the log's week navigation are all built. **The Vespa intro video on first login is not** — there is no asset for it. It is the only thing left in the open list.
 - **The reporting tool, Stages 1 and 2.** A second product inside aOS for clients who are not members. Live, with its own section below.
 - **Installable to the home screen.** Manifest, real brand icons, and an install prompt — a button where the browser supports it, Share → Add to Home Screen on iOS, which has no install API at all. Confirmed on a real iPhone.
 
@@ -55,7 +55,7 @@ This is its own section rather than a line in the open list because it is a prod
 
 Brief: `docs/reporting/reporting-tool-brief.md`, mockups beside it. A second product inside aOS: a monthly report for **retainer clients, who are not aOS members**, plus self-serve versions for members and Chiarezza attendees. Commits `4562f5d` → `3798361`.
 
-**Read the brief's §11 for the stages.** Stage 1 (foundations) and Stage 2 (core report for retainer clients) are done. Stage 3 onwards is not started.
+**Read the brief's §11 for the stages.** Stage 1 (foundations) is done. Stage 2 (core report for retainer clients) is **built, but its §11.2 finish line is not yet met** — that finish line is a real retainer client with two past months entered and one published, on live, and none of that has happened. Stage 3 onwards is not started.
 
 ### The identity decision — confirmed by Nina 30 Sep, do not change without asking
 
@@ -498,7 +498,7 @@ Verification at the end: tsc, lint, build clean; **171 unit / 232 schema / 90 ac
 ## Genuinely still open
 1. ~~**The design/artwork pass**~~ — **done.** La Strada redrawn 4 Sep, the milestone path illustrated 8 Sep. Both illustrated screens now exist.
 2. **The community goal** — needs a target from Nina before it can be built at all.
-3. **Step 13** — final polish: the Vespa intro video on first login, and the optional animation flourishes (flip-board counters, the FATTO stamp, self-drawing blueprints), all independently droppable.
+3. ~~**Step 13**~~ — **the flourishes are done** (flip-board counters, the FATTO stamp, self-drawing map lines, all built 30 Sep and independently droppable). What remains is **the Vespa intro video on first login** — not built, because there is no asset for it.
 
 ## Step 12 — the reveal document, BUILT 3 Sep
 `/admin/reveal`, with the document itself at `/admin/reveal/[memberId]/document`.
@@ -626,6 +626,12 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **Quote-of-the-day lines for Piazza** (added 14 Sep) — seven or more, in her voice. Placeholders in `src/lib/piazza/quotes.ts` until then; one array.
 - **The two-week time-tracking explainer video** (from the redesign brief).
 - **Per-lesson notes, resources and key takeaways** — deferred 14 Sep as a content gap; the lesson page's tabs and checklist get built when there is something to put in them.
+- **A decision on `client_experience_active_clients_at_start`** (added 2 Oct) — §5.8 of the reporting brief specifies it two incompatible ways: "last month's active at end" *and* "the very first month asks for active clients at start as a one-off input". A field that is pulled in most months and typed in one, which the schema refuses outright. Blocks Stage 3's Client Experience page.
+- **The two mockup arithmetic errors** (added 2 Oct) — the launch planner card shows **600 sign-ups where §6.6's formula gives 1,277**, and the Social Media entry mockup shows a **6.9% engagement rate where §5.2's formula gives 9.34%** (6.9% leaves out the saves and shares the formula includes). Both are built to the brief and pinned by tests. The mockups are client-approved, so correcting them may mean going back to whoever approved them.
+- **The September draw's prize** — the `draws` row for September still has the literal prize `"test"`, so the Piazza card reads "test.". Set the real prize in `/admin/draw`, or delete the row and let the fallback copy show.
+
+## Waiting on Dom
+- **The Stage 2 live walkthrough**, which is what finishes Stage 2 (§11.2). Create a real retainer client from `/admin/reporting` **on the live site** — invitations refuse to send from a dev server, because the link they build would only work on the machine that sent it — then enter two past months and publish one. The automated half of this runs as a test (`supabase/tests/reporting-actions.test.mjs`); this is the half that needs a person, a real inbox and a look at real figures on a real screen.
 
 ## Real bugs found and fixed (running list, worth knowing the shape of each)
 1. Vercel Authentication toggle blocking public site access
@@ -696,7 +702,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 
 ## Right now, exactly
 
-**Steps 1–13 are done.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones.
+**Steps 1–13 are done but for one piece.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones. The exception is **Step 13's Vespa intro video**, which has no asset — the only item left in the open list.
 
 **The live work is the reporting tool.** Stages 1 and 2 are built, pushed and applied. Stage 2's finish line is a real retainer client with two past months entered and one published — see its section above for what is left and who has to do it.
 
