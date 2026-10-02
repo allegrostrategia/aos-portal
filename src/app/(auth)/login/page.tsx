@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { safeNextPath } from "@/lib/auth/landing";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
@@ -14,9 +15,8 @@ function first(value: string | string[] | undefined): string | undefined {
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
 
-  const rawNext = first(params.next) ?? "/piazza";
-  const next =
-    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/piazza";
+  // Same reason as the confirm route: the root decides the door.
+  const next = safeNextPath(first(params.next) ?? "/");
 
   const initialError =
     first(params.error) === "link"

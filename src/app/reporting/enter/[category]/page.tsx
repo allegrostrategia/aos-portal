@@ -84,6 +84,7 @@ export default async function EnterCategoryPage({
           <PublishBadge
             kind={ctx.workspace.kind}
             publishedAt={data.period?.published_at ?? null}
+            show={ctx.showDraftState}
           />
         }
       >
@@ -106,7 +107,12 @@ export default async function EnterCategoryPage({
 
   const core = metrics.filter((m) => m.input_type === "core");
   const optional = metrics.filter((m) => m.input_type === "optional");
-  const calculated = metrics.filter((m) => m.input_type === "calc");
+  // Pulled metrics belong on the card too. "Revenue from offers" is the
+  // figure the whole Financials page is built on, and leaving it off meant
+  // whoever was entering could not see what the totals were working from.
+  const calculated = metrics.filter(
+    (m) => m.input_type === "calc" || m.input_type === "pulled",
+  );
 
   // The calculated card needs last month for growth and rate-against-last-
   // month figures, and every typed field needs it for the hint underneath.
@@ -117,6 +123,24 @@ export default async function EnterCategoryPage({
   const previous = Object.fromEntries(
     keysNeeded.map((key) => [key, data.previous.get(key)]),
   );
+
+  // The month's offers, in the shape the formulas take. Financials pulls
+  // its revenue from them (§5.10), so without these the entry card showed
+  // dashes for Total revenue, Profit and the margin while the report —
+  // which does pass them — showed the real figures. §9 says those two must
+  // never disagree.
+  const offerRowsForEntry = data.entities
+    .filter((e) => e.entity_type === "offer")
+    .map((offer) => ({
+      name: offer.name,
+      hourlyCost: offer.hourly_cost,
+      pricingModel: offer.pricing_model ?? undefined,
+      unitsSold: data.values.get("offers_units_sold", offer.id),
+      revenue: data.values.get("offers_revenue_this_month", offer.id),
+      hoursSpent: data.values.get("offers_hours_spent_delivering", offer.id),
+      otherDirectCosts: data.values.get("offers_other_direct_costs", offer.id),
+    }))
+    .filter((r) => r.unitsSold !== null || r.revenue !== null || r.hoursSpent !== null);
 
   // "Save & next section" walks the entry categories in tab order.
   const order = ENTRY_CATEGORIES.filter(
@@ -136,10 +160,12 @@ export default async function EnterCategoryPage({
         <PublishBadge
           kind={ctx.workspace.kind}
           publishedAt={data.period?.published_at ?? null}
+          show={ctx.showDraftState}
         />
       }
     >
       <EntryForm
+        offerRows={offerRowsForEntry}
         category={category.key}
         categoryLabel={category.label}
         workspaceId={ctx.workspace.id}

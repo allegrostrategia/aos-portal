@@ -99,3 +99,53 @@ test("month labels read as a person would say them", () => {
   assert.equal(monthLabel("2026-01-01"), "January 2026");
   assert.equal(monthLabel("2026-12-01"), "December 2026");
 });
+
+// ---------------------------------------------------------------------------
+// What a retainer client is allowed to be offered (§8).
+// ---------------------------------------------------------------------------
+
+test("a client is offered only the months that are published", () => {
+  // The walkthrough bug: the dropdown listed August AND September when only
+  // August was published, and the arrow stepped into a month whose every
+  // section then claimed it "wasn't part of this month's report".
+  const view = resolveMonth(undefined, TODAY, FIRST, ["2026-08-01"]);
+  assert.deepEqual(view.options.map((o) => o.month), ["2026-08-01"]);
+  assert.equal(view.month, "2026-08-01");
+  assert.equal(view.next, null);
+  assert.equal(view.previous, null);
+});
+
+test("the arrows walk the published list, not the calendar", () => {
+  // Published months need not be consecutive. Stepping by one calendar
+  // month would land on an unpublished one and bounce straight back.
+  const view = resolveMonth("2026-08-01", TODAY, FIRST, [
+    "2026-08-01", "2026-06-01", "2026-03-01",
+  ]);
+  assert.equal(view.previous, "2026-06-01", "skips unpublished July");
+  assert.equal(view.next, null, "August is the newest published");
+
+  const june = resolveMonth("2026-06-01", TODAY, FIRST, [
+    "2026-08-01", "2026-06-01", "2026-03-01",
+  ]);
+  assert.equal(june.previous, "2026-03-01");
+  assert.equal(june.next, "2026-08-01");
+});
+
+test("asking for an unpublished month by URL falls back to a published one", () => {
+  const view = resolveMonth("2026-09", TODAY, FIRST, ["2026-08-01"]);
+  assert.equal(view.month, "2026-08-01");
+});
+
+test("nothing published yet is a real state, not a crash", () => {
+  const view = resolveMonth(undefined, TODAY, FIRST, []);
+  assert.deepEqual(view.options, []);
+  assert.equal(view.previous, null);
+  assert.equal(view.next, null);
+  assert.ok(view.month, "still names a month, so the screen has something to say");
+});
+
+test("an editor is unrestricted, as before", () => {
+  const view = resolveMonth(undefined, TODAY, FIRST);
+  assert.equal(view.options.length, 8);
+  assert.equal(view.month, "2026-08-01");
+});

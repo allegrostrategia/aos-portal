@@ -22,8 +22,26 @@ const MIGRATIONS = path.join(
   "migrations",
 );
 
+/**
+ * Postgres OIDs whose values PGlite hands back as strings and PostgREST
+ * sends as JSON numbers.
+ *
+ * Without these, every `numeric` column — which is every money figure, every
+ * rate, every hourly cost — arrives in a test as "12500" rather than 12500.
+ * The formula module checks `typeof value === "number"` and returns null for
+ * anything else, so the arithmetic silently produces dashes here while
+ * working perfectly live. Found on 2 Oct chasing a test that was right about
+ * the code and wrong about the harness.
+ */
+const NUMERIC_OIDS = {
+  1700: (v) => (v === null ? null : Number(v)), // numeric
+  701: (v) => (v === null ? null : Number(v)),  // float8
+  700: (v) => (v === null ? null : Number(v)),  // float4
+  20: (v) => (v === null ? null : Number(v)),   // int8
+};
+
 export async function createTestDatabase() {
-  const db = await new PGlite();
+  const db = await new PGlite({ parsers: NUMERIC_OIDS });
 
   await db.exec(`
     create schema if not exists auth;

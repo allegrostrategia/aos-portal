@@ -128,7 +128,12 @@ export async function updatePassword(
   }
 
   revalidatePath("/", "layout");
-  redirect("/piazza");
+  // "/" and not "/piazza": the root page is the only thing that knows
+  // whether this login is a member or a reporting client. Sending everyone
+  // to the portal meant a retainer client's very first sign-in, straight
+  // after setting their password, landed on "Your account isn't ready yet"
+  // — found on the Stage 2 walkthrough, 2 Oct.
+  redirect("/");
 }
 
 /**

@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { calculate, calculateOffer, type Lookup } from "./calculate.ts";
-import { CALC_COVERAGE, PULLED_COVERAGE, type OfferMonth } from "./formulas.ts";
+import {
+  CALC_COVERAGE,
+  monthOnMonthChange,
+  PULLED_COVERAGE,
+  type OfferMonth,
+} from "./formulas.ts";
 import { CATEGORIES } from "./categories.ts";
 
 /**
@@ -210,4 +215,77 @@ test("an offer with no hours logged is a dash, not an infinite rate", () => {
 test("overview and launches calculate nothing here", () => {
   assert.deepEqual(calculate("overview", { value: none, previous: none }), {});
   assert.deepEqual(calculate("launches", { value: none, previous: none }), {});
+});
+
+// ---------------------------------------------------------------------------
+// Revenue pulled from Offers, worked out everywhere it is needed.
+//
+// Bugs 3, 4 and 5 of the 2 October walkthrough were one shape: the offers
+// were passed in some places and not others, so the same month produced
+// different figures depending on which screen asked.
+// ---------------------------------------------------------------------------
+
+test("the entry card and the report cannot disagree — same input, same output", () => {
+  // §9's whole promise. The entry screen used to call calculate() with no
+  // offerRows, so Total revenue, Profit and the margin were dashes there
+  // while the report, which passes them, showed the real figures.
+  const value = from({
+    financials_fixed_costs: 3200,
+    financials_variable_costs: 6100,
+    financials_team_costs: 4230,
+  });
+
+  const report = calculate("financials", { value, previous: none, offerRows: OFFERS });
+  const entryCard = calculate("financials", { value, previous: none, offerRows: OFFERS });
+
+  assert.deepEqual(entryCard, report);
+  assert.equal(report.financials_revenue_from_offers, 24850);
+  assert.equal(report.financials_total_revenue, 24850);
+  assert.equal(report.financials_profit, 11320);
+});
+
+test("without the offers, every figure derived from them is a dash", () => {
+  // Which is exactly what the entry screen showed. Asserted so the
+  // difference between "passed them" and "didn't" is visible in a test
+  // rather than only on a screen.
+  const value = from({ financials_fixed_costs: 3200 });
+  const starved = calculate("financials", { value, previous: none });
+
+  assert.equal(starved.financials_revenue_from_offers, null);
+  assert.equal(starved.financials_total_revenue, null);
+  assert.equal(starved.financials_profit, null);
+  assert.equal(starved.financials_profit_margin, null);
+  assert.equal(starved.financials_costs_as_percent_of_revenue, null);
+});
+
+test("last month's offers give this month something to compare against", () => {
+  // Bug 3: previousResults was computed with offerRows: [], so Revenue and
+  // Profit said "No month to compare" on a month whose predecessor had
+  // £2,000 of offers in it.
+  const august: OfferMonth[] = [
+    { name: "Coaching", hourlyCost: 60, unitsSold: 1, revenue: 2000, hoursSpent: 10 },
+  ];
+  const september: OfferMonth[] = [
+    { name: "Coaching", hourlyCost: 60, unitsSold: 2, revenue: 3000, hoursSpent: 15 },
+  ];
+
+  const prev = calculate("financials", {
+    value: from({ financials_fixed_costs: 1000 }),
+    previous: none,
+    offerRows: august,
+  });
+  const now = calculate("financials", {
+    value: from({ financials_fixed_costs: 1000 }),
+    previous: none,
+    offerRows: september,
+  });
+
+  assert.equal(prev.financials_total_revenue, 2000);
+  assert.equal(now.financials_total_revenue, 3000);
+  assert.equal(prev.financials_profit, 1000);
+  assert.equal(now.financials_profit, 2000);
+
+  // Which is what the Overview's arrow is: +50% revenue, +100% profit.
+  assert.equal(monthOnMonthChange(now.financials_total_revenue, prev.financials_total_revenue), 50);
+  assert.equal(monthOnMonthChange(now.financials_profit, prev.financials_profit), 100);
 });

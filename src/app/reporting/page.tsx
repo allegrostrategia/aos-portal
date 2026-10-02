@@ -7,7 +7,7 @@ import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { ENTRY_CATEGORIES, categoryByKey } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
-import { getMonthFigures } from "@/lib/reporting/month-figures";
+import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
 import { monthLabel } from "@/lib/reporting/months";
 import { OVERVIEW_KPIS } from "@/lib/reporting/overview";
 
@@ -56,10 +56,19 @@ export default async function ReportingOverviewPage({
         <PublishBadge
           kind={ctx.workspace.kind}
           publishedAt={figures.data.period?.published_at ?? null}
+          show={ctx.showDraftState}
         />
       }
     >
-      {!anyFigures ? (
+      {!ctx.monthPublished ? (
+        <Card className="mb-6">
+          <SectionTitle>{ctx.month.label} isn&rsquo;t ready yet</SectionTitle>
+          <p className="text-body text-ink/70">
+            Your strategist is still putting this month together. You&rsquo;ll be
+            told when it&rsquo;s ready to read.
+          </p>
+        </Card>
+      ) : !anyFigures ? (
         <Card className="mb-6">
           <SectionTitle>Nothing in yet for {ctx.month.label}</SectionTitle>
           <p className="text-body text-ink/70">
@@ -144,13 +153,12 @@ function StillToFill({
 }) {
   const rows = ENTRY_CATEGORIES.filter(
     (c) => !ctx.workspace.hidden_categories.includes(c.key),
-  ).map((category) => {
-    const core = figures.metrics.filter(
-      (m) => m.category === category.key && m.input_type === "core",
-    );
-    const filled = core.filter((m) => figures.figure(m.key) !== null).length;
-    return { category, filled, total: core.length };
-  });
+  ).map((category) => ({
+    category,
+    // Shared, because Offers stores its figures per offer and a month-level
+    // lookup finds none of them.
+    ...categoryCompletion(figures, category.key),
+  }));
 
   const done = rows.filter((r) => r.total > 0 && r.filled === r.total).length;
 

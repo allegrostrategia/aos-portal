@@ -237,10 +237,19 @@ function WorkspacePicker({ ctx }: { ctx: ReportContext }) {
 export function PublishBadge({
   kind,
   publishedAt,
+  show = true,
 }: {
   kind: "retainer" | "aos_member" | "chiarezza";
   publishedAt: string | null;
+  /**
+   * Draft/Published is the team's working state. A client is never shown
+   * it — an orange DRAFT label on their own report says nothing they can
+   * act on and plenty they shouldn't have to think about. Removed from the
+   * markup rather than hidden (§13).
+   */
+  show?: boolean;
 }) {
+  if (!show) return null;
   if (kind !== "retainer") return null;
   return publishedAt ? (
     <Badge tone="sky">Published</Badge>

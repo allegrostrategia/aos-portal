@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CATEGORIES } from "./categories.ts";
+import { CATEGORIES, type CategoryKey } from "./categories.ts";
 import { calculate, calculateOffer, entityAwareLookup, type Lookup } from "./calculate.ts";
 import type { OfferMonth } from "./formulas.ts";
 import { getMetrics, getMonthData, type MonthData, type ReportMetric } from "./queries.ts";
@@ -36,17 +36,17 @@ export interface MonthFigures {
   byKey: Map<string, ReportMetric>;
 }
 
-function offerRowsFrom(data: MonthData): OfferMonth[] {
+function offerRowsFrom(data: MonthData, values: MonthData["values"]): OfferMonth[] {
   return data.entities
     .filter((e) => e.entity_type === "offer")
     .map((offer) => ({
       name: offer.name,
       hourlyCost: offer.hourly_cost,
       pricingModel: offer.pricing_model ?? undefined,
-      unitsSold: data.values.get("offers_units_sold", offer.id),
-      revenue: data.values.get("offers_revenue_this_month", offer.id),
-      hoursSpent: data.values.get("offers_hours_spent_delivering", offer.id),
-      otherDirectCosts: data.values.get("offers_other_direct_costs", offer.id),
+      unitsSold: values.get("offers_units_sold", offer.id),
+      revenue: values.get("offers_revenue_this_month", offer.id),
+      hoursSpent: values.get("offers_hours_spent_delivering", offer.id),
+      otherDirectCosts: values.get("offers_other_direct_costs", offer.id),
     }))
     // An offer set up but not sold this month is not a zero row; it simply
     // has no figures, and including it would drag the weighted margin
@@ -85,7 +85,12 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     entityFor,
   );
 
-  const offerRows = offerRowsFrom(data);
+  const offerRows = offerRowsFrom(data, data.values);
+  // Last month's offers, worked out the same way. Without these, every
+  // figure derived from the offers — Revenue, Profit, the margin — had
+  // nothing to compare against, and the Overview said "No month to
+  // compare" on a month whose predecessor was full of figures.
+  const previousOfferRows = offerRowsFrom(data, data.previous);
 
   // Every category, so the Overview can read a figure from any of them.
   // `previous` for the previous month's own calculations is the month before
@@ -102,7 +107,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
       calculate(category.key, {
         value: previous,
         previous: () => null,
-        offerRows: [],
+        offerRows: previousOfferRows,
       }),
     );
   }
@@ -134,4 +139,47 @@ export function offerBreakdown(figures: MonthFigures) {
     offer,
     results: calculateOffer(offer, total),
   }));
+}
+
+/**
+ * How much of a category's core is filled in, for "Still to fill in" (§8.1).
+ *
+ * Not simply `figure(key) !== null`. Offers stores its figures against each
+ * offer, so a month-level lookup finds nothing and the category reads 0/3
+ * however much has been entered — which is what it did for every client
+ * until 2 October.
+ *
+ * For a category whose metrics hang off a row, a core metric counts as
+ * filled when EVERY active row has it. Three offers with two of them priced
+ * is not a finished section.
+ */
+export function categoryCompletion(
+  figures: MonthFigures,
+  category: CategoryKey,
+): { filled: number; total: number } {
+  const core = figures.metrics.filter(
+    (m) => m.category === category && m.input_type === "core",
+  );
+  if (core.length === 0) return { filled: 0, total: 0 };
+
+  const entityType = core[0].entity_type;
+  // Offers is the only category that actually stores per row today. Social
+  // Media's metrics carry an entity type as well, but there is exactly one
+  // platform and `figure()` already resolves it.
+  const rows =
+    entityType === "offer"
+      ? figures.data.entities.filter((e) => e.entity_type === "offer" && e.active)
+      : null;
+
+  if (!rows) {
+    return { filled: core.filter((m) => figures.figure(m.key) !== null).length, total: core.length };
+  }
+
+  if (rows.length === 0) return { filled: 0, total: core.length };
+
+  const filled = core.filter((m) =>
+    rows.every((row) => figures.data.values.get(m.key, row.id) !== null),
+  ).length;
+
+  return { filled, total: core.length };
 }

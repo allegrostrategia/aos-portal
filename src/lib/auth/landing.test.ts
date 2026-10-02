@@ -62,3 +62,19 @@ test("anything that leaves the site falls back to the decider", () => {
 test("a control character cannot smuggle a scheme through", () => {
   assert.equal(safeNextPath("/piazza\nhttps://evil.example"), "/");
 });
+
+test("a reporting client who has just set a password goes to their report", () => {
+  // The 2 October walkthrough bug: setPassword redirected to /piazza, so a
+  // retainer client's very FIRST sign-in — straight after choosing their
+  // password — landed on "Your account isn't ready yet". Every invited
+  // client would have seen it.
+  assert.equal(at({ hasReportAccess: true, memberStatus: null }), "/reporting");
+});
+
+test('"/" is the default everywhere, so one place decides', () => {
+  // Three separate places used to default to /piazza: the sign-in action,
+  // the confirm route and the login page. Each was a chance to send a
+  // reporting client somewhere that bounces them.
+  assert.equal(safeNextPath(undefined), "/");
+  assert.equal(safeNextPath(null), "/");
+});

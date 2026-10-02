@@ -107,9 +107,25 @@ export class ValueBag {
     this.sources = new Map();
     for (const row of rows) {
       const k = ValueBag.key(row.metric_key, row.entity_id);
-      this.byKey.set(k, row.value);
+      this.byKey.set(k, ValueBag.toNumber(row.value));
       this.sources.set(k, row.source);
     }
+  }
+
+  /**
+   * A figure, as a number or nothing.
+   *
+   * `numeric` is the one Postgres type whose JSON representation is not
+   * guaranteed to be a number — drivers hand it back as a string to keep
+   * precision, and PostgREST sends it unquoted. The formula module tests
+   * `typeof value === "number"`, so a string arriving here would not be an
+   * error anywhere: every figure derived from it would quietly become a
+   * dash. Normalising at the boundary means only this line has to know.
+   */
+  private static toNumber(value: unknown): number | null {
+    if (value === null || value === undefined) return null;
+    const n = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(n) ? n : null;
   }
 
   private static key(metricKey: string, entityId?: string | null): string {
@@ -318,4 +334,25 @@ export async function getBenchmarks(workspaceId: string): Promise<Map<string, nu
     .returns<{ metric_key: string; benchmark_value: number }[]>();
 
   return new Map((data ?? []).map((r) => [r.metric_key, r.benchmark_value]));
+}
+
+/**
+ * The months a retainer client is allowed to be offered: the published ones.
+ *
+ * §8: a draft is the team's. Showing a client a month they cannot read and
+ * then telling them each section "wasn't part of this month's report" is
+ * worse than not offering it — the sections were there, they just are not
+ * theirs yet.
+ */
+export async function getPublishedMonths(workspaceId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("report_periods")
+    .select("month")
+    .eq("workspace_id", workspaceId)
+    .not("published_at", "is", null)
+    .order("month", { ascending: false })
+    .returns<{ month: string }[]>();
+
+  return (data ?? []).map((r) => r.month);
 }

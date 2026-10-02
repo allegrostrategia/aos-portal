@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { requireReportUser, type ReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
-import { getWorkspace, type ReportWorkspace } from "./queries.ts";
+import { getPublishedMonths, getWorkspace, type ReportWorkspace } from "./queries.ts";
 import { resolveMonth, type MonthView } from "./months.ts";
 import { canEdit, canPublish } from "./access.ts";
 
@@ -29,6 +29,16 @@ export interface ReportContext {
   canEdit: boolean;
   /** Publishing is Nina's alone (30 Sep 2026). */
   canPublish: boolean;
+  /**
+   * Whether the month on screen is readable by this viewer.
+   *
+   * Always true for an editor and for a self-serve workspace. False only
+   * when a retainer client has reached an unpublished month by URL — the
+   * dropdown and arrows never offer them one.
+   */
+  monthPublished: boolean;
+  /** Draft/Published is the team's business; a client is not shown it. */
+  showDraftState: boolean;
   /** Draws the business picker. Never for someone with one business. */
   showWorkspacePicker: boolean;
   /** Everything this login may open, which RLS has already filtered. */
@@ -84,8 +94,6 @@ export async function resolveReportContext(
   const workspace = await getWorkspace(chosen);
   if (!workspace) redirect("/no-access");
 
-  const month = resolveMonth(searchParams.month, today, workspace.first_month);
-
   const grant = reportUser.grants.find((g) => g.workspace_id === workspace.id);
 
   const access = {
@@ -94,12 +102,24 @@ export async function resolveReportContext(
     isAdmin: reportUser.isAdmin,
   };
 
+  const mayEdit = canEdit(access);
+
+  // A retainer client is offered their published months and no others. An
+  // editor sees every month, because drafts are what they are working on,
+  // and a self-serve workspace has no draft state at all (§8).
+  const restricted = !mayEdit && workspace.kind === "retainer";
+  const allowed = restricted ? await getPublishedMonths(workspace.id) : undefined;
+
+  const month = resolveMonth(searchParams.month, today, workspace.first_month, allowed);
+
   return {
     reportUser,
     workspace,
     month,
-    canEdit: canEdit(access),
+    canEdit: mayEdit,
     canPublish: canPublish(access),
+    monthPublished: !restricted || (allowed ?? []).includes(month.month),
+    showDraftState: mayEdit,
     showWorkspacePicker: choices.length > 1,
     choices,
   };

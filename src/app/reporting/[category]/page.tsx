@@ -82,6 +82,7 @@ export default async function CategoryReportPage({
           <PublishBadge
             kind={ctx.workspace.kind}
             publishedAt={figures.data.period?.published_at ?? null}
+            show={ctx.showDraftState}
           />
           {ctx.canEdit && category.entry ? (
             <Link
@@ -94,7 +95,18 @@ export default async function CategoryReportPage({
         </>
       }
     >
-      {empty ? (
+      {!ctx.monthPublished ? (
+        // A client who reached an unpublished month by URL. Saying the
+        // section "wasn't part of this month's report" would be a lie —
+        // it may be full of figures that are simply not theirs yet.
+        <Card>
+          <SectionTitle>{ctx.month.label} isn&rsquo;t ready yet</SectionTitle>
+          <p className="text-body text-ink/70">
+            Your strategist is still putting this month together. You&rsquo;ll be
+            told when it&rsquo;s ready to read.
+          </p>
+        </Card>
+      ) : empty ? (
         <Card>
           <SectionTitle>Nothing for {ctx.month.label}</SectionTitle>
           <p className="text-body text-ink/70">

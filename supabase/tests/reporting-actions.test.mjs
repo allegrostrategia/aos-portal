@@ -26,6 +26,10 @@ const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offe
 const { saveStrategistNote, publishMonth, unpublishMonth } =
   await import("../../src/lib/reporting/note-actions.ts");
 const { saveWorkspaceSettings } = await import("../../src/lib/admin/report-users.ts");
+const { getMonthFigures, categoryCompletion } =
+  await import("../../src/lib/reporting/month-figures.ts");
+const { resolveReportContext } = await import("../../src/lib/reporting/context.ts");
+const { ValueBag } = await import("../../src/lib/reporting/queries.ts");
 const { calculate } = await import("../../src/lib/reporting/calculate.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -448,4 +452,107 @@ test("a read that fails stops the save rather than passing the guard", async () 
   const [ws] = await rows(NINA,
     `select first_month::text m from public.report_workspaces where id = '${WS}'`);
   assert.equal(ws.m, "2026-07-01", "and nothing was saved");
+});
+
+// ---------------------------------------------------------------------------
+// The 2 October walkthrough: what a client is offered, and the figures
+// pulled from Offers being worked out everywhere rather than in some places.
+// ---------------------------------------------------------------------------
+
+/** Enough of a context for getMonthFigures, which reads three fields. */
+const figuresFor = (month, previous) =>
+  getMonthFigures({ workspace: { id: WS }, month: { month, previous } });
+
+test("Offers counts as done once its figures are saved, not 0/3 forever", async () => {
+  // Bug 4: completion used a month-level lookup, and Offers stores against
+  // each offer — so it read 0/3 however much had been entered, for every
+  // client.
+  configure(db, NINA);
+  const figures = await figuresFor(AUG, "2026-07-01");
+  const offers = categoryCompletion(figures, "offers");
+
+  assert.equal(offers.total, 3, "three core offer fields");
+  assert.equal(offers.filled, 3, "all three entered for the one offer");
+});
+
+test("a half-filled offer does not count as done", async () => {
+  const [offer] = await rows(NINA,
+    `select id from public.report_entities where workspace_id = '${WS}' and entity_type = 'offer'`);
+  // A second offer with nothing against it.
+  await as(NINA, () => saveOffer(null, form({
+    workspace_id: WS, name: "Half-entered Offer",
+    price: "500", pricing_model: "one_off", hourly_cost: "60",
+  })));
+
+  configure(db, NINA);
+  const figures = await figuresFor(AUG, "2026-07-01");
+  const offers = categoryCompletion(figures, "offers");
+  assert.ok(offers.filled < 3, `expected fewer than 3 filled, got ${offers.filled}`);
+
+  // Put it back, so later assertions see the month as it was.
+  await rows(NINA, `delete from public.report_entities where id <> '${offer.id}' and entity_type = 'offer'`);
+});
+
+test("last month's offers are worked out, so Revenue has something to compare", async () => {
+  // Bug 3. September's figures against August's.
+  configure(db, NINA);
+  const figures = await figuresFor(SEP, AUG);
+
+  assert.ok(
+    figures.previousResults.financials_revenue_from_offers !== null,
+    "August's offer revenue is worked out for the comparison",
+  );
+  assert.equal(figures.previousResults.financials_revenue_from_offers, 12500);
+});
+
+test("a retainer client is offered published months only", async () => {
+  // Bug 2. August is published by now; September is not.
+  configure(db, CLIENT);
+  const ctx = await resolveReportContext({}, "2026-10-02");
+
+  assert.deepEqual(
+    ctx.month.options.map((o) => o.month),
+    [AUG],
+    "September is not offered at all",
+  );
+  assert.equal(ctx.month.next, null, "and there is nowhere to step to");
+  assert.equal(ctx.monthPublished, true);
+  assert.equal(ctx.showDraftState, false, "no DRAFT label for a client");
+});
+
+test("a client asking for an unpublished month by URL gets a published one", async () => {
+  configure(db, CLIENT);
+  const ctx = await resolveReportContext({ month: "2026-09" }, "2026-10-02");
+  assert.equal(ctx.month.month, AUG);
+});
+
+test("an editor still sees every month, and the draft state", async () => {
+  configure(db, NINA);
+  const ctx = await resolveReportContext({}, "2026-10-02");
+
+  const months = ctx.month.options.map((o) => o.month);
+  assert.ok(months.includes(SEP), "September, which is still a draft");
+  assert.ok(months.includes(AUG));
+  assert.equal(ctx.showDraftState, true);
+});
+
+test("a figure arriving as a string is still a number", async () => {
+  // `numeric` is the one Postgres type whose JSON form is not guaranteed to
+  // be a number — drivers hand it back as a string to keep precision. The
+  // formula module tests `typeof value === "number"`, so a string would not
+  // raise anything: every figure derived from it would quietly become a
+  // dash. PGlite does exactly this, which is what made bug 3 look unfixed
+  // when it was fixed. Normalised at the boundary so only one line cares.
+  const bag = new ValueBag([
+    { metric_key: "offers_revenue_this_month", entity_id: null, value: "12500", source: "manual" },
+    { metric_key: "offers_units_sold", entity_id: null, value: 5, source: "manual" },
+    { metric_key: "offers_hours_spent_delivering", entity_id: null, value: null, source: "manual" },
+    { metric_key: "offers_other_direct_costs", entity_id: null, value: "not a number", source: "manual" },
+  ]);
+
+  assert.equal(bag.get("offers_revenue_this_month"), 12500);
+  assert.equal(typeof bag.get("offers_revenue_this_month"), "number");
+  assert.equal(bag.get("offers_units_sold"), 5, "a real number passes through");
+  assert.equal(bag.get("offers_hours_spent_delivering"), null);
+  assert.equal(bag.get("offers_other_direct_costs"), null, "nonsense is nothing, not NaN");
 });

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/auth/landing";
 
 /**
  * Where every emailed auth link lands: the invitation that starts a member off,
@@ -21,9 +22,10 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   const code = searchParams.get("code");
 
-  const rawNext = searchParams.get("next") ?? "/piazza";
-  const next =
-    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/piazza";
+  // Defaults to the root, which decides which door this login has. A
+  // default of /piazza sends every reporting client to /no-access.
+  const rawNext = searchParams.get("next") ?? "/";
+  const next = safeNextPath(rawNext);
 
   const supabase = await createClient();
 

@@ -80,12 +80,47 @@ export function resolveMonth(
   requested: string | null | undefined,
   today: string,
   firstMonth: string,
+  /**
+   * When given, the ONLY months this person may be offered.
+   *
+   * A retainer client is shown their published months and nothing else:
+   * §8 says a draft is the team's, and offering August and September in a
+   * dropdown when only August exists for them advertises a month they
+   * cannot read and then explains itself wrongly. An empty array means
+   * nothing has been published yet, which is a real state — the picker is
+   * empty and the screen says so.
+   *
+   * Undefined means no restriction, which is what editors get.
+   */
+  allowed?: string[],
 ): MonthView {
   const first = firstOfMonth(firstMonth);
   if (!first) throw new Error(`Unparseable first month: ${firstMonth}`);
 
   const latestRaw = latestReportableMonth(today);
   const latest = latestRaw < first ? first : latestRaw;
+
+  if (allowed) {
+    // Newest first, de-duplicated, and only months that are really months.
+    const months = [...new Set(allowed.map(firstOfMonth).filter((m): m is string => m !== null))]
+      .sort()
+      .reverse();
+
+    const asked = firstOfMonth(requested);
+    const month = asked && months.includes(asked) ? asked : (months[0] ?? latest);
+    const index = months.indexOf(month);
+
+    return {
+      month,
+      label: monthLabel(month),
+      // Walk the allowed list, not the calendar: the months a client can
+      // see need not be consecutive, and stepping to an unpublished one
+      // would put them back where they started.
+      previous: index >= 0 && index < months.length - 1 ? months[index + 1] : null,
+      next: index > 0 ? months[index - 1] : null,
+      options: months.map((m) => ({ month: m, label: monthLabel(m) })),
+    };
+  }
 
   const asked = firstOfMonth(requested);
   const month = asked && asked >= first && asked <= latest ? asked : latest;

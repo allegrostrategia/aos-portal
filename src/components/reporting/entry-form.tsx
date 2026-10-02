@@ -9,6 +9,7 @@ import { saveCategoryValues, type SaveState } from "@/lib/reporting/actions";
 import { calculate } from "@/lib/reporting/calculate";
 import type { CategoryKey } from "@/lib/reporting/categories";
 import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/format";
+import type { OfferMonth } from "@/lib/reporting/formulas";
 import type { ReportMetric } from "@/lib/reporting/queries";
 
 /**
@@ -36,6 +37,11 @@ export interface EntryFormProps {
   core: ReportMetric[];
   optional: ReportMetric[];
   calculated: ReportMetric[];
+  /**
+   * The month's offers. Financials pulls its revenue from them, so the
+   * live card needs them to work out the same totals the report does.
+   */
+  offerRows?: OfferMonth[];
   initial: Record<string, number | null>;
   previous: Record<string, number | null>;
   /** Where "Save and next" goes, or null on the last section. */
@@ -64,8 +70,11 @@ export function EntryForm(props: EntryFormProps) {
         // Some formulas are defined against last month: follower growth, the
         // unsubscribe rate. Those come from the server and never change here.
         previous: (key) => props.previous[key] ?? null,
+        // Offers are set on their own screen, so they do not change as you
+        // type here — but Financials is worked out from them.
+        offerRows: props.offerRows,
       }),
-    [props.category, props.previous, values],
+    [props.category, props.previous, props.offerRows, values],
   );
 
   const set = (key: string, raw: string) =>
