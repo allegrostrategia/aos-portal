@@ -51,8 +51,65 @@ const singular = (table) => table.replace(/s$/, "");
  * The first yields an object, the second an array, matching what PostgREST
  * returns and therefore what the app's own code destructures.
  */
+/**
+ * The actual foreign key between two tables, asked of the schema.
+ *
+ * The column is NOT always `<singular relation>_id`: report_access points at
+ * report_workspaces through plain `workspace_id`. Guessing the name finds
+ * nothing, falls through to the one-to-many branch, and returns an empty
+ * embed — which looks exactly like "this client has no workspace" and sent a
+ * client's whole session to /no-access in a test while working fine live.
+ */
+async function foreignKeyBetween(db, fromTable, toTable) {
+  const { rows } = await db.query(
+    `select kcu.column_name as local_col, ccu.column_name as foreign_col
+     from information_schema.table_constraints tc
+     join information_schema.key_column_usage kcu
+       on kcu.constraint_name = tc.constraint_name
+      and kcu.table_schema = tc.table_schema
+     join information_schema.constraint_column_usage ccu
+       on ccu.constraint_name = tc.constraint_name
+      and ccu.table_schema = tc.table_schema
+     where tc.constraint_type = 'FOREIGN KEY'
+       and tc.table_schema = 'public'
+       and tc.table_name = $1
+       and ccu.table_name = $2`,
+    [fromTable, toTable],
+  );
+  if (rows.length === 0) return null;
+  // More than one route (two columns pointing at the same table) is
+  // ambiguous in PostgREST too; prefer the conventionally named one so the
+  // choice is at least predictable.
+  const guess = `${singular(toTable)}_id`;
+  return rows.find((r) => r.local_col === guess) ?? rows[0];
+}
+
 async function embedSql(db, baseTable, relation, columns) {
   const selected = splitColumns(columns).map((c) => quoteIdent(c)).join(", ");
+
+  const manyToOne = await foreignKeyBetween(db, baseTable, relation);
+  if (manyToOne) {
+    return (
+      `(select row_to_json(e) from (select ${selected} ` +
+      `from public.${quoteIdent(relation)} ` +
+      `where ${quoteIdent(manyToOne.foreign_col)} = base.${quoteIdent(manyToOne.local_col)}) e) ` +
+      `as ${quoteIdent(relation)}`
+    );
+  }
+
+  const oneToMany = await foreignKeyBetween(db, relation, baseTable);
+  if (oneToMany) {
+    return (
+      `(select coalesce(json_agg(row_to_json(e)), '[]'::json) from (select ${selected} ` +
+      `from public.${quoteIdent(relation)} ` +
+      `where ${quoteIdent(oneToMany.local_col)} = base.${quoteIdent(oneToMany.foreign_col)}) e) ` +
+      `as ${quoteIdent(relation)}`
+    );
+  }
+
+  // Nothing in the schema says these are related. Fall back to the old
+  // name-based guess rather than failing outright, so an embed across a
+  // view or a table the harness has not created still behaves as before.
   const foreignKeyOnBase = `${singular(relation)}_id`;
 
   const { rows } = await db.query(
@@ -245,6 +302,21 @@ export function createShimClient(db, uid) {
           // fixture diverging from production in the direction that hides real
           // behaviour, which is the worst direction for it to go.
           let conflict = "";
+          // PostgREST resolves an upsert with no explicit target on the
+          // PRIMARY KEY. Treating it as a plain insert made a perfectly
+          // good update fail here with a duplicate-key error while working
+          // live — the harness disagreeing with production, which is the
+          // one thing it must not do.
+          if (state.upsert && !state.onConflict) {
+            const { rows: pk } = await db.query(
+              `select a.attname from pg_index i
+               join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+               where i.indrelid = ('public.' || $1)::regclass and i.indisprimary`,
+              [state.table],
+            );
+            if (pk.length > 0) state.onConflict = pk.map((r) => r.attname).join(",");
+          }
+
           if (state.upsert && state.onConflict) {
             const target = state.onConflict
               .split(",")
@@ -385,6 +457,12 @@ export function createShimClient(db, uid) {
       },
       is(column, value) {
         state.isFilters.push([column, value]);
+        return api;
+      },
+      // `.returns<T>()` is a types-only call on the real client — it narrows
+      // what TypeScript thinks comes back and changes nothing at runtime.
+      // Here it has to exist, or any query written with it throws.
+      returns() {
         return api;
       },
       not(column, operator, value) {

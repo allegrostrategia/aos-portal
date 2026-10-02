@@ -240,7 +240,10 @@ export async function saveOfferMonth(
     if (error) return { error: `Couldn't save: ${error.message}` };
   }
   if (updates.length > 0) {
-    const { error } = await supabase.from("report_values").upsert(updates);
+    // Conflicts on the primary key, named rather than left implicit.
+    const { error } = await supabase
+      .from("report_values")
+      .upsert(updates, { onConflict: "id" });
     if (error) return { error: `Couldn't save: ${error.message}` };
   }
 

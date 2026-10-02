@@ -180,8 +180,12 @@ export async function saveCategoryValues(
   }
 
   if (updates.length > 0) {
-    // Conflicts on the primary key, which every one of these already has.
-    const { error } = await supabase.from("report_values").upsert(updates);
+    // Conflicts on the primary key, named rather than left implicit: an
+    // upsert with no target relies on PostgREST choosing it for you, which
+    // is true and invisible.
+    const { error } = await supabase
+      .from("report_values")
+      .upsert(updates, { onConflict: "id" });
     if (error) return { error: `Couldn't save: ${error.message}` };
   }
 
