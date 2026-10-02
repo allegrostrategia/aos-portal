@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Badge, Eyebrow } from "@/components/ui/card";
+import { signOut } from "@/lib/auth/actions";
 import { SHIPPED_CATEGORIES, type CategoryKey } from "@/lib/reporting/categories";
 import { reportHref, type ReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
@@ -60,6 +61,7 @@ export function ReportShell({
               {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
               <MonthPicker ctx={ctx} path={path} />
               {actions}
+              <SignOut />
             </div>
           </div>
 
@@ -71,6 +73,31 @@ export function ReportShell({
         {children}
       </main>
     </>
+  );
+}
+
+/**
+ * The way out.
+ *
+ * A reporting login has nowhere else to sign out from: /you and /no-access
+ * both live behind requireMember(), and a retainer client has no members
+ * row. Until 2 October the only way out was to type /no-access from memory,
+ * which Dom had to do. So it belongs in this shell, which is the only
+ * furniture every reporting login shares.
+ *
+ * A form rather than a link, because signing out is a change and a GET that
+ * changes something is a GET a browser may make on its own.
+ */
+function SignOut() {
+  return (
+    <form action={signOut}>
+      <button
+        type="submit"
+        className="rounded-full px-3 py-2 text-small font-medium text-ink/60 underline underline-offset-4 transition hover:text-ink"
+      >
+        Sign out
+      </button>
+    </form>
   );
 }
 
