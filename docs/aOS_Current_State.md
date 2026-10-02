@@ -5,11 +5,11 @@
 
 ## WHERE WE ARE — 2 October 2026
 
-**All sixty-eight migrations are applied and verified on live. Everything is pushed; nothing is sitting locally.** Test suite on 2 Oct: **363 unit / 289 + 84 schema / 182 action**, build, typecheck and lint clean.
+**All sixty-eight migrations are applied and verified on live.** Test suite on 2 Oct: **375 unit / 289 + 84 schema / 196 action**, build, typecheck and lint clean. **One commit is local only** (`5bcf9d8`, the walkthrough fixes): three of them change what a client sees, so Dom is checking those on localhost before they go up.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
-**What Stage 2 is waiting on is Dom, not code.** Its finish line (§11.2) is a real retainer client with two past months entered and one published, on the live site. The automated half of that walkthrough now runs as a test; the half that needs a person — creating the client, which emails a real invitation, and looking at real figures on a real screen — has not happened yet.
+**Stage 2's walkthrough has been done** (2 Oct, on Test Client): August and September entered, August published, checked signed in as the client in a private window. **The flow works and no draft figures leaked.** It found six bugs, all fixed — see the reporting section. The remaining piece of §11.2 is doing the same on a *real* retainer client, which means emailing a real invitation.
 
 Since the last big handoff, five things landed: **peer pairing on real dates** (pick slots after the match; both told where they overlap the moment the second one picks), **the monthly recap** (aOS collates the month, Nina writes it outside the app, pastes it back, sends — verified end to end on live including the email), **admin password recovery**, **the deployment banner and keyless previews**, and **round 6** (Friday check-in email, roadmap inactivity nudge, the prize bar, the Sociale redesign).
 
@@ -94,6 +94,43 @@ Asserted by test, not comment: each of the three signs in and must read zero row
 - **Nina has two auth accounts** (`nin…@gmail.com` from 3 Sep, never confirmed, and one on the Allegro domain). Not urgent.
 - Stage 3 owns the charts, target bars, traffic lights and "Look at these first" — all of which need targets, benchmarks and twelve months of history.
 
+### The Stage 2 walkthrough, 2 October — six bugs
+
+Dom ran it on live against Test Client: August and September entered,
+August published, then checked signed in as the client in a private
+window. **The flow works and no draft figures leaked.** Six bugs, and the
+shapes are worth more than the list.
+
+1. **Every login went to `/piazza` after setting a password.** So a
+   retainer client's first ever sign-in, straight after choosing their
+   password, landed on "Your account isn't ready yet". Three places
+   defaulted there — the sign-in action, the confirm route and the login
+   page — which is why fixing it twice before had not fixed it. They all
+   send people to `/` now and let the root page decide.
+2. **Clients were offered months they cannot read.** The dropdown listed
+   an unpublished September, the arrow stepped into it, and every section
+   then claimed it "wasn't part of this month's report" — untrue; the
+   sections were full, just not theirs yet. A client now gets their
+   published months only, the arrows walk that list rather than the
+   calendar, the DRAFT label is not rendered for them, and a month reached
+   by URL says plainly that it is not ready.
+3. **Revenue and Profit said "No month to compare"** on a month whose
+   predecessor had figures: last month's offers were never worked out.
+4. **"Still to fill in" showed Offers 0/3** however much was entered,
+   because completion used a month-level lookup and Offers stores against
+   each offer.
+5. **The Financials entry card showed dashes** where the report showed
+   real figures — it called `calculate()` without the offers. The two
+   disagreeing is the one thing §9 exists to forbid.
+6. **The "Worked out for you" panel covered the save buttons** at desktop
+   width (fixed separately in `da9345b`). A sticky element is held by its
+   containing block, and the save bar was a third item in the same grid.
+
+**3, 4 and 5 were one bug wearing three hats:** revenue pulled from Offers
+was worked out in some places and not others. Worth checking every reader
+of a pulled or per-entity figure when one of these turns up, not just the
+screen that reported it.
+
 ### Bugs found and fixed along the way, by shape
 
 Worth knowing because the shapes recur:
@@ -116,7 +153,7 @@ Worth knowing because the shapes recur:
 ### Two traps in the tooling, found the hard way
 
 - **Chrome headless has a 500px floor on `--window-size`.** A "390px" screenshot is a cropped desktop render, which looked exactly like a horizontal-overflow bug and cost three wrong fixes before a numeric readout on the page showed `viewport 500`. Screenshot phones over the DevTools protocol with `Emulation.setDeviceMetricsOverride`.
-- **The PGlite shim disagreed with production in three ways**, each making a correct thing look broken: no `.returns<T>()`; foreign keys for embeds guessed from the table name (`report_workspaces` → `report_workspace_id`, when the column is `workspace_id`); and `upsert` with no explicit target treated as a plain insert when PostgREST resolves it on the primary key. All three fixed in the shim. **When a test disagrees with live, suspect the harness as readily as the code.**
+- **The PGlite shim disagreed with production in four ways**, each making a correct thing look broken: no `.returns<T>()`; foreign keys for embeds guessed from the table name (`report_workspaces` → `report_workspace_id`, when the column is `workspace_id`); `upsert` with no explicit target treated as a plain insert when PostgREST resolves it on the primary key; and — the worst of them — **`numeric` returned as a string where PostgREST sends a JSON number**. The formula module tests `typeof value === "number"`, so every money figure, rate and hourly cost silently became a dash in tests while working live. It made a correct fix look unfixed for half an hour. All four fixed in the shim, and the numeric case is normalised in `ValueBag` as well, because a string arriving in production would fail the same silent way. **When a test disagrees with live, suspect the harness as readily as the code.**
 
 ## STEP 13 FLOURISHES + THE LOG'S WEEK NAVIGATION — BUILT 30 Sep, PUSHED 30 Sep
 
@@ -631,7 +668,9 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **The September draw's prize** — the `draws` row for September still has the literal prize `"test"`, so the Piazza card reads "test.". Set the real prize in `/admin/draw`, or delete the row and let the fallback copy show.
 
 ## Waiting on Dom
-- **The Stage 2 live walkthrough**, which is what finishes Stage 2 (§11.2). Create a real retainer client from `/admin/reporting` **on the live site** — invitations refuse to send from a dev server, because the link they build would only work on the machine that sent it — then enter two past months and publish one. The automated half of this runs as a test (`supabase/tests/reporting-actions.test.mjs`); this is the half that needs a person, a real inbox and a look at real figures on a real screen.
+- ~~**The Stage 2 live walkthrough**~~ — **done 2 Oct on Test Client**, two months entered, one published, checked as the client. Six bugs found and fixed.
+- **Checking the walkthrough fixes on localhost** before `5bcf9d8` is pushed. Three of them change what a client sees: where a login lands after setting a password, which months a client is offered, and the Overview's month-on-month arrows.
+- **The same walkthrough on a REAL retainer client**, which is the last piece of §11.2 and the only part that emails somebody. Create them from `/admin/reporting` **on the live site** — invitations refuse to send from a dev server, because the link they build would only work on the machine that sent it.
 
 ## Real bugs found and fixed (running list, worth knowing the shape of each)
 1. Vercel Authentication toggle blocking public site access
