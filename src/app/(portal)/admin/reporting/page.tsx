@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
+import { fetchAllPages } from "@/lib/reporting/paging";
 import { NewClientForm, AssignTeamForm, EditWorkspaceForm } from "./forms";
 
 export const metadata: Metadata = {
@@ -44,28 +45,49 @@ export default async function AdminReportingPage() {
   const supabase = await createClient();
 
   // RLS returns every workspace because is_portal_admin() is true.
-  const [{ data: workspaces }, { data: grants }, { data: periods }] = await Promise.all([
-    supabase
-      .from("report_workspaces")
-      .select("id, kind, business_name, currency, first_month, access_end_date")
-      .order("business_name")
-      .returns<WorkspaceRow[]>(),
-    supabase
-      .from("report_access")
-      .select("workspace_id, user_id, role, display_name")
-      .returns<
-        { workspace_id: string; user_id: string; role: "client" | "team"; display_name: string }[]
-      >(),
-    supabase
-      .from("report_periods")
-      .select("workspace_id, month, published_at")
-      .order("month", { ascending: false })
-      .returns<{ workspace_id: string; month: string; published_at: string | null }[]>(),
+  // Paged, not fetched in one go. This screen reads every period of every
+  // client — months x clients — which crosses PostgREST's silent 1,000-row
+  // ceiling at around forty clients with two years of history. Past that
+  // the page would still render, and the "months started" counts would
+  // simply be wrong, with nothing to say so (§13).
+  const [workspaces, grants, periods] = await Promise.all([
+    fetchAllPages<WorkspaceRow>((from, to) =>
+      supabase
+        .from("report_workspaces")
+        .select("id, kind, business_name, currency, first_month, access_end_date")
+        .order("business_name")
+        .range(from, to)
+        .returns<WorkspaceRow[]>(),
+    ),
+    fetchAllPages<{
+      workspace_id: string;
+      user_id: string;
+      role: "client" | "team";
+      display_name: string;
+    }>((from, to) =>
+      supabase
+        .from("report_access")
+        .select("workspace_id, user_id, role, display_name")
+        .order("workspace_id")
+        .range(from, to)
+        .returns<
+          { workspace_id: string; user_id: string; role: "client" | "team"; display_name: string }[]
+        >(),
+    ),
+    fetchAllPages<{ workspace_id: string; month: string; published_at: string | null }>(
+      (from, to) =>
+        supabase
+          .from("report_periods")
+          .select("workspace_id, month, published_at")
+          .order("month", { ascending: false })
+          .range(from, to)
+          .returns<{ workspace_id: string; month: string; published_at: string | null }[]>(),
+    ),
   ]);
 
-  const rows = workspaces ?? [];
+  const rows = workspaces;
   const byWorkspace = new Map(rows.map((w) => [w.id, { client: "", team: [] as string[] }]));
-  for (const grant of grants ?? []) {
+  for (const grant of grants) {
     const entry = byWorkspace.get(grant.workspace_id);
     if (!entry) continue;
     if (grant.role === "client") entry.client = grant.display_name;
@@ -73,7 +95,7 @@ export default async function AdminReportingPage() {
   }
 
   const monthsFor = new Map<string, { month: string; published_at: string | null }[]>();
-  for (const period of periods ?? []) {
+  for (const period of periods) {
     const list = monthsFor.get(period.workspace_id) ?? [];
     list.push(period);
     monthsFor.set(period.workspace_id, list);
