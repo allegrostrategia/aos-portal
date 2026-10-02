@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 2 October 2026
 
-**All sixty-eight migrations are applied and verified on live.** Test suite on 2 Oct: **375 unit / 289 + 84 schema / 196 action**, build, typecheck and lint clean. **One commit is local only** (`5bcf9d8`, the walkthrough fixes): three of them change what a client sees, so Dom is checking those on localhost before they go up.
+**All sixty-eight migrations are applied and verified on live.** Test suite after the overnight run of 2–3 Oct: **382 unit / 289 + 84 schema / 196 action**, build, typecheck and lint clean. **Two commits are local only**: `5c208da` (sign out from the reporting shell — client-facing, waiting on Dom's check) and `b4c9ce3` (the admin client list pages rather than reading the first 1,000 rows — admin-only).
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -130,6 +130,28 @@ shapes are worth more than the list.
 was worked out in some places and not others. Worth checking every reader
 of a pulled or per-entity figure when one of these turns up, not just the
 screen that reported it.
+
+### The overnight run, 2–3 October — audit and two plans
+
+Run on Dom's instruction under hard limits: nothing pushed, no migration applied, no write to live data, no email sent. **`docs/reporting/audit-2026-10-03.md` is the record**, and its first section is a morning summary — read that before this.
+
+**The reporting tool was audited against all six of §13's hard rules.** Four came back clean and are recorded so they are not re-audited: one route per clickable thing, a client seeing no other client and nothing admin, drafts unreadable at the database, and no VAT arithmetic anywhere.
+
+**One real bug found and fixed** (`b4c9ce3`): the admin client list read every period of every client unbounded. PostgREST stops at 1,000 rows and says nothing, so past about forty clients with two years of history the page would have rendered perfectly with quietly wrong counts. `fetchAllPages` now pages, with six tests.
+
+**Four findings deliberately left unfixed**, because they are client-facing or need a migration — all written up in the audit with the SQL where there is any:
+
+1. `report_values.entered_by`, `entered_at` and `source` are editable by any editor. Not a leak — a falsifiable audit trail, the same argument that made `report_csv_imports` append-only on 30 Sep. Needs a guard trigger, and one design question about whether the save should keep rewriting `entered_by`.
+2. Nothing on screen says the money figures should be ex-VAT. A client entering a gross invoice total produces a wrong report that nothing can detect. A few words of copy, but client-facing.
+3. `entered_by` is `on delete set null`, so removing a login silently blanks who entered every figure they typed. `report_notes` already solved this by storing the name alongside the id.
+4. `unassign_report_team_member` exists in the database and **nothing calls it** — an assignment can be made and not undone without editing the database. The same shape as the missing edit-client form that blocked the walkthrough.
+
+**Two plans written for Nina**, both as documents rather than in the repo:
+
+- **The three remaining §8 pieces** — objectives, the client reply, and the email on publish. Amended tonight on Dom's instruction: the two "choices already made" became questions, the guard migration is shown before→after against what is actually running, and the email's link is specified to come from the live site's address and never the request origin — the invitation bug again.
+- **Stage 3** — the four remaining categories, targets, the benchmarks admin, traffic lights, "Look at these first", and all twelve charts §5 asks for. One small migration. Includes a scoped **"charts first"** option: five of the twelve work on a single month of figures and need no database change, so they could ship straight after Stage 2.
+
+**One thing that had been wrong since the first document.** A doc byline of "Prepared by [me]" resolves to the account holder, which is Nina's account — so the migration review she approved on 30 September reads "Prepared by Nina for Nina". Fixed in both current plans; the approved document was left alone deliberately.
 
 ### Bugs found and fixed along the way, by shape
 
@@ -664,12 +686,15 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **The two-week time-tracking explainer video** (from the redesign brief).
 - **Per-lesson notes, resources and key takeaways** — deferred 14 Sep as a content gap; the lesson page's tabs and checklist get built when there is something to put in them.
 - **A decision on `client_experience_active_clients_at_start`** (added 2 Oct) — §5.8 of the reporting brief specifies it two incompatible ways: "last month's active at end" *and* "the very first month asks for active clients at start as a one-off input". A field that is pulled in most months and typed in one, which the schema refuses outright. Blocks Stage 3's Client Experience page.
+- **Four questions on the §8 plan** (added 2 Oct, amended 3 Oct) — who gets the publish email, whether a client may reply more than once, whether objectives are hers alone or Elize's too, and whether republishing a corrected month emails again. The plan is a document, not in this repo.
+- **Four questions on the Stage 3 plan** (added 3 Oct) — charts first or Stage 3 in order; which of three ways out of the §5.8 contradiction; the two-column benchmark migration; and six sentence templates for "Look at these first" in her voice.
 - **The two mockup arithmetic errors** (added 2 Oct) — the launch planner card shows **600 sign-ups where §6.6's formula gives 1,277**, and the Social Media entry mockup shows a **6.9% engagement rate where §5.2's formula gives 9.34%** (6.9% leaves out the saves and shares the formula includes). Both are built to the brief and pinned by tests. The mockups are client-approved, so correcting them may mean going back to whoever approved them.
 - **The September draw's prize** — the `draws` row for September still has the literal prize `"test"`, so the Piazza card reads "test.". Set the real prize in `/admin/draw`, or delete the row and let the fallback copy show.
 
 ## Waiting on Dom
 - ~~**The Stage 2 live walkthrough**~~ — **done 2 Oct on Test Client**, two months entered, one published, checked as the client. Six bugs found and fixed.
-- **Checking the walkthrough fixes on localhost** before `5bcf9d8` is pushed. Three of them change what a client sees: where a login lands after setting a password, which months a client is offered, and the Overview's month-on-month arrows.
+- ~~**Checking the walkthrough fixes on localhost**~~ — **done 2 Oct**, all five confirmed, pushed as `b08c929`.
+- **Checking the sign-out on localhost** before `5c208da` is pushed — the one client-facing commit waiting.
 - **The same walkthrough on a REAL retainer client**, which is the last piece of §11.2 and the only part that emails somebody. Create them from `/admin/reporting` **on the live site** — invitations refuse to send from a dev server, because the link they build would only work on the machine that sent it.
 
 ## Real bugs found and fixed (running list, worth knowing the shape of each)
