@@ -58,3 +58,58 @@ export function safeNextPath(value: unknown): string {
   if (/[\u0000-\u001f\u007f]/.test(path)) return "/";
   return path;
 }
+
+/**
+ * Paths a login can use whatever door it has.
+ *
+ * /set-password is the one that matters: an invited account has no members
+ * row and no reporting grant until somebody gives it one, and setting a
+ * password is exactly what it is here to do.
+ */
+const ANY_LOGIN_PATHS = ["/set-password"];
+
+/** `/reporting` and `/reporting/anything`, but never `/reportingfoo`. */
+function inArea(path: string, area: string): boolean {
+  return path === area || path.startsWith(`${area}/`);
+}
+
+/**
+ * Whether a post-login `?next=` is somewhere THIS login can actually use,
+ * and "/" when it is not.
+ *
+ * `safeNextPath` only asks whether a path is internal. That is not enough:
+ * the proxy sets `next` to whatever page was asked for while signed out, so
+ * a reporting client who left a tab open on a members-only screen came back
+ * with `?next=/no-access` in the login URL and was sent obediently to "Your
+ * account isn't ready yet" — with a perfectly good report one URL away.
+ * Found by Dom on 5 October, signed in as a real retainer client.
+ *
+ * `landing` is where this login would go of its own accord, so it carries
+ * the only fact needed here: which door they have. "/" is the answer for
+ * anything they cannot use, because "/" asks `landingPath` and gets it right.
+ */
+export function usableNextPath(next: unknown, landing: Landing): string {
+  const path = safeNextPath(next);
+  const pathname = path.split(/[?#]/)[0];
+
+  if (pathname === "/") return "/";
+
+  // /no-access and /login explain a lack of somewhere to be. Aiming at one
+  // is never what anybody wanted: whoever has a door should go through it,
+  // and whoever has none is sent to these by the root page anyway.
+  if (inArea(pathname, "/no-access")) return "/";
+  if (inArea(pathname, "/login") || inArea(pathname, "/forgot-password")) return "/";
+
+  if (ANY_LOGIN_PATHS.some((allowed) => inArea(pathname, allowed))) return path;
+
+  // A member may go anywhere they asked for, reporting included — for them
+  // it is one more area of the membership.
+  if (landing === "/piazza") return path;
+
+  // A reporting login has exactly one area. Every other path in the app is
+  // behind a members row they do not have, so honouring it would land them
+  // on /no-access, which is the bug.
+  if (landing === "/reporting") return inArea(pathname, "/reporting") ? path : "/";
+
+  return "/";
+}

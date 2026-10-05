@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { landingPath, safeNextPath } from "./landing.ts";
+import { landingPath, safeNextPath, usableNextPath } from "./landing.ts";
 
 const at = (over: Partial<Parameters<typeof landingPath>[0]> = {}) =>
   landingPath({ memberStatus: null, hasReportAccess: false, signedIn: true, ...over });
@@ -77,4 +77,23 @@ test('"/" is the default everywhere, so one place decides', () => {
   // reporting client somewhere that bounces them.
   assert.equal(safeNextPath(undefined), "/");
   assert.equal(safeNextPath(null), "/");
+});
+
+test("a prefix is not an area: /reportingfoo is not /reporting", () => {
+  // The cheap check is startsWith("/reporting"), and it would hand a
+  // reporting client any path somebody added with that prefix.
+  assert.equal(usableNextPath("/reportingfoo", "/reporting"), "/");
+  assert.equal(usableNextPath("/reporting", "/reporting"), "/reporting");
+  assert.equal(usableNextPath("/reporting/offers", "/reporting"), "/reporting/offers");
+});
+
+test("setting a password is reachable before anyone has a door", () => {
+  // An invited account has no members row and no grant yet, so its landing
+  // is /no-access — and /set-password is exactly what it is there to do.
+  assert.equal(usableNextPath("/set-password", "/no-access"), "/set-password");
+});
+
+test("a login page is never a destination to aim at", () => {
+  assert.equal(usableNextPath("/login", "/piazza"), "/");
+  assert.equal(usableNextPath("/forgot-password", "/piazza"), "/");
 });

@@ -4,6 +4,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth/landing";
+import { resolveNextPath } from "@/lib/auth/landing-session";
 
 /**
  * Where every emailed auth link lands: the invitation that starts a member off,
@@ -29,12 +30,16 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
+  // An emailed link's `next` is one we set, so it is /set-password or "/" —
+  // but this is the other door that completes a sign-in, and the last time
+  // the two doors disagreed about a destination a retainer client's first
+  // sign-in landed on /no-access. They agree here.
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    if (!error) redirect(next);
+    if (!error) redirect(await resolveNextPath(supabase, next));
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) redirect(next);
+    if (!error) redirect(await resolveNextPath(supabase, next));
   }
 
   // Expired or already-used links land here. The message on /login says as much,

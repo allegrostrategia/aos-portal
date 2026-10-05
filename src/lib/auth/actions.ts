@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { safeNextPath } from "./landing";
+import { resolveNextPath } from "./landing-session";
 import { headers } from "next/headers";
 
 import { requireMember } from "@/lib/auth/member";
@@ -57,9 +58,17 @@ export async function signIn(
   }
 
   revalidatePath("/", "layout");
+
+  // A `next` that is internal still may not be theirs to use. The proxy sets
+  // it to whatever page was requested while signed out, so an old tab can
+  // carry a reporting client to a members-only screen, or to /no-access —
+  // which is how Dom landed on "Your account isn't ready yet" on 5 October
+  // with a working report. Anything this login cannot use becomes "/".
+  const destination = await resolveNextPath(supabase, next);
+
   // Outside the error branch on purpose: redirect() signals by throwing, so it
   // must never sit inside a try/catch that would swallow it.
-  redirect(next);
+  redirect(destination);
 }
 
 export async function signOut(): Promise<void> {
