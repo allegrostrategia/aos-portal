@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 5 October 2026
 
-**All sixty-eight migrations are applied and verified on live.** Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 209 action**, build, typecheck and lint clean. **Nothing is local-only — `main` is pushed up to `c567b95`**, which carries the five commits from the overnight run and the two 5 Oct fixes below.
+**Sixty-eight of the sixty-nine migrations are applied.** The sixty-ninth (`20261005120000_report_publish_email`) is written, approved and **not applied** — see §8 below. Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 233 action**, build, typecheck and lint clean. **Two commits are local only** (`b2ad046`, `8c1fcff`): §8's last three pieces, client-facing, waiting on Dom's walkthrough. `main` is pushed up to `eb556e3`.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -152,6 +152,69 @@ Run on Dom's instruction under hard limits: nothing pushed, no migration applied
 - **Stage 3** — the four remaining categories, targets, the benchmarks admin, traffic lights, "Look at these first", and all twelve charts §5 asks for. One small migration. Includes a scoped **"charts first"** option: five of the twelve work on a single month of figures and need no database change, so they could ship straight after Stage 2.
 
 **One thing that had been wrong since the first document.** A doc byline of "Prepared by [me]" resolves to the account holder, which is Nina's account — so the migration review she approved on 30 September reads "Prepared by Nina for Nina". Fixed in both current plans; the approved document was left alone deliberately.
+
+### 5 October — §8's last three pieces, BUILT, NOT APPLIED, NOT PUSHED
+
+Objectives, the client's reply and the publish email, from the plan Nina and
+Dom approved ([the plan](https://claude.ai/code/artifact/7e5a8f35-1801-4a1b-90c7-40321ca38a6b)).
+Commits `b2ad046` and `8c1fcff`. **§8 is complete after this** — the plan
+went through the section line by line and found nothing else hiding.
+
+**Their four answers, which are now decisions:**
+
+1. The publish email goes to **the client contact only** — the one login
+   holding the client grant on that business. Not the assigned team member.
+2. A client may reply **more than once** on a month: a dated thread, oldest
+   first. They reword their own and never delete one.
+3. Objectives are written by **Nina or an assigned team member**, as the
+   database already allowed. The client sees nothing until publish.
+4. Republishing **sends again, worded as an update** ("Your August report has
+   been updated"), not as a new report.
+
+**Deliberately out of scope:** unread-reply counts on the admin client list.
+They need a second migration to record what Nina has read; she said leave it.
+
+**What is waiting, and in this order:**
+
+1. **`npm run db:push`, by Dom.** `db push` from Claude's shell hung with no
+   output and changed nothing — the known TTY trap. Confirmed over REST
+   afterwards rather than assumed: `column report_periods.email_sent_at does
+   not exist`. **Verify over REST after applying, not from the CLI's word.**
+2. The walkthrough on localhost, as Nina and as the client.
+3. One real send to `contact+test2@`, which needs two things in `.env.local`
+   that are not there: `RESEND_API_KEY` (absent, so localhost sends nothing
+   at all) and `NEXT_PUBLIC_SITE_URL` pointing at the live site rather than
+   `http://localhost:3000` (the publish email refuses a local link by
+   design).
+
+**The one real bug this found, and it was live** (`b2ad046`): RLS hands an
+admin every grant on every workspace, so `getReportUser().grants` was
+everybody's. Every caller then did `grants.find(by workspace)` and read
+`display_name` off whatever row came back — which on a retainer workspace
+is the client's. **A note Nina wrote, under "Notes from your strategist",
+was signed with the client's own name.** Routing was unaffected, because
+`canEdit`, `canPublish` and `canWriteStrategistNote` all check `isAdmin`
+first, which is why a walkthrough never showed it. Found by a test asserting
+the signature on an objective — not by looking for it. One
+`.eq("user_id", user.id)`.
+
+**Three mutations went unnoticed on the first pass, and all three for the
+same reason: the test had no tie to break.**
+
+- Removing the `role = 'client'` filter on the recipient changed nothing,
+  because the client's grant sorted first anyway. The test now publishes a
+  workspace whose client login has been removed and a team member left in
+  its place: nothing is sent, and the reason is recorded.
+- Two reply rules were held by RLS rather than by the lines being mutated —
+  true for the client, false for Nina, whose admin policy admits every row.
+  The test now tries both as Nina.
+
+**The publish email's link is its own module** (`src/lib/reporting/publish-link.ts`)
+with its own tests, because it is the invitation bug again: a link built from
+the request's origin works perfectly for whoever sent it and is dead for the
+client. It takes the configured site address and nothing else, and refuses to
+send when that is missing or local — saying so on the publish card, with the
+month still published.
 
 ### 5 October — two fixes on review, pushed as `c567b95`
 
@@ -811,6 +874,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **Check conditional navigation for the state it forgets.** An affordance shown only in one state leaves the other states with no route at all. Twice on the directory screen: the profile form was reachable only when you had no profile, or only when your own card happened to match the current search — so a member who was listed without a photo, or who had searched, had no way in. When a link appears under a condition, ask what the other branch of that condition looks like.
 - **When something is slow, measure where the time goes before touching what looks heavy.** The 13 Sep slowness report named mobile, images and JS; the cause was the function region, which none of those would have found. `curl -w '%{time_starttransfer}'` and the `x-vercel-id` header (`edge::function::id`) answered it in two commands. Check the region against the database's region on any new Vercel + Supabase project before anything else.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
+- **An admin's RLS view is not their own view.** A policy of `using (is_portal_admin())` returns every row, so any code doing `rows.find(matching the thing I'm looking at)` and reading an identity off the result gets somebody else's — the client's, on a workspace with one client and one admin. Filter by `user_id` when the question is "mine", even where RLS already returned something plausible (state doc, 5 Oct; it signed Nina's notes with the client's name).
 - **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
 - **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
 - **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
@@ -826,10 +890,18 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 
 **The live work is the reporting tool.** Stages 1 and 2 are built, pushed and applied. Stage 2's finish line is a real retainer client with two past months entered and one published — see its section above for what is left and who has to do it.
 
-**Waiting on Dom, as of 5 October:** check the two 5 Oct fixes on live
-(`c567b95`) — the admin client list's counts, and a sign-in from a login
-URL carrying `?next=/no-access`. The exact steps are in the handover
-message, not duplicated here.
+**Waiting on Dom, as of 5 October, in order:**
+
+1. **Vercel has not deployed `c567b95`.** Pushed at 10:54 and still serving
+   the previous build 48 minutes later, where deploys had been taking about
+   45 seconds. Two signals agree: `/login` still serves the old `signIn`
+   server-action id, and a static chunk still carries the 2 Oct
+   `last-modified`. Needs a look at the Vercel dashboard — a failed build
+   would explain it, and `next build`, `tsc` and `lint` are all clean
+   locally. **Until it deploys, the two 5 Oct fixes are not live**, so
+   checking them on the live site would be checking the old code.
+2. **`npm run db:push`** for migration 69, then verify over REST.
+3. The §8 walkthrough on localhost, and the one real send.
 
 **The next piece of building is Stage 3** (§11.3): Funnels, Ads, Client Experience and Trial Reels; targets, the benchmarks admin, traffic lights, and the "Look at these first" panel. Nothing blocks starting it, but Stage 2 should be walked through on real data first — the brief sequences the stages that way on purpose, so the entry-to-publish path is proved on real figures before more surface is added on top.
 
