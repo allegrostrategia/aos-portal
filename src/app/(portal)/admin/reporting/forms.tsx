@@ -124,12 +124,19 @@ export function EditWorkspaceForm({
   businessName,
   currency,
   firstMonth,
+  contactName,
 }: {
   workspaceId: string;
   businessName: string;
   currency: string;
   /** `YYYY-MM-DD`; the input wants `YYYY-MM`. */
   firstMonth: string;
+  /**
+   * The client contact's display name, or null when no client login exists
+   * yet. Null means the field is not rendered at all, so the action knows
+   * there was nothing to rename rather than reading an empty string as one.
+   */
+  contactName: string | null;
 }) {
   const [state, action] = useActionState<ReportInviteState, FormData>(
     saveWorkspaceSettings,
@@ -151,6 +158,15 @@ export function EditWorkspaceForm({
           hint="The earliest month the picker will offer."
         />
       </div>
+      {contactName === null ? null : (
+        <Field
+          label="Client contact's name"
+          name="contact_name"
+          defaultValue={contactName}
+          required
+          hint="How they are addressed in their report email, and what signs their replies."
+        />
+      )}
       <Footer state={state} label="Save details" />
     </form>
   );

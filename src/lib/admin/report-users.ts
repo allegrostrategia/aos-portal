@@ -212,8 +212,18 @@ export async function saveWorkspaceSettings(
   const businessName = String(formData.get("business_name") ?? "").trim();
   const currency = String(formData.get("currency") ?? "").trim().toUpperCase();
   const firstMonthRaw = String(formData.get("first_month") ?? "").trim();
+  // Absent when the workspace has no client login yet, in which case the
+  // field is not rendered and there is no name to correct.
+  const contactNameRaw = formData.get("contact_name");
+  const contactName =
+    contactNameRaw === null ? null : String(contactNameRaw).trim();
 
   if (!workspaceId) return { error: "Which client?" };
+  if (contactName !== null && contactName === "") {
+    // display_name is NOT NULL, and it is the only name the app has for a
+    // reporting client — they have no `members` row by design.
+    return { error: "The client contact needs a name." };
+  }
   if (!businessName) return { error: "A client needs a business name." };
   if (!/^[A-Z]{3}$/.test(currency)) {
     return { error: "Currency should be a three-letter code, like GBP." };
@@ -284,6 +294,38 @@ export async function saveWorkspaceSettings(
   // without this a mistyped workspace cheerfully says "updated".
   if (!updated || updated.length !== 1) {
     return { error: "That client could not be found, so nothing was saved." };
+  }
+
+  // The contact's own name, on their grant rather than on the workspace.
+  //
+  // It needs correcting from a screen because it is what signs that login's
+  // replies to the report, and there was no way to change it: Test Client's
+  // contact read "Nina" from a mistyped invitation, so the client's own
+  // words appeared signed with their strategist's name. Found 5 October by
+  // the closing Stage 2 check.
+  //
+  // The client grant only. A team member's display_name is set when they are
+  // assigned and is not this form's business.
+  if (contactName !== null) {
+    const { data: grants, error: grantError } = await supabase
+      .from("report_access")
+      .update({ display_name: contactName })
+      .eq("workspace_id", workspaceId)
+      .eq("role", "client")
+      .select("id");
+
+    if (grantError) {
+      return { error: `Saved the details, but not the contact name: ${grantError.message}` };
+    }
+    // Nothing matched means the client login went away between the page
+    // rendering and this save. The workspace's own fields are already
+    // written, so this says what did and did not happen rather than
+    // pretending both halves worked.
+    if (!grants || grants.length === 0) {
+      return {
+        error: `${businessName} updated, but there is no client login on it to name.`,
+      };
+    }
   }
 
   revalidatePath("/admin/reporting");

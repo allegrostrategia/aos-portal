@@ -568,3 +568,180 @@ test("a figure arriving as a string is still a number", async () => {
   assert.equal(bag.get("offers_hours_spent_delivering"), null);
   assert.equal(bag.get("offers_other_direct_costs"), null, "nonsense is nothing, not NaN");
 });
+
+// ---------------------------------------------------------------------------
+// Correcting the client contact's name.
+//
+// It signs that login's replies to their own report, and until 5 October
+// there was no screen that could change it — Test Client's contact read
+// "Nina" from a mistyped invitation, so the client's words appeared signed
+// with their strategist's name.
+// ---------------------------------------------------------------------------
+
+test("the contact's name can be corrected, and only the client grant moves", async () => {
+  // A team member on the same workspace, so "only the client grant" has
+  // something to be true about. Without one the check is vacuous — the
+  // first version of this test passed with the role filter deleted.
+  const ELIZE = "44444444-4444-4444-4444-444444444444";
+  await db.exec(`insert into auth.users (id, email) values ('${ELIZE}','elize@allegro.test')`);
+  await asMember(db, NINA, () =>
+    db.query(`select public.assign_report_team_member('${WS}', '${ELIZE}', 'Elize')`),
+  );
+
+  // And a name that differs from the fixture's, so writing nothing at all
+  // cannot pass either. It was "Bella Rossi" before this.
+  await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching",
+      currency: "GBP", first_month: "2026-07",
+      contact_name: "Isabella Rossi-Verdi",
+    })),
+  );
+
+  const grants = await rows(NINA, `
+    select role, display_name from public.report_access
+     where workspace_id = '${WS}' order by role`);
+  const client = grants.find((g) => g.role === "client");
+  const team = grants.filter((g) => g.role === "team");
+  assert.equal(client.display_name, "Isabella Rossi-Verdi", "renamed");
+  assert.equal(team.length, 1, "there is a team grant to compare against");
+  assert.equal(team[0].display_name, "Elize", "and it was left alone");
+});
+
+test("the new name is what signs their next reply", async () => {
+  // The whole point of the field: the name is read off the grant at write
+  // time, because a reporting client has no members row to join to.
+  const { addClientReply } = await import("../../src/lib/reporting/reply-actions.ts");
+
+  const result = await as(CLIENT, () =>
+    addClientReply(null, form({ workspace_id: WS, month: AUG, body: "Signed correctly now." })),
+  );
+  assert.equal(result?.error, undefined, result?.error);
+
+  const [reply] = await rows(NINA, `
+    select author_name from public.report_notes
+     where workspace_id = '${WS}' and note_type = 'client_reply'
+     order by created_at desc limit 1`);
+  assert.equal(reply.author_name, "Isabella Rossi-Verdi", "the corrected name, not the old one");
+});
+
+test("an empty name is refused rather than written", async () => {
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching",
+      currency: "GBP", first_month: "2026-07", contact_name: "   ",
+    })),
+  );
+  assert.match(result?.error ?? "", /needs a name/);
+
+  const [client] = await rows(NINA, `
+    select display_name from public.report_access
+     where workspace_id = '${WS}' and role = 'client'`);
+  assert.equal(client.display_name, "Isabella Rossi-Verdi", "unchanged");
+});
+
+test("leaving the field out saves everything else and renames nobody", async () => {
+  // The field is not rendered when a workspace has no client login, so its
+  // absence must mean "nothing to rename", not "rename to empty".
+  const result = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching Ltd",
+      currency: "GBP", first_month: "2026-07",
+    })),
+  );
+  assert.equal(result?.error, undefined, result?.error);
+
+  const [client] = await rows(NINA, `
+    select display_name from public.report_access
+     where workspace_id = '${WS}' and role = 'client'`);
+  assert.equal(client.display_name, "Isabella Rossi-Verdi");
+  const [ws] = await rows(NINA,
+    `select business_name from public.report_workspaces where id = '${WS}'`);
+  assert.equal(ws.business_name, "Bella Rossi Coaching Ltd", "the rest still saved");
+});
+
+test("the client cannot rename themselves", async () => {
+  await assert.rejects(
+    () => as(CLIENT, () =>
+      saveWorkspaceSettings(null, form({
+        workspace_id: WS, business_name: "Bella Rossi Coaching Ltd",
+        currency: "GBP", first_month: "2026-07", contact_name: "Chief Executive",
+      })),
+    ),
+    /REDIRECT/,
+  );
+
+  // And not around the action either: RLS admits an admin alone. An update
+  // that matches no row is not an error, so the value below is the
+  // assertion and this is only the attempt.
+  await asMember(db, CLIENT, () =>
+    db.query(`
+      update public.report_access set display_name = 'Chief Executive'
+       where workspace_id = '${WS}' and role = 'client'`),
+  );
+
+  const [client] = await rows(NINA, `
+    select display_name from public.report_access
+     where workspace_id = '${WS}' and role = 'client'`);
+  assert.equal(client.display_name, "Isabella Rossi-Verdi", "still theirs to be named, not to name");
+});
+
+test("a workspace with no client login saves its details, and says so if named", async () => {
+  // The form does not render the field when there is nobody to name. These
+  // are the action's two halves of that: silence is fine, and naming
+  // somebody who is not there is reported rather than silently ignored.
+  const LONE = "55555555-5555-5555-5555-555555555555";
+  await db.exec(`insert into auth.users (id, email) values ('${LONE}','lone@client.test')`);
+  const ws2 = (
+    await asMember(db, NINA, () =>
+      db.query(`select (public.create_report_workspace(
+        '${LONE}', 'retainer', 'No Contact Ltd', 'Temp', '2026-08-01')).id as id`),
+    )
+  ).rows[0].id;
+  await asMember(db, NINA, () =>
+    db.query(`delete from public.report_access where workspace_id = '${ws2}'`),
+  );
+
+  const quiet = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: ws2, business_name: "No Contact Ltd Renamed",
+      currency: "GBP", first_month: "2026-08",
+    })),
+  );
+  assert.equal(quiet?.error, undefined, quiet?.error);
+
+  const named = await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: ws2, business_name: "No Contact Ltd Renamed",
+      currency: "GBP", first_month: "2026-08", contact_name: "Nobody",
+    })),
+  );
+  assert.match(named?.error ?? "", /no client login/i);
+});
+
+test("a grant write that fails is reported, not swallowed", async () => {
+  // Fault injection, the same way the four month-checks are tested: there
+  // is no other way to make this write error. Without the error branch the
+  // form says "updated" while the name it was asked to fix stayed wrong —
+  // which is the failure the whole field exists to end.
+  await db.exec(`alter table public.report_access rename column display_name to display_name_x`);
+  let result;
+  try {
+    result = await as(NINA, () =>
+      saveWorkspaceSettings(null, form({
+        workspace_id: WS, business_name: "Bella Rossi Coaching Ltd",
+        currency: "GBP", first_month: "2026-07", contact_name: "Someone Else",
+      })),
+    );
+  } finally {
+    await db.exec(`alter table public.report_access rename column display_name_x to display_name`);
+  }
+
+  assert.match(result?.error ?? "", /not the contact name/);
+  assert.equal(result?.notice, undefined, "and it does not also claim success");
+
+  const [client] = await rows(NINA, `
+    select display_name from public.report_access
+     where workspace_id = '${WS}' and role = 'client'`);
+  assert.equal(client.display_name, "Isabella Rossi-Verdi", "unchanged");
+});

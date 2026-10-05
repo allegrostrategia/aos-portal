@@ -148,6 +148,7 @@ export default async function AdminReportingPage() {
                     businessName={workspace.business_name}
                     currency={workspace.currency}
                     firstMonth={workspace.first_month}
+                    contactName={people?.client ? people.client : null}
                   />
                 </div>
               </details>
