@@ -1,11 +1,11 @@
-# aOS — current state (2 October 2026)
+# aOS — current state (5 October 2026)
 *If this chat ever needs to hand off to a fresh one: drop in this file plus `CLAUDE.md`, the Build Brief, the Training Library doc, and whatever the latest Dom Build Plan looks like (that file is now owned by Claude Code directly, not maintained here). This document is the "where we actually left off," not the full spec.*
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
-## WHERE WE ARE — 2 October 2026
+## WHERE WE ARE — 5 October 2026
 
-**All sixty-eight migrations are applied and verified on live.** Test suite after the overnight run of 2–3 Oct: **382 unit / 289 + 84 schema / 196 action**, build, typecheck and lint clean. **Two commits are local only**: `5c208da` (sign out from the reporting shell — client-facing, waiting on Dom's check) and `b4c9ce3` (the admin client list pages rather than reading the first 1,000 rows — admin-only).
+**All sixty-eight migrations are applied and verified on live.** Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 209 action**, build, typecheck and lint clean. **Nothing is local-only — `main` is pushed up to `c567b95`**, which carries the five commits from the overnight run and the two 5 Oct fixes below.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -153,6 +153,54 @@ Run on Dom's instruction under hard limits: nothing pushed, no migration applied
 
 **One thing that had been wrong since the first document.** A doc byline of "Prepared by [me]" resolves to the account holder, which is Nina's account — so the migration review she approved on 30 September reads "Prepared by Nina for Nina". Fixed in both current plans; the approved document was left alone deliberately.
 
+### 5 October — two fixes on review, pushed as `c567b95`
+
+Both came from Dom reading the overnight work rather than clicking it, and
+both are the same lesson in different clothing: **a fix that is only
+half-right looks exactly like one that is right.**
+
+1. **The paging fix could still miscount** (`f67f28f`). `b4c9ce3` paged the
+   admin client list, and paged correctly — but `report_workspaces` was
+   ordered by `business_name`, `report_periods` by `month` and
+   `report_access` by `workspace_id`, and none of those is unique. `.range()`
+   paging is two separate queries, and Postgres is free to order tied rows
+   differently in each, so a row can come back on both pages or on neither.
+   The quietly-wrong count that paging was added to prevent, reintroduced by
+   the fix for it. Every sort now ends in `id`.
+2. **A sign-in sent a reporting client to a members-only page** (`c567b95`).
+   On localhost Dom signed in as the Test Client login and landed on "Your
+   account isn't ready yet" — the login URL still carried `?next=/no-access`
+   from a tab left open while signed out. The proxy sets `next` to whatever
+   page was requested, and the action honoured it as long as it was an
+   internal path. **Internal is not the same as theirs to use.**
+   `usableNextPath()` now judges a path against the door the login has:
+   a reporting login keeps `/reporting` and its query string and loses
+   everything else, `/no-access` and `/login` are refused for everybody,
+   `/set-password` stays open because an invited account has no door yet.
+   `/auth/confirm` shares the same resolver — it is the other door that
+   completes a sign-in, and the last time those two disagreed about a
+   destination was walkthrough bug 1.
+
+**The harness needed teaching for the first one, and that is the part worth
+keeping.** A tie test only bites if the database actually reorders tied
+rows, and PGlite will not bother shuffling seven. So the shim now knows
+`.range()`, and when a paged read's sort is not total — judged against the
+table's own unique indexes, not a guessed column name — it does what
+Postgres is permitted to do: tied rows break one way on one page and the
+other way on the next. Without that the new test passed with every
+tiebreaker removed, which is to say it tested nothing.
+
+**A second-order version of the same trap, caught by mutation testing:**
+the `report_access` case passed with its tiebreaker removed because one
+client grant per workspace made `workspace_id` accidentally unique. The
+test assigns two team logins to every workspace now. **A tie test with no
+ties is a green light wired to nothing.**
+
+Eleven mutations in total, all caught: three tiebreakers and eight on the
+sign-in path, including "honour `next` unchecked", which is the original
+bug. `supabase/tests/report-paging.test.mjs` and
+`supabase/tests/sign-in-next.test.mjs`, both in `test:db`.
+
 ### Bugs found and fixed along the way, by shape
 
 Worth knowing because the shapes recur:
@@ -165,6 +213,13 @@ Worth knowing because the shapes recur:
 - **A form inside a form.** The offer setup form was nested inside the monthly figures form — invalid HTML, failing hydration — with a comment above it claiming it sat beside rather than inside. The Next dev overlay had been reporting it; nobody was reading the log.
 - **An invitation link that only works on the sender's machine.** `NEXT_PUBLIC_SITE_URL` is localhost locally and invites build their link from the request origin, so a test invite works perfectly for whoever sent it and is dead for a client. All three invite paths now refuse. **Send invitations from the live site.**
 - **A Chiarezza-only field on every kind of client**, which the action then refused to accept a value in — leaving a dead-end form. The field is conditional now and a stray value is ignored rather than fatal.
+- **Paging with a sort that is not unique.** Every `.range()` sort must end
+  in a unique key, or two pages can disagree about which tied row is whose.
+  The count comes back wrong and the page renders perfectly.
+- **A `?next=` that is internal but not theirs.** Validating a redirect
+  target as "an internal path" is only half the question; the other half is
+  whether this particular login can use it. Since 30 Sep not every login is
+  a member, so the two halves stopped being the same question.
 
 ### What was verified, and how
 
@@ -756,6 +811,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **Check conditional navigation for the state it forgets.** An affordance shown only in one state leaves the other states with no route at all. Twice on the directory screen: the profile form was reachable only when you had no profile, or only when your own card happened to match the current search — so a member who was listed without a photo, or who had searched, had no way in. When a link appears under a condition, ask what the other branch of that condition looks like.
 - **When something is slow, measure where the time goes before touching what looks heavy.** The 13 Sep slowness report named mobile, images and JS; the cause was the function region, which none of those would have found. `curl -w '%{time_starttransfer}'` and the `x-vercel-id` header (`edge::function::id`) answered it in two commands. Check the region against the database's region on any new Vercel + Supabase project before anything else.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
+- **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
 - **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
 - **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
 - **When a test disagrees with live, suspect the harness as readily as the code.** The PGlite shim diverged from PostgREST three separate ways in one afternoon — a types-only method it didn't have, a foreign key it guessed from a table name, and an upsert default it got wrong — and every one of them made correct code look broken. Fix the harness; it is supposed to bend, not the app.
@@ -769,6 +825,11 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 **Steps 1–13 are done but for one piece.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones. The exception is **Step 13's Vespa intro video**, which has no asset — the only item left in the open list.
 
 **The live work is the reporting tool.** Stages 1 and 2 are built, pushed and applied. Stage 2's finish line is a real retainer client with two past months entered and one published — see its section above for what is left and who has to do it.
+
+**Waiting on Dom, as of 5 October:** check the two 5 Oct fixes on live
+(`c567b95`) — the admin client list's counts, and a sign-in from a login
+URL carrying `?next=/no-access`. The exact steps are in the handover
+message, not duplicated here.
 
 **The next piece of building is Stage 3** (§11.3): Funnels, Ads, Client Experience and Trial Reels; targets, the benchmarks admin, traffic lights, and the "Look at these first" panel. Nothing blocks starting it, but Stage 2 should be walked through on real data first — the brief sequences the stages that way on purpose, so the entry-to-publish path is proved on real figures before more surface is added on top.
 
