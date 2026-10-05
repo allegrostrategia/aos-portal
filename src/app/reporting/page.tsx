@@ -65,6 +65,51 @@ export default async function ReportingOverviewPage({
     ? []
     : leadsBySource(figures);
 
+  const leadsCard =
+    ctx.monthPublished && leads.length > 0 ? (
+      <Card>
+        {/* No month aside here: in the client's narrow column the title
+            wraps into it, and the month is already in the page header and
+            on the picker. The Leads page keeps it — the card is full width
+            there and it has room. */}
+        <SectionTitle>Where the leads came from</SectionTitle>
+        <BarChart data={leads} caption="New leads this month, by source." />
+      </Card>
+    ) : null;
+
+  /**
+   * What sits beside the written half of the page.
+   *
+   * An editor's column holds the two things only they see. **A client's held
+   * nothing at all**, so the notes, objectives and replies sat at two
+   * thirds width with an empty third beside them (Dom, 5 Oct). The chart
+   * moves in there rather than the prose stretching across: a note card at
+   * 1300px is a worse read than one at 850, so widening it would have
+   * traded one problem for another.
+   *
+   * Null when there is neither — a client on a month with no lead figures.
+   * The grid then collapses to one column held to a readable measure, which
+   * looks deliberate rather than like a column that failed to load.
+   */
+  const sidebar = ctx.canEdit ? (
+    <>
+      <StillToFill ctx={ctx} figures={figures} />
+      {ctx.canPublish && ctx.workspace.kind === "retainer" ? (
+        <PublishControl
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          monthLabel={ctx.month.label}
+          publishedAt={period?.published_at ?? null}
+          emailSentAt={period?.email_sent_at ?? null}
+          emailError={period?.email_error ?? null}
+          emailTo={period?.email_to ?? null}
+        />
+      ) : null}
+    </>
+  ) : (
+    leadsCard
+  );
+
   const anyFigures = figures.data.values.size > 0;
 
   return (
@@ -131,14 +176,13 @@ export default async function ReportingOverviewPage({
         </div>
       </section>
 
-      {ctx.monthPublished && leads.length > 0 ? (
-        <Card className="mt-8">
-          <SectionTitle aside={ctx.month.label}>Where the leads came from</SectionTitle>
-          <BarChart data={leads} caption="New leads this month, by source." />
-        </Card>
-      ) : null}
+      {ctx.canEdit && leadsCard ? <div className="mt-8">{leadsCard}</div> : null}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div
+        className={`mt-8 grid gap-6 ${
+          sidebar ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "max-w-3xl"
+        }`}
+      >
         <div className="flex flex-col gap-6">
           <StrategistNotes
             notes={overviewNotes}
@@ -170,20 +214,20 @@ export default async function ReportingOverviewPage({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-6">
-          {ctx.canEdit ? <StillToFill ctx={ctx} figures={figures} /> : null}
-          {ctx.canPublish && ctx.workspace.kind === "retainer" ? (
-            <PublishControl
-              workspaceId={ctx.workspace.id}
-              month={ctx.month.month}
-              monthLabel={ctx.month.label}
-              publishedAt={period?.published_at ?? null}
-              emailSentAt={period?.email_sent_at ?? null}
-              emailError={period?.email_error ?? null}
-              emailTo={period?.email_to ?? null}
-            />
-          ) : null}
-        </div>
+        {sidebar ? (
+          <div
+            className={`flex flex-col gap-6 ${
+              // Stacked on a phone, the client's chart would otherwise land
+              // after "Anything you'd like to say?" — inviting a comment on
+              // figures they have not been shown yet. It goes with the KPI
+              // strip instead, and the written half follows. An editor's
+              // column keeps its place: theirs is actions, not an exhibit.
+              ctx.canEdit ? "" : "order-first lg:order-none"
+            }`}
+          >
+            {sidebar}
+          </div>
+        ) : null}
       </div>
 
     </ReportShell>
