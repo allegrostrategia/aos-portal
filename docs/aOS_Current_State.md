@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 5 October 2026
 
-**Sixty-eight of the sixty-nine migrations are applied.** The sixty-ninth (`20261005120000_report_publish_email`) is written, approved and **not applied** — see §8 below. Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 233 action**, build, typecheck and lint clean. **Two commits are local only** (`b2ad046`, `8c1fcff`): §8's last three pieces, client-facing, waiting on Dom's walkthrough. `main` is pushed up to `eb556e3`.
+**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 233 action**, build, typecheck and lint clean. **Two commits are local only** (`b2ad046`, `8c1fcff`): §8's last three pieces, client-facing, waiting on Dom's walkthrough. `main` is pushed up to `eb556e3`, which is deployed and current in Production.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -153,7 +153,7 @@ Run on Dom's instruction under hard limits: nothing pushed, no migration applied
 
 **One thing that had been wrong since the first document.** A doc byline of "Prepared by [me]" resolves to the account holder, which is Nina's account — so the migration review she approved on 30 September reads "Prepared by Nina for Nina". Fixed in both current plans; the approved document was left alone deliberately.
 
-### 5 October — §8's last three pieces, BUILT, NOT APPLIED, NOT PUSHED
+### 5 October — §8's last three pieces, BUILT AND APPLIED, NOT PUSHED
 
 Objectives, the client's reply and the publish email, from the plan Nina and
 Dom approved ([the plan](https://claude.ai/code/artifact/7e5a8f35-1801-4a1b-90c7-40321ca38a6b)).
@@ -174,18 +174,29 @@ went through the section line by line and found nothing else hiding.
 **Deliberately out of scope:** unread-reply counts on the admin client list.
 They need a second migration to record what Nina has read; she said leave it.
 
-**What is waiting, and in this order:**
+**The migration is applied, and verified three ways on live** rather than
+taken from the CLI's word:
 
-1. **`npm run db:push`, by Dom.** `db push` from Claude's shell hung with no
-   output and changed nothing — the known TTY trap. Confirmed over REST
-   afterwards rather than assumed: `column report_periods.email_sent_at does
-   not exist`. **Verify over REST after applying, not from the CLI's word.**
-2. The walkthrough on localhost, as Nina and as the client.
-3. One real send to `contact+test2@`, which needs two things in `.env.local`
-   that are not there: `RESEND_API_KEY` (absent, so localhost sends nothing
-   at all) and `NEXT_PUBLIC_SITE_URL` pointing at the live site rather than
-   `http://localhost:3000` (the publish email refuses a local link by
-   design).
+- the three columns are there with their comments, read over REST;
+- `20261005120000` is recorded in the remote migration history;
+- `pg_get_functiondef` on live returns the guard with all five columns in
+  both branches, the service role still admitted, `security definer` and
+  `set search_path = ''` intact — read through the Management API's query
+  endpoint, which is the way to read live DDL from here. `supabase db dump`
+  needs Docker, which this machine does not have.
+
+`npm run db:push` from Claude's shell hung with no output and changed
+nothing, as it has before. **Dom runs it; the verification above is the
+part Claude does.**
+
+**What is waiting:**
+
+1. The walkthrough on localhost, as Nina and as the client — Dom, next.
+2. The real send, **on the live site after the push**, not from localhost
+   (Dom, 5 Oct). Copying the Resend key into `.env.local` was the
+   alternative and was declined: `RESEND_API_KEY` is absent there, so
+   localhost sends nothing at all, and `NEXT_PUBLIC_SITE_URL` is
+   `http://localhost:3000`, which the publish email refuses by design.
 
 **The one real bug this found, and it was live** (`b2ad046`): RLS hands an
 admin every grant on every workspace, so `getReportUser().grants` was
@@ -216,7 +227,36 @@ client. It takes the configured site address and nothing else, and refuses to
 send when that is missing or local — saying so on the publish card, with the
 month still published.
 
-### 5 October — two fixes on review, pushed as `c567b95`
+### A wrong call worth keeping: "the deploy is stalled"
+
+For an hour on 5 October Claude reported that `c567b95` had not deployed and
+that Vercel needed looking at. **It had deployed, within the usual minute.**
+Dom checked the dashboard: `eb556e3` Ready and current in Production.
+
+Both signals were worthless, each for its own reason:
+
+- **The server-action id.** `/login` carries a 40-hex id for the `signIn`
+  action. Claude sampled it *after* pushing — so if the deploy had already
+  landed, the "before" value was already the new one and nothing could ever
+  change. It then compared live against an id from a **local** `next build`,
+  which is not comparable: the hash depends on build inputs, so two builds
+  of the same source differ.
+- **`last-modified` on a static chunk.** Vercel serves unchanged content
+  from the previous build's blob, mtime and all, so it does not move when a
+  deploy changes nothing in that file.
+
+**Do not infer a deployment from content fingerprints.** Use the Vercel
+dashboard, or a probe that exercises behaviour only the new code has — the
+2 October check did exactly that, signing in as the client and asserting on
+a sentence the old build could not produce, and it was right.
+
+The second false negative the same day came from the same haste: a check for
+the guard trigger used `pg_get_triggerdef(oid) like '%before insert or
+update%'`, which is lowercase against DDL Postgres renders in capitals, and
+reported `false` on a trigger that was perfectly correct. **A probe that
+fails is a claim about the probe until it has been read.**
+
+### 5 October — two fixes on review, pushed and live (`c567b95`)
 
 Both came from Dom reading the overnight work rather than clicking it, and
 both are the same lesson in different clothing: **a fix that is only
@@ -876,6 +916,8 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
 - **An admin's RLS view is not their own view.** A policy of `using (is_portal_admin())` returns every row, so any code doing `rows.find(matching the thing I'm looking at)` and reading an identity off the result gets somebody else's — the client's, on a workspace with one client and one admin. Filter by `user_id` when the question is "mine", even where RLS already returned something plausible (state doc, 5 Oct; it signed Nina's notes with the client's name).
 - **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
+- **Do not infer a deployment from content fingerprints.** A server-action id, a build id or a static file's `last-modified` will not tell you whether a push went out: ids are not comparable between a local build and Vercel's, and Vercel reuses an unchanged file's blob and mtime. Read the Vercel dashboard, or probe a behaviour only the new code has. Claude called a healthy deploy stalled for an hour this way on 5 Oct.
+- **A failing probe is a claim about the probe until it has been read.** Two false negatives on 5 Oct came from the probe, not the system: a fingerprint sampled after the event it was meant to detect, and a `like '%before insert or update%'` run against DDL Postgres prints in capitals.
 - **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
 - **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
 - **When a test disagrees with live, suspect the harness as readily as the code.** The PGlite shim diverged from PostgREST three separate ways in one afternoon — a types-only method it didn't have, a foreign key it guessed from a table name, and an upsert default it got wrong — and every one of them made correct code look broken. Fix the harness; it is supposed to bend, not the app.
@@ -892,16 +934,10 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 
 **Waiting on Dom, as of 5 October, in order:**
 
-1. **Vercel has not deployed `c567b95`.** Pushed at 10:54 and still serving
-   the previous build 48 minutes later, where deploys had been taking about
-   45 seconds. Two signals agree: `/login` still serves the old `signIn`
-   server-action id, and a static chunk still carries the 2 Oct
-   `last-modified`. Needs a look at the Vercel dashboard — a failed build
-   would explain it, and `next build`, `tsc` and `lint` are all clean
-   locally. **Until it deploys, the two 5 Oct fixes are not live**, so
-   checking them on the live site would be checking the old code.
-2. **`npm run db:push`** for migration 69, then verify over REST.
-3. The §8 walkthrough on localhost, and the one real send.
+1. The §8 walkthrough on localhost (see that section), then the real send
+   on live after the push.
+2. Nothing else. `eb556e3` is deployed and current in Production, so the
+   two 5 October fixes are live.
 
 **The next piece of building is Stage 3** (§11.3): Funnels, Ads, Client Experience and Trial Reels; targets, the benchmarks admin, traffic lights, and the "Look at these first" panel. Nothing blocks starting it, but Stage 2 should be walked through on real data first — the brief sequences the stages that way on purpose, so the entry-to-publish path is proved on real figures before more surface is added on top.
 
