@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 5 October 2026
 
-**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 233 action**, build, typecheck and lint clean. **Two commits are local only** (`b2ad046`, `8c1fcff`): §8's last three pieces, client-facing, waiting on Dom's walkthrough. `main` is pushed up to `eb556e3`, which is deployed and current in Production.
+**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 233 action**, build, typecheck and lint clean. **Nothing is local only.** `main` is pushed and deployed; §8's three pieces went out in `29b49fe` and Dom walked them through on live.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -25,6 +25,29 @@ Since the last big handoff, five things landed: **peer pairing on real dates** (
 **Live data is all test accounts.** Two member test accounts (`yungsl5dom@`, `dominicchentrens@`), Nina's own member account, and two admin accounts. No real members yet.
 
 **On the reporting side there is one test workspace**, "Test Client", owned by `contact+test2@allegrobusinessservices.co.uk` — a working retainer-client login Dom controls, kept deliberately because it is the only way to see the product as a client sees it. It has a password set by Claude Code and not recorded anywhere; use `/forgot-password` to take it over. A second, `nina+test@`, was created by mistake and deleted on 30 Sep along with its workspace.
+
+## LAUNCH CHECKLIST — things that can only be done when there are real clients
+
+Not pending work and not bugs. Each one needs a real client, Nina's eyes, or
+a real month, and none of them can be finished before launch.
+
+- [ ] **§11.2's last item: the reporting tool on a real retainer client** — two
+      past months entered, one published, and the client reading it. Everything
+      about it is proved on Test Client (Stage 2, closed 5 Oct); what is left is
+      a client to do it with.
+- [ ] **Nina reads the publish email's wording before the first real one goes
+      out.** `src/lib/reporting/publish-email.ts` holds every word of it, in one
+      file, specifically so she can change it without touching a screen. The
+      current wording is Claude's draft, approved in shape but not in voice —
+      the same gap the recap email had until she rewrote it on 23 September.
+- [ ] **The September draw prize still reads "test".** It needs a real prize
+      before a real month's draw runs.
+- [ ] **A reporting client's display name has no admin screen.** Test Client's
+      client grant is called "Nina" — which is why that login's own replies
+      appear signed "Nina" on live. Harmless on a test account, wrong in front
+      of a client, and today only fixable in the database: the edit form on
+      `/admin/reporting` covers business name, currency and first month, not
+      the grant. Found 5 Oct by the final Stage 2 check.
 
 ## What's genuinely built and live
 - **Infrastructure:** Supabase, GitHub, Vercel, all connected, `aos.allegrostrategia.com` live.
@@ -51,11 +74,20 @@ Until they exist, the copy says **"distance to your next milestone"** rather tha
 
 This is its own section rather than a line in the open list because it is a product promise waiting to be defined, not a small piece of work waiting for a slot.
 
-## THE REPORTING TOOL — STAGES 1 AND 2 BUILT, PUSHED, MIGRATIONS APPLIED (30 Sep – 2 Oct)
+## THE REPORTING TOOL — STAGE 2 CLOSED 5 OCT; STAGES 1 AND 2 LIVE (30 Sep – 5 Oct)
 
 Brief: `docs/reporting/reporting-tool-brief.md`, mockups beside it. A second product inside aOS: a monthly report for **retainer clients, who are not aOS members**, plus self-serve versions for members and Chiarezza attendees. Commits `4562f5d` → `3798361`.
 
-**Read the brief's §11 for the stages.** Stage 1 (foundations) is done. Stage 2 (core report for retainer clients) is **built, but its §11.2 finish line is not yet met** — that finish line is a real retainer client with two past months entered and one published, on live, and none of that has happened. Stage 3 onwards is not started.
+**Read the brief's §11 for the stages.** Stage 1 (foundations) is done.
+**Stage 2 is closed, 5 October 2026** — every §11.2 item was done on live by
+Dom against Test Client: two months entered, one published then both, the
+client view verified signed in as the client, the strategist note, objectives
+and the client's replies all written and read back, and the publish email
+received in the inbox. Stage 3 onwards is not started.
+
+**One part of §11.2 is deferred rather than met: a *real* retainer client.**
+There are none yet — aOS has not launched — so Test Client is as real as it
+gets today. It is on the launch checklist above, not pending work.
 
 ### The identity decision — confirmed by Nina 30 Sep, do not change without asking
 
@@ -153,7 +185,41 @@ Run on Dom's instruction under hard limits: nothing pushed, no migration applied
 
 **One thing that had been wrong since the first document.** A doc byline of "Prepared by [me]" resolves to the account holder, which is Nina's account — so the migration review she approved on 30 September reads "Prepared by Nina for Nina". Fixed in both current plans; the approved document was left alone deliberately.
 
-### 5 October — §8's last three pieces, BUILT AND APPLIED, NOT PUSHED
+### Stage 2's closing check, 5 October — as the client, on live
+
+Dom walked the whole thing through on localhost and then on live, admin and
+client side. The last check was Claude's, **signed in as the client and
+nobody else**: a one-time magic link for `contact+test2@` exchanged through
+the app's own `/auth/confirm`, no password changed, no admin session used.
+Twenty-two assertions, all against the HTML the server actually sent —
+because "removed from the page" and "hidden with CSS" look identical in a
+browser and only one of them is what §13 asks for.
+
+What it confirmed: August and September both readable and published; the
+strategist note present and **signed with the admin's own name** (the
+5 October signature fix, seen from the client's side); the two filled
+objectives numbered 01 and 02, the emptied middle one renumbered away
+rather than left as a gap; both client replies there with the reply box
+under them; no DRAFT label; no `/admin` link, publish control, entry link,
+workspace switcher or "Still to fill in"; sign-out reachable; and their own
+business name on the page as the positive control.
+
+**What it found, and it is data rather than code:** Test Client's client
+grant is named "Nina", so that login's own replies render signed "Nina".
+The code is right — a reporting client has no `members` row, so the grant's
+`display_name` is the only name the app has for them — but there is no admin
+screen to correct it. On the launch checklist.
+
+**Also confirmed on live:** September's publish email was accepted at
+16:00:36Z on 5 Oct, to `contact+test2@`, `email_error` null. The first real
+send, through the real sender, into a real inbox.
+
+**Third probe mistake of the day, for the record:** the first run reported
+the reply box missing. It was there — the check looked for the card's title
+with an `&rsquo;` apostrophe and React had rendered an ASCII one. Rewritten
+to assert on the form's own fields rather than its prose.
+
+### 5 October — §8's last three pieces, BUILT, APPLIED, PUSHED AND WALKED THROUGH
 
 Objectives, the client's reply and the publish email, from the plan Nina and
 Dom approved ([the plan](https://claude.ai/code/artifact/7e5a8f35-1801-4a1b-90c7-40321ca38a6b)).
@@ -828,6 +894,32 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 
 `roadmap_action_notes` is the per-action comment box — one note per action, edited in place rather than appended to, so a member saying "actually it's working now" updates what they said rather than leaving Nina two contradictory notes. Nina reads them beside the action in the editor.
 
+## The repository is public, on purpose (Dom, 5 October 2026)
+
+`github.com/allegrostrategia/aos-portal` is **public**, because the Vercel
+plan is Hobby. That is a decision, not an oversight — do not "fix" it by
+making the repo private without asking, and do not assume privacy when
+writing anything into it.
+
+**Checked when the decision was recorded:** `.env.local` has never been
+tracked, and no service-role key, Resend key or VAPID private key appears
+anywhere in the history. `.env.example` documents variable names and holds
+no values. RLS policies and migrations being readable is not a weakness —
+the policies are the control, and they hold whoever reads them.
+
+**What follows, and it is a rule now:**
+
+- **No real client's figures or names in this repository.** Every worked
+  example in `docs/reporting/reporting-tool-brief.md`, `formulas.ts` and
+  `formulas.test.ts` is invented; the *shape* of the Meta exports is real,
+  because that is what the importer has to cope with. A real client's ad
+  spend, reach and funnel names were in all three until 5 Oct, when they
+  were swapped for round invented ones — the tests assert the new numbers
+  and still cover the same formulas.
+- The state doc names Nina, Dom and Elize, and the `contact+test2@` test
+  login. That is accepted. **A real client's name, address or figures is
+  not** — it goes in a document, not in the repo.
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
@@ -930,7 +1022,7 @@ The pattern across all four is the same: **Claude is a tool Nina uses outside th
 
 **Steps 1–13 are done but for one piece.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones. The exception is **Step 13's Vespa intro video**, which has no asset — the only item left in the open list.
 
-**The live work is the reporting tool.** Stages 1 and 2 are built, pushed and applied. Stage 2's finish line is a real retainer client with two past months entered and one published — see its section above for what is left and who has to do it.
+**The live work is the reporting tool.** Stages 1 and 2 are built, pushed, applied and **Stage 2 is closed** (5 Oct, on Test Client). The one §11.2 item that cannot be met before launch — a real retainer client — is on the launch checklist.
 
 **Waiting on Dom, as of 5 October, in order:**
 

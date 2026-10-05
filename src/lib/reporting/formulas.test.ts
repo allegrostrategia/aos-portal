@@ -137,8 +137,9 @@ test("5.2 social media", () => {
   near(social.reachPerPost(184500, 22), 8386.36);
   near(social.profileVisitToFollow(1770, 8960), 19.75);
 
-  // §5.2's own worked example: Emily, September 2026 — 30,592 of 32,791.
-  near(social.nonFollowerReachPercent(30592, 32791 - 30592), 93.29);
+  // §5.2's own worked example, invented: 28,000 of 30,000 reached were not
+  // followers.
+  near(social.nonFollowerReachPercent(28000, 30000 - 28000), 93.33);
 });
 
 test("5.3 trial reels", () => {
@@ -220,28 +221,28 @@ test("5.6 leads and conversions", () => {
 });
 
 test("5.7 ads", () => {
-  // §10.2's sample totals: Emily Samson, 1–28 September 2026.
-  near(ads.cpm(536.84, 55461), 9.68);
-  near(ads.ctr(3843, 55461), 6.93);
-  near(ads.cpc(536.84, 3843), 0.14);
-  near(ads.roas(1200, 536.84), 2.24);
+  // §10.2's sample totals. Invented figures, real shape — see the brief.
+  near(ads.cpm(600, 60000), 10);
+  near(ads.ctr(4200, 60000), 7);
+  near(ads.cpc(600, 4200), 0.14);
+  near(ads.roas(1500, 600), 2.5);
 });
 
 test("5.7 / 10.2 cost per lead ignores awareness spend", () => {
   // The worked case in §10.2, and the whole reason campaign_goal exists:
-  // blended over all spend it is £5.42, but £124.65 went on two
-  // profile-visit campaigns that were never meant to get leads.
+  // blended over all spend it is £6.00, but £150 went on two profile-visit
+  // campaigns that were never meant to get leads.
   const campaigns = [
-    { name: "Lead form", goal: "leads" as const, spend: 210.5 },
-    { name: "Opt-in", goal: "leads" as const, spend: 151.69 },
+    { name: "Lead form", goal: "leads" as const, spend: 250 },
+    { name: "Workshop opt-in", goal: "leads" as const, spend: 150 },
     { name: "Retargeting sales", goal: "sales" as const, spend: 50 },
-    { name: "Profile visits A", goal: "profile_visits" as const, spend: 90 },
-    { name: "Profile visits B", goal: "profile_visits" as const, spend: 34.65 },
+    { name: "Profile visits A", goal: "profile_visits" as const, spend: 100 },
+    { name: "Profile visits B", goal: "profile_visits" as const, spend: 50 },
   ];
 
-  near(ads.leadGoalSpend(campaigns), 412.19);
-  near(ads.costPerLead(536.84, 99), 5.42);
-  near(ads.costPerLeadFromLeadCampaigns(campaigns, 99), 4.16);
+  near(ads.leadGoalSpend(campaigns), 450);
+  near(ads.costPerLead(600, 100), 6);
+  near(ads.costPerLeadFromLeadCampaigns(campaigns, 100), 4.5);
 });
 
 test("5.8 client experience", () => {

@@ -125,7 +125,7 @@ Eleven areas: Overview, Social Media, Trial Reels, Email, Funnels, Leads & Conve
 
 Charts: follower line (12 months), reach and views bars, saves and shares trend.
 
-**Also in Social Media** (from Meta's account overview): **Reach from followers** and **Reach from non-followers**, both optional inputs. Calculated: **Non-follower reach %** = reach from non-followers ÷ (reach from followers + reach from non-followers), good = up. It shows how far content travels beyond the existing audience (Emily, Sept 2026: 30,592 of 32,791, or 93%).
+**Also in Social Media** (from Meta's account overview): **Reach from followers** and **Reach from non-followers**, both optional inputs. Calculated: **Non-follower reach %** = reach from non-followers ÷ (reach from followers + reach from non-followers), good = up. It shows how far content travels beyond the existing audience (sample month: 28,000 of 30,000, or 93%).
 
 ### 5.3 Trial Reels (optional area, signed off by Nina)
 
@@ -511,7 +511,7 @@ Columns: Post ID, Account ID, Account username, Account name, Description, Durat
 | Shares | Shares | Sum |
 | Saves | Saves | Sum |
 | Follows gained | Follows | Sum. Only counts follows Meta credits to a specific post, so it's usually lower than real follows. Label it "Follows from posts" |
-| Reach | Reach | **Do not sum into account reach.** Summed post reach doesn't match account reach in either direction: it double counts people who saw several posts, and it misses reach from stories and older posts. Emily's September sample: posts summed to 17,011, account reach was 32,700. Fill reach from the account-level (Overview) export instead, or type it in |
+| Reach | Reach | **Do not sum into account reach.** Summed post reach doesn't match account reach in either direction: it double counts people who saw several posts, and it misses reach from stories and older posts. Sample month: posts summed to 18,000, account reach was 30,000. Fill reach from the account-level (Overview) export instead, or type it in |
 
 **Rules for this file**
 
@@ -523,7 +523,9 @@ Columns: Post ID, Account ID, Account username, Account name, Description, Durat
 
 ### 10.2 Meta Ads Manager campaign export (sample received 29 Sept, one row per campaign)
 
-Sample: Emily Samson, 1 to 28 Sept 2026, 9 campaigns (5 delivered, 4 inactive with all zeros). No summary row. Dates are ISO format (YYYY-MM-DD), unlike the content export.
+Sample: a retainer client's own export, 1 to 28 Sept 2026, 9 campaigns (5 delivered, 4 inactive with all zeros). No summary row. Dates are ISO format (YYYY-MM-DD), unlike the content export.
+
+**The figures in this section are invented.** The *shape* is real — the columns, the zero rows, the custom conversion, the overlap problem — because that is what the importer has to cope with. The numbers and names are not a client's, because this repository is public (Dom, 5 October 2026). They are also the ones the formula tests assert, so they are round on purpose.
 
 | Our field | From the file | How |
 | --- | --- | --- |
@@ -531,7 +533,7 @@ Sample: Emily Samson, 1 to 28 Sept 2026, 9 campaigns (5 delivered, 4 inactive wi
 | Impressions | Impressions | Sum |
 | Link clicks | Link clicks | Sum |
 | Leads | Leads, plus any custom conversion columns the client maps as leads | Sum. See custom conversions below |
-| Purchases, revenue from ads | Purchases, Purchase conversion value (if present) | Sum. Absent in Emily's file, so left for manual entry |
+| Purchases, revenue from ads | Purchases, Purchase conversion value (if present) | Sum. Absent in the sample file, so left for manual entry |
 | Profile visits from ads | Instagram profile visits | Sum (optional extra field) |
 | Reach | Reach | **Do not sum across campaigns**, same overlap problem as posts. Use the summary row if the export includes one, otherwise type it in |
 | Campaign breakdown | Each row | Campaign name, spend, impressions, clicks, results, result type |
@@ -540,10 +542,10 @@ Sample: Emily Samson, 1 to 28 Sept 2026, 9 campaigns (5 delivered, 4 inactive wi
 
 - Skip rows where Amount spent is 0.
 - **Never sum the Results column.** It means something different per campaign (in the sample: profile visits, a custom opt-in conversion, lead form leads). Read Result indicator to label each campaign's goal.
-- **Custom conversions:** clients name their own conversion events, e.g. Emily's "Reset September Opt In" column. On first upload, any unrecognised conversion column is listed and the client ticks which ones count as leads or purchases. That choice is saved for their future uploads.
-- Worked check against the sample: spend £536.84, impressions 55,461, link clicks 3,843, leads 99 (58 lead form + 41 opt-in conversions).
+- **Custom conversions:** clients name their own conversion events, e.g. the sample's "Autumn Workshop Opt In" column. On first upload, any unrecognised conversion column is listed and the client ticks which ones count as leads or purchases. That choice is saved for their future uploads.
+- Worked check against the sample: spend £600.00, impressions 60,000, link clicks 4,200, leads 100 (60 lead form + 40 opt-in conversions).
 
-**Cost per lead must only use lead campaigns' spend.** In the sample, £124.65 went on two profile-visit campaigns that were never meant to get leads. Blended over all spend, cost per lead is £5.42; over the three lead campaigns only (£412.19), it's £4.16. The Ads page shows cost per lead from lead-goal campaigns, with total spend shown separately.
+**Cost per lead must only use lead campaigns' spend.** In the sample, £150.00 went on two profile-visit campaigns that were never meant to get leads. Blended over all spend, cost per lead is £6.00; over the three lead campaigns only (£450.00), it's £4.50. The Ads page shows cost per lead from lead-goal campaigns, with total spend shown separately.
 
 ### 10.3 HeyClients / GoHighLevel (sample received 29 Sept: "Sales & Emails" PDF dashboard)
 
@@ -613,7 +615,7 @@ Read this whole brief before writing any code, then follow these rules.
 
 **Testing**
 
-- Every formula in section 5 and 6 gets a unit test, using the worked examples in this brief (the Emily ads totals in 10.2, the launch planner check in 6.6).
+- Every formula in section 5 and 6 gets a unit test, using the worked examples in this brief (the ads totals in 10.2, the launch planner check in 6.6).
 - Prove each test can fail by breaking the thing it protects, then restore it.
 - Test divide-by-zero on every rate (shows a dash, not an error or 0%).
 - After changes across several files, re-read the whole feature end to end rather than trusting each patch.

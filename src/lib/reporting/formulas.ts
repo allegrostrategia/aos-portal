@@ -329,10 +329,14 @@ export const ads = {
    * §5.7 and §10.2: cost per lead counts only spend from campaigns meant to
    * get leads or sales, so awareness spend does not distort it.
    *
-   * Emily's September sample is the worked case: £536.84 total spend over 99
-   * leads is £5.42, but £124.65 of that went on two profile-visit campaigns.
-   * Over the three lead campaigns (£412.19) it is £4.16 — which is the number
-   * that means something.
+   * The §10.2 sample is the worked case: £600 total spend over 100 leads is
+   * £6.00, but £150 of that went on two profile-visit campaigns. Over the
+   * three lead campaigns (£450) it is £4.50 — which is the number that means
+   * something.
+   *
+   * Those figures are invented, like every worked example in the brief. The
+   * shape is real and came from a client's own Meta export; the numbers are
+   * not theirs, because this repository is public (Dom, 5 October 2026).
    */
   leadGoalSpend: (campaigns: AdCampaign[]): Result =>
     sum(

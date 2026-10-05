@@ -8,8 +8,8 @@
 create type public.report_pricing_model as enum ('one_off', 'recurring');
 
 -- §5.7 / §10.2: a campaign's goal decides whether its spend counts towards
--- cost per lead. In Emily's sample, £124.65 of profile-visit spend dragged
--- cost per lead from £4.16 to £5.42 — the whole reason this column exists.
+-- cost per lead. In the §10.2 sample, £150 of profile-visit spend dragged
+-- cost per lead from £4.50 to £6.00 — the whole reason this column exists.
 create type public.report_campaign_goal as enum (
   'leads', 'sales', 'profile_visits', 'traffic', 'awareness'
 );
