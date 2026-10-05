@@ -71,9 +71,19 @@ export const getReportUser = cache(async (): Promise<ReportUser | null> => {
   // An expired Chiarezza workspace is filtered out by RLS — report_can_view()
   // applies access_end_date — so an empty list here is the same answer the
   // database would give, not something this code has to remember to check.
+  //
+  // **`user_id` is not redundant.** RLS hands an admin every grant on every
+  // workspace, because `report_access`'s admin policy is `using
+  // (is_portal_admin())` — so without this filter Nina's "grants" are
+  // everybody's, and `grants.find(g => g.workspace_id === x)` returns the
+  // *client's* row. Every caller reads `role` and `display_name` off that
+  // row as if it were their own, which is how a note Nina wrote came to be
+  // signed with the client's name. Found 5 October by a test asserting the
+  // signature on an objective.
   const { data } = await supabase
     .from("report_access")
     .select("workspace_id, role, display_name, report_workspaces!inner(business_name, kind)")
+    .eq("user_id", user.id)
     .returns<
       {
         workspace_id: string;
