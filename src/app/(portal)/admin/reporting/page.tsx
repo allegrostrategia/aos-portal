@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/member";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
-import { getReportClientData } from "@/lib/admin/report-clients";
+import { getReportClientData, type ReportPeriodRow } from "@/lib/admin/report-clients";
 import { NewClientForm, AssignTeamForm, EditWorkspaceForm } from "./forms";
 
 export const metadata: Metadata = {
@@ -46,7 +46,7 @@ export default async function AdminReportingPage() {
     else entry.team.push(grant.display_name);
   }
 
-  const monthsFor = new Map<string, { month: string; published_at: string | null }[]>();
+  const monthsFor = new Map<string, ReportPeriodRow[]>();
   for (const period of periods) {
     const list = monthsFor.get(period.workspace_id) ?? [];
     list.push(period);
@@ -76,6 +76,10 @@ export default async function AdminReportingPage() {
           const people = byWorkspace.get(workspace.id);
           const months = monthsFor.get(workspace.id) ?? [];
           const published = months.filter((m) => m.published_at).length;
+          // Only failures. A list that says "emailed" against every month is
+          // a list nobody reads, and the point of putting this here is that
+          // a failure is seen without opening each client.
+          const emailFailures = months.filter((m) => m.email_error);
 
           return (
             <Card key={workspace.id}>
@@ -114,6 +118,16 @@ export default async function AdminReportingPage() {
                   <dt className="text-caption text-ink/55">Published</dt>
                   <dd className="font-mono text-body text-ink">{published}</dd>
                 </div>
+                {emailFailures.length > 0 ? (
+                  <div className="min-w-60">
+                    <dt className="text-caption text-ink/55">Publish email</dt>
+                    <dd className="text-body text-deep-red">
+                      Failed for{" "}
+                      {emailFailures.map((m) => monthLabel(m.month)).join(", ")} —
+                      open the report to see why and send again
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="min-w-40">
                   <dt className="text-caption text-ink/55">Team</dt>
                   <dd className="text-body text-ink">

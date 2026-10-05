@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import {
   publishMonth,
+  resendPublishEmail,
   saveStrategistNote,
   unpublishMonth,
   type NoteState,
@@ -156,11 +157,17 @@ export function PublishControl({
   month,
   monthLabel,
   publishedAt,
+  emailSentAt,
+  emailError,
+  emailTo,
 }: {
   workspaceId: string;
   month: string;
   monthLabel: string;
   publishedAt: string | null;
+  emailSentAt: string | null;
+  emailError: string | null;
+  emailTo: string | null;
 }) {
   const [state, action] = useActionState<NoteState, FormData>(
     publishedAt ? unpublishMonth : publishMonth,
@@ -188,12 +195,94 @@ export function PublishControl({
         </p>
       </form>
 
-      {!publishedAt ? (
+      {publishedAt ? (
+        <EmailOutcome
+          workspaceId={workspaceId}
+          month={month}
+          sentAt={emailSentAt}
+          error={emailError}
+          to={emailTo}
+        />
+      ) : (
         <p className="mt-3 text-caption text-ink/50">
-          Publishing does not email the client yet — tell them yourself for now.
+          Publishing emails the client a link to this month. No figures go in
+          the email — just that it is ready.
         </p>
-      ) : null}
+      )}
     </Card>
+  );
+}
+
+/**
+ * What happened to the publish email.
+ *
+ * The whole reason the three columns exist: the send runs after this page has
+ * already said "published", so a failure has nowhere else to appear. The
+ * recap's email failed silently for an evening in September for exactly want
+ * of this. Three states, and none of them is silence.
+ */
+function EmailOutcome({
+  workspaceId,
+  month,
+  sentAt,
+  error,
+  to,
+}: {
+  workspaceId: string;
+  month: string;
+  sentAt: string | null;
+  error: string | null;
+  to: string | null;
+}) {
+  const [state, action] = useActionState<NoteState, FormData>(resendPublishEmail, null);
+
+  return (
+    <div className="mt-4 border-t border-ink/8 pt-3">
+      {error ? (
+        <p className="text-small text-deep-red">
+          The email didn&rsquo;t go: {error}
+        </p>
+      ) : sentAt ? (
+        <p className="text-small text-ink/60">
+          Emailed{to ? ` to ${to}` : ""} at{" "}
+          <span className="font-mono">{sentTime(sentAt)}</span>. That is the
+          sender accepting it, not the inbox receiving it.
+        </p>
+      ) : (
+        <p className="text-small text-ink/60">
+          Sending the email… reload in a moment to see whether it went.
+        </p>
+      )}
+
+      <form action={action} className="mt-3 flex flex-wrap items-center gap-3">
+        <input type="hidden" name="workspace_id" value={workspaceId} />
+        <input type="hidden" name="month" value={month} />
+        <ResendButton again={Boolean(sentAt)} />
+        <p
+          aria-live="polite"
+          className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
+        >
+          {state?.error ?? state?.notice ?? ""}
+        </p>
+      </form>
+    </div>
+  );
+}
+
+/** "14:32" — the time, in the reader's own zone, not a full timestamp. */
+function sentTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function ResendButton({ again }: { again: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant="secondary" size="sm" disabled={pending}>
+      {pending ? "Sending…" : again ? "Send again" : "Send the email"}
+    </Button>
   );
 }
 

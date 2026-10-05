@@ -82,6 +82,12 @@ export interface ReportPeriod {
   month: string;
   published_at: string | null;
   published_by: string | null;
+  /** When Resend accepted the publish email. Not proof it arrived. */
+  email_sent_at: string | null;
+  /** Why it did not go, in the sender's own words. */
+  email_error: string | null;
+  /** The address it went to, copied at send time. */
+  email_to: string | null;
 }
 
 interface RawValue {

@@ -631,6 +631,22 @@ export function createShimClient(db, uid) {
         return { data: {}, error: null };
       },
       admin: {
+        /**
+         * The address behind a login. The service role's job and nobody
+         * else's: `auth.users` is not readable under RLS, which is exactly
+         * why a retainer client's email has to be fetched this way.
+         */
+        async getUserById(id) {
+          if (uid !== null) throw new Error("auth.admin needs the service role");
+          const { rows } = await db.query(
+            `select id, email from auth.users where id = $1`,
+            [id],
+          );
+          if (rows.length === 0) {
+            return { data: { user: null }, error: { message: "User not found" } };
+          }
+          return { data: { user: { id: rows[0].id, email: rows[0].email } }, error: null };
+        },
         async updateUserById(id, attributes) {
           if (uid !== null) throw new Error("auth.admin needs the service role");
           authLog.push({ kind: "update_user", id, attributes });

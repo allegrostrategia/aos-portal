@@ -41,6 +41,9 @@ export interface ReportPeriodRow {
   workspace_id: string;
   month: string;
   published_at: string | null;
+  /** So a failed publish email is visible without opening each client. */
+  email_sent_at: string | null;
+  email_error: string | null;
 }
 
 export interface ReportClientData {
@@ -85,7 +88,7 @@ export async function getReportClientData(
       (from, to) =>
         supabase
           .from("report_periods")
-          .select("workspace_id, month, published_at, id")
+          .select("workspace_id, month, published_at, email_sent_at, email_error, id")
           .order("month", { ascending: false })
           .order("id")
           .range(from, to)

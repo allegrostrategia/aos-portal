@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { requireReportUser } from "@/lib/auth/report";
@@ -8,6 +9,7 @@ import { categoryByKey } from "./categories.ts";
 import { firstOfMonth } from "./months.ts";
 import { getWorkspace } from "./queries.ts";
 import { canWriteStrategistNote } from "./access.ts";
+import { sendPublishEmail } from "./publish-send.ts";
 
 /**
  * Notes, and publishing.
@@ -109,17 +111,22 @@ export async function saveStrategistNote(
 }
 
 /**
- * Publish a month.
+ * Publish a month, and tell the client.
  *
  * Nina's alone, decided 30 September 2026. Checked here and refused
  * independently by a guard trigger in the database, which covers the insert
  * as well as the update.
  *
- * Not yet built, and deliberately not faked: §8 says "The client is emailed
- * when it's published". Nothing here sends that email. A retainer client has
- * no `members` row, so their address lives in `auth.users` and needs the
- * service role to read — a real piece of work rather than a line, and better
- * done properly than half-done behind a button that claims it happened.
+ * §8's email goes from `after()` rather than the daily cron, for the reason
+ * the recap's does: Nina publishes when she means the client to hear, and
+ * "tomorrow at eight" is not that. **It is deliberately not awaited and its
+ * failure is not returned** — the month is published either way, because a
+ * report being readable must not depend on an email provider. What happened
+ * lands on the period instead, and the publish card reads it back.
+ *
+ * A month published again after a correction sends again, worded as an
+ * update (Nina, 5 October): a client reading a changed figure should know it
+ * changed. `email_sent_at` already being set is what makes it the second one.
  */
 export async function publishMonth(
   _prev: NoteState,
@@ -139,6 +146,16 @@ export async function publishMonth(
 
   const supabase = await createClient();
 
+  // Read before the write: whether this is the first time this month has
+  // gone out decides which email the client gets, and the upsert below is
+  // about to make every month look alike.
+  const { data: before } = await supabase
+    .from("report_periods")
+    .select("email_sent_at")
+    .eq("workspace_id", workspaceId)
+    .eq("month", month)
+    .maybeSingle<{ email_sent_at: string | null }>();
+
   const { error } = await supabase
     .from("report_periods")
     .upsert(
@@ -153,10 +170,61 @@ export async function publishMonth(
 
   if (error) return { error: `Couldn't publish: ${error.message}` };
 
+  const update = Boolean(before?.email_sent_at);
+  after(() => sendPublishEmail(workspaceId, month, { update }));
+
   revalidatePath("/reporting", "layout");
   return {
-    notice: "Published. The client can see this month now — send them a note to say so.",
+    notice: update
+      ? "Published again. The client is being emailed to say it has been updated."
+      : "Published. The client can see this month now, and is being emailed a link to it.",
   };
+}
+
+/**
+ * Send the publish email again.
+ *
+ * The month is published and stays published; this is only the email, which
+ * can fail on its own — a provider hiccup, a key rotated, a client login
+ * added after the fact. Without this the only retry is unpublishing and
+ * republishing a report the client may already have read.
+ *
+ * Worded as an update when one has gone before, same rule as publishing.
+ */
+export async function resendPublishEmail(
+  _prev: NoteState,
+  formData: FormData,
+): Promise<NoteState> {
+  const reportUser = await requireReportUser();
+  if (!reportUser.isAdmin) return { error: "Only Nina can email a report." };
+
+  const workspaceId = String(formData.get("workspace_id") ?? "");
+  const month = firstOfMonth(String(formData.get("month") ?? ""));
+  if (!workspaceId || !month) return { error: "That was missing something." };
+
+  const supabase = await createClient();
+  const { data: period } = await supabase
+    .from("report_periods")
+    .select("published_at, email_sent_at")
+    .eq("workspace_id", workspaceId)
+    .eq("month", month)
+    .maybeSingle<{ published_at: string | null; email_sent_at: string | null }>();
+
+  // Emailing a link to a month the client cannot open is the one outcome
+  // worse than not emailing at all.
+  if (!period?.published_at) {
+    return { error: "That month isn't published, so there is nothing to tell the client about." };
+  }
+
+  // Awaited here, unlike on publish: the person pressed a button that does
+  // only this, so they should be told whether it worked.
+  const result = await sendPublishEmail(workspaceId, month, {
+    update: Boolean(period.email_sent_at),
+  });
+
+  revalidatePath("/reporting", "layout");
+  if (!result.ok) return { error: result.error ?? "It didn't go, and gave no reason." };
+  return { notice: "Sent." };
 }
 
 /**

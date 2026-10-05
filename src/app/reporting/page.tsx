@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { KpiCard } from "@/components/reporting/kpi-card";
 import { PublishControl, StrategistNotes } from "@/components/reporting/notes";
+import { Objectives } from "@/components/reporting/objectives";
+import { ClientReplies } from "@/components/reporting/replies";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { ENTRY_CATEGORIES, categoryByKey } from "@/lib/reporting/categories";
@@ -42,6 +44,19 @@ export default async function ReportingOverviewPage({
     (n) => n.note_type === "strategist" && n.category === null,
   );
   const mine = overviewNotes.find((n) => n.author_id === ctx.reportUser.id) ?? null;
+
+  const objectives = figures.data.notes.filter((n) => n.note_type === "objective");
+  // Oldest first: a thread read newest-first stops being a conversation.
+  // `getMonthData` already orders by created_at, so this only selects.
+  const replies = figures.data.notes.filter((n) => n.note_type === "client_reply");
+
+  // The reply box is the client's, on a month they can actually read. The
+  // team reads the thread and answers in the note above it (§8: the client
+  // reply is theirs; "Notes from your strategist" is Nina's half).
+  const canReply =
+    !ctx.canEdit && ctx.workspace.kind === "retainer" && ctx.monthPublished;
+
+  const period = figures.data.period ?? null;
 
   const anyFigures = figures.data.values.size > 0;
 
@@ -110,15 +125,36 @@ export default async function ReportingOverviewPage({
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <StrategistNotes
-          notes={overviewNotes}
-          canWrite={ctx.canEdit && ctx.workspace.kind === "retainer"}
-          workspaceId={ctx.workspace.id}
-          month={ctx.month.month}
-          category=""
-          mine={mine}
-          emptyMessage="Your strategist hasn't written this month's note yet."
-        />
+        <div className="flex flex-col gap-6">
+          <StrategistNotes
+            notes={overviewNotes}
+            canWrite={ctx.canEdit && ctx.workspace.kind === "retainer"}
+            workspaceId={ctx.workspace.id}
+            month={ctx.month.month}
+            category=""
+            mine={mine}
+            emptyMessage="Your strategist hasn't written this month's note yet."
+          />
+
+          {ctx.workspace.kind === "retainer" ? (
+            <>
+              <Objectives
+                objectives={objectives}
+                canWrite={ctx.canEdit}
+                workspaceId={ctx.workspace.id}
+                month={ctx.month.month}
+              />
+              <ClientReplies
+                replies={replies}
+                canReply={canReply}
+                currentUserId={ctx.reportUser.id}
+                workspaceId={ctx.workspace.id}
+                month={ctx.month.month}
+                monthLabel={ctx.month.label}
+              />
+            </>
+          ) : null}
+        </div>
 
         <div className="flex flex-col gap-6">
           {ctx.canEdit ? <StillToFill ctx={ctx} figures={figures} /> : null}
@@ -127,7 +163,10 @@ export default async function ReportingOverviewPage({
               workspaceId={ctx.workspace.id}
               month={ctx.month.month}
               monthLabel={ctx.month.label}
-              publishedAt={figures.data.period?.published_at ?? null}
+              publishedAt={period?.published_at ?? null}
+              emailSentAt={period?.email_sent_at ?? null}
+              emailError={period?.email_error ?? null}
+              emailTo={period?.email_to ?? null}
             />
           ) : null}
         </div>
