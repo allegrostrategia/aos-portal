@@ -38,6 +38,65 @@ function splitColumns(columns) {
 const singular = (table) => table.replace(/s$/, "");
 
 /**
+ * The unique column sets of a table, straight from its indexes.
+ *
+ * Used to decide whether an ORDER BY is total. Expression indexes (`indkey`
+ * holding a 0) and partial ones (`indpred`) don't make a sort total, so
+ * neither counts.
+ */
+// Per database, not per table name: a test file with two of them must not
+// be told about the other one's schema.
+const uniqueSets = new WeakMap();
+async function uniqueColumnSets(db, table) {
+  if (!uniqueSets.has(db)) uniqueSets.set(db, new Map());
+  const cache = uniqueSets.get(db);
+  if (!cache.has(table)) {
+    const { rows } = await db.query(
+      `select (select array_agg(a.attname::text order by k.ord)
+                 from unnest(i.indkey) with ordinality as k(attnum, ord)
+                 join pg_attribute a
+                   on a.attrelid = i.indrelid and a.attnum = k.attnum) as cols
+         from pg_index i
+         join pg_class c on c.oid = i.indrelid
+         join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relname = $1
+          and i.indisunique and i.indpred is null
+          and 0 <> all(i.indkey)
+        order by i.indisprimary desc, array_length(i.indkey, 1)`,
+      [table],
+    );
+    cache.set(table, rows.map((r) => r.cols).filter(Boolean));
+  }
+  return cache.get(table);
+}
+
+/**
+ * Postgres does not promise an order for rows that tie on every column in
+ * ORDER BY, and it does not promise the same one twice. A paged read whose
+ * sort is not total can therefore hand back a row on both pages or on
+ * neither — a count quietly wrong in either direction.
+ *
+ * Rather than hope PGlite happens to shuffle seven rows, the harness does
+ * what Postgres is allowed to do: when a `.range()` read's sort is not
+ * total, tied rows are broken one way on one page of that table and the
+ * other way on the next. Paging that leans on an unstable sort then fails
+ * here every run, instead of once in production. A sort that already ends in
+ * a unique key is left exactly as written.
+ */
+const pageParity = new Map();
+async function unstableTieBreakers(db, table, order) {
+  const sets = await uniqueColumnSets(db, table);
+  const sorted = order.map(([column]) => column);
+  if (sets.some((set) => set.every((column) => sorted.includes(column)))) return [];
+  const set = sets[0];
+  if (!set) return [];
+  const nth = (pageParity.get(table) ?? 0) + 1;
+  pageParity.set(table, nth);
+  const direction = nth % 2 === 0 ? "desc" : "asc";
+  return set.map((column) => `${quoteIdent(column)} ${direction}`);
+}
+
+/**
  * A one-level embed, in whichever direction the schema actually goes.
  *
  * PostgREST works this out from the foreign keys; this asks the same question of
@@ -260,16 +319,12 @@ export function createShimClient(db, uid) {
       clauses.push(...isClauses);
 
       const whereSql = clauses.length ? ` where ${clauses.join(" and ")}` : "";
-      const orderSql = state.order.length
-        ? ` order by ${state.order
-            .map(
-              ([column, ascending, nullsFirst]) =>
-                `${quoteIdent(column)} ${ascending ? "asc" : "desc"} nulls ${
-                  nullsFirst ? "first" : "last"
-                }`,
-            )
-            .join(", ")}`
-        : "";
+      const orderTerms = state.order.map(
+        ([column, ascending, nullsFirst]) =>
+          `${quoteIdent(column)} ${ascending ? "asc" : "desc"} nulls ${
+            nullsFirst ? "first" : "last"
+          }`,
+      );
 
       try {
         const writing = state.insert ?? state.upsert;
@@ -417,8 +472,14 @@ export function createShimClient(db, uid) {
         ).join(", ");
 
         const limitSql = state.limit != null ? ` limit ${Number(state.limit)}` : "";
+        const offsetSql = state.offset ? ` offset ${Number(state.offset)}` : "";
+        const terms =
+          state.offset == null
+            ? orderTerms
+            : [...orderTerms, ...(await unstableTieBreakers(db, state.table, state.order))];
+        const orderSql = terms.length ? ` order by ${terms.join(", ")}` : "";
         const r = await run(
-          `select ${selected} from public.${quoteIdent(state.table)} base${whereSql}${orderSql}${limitSql}`,
+          `select ${selected} from public.${quoteIdent(state.table)} base${whereSql}${orderSql}${limitSql}${offsetSql}`,
           params,
         );
         if (state.single === "maybe") {
@@ -509,6 +570,14 @@ export function createShimClient(db, uid) {
         state.limit = n;
         return api;
       },
+      // PostgREST's Range header, as supabase-js sends it: inclusive at both
+      // ends, so .range(0, 999) is a thousand rows. Without this the paged
+      // admin queries could not be tested at all.
+      range(from, to) {
+        state.offset = Number(from);
+        state.limit = Number(to) - Number(from) + 1;
+        return api;
+      },
       maybeSingle() {
         state.single = "maybe";
         return api;
@@ -525,6 +594,35 @@ export function createShimClient(db, uid) {
     auth: {
       async getUser() {
         return { data: { user: uid ? { id: uid } : null }, error: null };
+      },
+      /**
+       * There is no GoTrue here, so the session is the uid the test
+       * configured. This checks the form's email really is that person's —
+       * otherwise a test could believe it had signed in as somebody it had
+       * not — and otherwise answers as Supabase does, including the
+       * "Invalid login credentials" the form maps to a message.
+       *
+       * auth.users belongs to GoTrue, not to the member, so it is read
+       * outside run()'s `set role authenticated`.
+       */
+      async signInWithPassword({ email, password } = {}) {
+        authLog.push({ kind: "sign_in", email });
+        const invalid = {
+          data: { user: null, session: null },
+          error: { message: "Invalid login credentials" },
+        };
+        if (!email || !password) return invalid;
+        const { rows } = await db.query(
+          `select id from auth.users where lower(email) = lower($1)`,
+          [email],
+        );
+        if (rows.length === 0) return invalid;
+        if (uid !== null && rows[0].id !== uid) {
+          throw new Error(
+            `The shim is signed in as ${uid}; signing in as ${email} (${rows[0].id}) would be a lie. configure() that user instead.`,
+          );
+        }
+        return { data: { user: { id: rows[0].id }, session: {} }, error: null };
       },
       // Auth calls that go to GoTrue rather than Postgres are recorded, not
       // performed: a test asserts on what would have been sent or set.

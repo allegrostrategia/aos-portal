@@ -2,25 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
-import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
-import { fetchAllPages } from "@/lib/reporting/paging";
+import { getReportClientData } from "@/lib/admin/report-clients";
 import { NewClientForm, AssignTeamForm, EditWorkspaceForm } from "./forms";
 
 export const metadata: Metadata = {
   title: "Reporting clients · aOS admin",
 };
-
-interface WorkspaceRow {
-  id: string;
-  kind: "retainer" | "aos_member" | "chiarezza";
-  business_name: string;
-  currency: string;
-  first_month: string;
-  access_end_date: string | null;
-}
 
 const KIND_LABEL = {
   retainer: "Retainer",
@@ -42,48 +32,10 @@ const KIND_LABEL = {
 export default async function AdminReportingPage() {
   await requireAdmin();
 
-  const supabase = await createClient();
-
   // RLS returns every workspace because is_portal_admin() is true.
-  // Paged, not fetched in one go. This screen reads every period of every
-  // client — months x clients — which crosses PostgREST's silent 1,000-row
-  // ceiling at around forty clients with two years of history. Past that
-  // the page would still render, and the "months started" counts would
-  // simply be wrong, with nothing to say so (§13).
-  const [workspaces, grants, periods] = await Promise.all([
-    fetchAllPages<WorkspaceRow>((from, to) =>
-      supabase
-        .from("report_workspaces")
-        .select("id, kind, business_name, currency, first_month, access_end_date")
-        .order("business_name")
-        .range(from, to)
-        .returns<WorkspaceRow[]>(),
-    ),
-    fetchAllPages<{
-      workspace_id: string;
-      user_id: string;
-      role: "client" | "team";
-      display_name: string;
-    }>((from, to) =>
-      supabase
-        .from("report_access")
-        .select("workspace_id, user_id, role, display_name")
-        .order("workspace_id")
-        .range(from, to)
-        .returns<
-          { workspace_id: string; user_id: string; role: "client" | "team"; display_name: string }[]
-        >(),
-    ),
-    fetchAllPages<{ workspace_id: string; month: string; published_at: string | null }>(
-      (from, to) =>
-        supabase
-          .from("report_periods")
-          .select("workspace_id, month, published_at")
-          .order("month", { ascending: false })
-          .range(from, to)
-          .returns<{ workspace_id: string; month: string; published_at: string | null }[]>(),
-    ),
-  ]);
+  // Paged, with a unique sort. Both parts matter, and the second was
+  // missing until 5 October: see getReportClientData.
+  const { workspaces, grants, periods } = await getReportClientData();
 
   const rows = workspaces;
   const byWorkspace = new Map(rows.map((w) => [w.id, { client: "", team: [] as string[] }]));
