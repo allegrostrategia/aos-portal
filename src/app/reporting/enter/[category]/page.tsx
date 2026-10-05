@@ -7,7 +7,9 @@ import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
-import { getMetricsFor, getMonthData } from "@/lib/reporting/queries";
+import { getClientFlow, getMetricsFor, getMonthData } from "@/lib/reporting/queries";
+import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
+import { Card, SectionTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Enter your data — aOS",
@@ -142,6 +144,20 @@ export default async function EnterCategoryPage({
     }))
     .filter((r) => r.unitsSold !== null || r.revenue !== null || r.hoursSpent !== null);
 
+  // §5.8. Only Client Experience needs it, and loading a client's whole
+  // history for the other eight screens would be work for nothing.
+  const flow =
+    category.key === "client_experience"
+      ? await getClientFlow(ctx.workspace.id, ctx.month.month)
+      : [];
+  const opening = openingFigures(flow);
+  const clientsAtStart = activeClientsAtStart(flow, ctx.month.month) ?? null;
+  // The box on this screen is the one in use when it holds the earliest
+  // opening figure — or when there is no opening figure anywhere yet, which
+  // is the case the very first time somebody fills this in.
+  const openingAppliesHere =
+    opening.inUse === null || opening.inUse.month === ctx.month.month;
+
   // "Save & next section" walks the entry categories in tab order.
   const order = ENTRY_CATEGORIES.filter(
     (c) => !ctx.workspace.hidden_categories.includes(c.key),
@@ -164,8 +180,18 @@ export default async function EnterCategoryPage({
         />
       }
     >
+      {category.key === "client_experience" ? (
+        <OpeningFigureNote
+          opening={opening}
+          thisMonth={ctx.month.month}
+          carried={clientsAtStart}
+        />
+      ) : null}
+
       <EntryForm
         offerRows={offerRowsForEntry}
+        clientsAtStart={clientsAtStart}
+        openingAppliesHere={openingAppliesHere}
         category={category.key}
         categoryLabel={category.label}
         workspaceId={ctx.workspace.id}
@@ -185,5 +211,85 @@ export default async function EnterCategoryPage({
         nextLabel={next ? "Save & next section" : null}
       />
     </ReportShell>
+  );
+}
+
+/**
+ * Which opening figure is in use, said out loud.
+ *
+ * §5.8's figure is typed once and carried forward, so on every month but
+ * one the box on this screen is not the figure doing the work. Saying
+ * nothing would leave somebody typing into a field that changes nothing —
+ * and Dom's condition (5 Oct) is that a second one is marked as not in use
+ * rather than silently ignored.
+ */
+function OpeningFigureNote({
+  opening,
+  thisMonth,
+  carried,
+}: {
+  opening: ReturnType<typeof openingFigures>;
+  thisMonth: string;
+  carried: number | null;
+}) {
+  const { inUse, unused } = opening;
+  const strayHere = unused.find((u) => u.month === thisMonth);
+
+  if (!inUse) {
+    return (
+      <Card className="mb-6">
+        <SectionTitle>Start with the opening figure</SectionTitle>
+        <p className="text-body text-ink/70">
+          &ldquo;Clients at the start, when you joined&rdquo; is typed once.
+          Every month after this one carries on from the month before, so
+          retention, churn and the rest stay dashes until it is filled in.
+        </p>
+      </Card>
+    );
+  }
+
+  const inUseHere = inUse.month === thisMonth;
+
+  return (
+    <Card className="mb-6">
+      <SectionTitle>
+        {inUseHere ? "This is the opening figure" : "Carried from earlier"}
+      </SectionTitle>
+      <p className="text-body text-ink/70">
+        {inUseHere ? (
+          <>
+            <span className="font-mono">{inUse.value}</span> clients at the start,
+            from {monthLabel(inUse.month)}. Every later month carries on from
+            here.
+          </>
+        ) : (
+          <>
+            The opening figure is{" "}
+            <span className="font-mono">{inUse.value}</span>, set on{" "}
+            {monthLabel(inUse.month)}. This month starts with{" "}
+            <span className="font-mono">{carried ?? "—"}</span>, carried forward
+            from the months in between.
+          </>
+        )}
+      </p>
+
+      {strayHere ? (
+        <p className="mt-3 text-small text-deep-red">
+          There is also an opening figure of{" "}
+          <span className="font-mono">{strayHere.value}</span> stored on this
+          month. <strong>It is not in use</strong> — the earliest one is, and
+          that is {monthLabel(inUse.month)}. Clear it, or clear the other, so
+          there is only one.
+        </p>
+      ) : null}
+
+      {!inUseHere && unused.length > 0 && !strayHere ? (
+        <p className="mt-3 text-small text-deep-red">
+          {unused.length === 1
+            ? `There is another opening figure on ${monthLabel(unused[0].month)}, and it is not in use.`
+            : `There are ${unused.length} other opening figures stored, and none of them is in use.`}
+        </p>
+      ) : null}
+    </Card>
   );
 }

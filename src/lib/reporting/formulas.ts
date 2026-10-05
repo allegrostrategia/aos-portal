@@ -819,6 +819,9 @@ export const CALC_COVERAGE: Record<string, string> = {
 export const PULLED_COVERAGE: Record<string, string> = {
   leads_conversions_new_leads_from_ads: "ads_leads",
   client_experience_new_clients: "leads_conversions_new_clients",
+  // §5.8, settled 5 Oct 2026: the opening figure is typed once and every
+  // later month carries on from the month before. See client-flow.ts.
+  client_experience_active_clients_at_start: "clientFlow.activeClientsAtStart",
   financials_revenue_from_offers: "offers.totalRevenue",
 };
 
@@ -834,6 +837,4 @@ export const PULLED_COVERAGE: Record<string, string> = {
  * pulled metric at all. It needs a decision from Nina rather than a guess,
  * and Client Experience is Stage 3, so it waits.
  */
-export const PULLED_NOT_IMPLEMENTED: string[] = [
-  "client_experience_active_clients_at_start",
-];
+export const PULLED_NOT_IMPLEMENTED: string[] = [];

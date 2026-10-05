@@ -44,6 +44,14 @@ export interface CalcInput {
   offerRows?: OfferMonth[];
   /** For "share of total revenue". */
   totalRevenue?: Figure;
+  /**
+   * §5.8's "active clients at start", worked out by client-flow.ts.
+   *
+   * Passed in rather than read from `value("client_experience_active_clients_at_start")`,
+   * which is always null: the metric is `pulled`, and the database refuses
+   * to store a value for a pulled metric at all.
+   */
+  clientsAtStart?: Figure;
 }
 
 export type CalcResults = Record<string, Result>;
@@ -220,11 +228,12 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
       };
 
     case "client_experience": {
-      const start = v("client_experience_active_clients_at_start");
+      const start = input.clientsAtStart ?? null;
       const left = v("client_experience_clients_who_left");
       const newClients = v("leads_conversions_new_clients");
       const atEnd = clientExperience.activeClientsAtEnd(start, newClients, left);
       return {
+        client_experience_active_clients_at_start: start,
         client_experience_new_clients: newClients ?? null,
         client_experience_active_clients_at_end: atEnd,
         client_experience_retention_rate: clientExperience.retentionRate(start, left),

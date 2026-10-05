@@ -114,20 +114,58 @@ test("leads pulls the ads figure rather than asking for it twice", () => {
 });
 
 test("client experience takes new clients from Leads, not its own box", () => {
+  // `clientsAtStart` is passed in, not read from the metric: the metric is
+  // PULLED and report_values refuses to store a pulled figure, so a typed
+  // one could never exist. This test used to supply it as a typed value and
+  // so asserted against something the database had always refused.
   const out = calculate("client_experience", {
     value: from({
-      client_experience_active_clients_at_start: 40,
       client_experience_clients_who_left: 6,
       leads_conversions_new_clients: 14,
       client_experience_renewals_and_upsells: 8,
       client_experience_issues_raised: 6,
     }),
     previous: none,
+    clientsAtStart: 40,
   });
 
+  assert.equal(out.client_experience_active_clients_at_start, 40);
   assert.equal(out.client_experience_active_clients_at_end, 48);
   assert.equal(Number(out.client_experience_retention_rate!.toFixed(2)), 85);
   assert.equal(Number(out.client_experience_issues_per_10_clients!.toFixed(2)), 1.25);
+});
+
+test("a typed 'active clients at start' is ignored, because it cannot exist", () => {
+  // Belt and braces: if one somehow reached the lookup, the figure still
+  // comes from the resolved opening chain and not from the box.
+  const out = calculate("client_experience", {
+    value: from({
+      client_experience_active_clients_at_start: 999,
+      client_experience_clients_who_left: 0,
+      leads_conversions_new_clients: 0,
+    }),
+    previous: none,
+    clientsAtStart: 12,
+  });
+
+  assert.equal(out.client_experience_active_clients_at_start, 12);
+  assert.equal(out.client_experience_active_clients_at_end, 12);
+});
+
+test("with no opening figure, the whole category is dashes rather than zeros", () => {
+  const out = calculate("client_experience", {
+    value: from({
+      client_experience_clients_who_left: 2,
+      leads_conversions_new_clients: 5,
+      client_experience_renewals_and_upsells: 1,
+    }),
+    previous: none,
+  });
+
+  assert.equal(out.client_experience_active_clients_at_start, null);
+  assert.equal(out.client_experience_retention_rate, null, "not 0%");
+  assert.equal(out.client_experience_churn_rate, null);
+  assert.equal(out.client_experience_upsell_rate, null);
 });
 
 test("financials pulls its revenue from the offers, never from a box", () => {

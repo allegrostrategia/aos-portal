@@ -4,6 +4,7 @@ import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { CategoryKey } from "./categories.ts";
+import type { MonthFlow } from "./client-flow.ts";
 
 /**
  * Reading a workspace's figures.
@@ -293,6 +294,45 @@ export async function getTrend(
     .returns<{ month: string; metric_key: string; value: number | null }[]>();
 
   return data ?? [];
+}
+
+/**
+ * Everything §5.8's opening figure needs, for every month up to this one.
+ *
+ * Three month-level metrics over a client's whole history, which is small —
+ * three rows a month, so thirty-six for a year — and cheap enough to load on
+ * the Client Experience screens rather than keeping a running total
+ * somewhere that could drift from the figures it was derived from.
+ */
+export async function getClientFlow(
+  workspaceId: string,
+  uptoMonth: string,
+): Promise<MonthFlow[]> {
+  const rows = await getTrend(
+    workspaceId,
+    [
+      "client_experience_clients_at_start_opening",
+      "leads_conversions_new_clients",
+      "client_experience_clients_who_left",
+    ],
+    "1900-01-01",
+    uptoMonth,
+  );
+
+  const byMonth = new Map<string, MonthFlow>();
+  for (const row of rows) {
+    const month = byMonth.get(row.month) ?? { month: row.month };
+    if (row.metric_key === "client_experience_clients_at_start_opening") {
+      month.opening = row.value;
+    } else if (row.metric_key === "leads_conversions_new_clients") {
+      month.newClients = row.value;
+    } else {
+      month.clientsWhoLeft = row.value;
+    }
+    byMonth.set(row.month, month);
+  }
+
+  return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
 }
 
 export interface ReportTarget {

@@ -89,8 +89,12 @@ await check("no calc metric is missing its formula", async () =>
     `select count(*)::int c from public.report_metrics where input_type = 'calc' and formula is null`
   )).rows[0].c === 0);
 
+// The count is deliberate: it notices a metric added or lost by accident.
+// 174 at the Stage 1 seed, 175 from 5 Oct 2026 — §5.8's opening figure
+// (20261005140000), which exists because "active clients at start" is
+// pulled and so can never be typed.
 await check("anyone signed in reads the metric list", async () =>
-  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 174);
+  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 175);
 
 await rejects("a client cannot add a metric", () =>
   as(MEMBER, () => db.query(`

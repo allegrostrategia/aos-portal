@@ -3,7 +3,14 @@ import "server-only";
 import { CATEGORIES, type CategoryKey } from "./categories.ts";
 import { calculate, entityAwareLookup, offerResults, type Lookup } from "./calculate.ts";
 import type { OfferMonth } from "./formulas.ts";
-import { getMetrics, getMonthData, type MonthData, type ReportMetric } from "./queries.ts";
+import {
+  getClientFlow,
+  getMetrics,
+  getMonthData,
+  type MonthData,
+  type ReportMetric,
+} from "./queries.ts";
+import { activeClientsAtStart, openingFigures, type OpeningFigure } from "./client-flow.ts";
 import type { ReportContext } from "./context.ts";
 
 /**
@@ -33,6 +40,13 @@ export interface MonthFigures {
   previousFigure: (metricKey: string) => number | null;
   /** The offers, with their setup, ready for the Offers screen. */
   offerRows: OfferMonth[];
+  /**
+   * §5.8's opening figure: the one in use, and any others sitting unused.
+   *
+   * The unused ones are carried so the entry screen can say so. A figure
+   * that is quietly ignored is worse than one that is wrong.
+   */
+  openingClients: { inUse: OpeningFigure | null; unused: OpeningFigure[] };
   byKey: Map<string, ReportMetric>;
 }
 
@@ -58,10 +72,18 @@ function offerRowsFrom(data: MonthData, values: MonthData["values"]): OfferMonth
 }
 
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
-  const [metrics, data] = await Promise.all([
+  const [metrics, data, flow] = await Promise.all([
     getMetrics(),
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
+    getClientFlow(ctx.workspace.id, ctx.month.month),
   ]);
+
+  // §5.8. Both months, because the arrows on Client Experience compare
+  // against last month and last month's start is as derived as this one's.
+  const clientsAtStart = activeClientsAtStart(flow, ctx.month.month);
+  const previousClientsAtStart = ctx.month.previous
+    ? activeClientsAtStart(flow, ctx.month.previous)
+    : null;
 
   const byKey = new Map(metrics.map((m) => [m.key, m]));
   const metricEntityType = new Map(metrics.map((m) => [m.key, m.entity_type]));
@@ -101,13 +123,17 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   const results: Record<string, number | null> = {};
   const previousResults: Record<string, number | null> = {};
   for (const category of CATEGORIES) {
-    Object.assign(results, calculate(category.key, { value, previous, offerRows }));
+    Object.assign(
+      results,
+      calculate(category.key, { value, previous, offerRows, clientsAtStart }),
+    );
     Object.assign(
       previousResults,
       calculate(category.key, {
         value: previous,
         previous: () => null,
         offerRows: previousOfferRows,
+        clientsAtStart: previousClientsAtStart,
       }),
     );
   }
@@ -128,6 +154,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     figure,
     previousFigure,
     offerRows,
+    openingClients: openingFigures(flow),
     byKey,
   };
 }

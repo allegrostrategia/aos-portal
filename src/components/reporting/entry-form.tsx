@@ -44,6 +44,24 @@ export interface EntryFormProps {
   offerRows?: OfferMonth[];
   initial: Record<string, number | null>;
   previous: Record<string, number | null>;
+  /**
+   * §5.8's "active clients at start", resolved on the server.
+   *
+   * The live card must agree with the report, so it needs the same figure
+   * — and four of Client Experience's figures hang off it. Null for every
+   * other category.
+   */
+  clientsAtStart?: number | null;
+  /**
+   * Whether the opening box on this screen is the one in use.
+   *
+   * True on the month that holds the earliest opening figure, and when
+   * there is none yet. Then the live card follows what is being typed; on
+   * any other month it follows the carried figure, because a second
+   * opening figure is not in use and typing one must not appear to change
+   * this month's retention.
+   */
+  openingAppliesHere?: boolean;
   /** Where "Save and next" goes, or null on the last section. */
   nextHref: string | null;
   nextLabel: string | null;
@@ -73,8 +91,18 @@ export function EntryForm(props: EntryFormProps) {
         // Offers are set on their own screen, so they do not change as you
         // type here — but Financials is worked out from them.
         offerRows: props.offerRows,
+        clientsAtStart: props.openingAppliesHere
+          ? fromInputValue(values.client_experience_clients_at_start_opening ?? "")
+          : (props.clientsAtStart ?? null),
       }),
-    [props.category, props.previous, props.offerRows, values],
+    [
+      props.category,
+      props.previous,
+      props.offerRows,
+      props.clientsAtStart,
+      props.openingAppliesHere,
+      values,
+    ],
   );
 
   const set = (key: string, raw: string) =>
