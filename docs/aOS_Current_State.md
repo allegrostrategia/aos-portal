@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 5 October 2026
 
-**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 5 Oct: **385 unit / 289 + 84 schema / 233 action**, build, typecheck and lint clean. **Nothing is local only.** `main` is pushed and deployed; §8's three pieces went out in `29b49fe` and Dom walked them through on live.
+**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 5 Oct: **395 unit / 289 + 84 schema / 242 action**, build, typecheck and lint clean. **Nothing is local only.** `main` is pushed and deployed to `7c10ea8`: §8's three pieces, the contact-name field, and **Stage 3's first release, the five single-month charts**.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -42,12 +42,11 @@ a real month, and none of them can be finished before launch.
       the same gap the recap email had until she rewrote it on 23 September.
 - [ ] **The September draw prize still reads "test".** It needs a real prize
       before a real month's draw runs.
-- [ ] **A reporting client's display name has no admin screen.** Test Client's
-      client grant is called "Nina" — which is why that login's own replies
-      appear signed "Nina" on live. Harmless on a test account, wrong in front
-      of a client, and today only fixable in the database: the edit form on
-      `/admin/reporting` covers business name, currency and first month, not
-      the grant. Found 5 Oct by the final Stage 2 check.
+- [x] ~~A reporting client's display name has no admin screen.~~ **Fixed
+      5 Oct** (`cfc1b2d`): "Client contact's name" is on the Edit details
+      form. Test Client's contact still reads "Nina" in the live data until
+      somebody changes it, which is now a thirty-second job rather than a
+      database edit.
 
 ## What's genuinely built and live
 - **Infrastructure:** Supabase, GitHub, Vercel, all connected, `aos.allegrostrategia.com` live.
@@ -184,6 +183,65 @@ Run on Dom's instruction under hard limits: nothing pushed, no migration applied
 - **Stage 3** — the four remaining categories, targets, the benchmarks admin, traffic lights, "Look at these first", and all twelve charts §5 asks for. One small migration. Includes a scoped **"charts first"** option: five of the twelve work on a single month of figures and need no database change, so they could ship straight after Stage 2.
 
 **One thing that had been wrong since the first document.** A doc byline of "Prepared by [me]" resolves to the account holder, which is Nina's account — so the migration review she approved on 30 September reads "Prepared by Nina for Nina". Fixed in both current plans; the approved document was left alone deliberately.
+
+### 5 October — STAGE 3 BEGINS: the five single-month charts (`e6633d4`, `7c10ea8`)
+
+Approved as a release of its own ahead of the rest of Stage 3, because
+these five need only one month of figures. Leads by source on the Overview
+and on Leads, share of revenue by offer, effective hourly rate by offer with
+the target line, and the cost breakdown on Financials. Plain SVG,
+server-rendered, no charting library.
+
+**The rule that holds them together: no chart does its own arithmetic.**
+Every value comes from the formula module through `calculate()` and
+`calculateOffer()`, so a chart and the card beside it cannot disagree. Dom's
+condition, set after correcting the hourly rate from revenue ÷ hours to
+**(revenue − other direct costs) ÷ hours** (§5.9). There is a test for the
+case where the two differ — an offer with other direct costs entered gives
+£125, where the wrong formula would have drawn £150.
+
+**The palette was computed before anything was drawn with it, and two pairs
+failed.** This is the finding worth keeping:
+
+- **blush/lemon separate by 0.5 under simulated protanopia** — which is to
+  say not at all — and by 13.1 under normal vision, below the floor for
+  full-colour readers too.
+- **gold/blush** fails that normal-vision floor as well, at 13.8.
+
+Both would have looked perfectly pleasant on screen to whoever drew them.
+**The series order is navy, orange, gold, sky, charcoal**, where every pair
+clears the thresholds and the worst is 15.3. Blush and lemon stay
+decorative; they are not series colours. `scripts/check-chart-palette.mjs`
+is what says so — run it before adding one, and read the numbers rather
+than the colours. `--aos-charcoal` is now declared, having been in
+CLAUDE.md's palette and never in the CSS.
+
+**Only navy and charcoal clear 3:1 against the cream card** (orange 2.63,
+gold 1.27, sky 1.44), so every fill carries a 2px cream separator and a
+hairline ink edge, and every donut carries a legend with the value beside
+each name. That obligation is not optional and colour alone does not meet
+it.
+
+**Two faults found by looking at the renders, not the code.** Slices were
+coloured by position *after* sorting by size, so an offer that overtook
+another would have changed colour between two months — colour follows the
+entity, never its rank, which the plan said and the first code did not do.
+And rounded shares came to 101%; largest-remainder now, so they sum to 100.
+
+**The target hourly rate joins the admin edit form**, because nothing had
+ever set `target_hourly_rate` and §5.9's dashed line could therefore never
+appear on anybody's chart. The feature was unreachable rather than missing.
+
+**The client's Overview no longer leaves a third of itself empty.** "Still
+to fill in" and the publish card are an editor's, so a client's right-hand
+column rendered nothing. The chart moved into it rather than the prose
+stretching across — a note card at 1300px is a worse read than one at 850.
+On a phone the chart sits with the KPI strip, because stacked it had been
+landing after the reply box, inviting a comment on figures the client had
+not been shown.
+
+Everything rendered at 1440 and 390 through CDP device emulation and looked
+at. No horizontal overflow at either width.
 
 ### Stage 2's closing check, 5 October — as the client, on live
 
@@ -1010,6 +1068,8 @@ the policies are the control, and they hold whoever reads them.
 - **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
 - **Do not infer a deployment from content fingerprints.** A server-action id, a build id or a static file's `last-modified` will not tell you whether a push went out: ids are not comparable between a local build and Vercel's, and Vercel reuses an unchanged file's blob and mtime. Read the Vercel dashboard, or probe a behaviour only the new code has. Claude called a healthy deploy stalled for an hour this way on 5 Oct.
 - **A failing probe is a claim about the probe until it has been read.** Two false negatives on 5 Oct came from the probe, not the system: a fingerprint sampled after the event it was meant to detect, and a `like '%before insert or update%'` run against DDL Postgres prints in capitals.
+- **Compute a palette, never look at it.** Two of the brand's six colours cannot be told apart by a protanope (blush/lemon, 0.5 separation) and two more fail the floor for full-colour readers. Both pairs look fine on screen. `scripts/check-chart-palette.mjs` prints the numbers; run it before adding a series colour, and remember a low-contrast fill owes the reader an edge and a labelled legend.
+- **Colour follows the entity, never its rank.** Sorting slices by size and then colouring them by position means a thing changes colour the month it overtakes another. Take the colour from a stable key and sort only what the reader reads.
 - **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
 - **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
 - **When a test disagrees with live, suspect the harness as readily as the code.** The PGlite shim diverged from PostgREST three separate ways in one afternoon — a types-only method it didn't have, a foreign key it guessed from a table name, and an upsert default it got wrong — and every one of them made correct code look broken. Fix the harness; it is supposed to bend, not the app.
@@ -1028,8 +1088,9 @@ the policies are the control, and they hold whoever reads them.
 
 1. The §8 walkthrough on localhost (see that section), then the real send
    on live after the push.
-2. Nothing else. `eb556e3` is deployed and current in Production, so the
-   two 5 October fixes are live.
+2. **Approve the Stage 3 plan for the four remaining tabs** (Trial Reels,
+   Funnels, Ads, Client Experience), and the §5.8 opening-figure migration
+   SQL before it is applied.
 
 **The next piece of building is Stage 3** (§11.3): Funnels, Ads, Client Experience and Trial Reels; targets, the benchmarks admin, traffic lights, and the "Look at these first" panel. Nothing blocks starting it, but Stage 2 should be walked through on real data first — the brief sequences the stages that way on purpose, so the entry-to-publish path is proved on real figures before more surface is added on top.
 
