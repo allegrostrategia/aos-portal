@@ -136,14 +136,30 @@ export const CATEGORIES: Category[] = [
   },
 ];
 
+/** What production ships. Raised deliberately, by hand, in one place. */
+const PRODUCTION_STAGE = 2;
+
 /**
  * The stage this build has shipped.
  *
  * A tab is drawn only for a category that has a page behind it — §13: "Every
- * clickable card, tab or button has exactly one route in." Raising this number
- * is what turns the remaining tabs on, in one place, when their pages land.
+ * clickable card, tab or button has exactly one route in." Raising
+ * `PRODUCTION_STAGE` is what turns the remaining tabs on, when their pages
+ * land and Nina has seen them.
+ *
+ * **A development server can look ahead, and nothing else can.** Stage 3's
+ * tabs have no route until that number moves, so there is no way to check a
+ * finished one on localhost without either shipping it to every client or
+ * this. `NEXT_PUBLIC_REPORTING_STAGE=3 npm run dev` shows them; the guard
+ * below is `NODE_ENV`, which `next build` sets to production and no
+ * environment variable can talk it out of. Setting the variable in Vercel
+ * does nothing at all, which is the point — an unfinished tab in front of a
+ * real client is exactly the failure this is meant to avoid.
  */
-export const SHIPPED_STAGE = 2;
+export const SHIPPED_STAGE: 2 | 3 | 4 =
+  process.env.NODE_ENV === "development"
+    ? (Number(process.env.NEXT_PUBLIC_REPORTING_STAGE) as 2 | 3 | 4) || PRODUCTION_STAGE
+    : PRODUCTION_STAGE;
 
 export const SHIPPED_CATEGORIES = CATEGORIES.filter((c) => c.stage <= SHIPPED_STAGE);
 
