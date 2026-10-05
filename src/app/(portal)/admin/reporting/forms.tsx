@@ -124,6 +124,7 @@ export function EditWorkspaceForm({
   businessName,
   currency,
   firstMonth,
+  targetHourlyRate,
   contactName,
 }: {
   workspaceId: string;
@@ -131,6 +132,8 @@ export function EditWorkspaceForm({
   currency: string;
   /** `YYYY-MM-DD`; the input wants `YYYY-MM`. */
   firstMonth: string;
+  /** What an hour of their delivery ought to earn (§5.9). Null if unset. */
+  targetHourlyRate: number | null;
   /**
    * The client contact's display name, or null when no client login exists
    * yet. Null means the field is not rendered at all, so the action knows
@@ -158,6 +161,13 @@ export function EditWorkspaceForm({
           hint="The earliest month the picker will offer."
         />
       </div>
+      <Field
+        label="Target hourly rate"
+        name="target_hourly_rate"
+        type="number"
+        defaultValue={targetHourlyRate === null ? "" : String(targetHourlyRate)}
+        hint="Drawn as the dashed line on their effective hourly rate chart. Leave blank for none."
+      />
       {contactName === null ? null : (
         <Field
           label="Client contact's name"

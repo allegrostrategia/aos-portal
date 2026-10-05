@@ -32,6 +32,13 @@
   --aos-card: #f9f2e6;
   --aos-ink: #0a1e4a;
 
+  /* CLAUDE.md's palette names charcoal for the dark feature card. It had
+     never been declared — that card uses navy — and it is declared now
+     because the charts need a fifth series colour and this is the one the
+     brand already has. Added 5 Oct 2026; run
+     scripts/check-chart-palette.mjs before adding a sixth. */
+  --aos-charcoal: #1b1920;
+
   /* Map-only. The palette has no deep red; this one is picked to sit with the
      terracotta roofs in the La Strada artwork rather than fight them, and is
      used for the Profit line and nothing else. */
@@ -71,6 +78,7 @@
   --color-cream-deep: var(--aos-cream-deep);
   --color-card: var(--aos-card);
   --color-ink: var(--aos-ink);
+  --color-charcoal: var(--aos-charcoal);
 
   /* Card corners are generous in the reference; pills are fully round. */
   --radius-card: 1.25rem;

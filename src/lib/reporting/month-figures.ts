@@ -1,7 +1,7 @@
 import "server-only";
 
 import { CATEGORIES, type CategoryKey } from "./categories.ts";
-import { calculate, calculateOffer, entityAwareLookup, type Lookup } from "./calculate.ts";
+import { calculate, entityAwareLookup, offerResults, type Lookup } from "./calculate.ts";
 import type { OfferMonth } from "./formulas.ts";
 import { getMetrics, getMonthData, type MonthData, type ReportMetric } from "./queries.ts";
 import type { ReportContext } from "./context.ts";
@@ -134,11 +134,10 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
 
 /** Each offer with its own worked-out figures, for the Offers screen. */
 export function offerBreakdown(figures: MonthFigures) {
-  const total = figures.results.offers_total_revenue_from_offers ?? null;
-  return figures.offerRows.map((offer) => ({
-    offer,
-    results: calculateOffer(offer, total),
-  }));
+  return offerResults(
+    figures.offerRows,
+    figures.results.offers_total_revenue_from_offers ?? null,
+  );
 }
 
 /**

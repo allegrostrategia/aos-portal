@@ -5,6 +5,8 @@ import { KpiCard } from "@/components/reporting/kpi-card";
 import { PublishControl, StrategistNotes } from "@/components/reporting/notes";
 import { Objectives } from "@/components/reporting/objectives";
 import { ClientReplies } from "@/components/reporting/replies";
+import { BarChart } from "@/components/reporting/charts/bar-chart";
+import { leadsBySource } from "@/lib/reporting/chart-data";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { ENTRY_CATEGORIES, categoryByKey } from "@/lib/reporting/categories";
@@ -57,6 +59,11 @@ export default async function ReportingOverviewPage({
     !ctx.canEdit && ctx.workspace.kind === "retainer" && ctx.monthPublished;
 
   const period = figures.data.period ?? null;
+
+  // §5.1's own chart. Drawn from the figures, never from its own sums.
+  const leads = ctx.workspace.hidden_categories.includes("leads_conversions")
+    ? []
+    : leadsBySource(figures);
 
   const anyFigures = figures.data.values.size > 0;
 
@@ -123,6 +130,13 @@ export default async function ReportingOverviewPage({
           })}
         </div>
       </section>
+
+      {ctx.monthPublished && leads.length > 0 ? (
+        <Card className="mt-8">
+          <SectionTitle aside={ctx.month.label}>Where the leads came from</SectionTitle>
+          <BarChart data={leads} caption="New leads this month, by source." />
+        </Card>
+      ) : null}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-6">

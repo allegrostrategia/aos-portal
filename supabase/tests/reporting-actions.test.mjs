@@ -745,3 +745,44 @@ test("a grant write that fails is reported, not swallowed", async () => {
      where workspace_id = '${WS}' and role = 'client'`);
   assert.equal(client.display_name, "Isabella Rossi-Verdi", "unchanged");
 });
+
+test("the target hourly rate can be set, and cleared", async () => {
+  // Nothing set this column until 5 October, so §5.9's dashed line could
+  // never appear on anybody's chart — the feature was unreachable rather
+  // than missing.
+  await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching Ltd",
+      currency: "GBP", first_month: "2026-07", target_hourly_rate: "150",
+    })),
+  );
+  const [set] = await rows(NINA,
+    `select target_hourly_rate::float r from public.report_workspaces where id = '${WS}'`);
+  assert.equal(set.r, 150);
+
+  await as(NINA, () =>
+    saveWorkspaceSettings(null, form({
+      workspace_id: WS, business_name: "Bella Rossi Coaching Ltd",
+      currency: "GBP", first_month: "2026-07", target_hourly_rate: "",
+    })),
+  );
+  const [cleared] = await rows(NINA,
+    `select target_hourly_rate r from public.report_workspaces where id = '${WS}'`);
+  assert.equal(cleared.r, null, "blank means none, not zero");
+});
+
+test("a nonsense target rate is refused and nothing else saves either", async () => {
+  for (const bad of ["nope", "-20", "0"]) {
+    const result = await as(NINA, () =>
+      saveWorkspaceSettings(null, form({
+        workspace_id: WS, business_name: "Renamed By A Bad Rate",
+        currency: "GBP", first_month: "2026-07", target_hourly_rate: bad,
+      })),
+    );
+    assert.match(result?.error ?? "", /above zero/, `${bad} is refused`);
+  }
+
+  const [ws] = await rows(NINA,
+    `select business_name from public.report_workspaces where id = '${WS}'`);
+  assert.equal(ws.business_name, "Bella Rossi Coaching Ltd", "the refusal stopped the whole save");
+});

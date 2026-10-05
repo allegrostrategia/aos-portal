@@ -215,6 +215,10 @@ export async function saveWorkspaceSettings(
   // Absent when the workspace has no client login yet, in which case the
   // field is not rendered and there is no name to correct.
   const contactNameRaw = formData.get("contact_name");
+  // Blank clears it. §5.9's dashed line on the hourly-rate chart is the
+  // only thing that reads it, and until 5 October nothing could set it at
+  // all — so the line could never appear on anybody's report.
+  const targetRateRaw = String(formData.get("target_hourly_rate") ?? "").trim();
   const contactName =
     contactNameRaw === null ? null : String(contactNameRaw).trim();
 
@@ -227,6 +231,15 @@ export async function saveWorkspaceSettings(
   if (!businessName) return { error: "A client needs a business name." };
   if (!/^[A-Z]{3}$/.test(currency)) {
     return { error: "Currency should be a three-letter code, like GBP." };
+  }
+
+  let targetHourlyRate: number | null = null;
+  if (targetRateRaw !== "") {
+    const parsed = Number(targetRateRaw);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return { error: "A target hourly rate should be a number above zero, or blank." };
+    }
+    targetHourlyRate = parsed;
   }
 
   const match = /^(\d{4})-(\d{2})/.exec(firstMonthRaw);
@@ -284,7 +297,12 @@ export async function saveWorkspaceSettings(
 
   const { data: updated, error } = await supabase
     .from("report_workspaces")
-    .update({ business_name: businessName, currency, first_month: firstMonth })
+    .update({
+      business_name: businessName,
+      currency,
+      first_month: firstMonth,
+      target_hourly_rate: targetHourlyRate,
+    })
     .eq("id", workspaceId)
     .select("id");
 

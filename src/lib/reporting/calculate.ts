@@ -308,6 +308,21 @@ export function calculateOffer(
 }
 
 /**
+ * Every offer with its own worked-out figures.
+ *
+ * Takes the rows and the total rather than a `MonthFigures`, so it stays in
+ * the pure layer: a screen, a chart and a test can all call it without
+ * pulling in the Supabase client. `offerBreakdown` in month-figures.ts is
+ * this with the two arguments read off the figures.
+ */
+export function offerResults(
+  offerRows: OfferMonth[],
+  totalRevenue: Figure,
+): { offer: OfferMonth; results: CalcResults }[] {
+  return offerRows.map((offer) => ({ offer, results: calculateOffer(offer, totalRevenue) }));
+}
+
+/**
  * A lookup that knows where a metric's figures actually live.
  *
  * Most figures hang off the month. Social Media's hang off a platform, which

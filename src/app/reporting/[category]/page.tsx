@@ -12,6 +12,14 @@ import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { monthLabel } from "@/lib/reporting/months";
+import { BarChart } from "@/components/reporting/charts/bar-chart";
+import { DonutChart } from "@/components/reporting/charts/donut-chart";
+import {
+  costBreakdown,
+  hourlyRateByOffer,
+  leadsBySource,
+  revenueByOffer,
+} from "@/lib/reporting/chart-data";
 
 export const metadata: Metadata = {
   title: "Monthly Report — aOS",
@@ -132,8 +140,72 @@ export default async function CategoryReportPage({
             ))}
           </div>
 
+          {category.key === "leads_conversions" ? (
+            <Card className="mt-6">
+              <SectionTitle aside={ctx.month.label}>Where the leads came from</SectionTitle>
+              <BarChart
+                data={leadsBySource(figures)}
+                caption="New leads this month, by source."
+              />
+            </Card>
+          ) : null}
+
           {category.key === "offers" ? (
-            <OffersTable ctx={ctx} figures={figures} />
+            <>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <SectionTitle aside={ctx.month.label}>Share of revenue</SectionTitle>
+                  <DonutChart
+                    slices={revenueByOffer(figures, ctx.workspace.currency)}
+                    total={figures.results.offers_total_revenue_from_offers ?? null}
+                    totalDisplay={formatValue(
+                      figures.results.offers_total_revenue_from_offers ?? null,
+                      "currency",
+                      ctx.workspace.currency,
+                    )}
+                    totalLabel="Total"
+                    emptyMessage="No offer revenue entered for this month yet."
+                  />
+                </Card>
+                <Card>
+                  <SectionTitle aside="(revenue − other direct costs) ÷ hours">
+                    Effective hourly rate
+                  </SectionTitle>
+                  <BarChart
+                    data={hourlyRateByOffer(figures, ctx.workspace.currency)}
+                    target={ctx.workspace.target_hourly_rate}
+                    targetLabel={
+                      ctx.workspace.target_hourly_rate === null
+                        ? undefined
+                        : `Target ${formatValue(
+                            ctx.workspace.target_hourly_rate,
+                            "currency",
+                            ctx.workspace.currency,
+                          )} an hour`
+                    }
+                    caption="What an hour of each offer is actually worth. Labour cost is not deducted."
+                  />
+                </Card>
+              </div>
+              <OffersTable ctx={ctx} figures={figures} />
+            </>
+          ) : null}
+
+          {category.key === "financials" ? (
+            <Card className="mt-6">
+              <SectionTitle aside={ctx.month.label}>Where the money went</SectionTitle>
+              <DonutChart
+                slices={costBreakdown(figures, ctx.workspace.currency)}
+                total={figures.results.financials_total_costs ?? null}
+                totalDisplay={formatValue(
+                  figures.results.financials_total_costs ?? null,
+                  "currency",
+                  ctx.workspace.currency,
+                )}
+                totalLabel="Total costs"
+                emptyMessage="No costs entered for this month yet."
+              />
+            </Card>
           ) : null}
 
           {rest.length > 0 ? (
