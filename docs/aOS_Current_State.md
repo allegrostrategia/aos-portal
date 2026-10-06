@@ -35,6 +35,16 @@ a real month, and none of them can be finished before launch.
       past months entered, one published, and the client reading it. Everything
       about it is proved on Test Client (Stage 2, closed 5 Oct); what is left is
       a client to do it with.
+- [ ] **A retainer client sees dashes for Client Experience figures when an
+      earlier month in the chain is still a draft.** RLS hands them published
+      months only, so if the month holding §5.8's opening figure is not
+      published they cannot derive "active clients at start" — and a figure
+      derived from half the history would disagree with the team's screen,
+      which §9 forbids. A dash is the safe answer and the one built; it is
+      not obviously the *right* answer for a client joining mid-relationship.
+      **Decide before a real client reads a mid-relationship month.**
+      (Dom, 6 Oct. Both halves are asserted in
+      `supabase/tests/client-experience.test.mjs`.)
 - [ ] **Nina reads the publish email's wording before the first real one goes
       out.** `src/lib/reporting/publish-email.ts` holds every word of it, in one
       file, specifically so she can change it without touching a screen. The

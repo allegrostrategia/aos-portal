@@ -9,6 +9,7 @@ import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
 import { getClientFlow, getMetricsFor, getMonthData } from "@/lib/reporting/queries";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
+import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
 import { Card, SectionTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -107,7 +108,13 @@ export default async function EnterCategoryPage({
     );
   }
 
-  const core = metrics.filter((m) => m.input_type === "core");
+  // §5.8's opening figure is typed once, so its box appears on one month
+  // and not on the other eleven — Dom, 6 Oct: "I don't want Nina prompted
+  // in the wrong month." It is a `core` metric, so without this the generic
+  // form would render it on every screen.
+  const core = metrics
+    .filter((m) => m.input_type === "core")
+    .filter((m) => m.key !== OPENING_KEY || (note?.field ?? false));
   const optional = metrics.filter((m) => m.input_type === "optional");
   // Pulled metrics belong on the card too. "Revenue from offers" is the
   // figure the whole Financials page is built on, and leaving it off meant
@@ -152,11 +159,18 @@ export default async function EnterCategoryPage({
       : [];
   const opening = openingFigures(flow);
   const clientsAtStart = activeClientsAtStart(flow, ctx.month.month) ?? null;
-  // The box on this screen is the one in use when it holds the earliest
-  // opening figure — or when there is no opening figure anywhere yet, which
-  // is the case the very first time somebody fills this in.
-  const openingAppliesHere =
-    opening.inUse === null || opening.inUse.month === ctx.month.month;
+  const note =
+    category.key === "client_experience"
+      ? openingNote({
+          ...opening,
+          thisMonth: ctx.month.month,
+          firstMonth: ctx.workspace.first_month,
+          carried: clientsAtStart,
+        })
+      : null;
+  // What is typed here is the figure in use only on the month that holds it
+  // — or on the month about to hold it, when there is none yet.
+  const openingAppliesHere = note?.kind === "ask" || note?.kind === "in_use";
 
   // "Save & next section" walks the entry categories in tab order.
   const order = ENTRY_CATEGORIES.filter(
@@ -180,13 +194,7 @@ export default async function EnterCategoryPage({
         />
       }
     >
-      {category.key === "client_experience" ? (
-        <OpeningFigureNote
-          opening={opening}
-          thisMonth={ctx.month.month}
-          carried={clientsAtStart}
-        />
-      ) : null}
+      {note ? <OpeningFigureNote note={note} /> : null}
 
       <EntryForm
         offerRows={offerRowsForEntry}
@@ -214,80 +222,82 @@ export default async function EnterCategoryPage({
   );
 }
 
+const OPENING_KEY = "client_experience_clients_at_start_opening";
+
 /**
  * Which opening figure is in use, said out loud.
  *
  * §5.8's figure is typed once and carried forward, so on every month but
- * one the box on this screen is not the figure doing the work. Saying
- * nothing would leave somebody typing into a field that changes nothing —
- * and Dom's condition (5 Oct) is that a second one is marked as not in use
- * rather than silently ignored.
+ * one the box is not the figure doing the work — and on those months there
+ * is no box at all. Every word below comes from `openingNote()`, which is
+ * tested: the wording is the part that can be wrong without anybody
+ * noticing, and reading my own component was not evidence that it was
+ * right (Dom spotted it backwards in a handover note, 6 Oct).
  */
-function OpeningFigureNote({
-  opening,
-  thisMonth,
-  carried,
-}: {
-  opening: ReturnType<typeof openingFigures>;
-  thisMonth: string;
-  carried: number | null;
-}) {
-  const { inUse, unused } = opening;
-  const strayHere = unused.find((u) => u.month === thisMonth);
-
-  if (!inUse) {
+function OpeningFigureNote({ note }: { note: OpeningNote }) {
+  if (note.kind === "ask") {
     return (
       <Card className="mb-6">
         <SectionTitle>Start with the opening figure</SectionTitle>
         <p className="text-body text-ink/70">
-          &ldquo;Clients at the start, when you joined&rdquo; is typed once.
-          Every month after this one carries on from the month before, so
-          retention, churn and the rest stay dashes until it is filled in.
+          &ldquo;Clients at the start, when you joined&rdquo; is typed once, on
+          this month. Every month after it carries on from the month before,
+          so retention, churn and the rest stay dashes until it is filled in.
         </p>
       </Card>
     );
   }
 
-  const inUseHere = inUse.month === thisMonth;
+  if (note.kind === "ask_elsewhere") {
+    return (
+      <Card className="mb-6">
+        <SectionTitle>The opening figure goes on {monthLabel(note.belongsOn)}</SectionTitle>
+        <p className="text-body text-ink/70">
+          It is typed once, on the first month of this client&rsquo;s reporting,
+          and carried forward from there. Until it is set, retention, churn and
+          active clients stay dashes on every month.
+        </p>
+      </Card>
+    );
+  }
+
+  if (note.kind === "in_use") {
+    return (
+      <Card className="mb-6">
+        <SectionTitle>This is the opening figure</SectionTitle>
+        <p className="text-body text-ink/70">
+          <span className="font-mono">{note.value}</span> clients at the start,
+          set on this month. Every later month carries on from here.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mb-6">
-      <SectionTitle>
-        {inUseHere ? "This is the opening figure" : "Carried from earlier"}
-      </SectionTitle>
+      <SectionTitle>Carried from earlier</SectionTitle>
       <p className="text-body text-ink/70">
-        {inUseHere ? (
-          <>
-            <span className="font-mono">{inUse.value}</span> clients at the start,
-            from {monthLabel(inUse.month)}. Every later month carries on from
-            here.
-          </>
-        ) : (
-          <>
-            The opening figure is{" "}
-            <span className="font-mono">{inUse.value}</span>, set on{" "}
-            {monthLabel(inUse.month)}. This month starts with{" "}
-            <span className="font-mono">{carried ?? "—"}</span>, carried forward
-            from the months in between.
-          </>
-        )}
+        The opening figure is <span className="font-mono">{note.value}</span>,
+        set on {monthLabel(note.from)}. This month starts with{" "}
+        <span className="font-mono">{note.carried ?? "—"}</span>, carried
+        forward from the months in between.
       </p>
 
-      {strayHere ? (
+      {note.stray ? (
         <p className="mt-3 text-small text-deep-red">
           There is also an opening figure of{" "}
-          <span className="font-mono">{strayHere.value}</span> stored on this
+          <span className="font-mono">{note.stray.value}</span> stored on this
           month. <strong>It is not in use</strong> — the earliest one is, and
-          that is {monthLabel(inUse.month)}. Clear it, or clear the other, so
-          there is only one.
+          that is {monthLabel(note.from)}. Clear the box below, or clear the
+          one on {monthLabel(note.from)}, so there is only one.
         </p>
       ) : null}
 
-      {!inUseHere && unused.length > 0 && !strayHere ? (
+      {note.otherStrays.length > 0 ? (
         <p className="mt-3 text-small text-deep-red">
-          {unused.length === 1
-            ? `There is another opening figure on ${monthLabel(unused[0].month)}, and it is not in use.`
-            : `There are ${unused.length} other opening figures stored, and none of them is in use.`}
+          {note.otherStrays.length === 1
+            ? `There is another opening figure on ${monthLabel(note.otherStrays[0].month)}, and it is not in use.`
+            : `There are ${note.otherStrays.length} other opening figures stored, and none of them is in use.`}
         </p>
       ) : null}
     </Card>
