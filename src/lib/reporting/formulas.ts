@@ -300,10 +300,23 @@ export type CampaignGoal = "leads" | "sales" | "profile_visits" | "traffic" | "a
 
 export interface AdCampaign {
   name: string;
-  goal: CampaignGoal;
+  /**
+   * **Null is a real state, not a missing value to guess at.**
+   *
+   * The goal decides whether a campaign's spend counts towards cost per
+   * lead, and a campaign nobody has classified is left out of it rather
+   * than counted by default (Nina via Dom, 5 October). Counting it would
+   * quietly flatter or wreck the headline figure depending on what the
+   * campaign turned out to be for; leaving it out and saying so on the
+   * entry screen puts the decision where it belongs.
+   */
+  goal: CampaignGoal | null;
   spend: Figure;
+  impressions?: Figure;
+  linkClicks?: Figure;
   leads?: Figure;
   purchases?: Figure;
+  revenue?: Figure;
 }
 
 export const ads = {
@@ -347,6 +360,28 @@ export const ads = {
 
   costPerLeadFromLeadCampaigns: (campaigns: AdCampaign[], leadCount: Figure): Result =>
     divide(ads.leadGoalSpend(campaigns), leadCount),
+
+  /**
+   * The month's account-level figures, summed across campaigns.
+   *
+   * **Reach is not here, and that is deliberate.** §10.2: "Do not sum
+   * across campaigns" — the same overlap problem as post reach, where one
+   * person seeing three campaigns is counted three times. It stays a
+   * per-campaign figure, typed from the account-level export if anybody
+   * wants a total.
+   */
+  totals: (campaigns: AdCampaign[]) => ({
+    spend: sum(...campaigns.map((c) => c.spend)),
+    impressions: sum(...campaigns.map((c) => c.impressions)),
+    linkClicks: sum(...campaigns.map((c) => c.linkClicks)),
+    leads: sum(...campaigns.map((c) => c.leads)),
+    purchases: sum(...campaigns.map((c) => c.purchases)),
+    revenue: sum(...campaigns.map((c) => c.revenue)),
+  }),
+
+  /** Campaigns nobody has given a goal, which the entry screen flags. */
+  withoutGoal: (campaigns: AdCampaign[]): AdCampaign[] =>
+    campaigns.filter((c) => c.goal === null || c.goal === undefined),
 };
 
 // ---------------------------------------------------------------------------

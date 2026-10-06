@@ -192,6 +192,41 @@ export async function seed({ quiet = false } = {}) {
     values ('${retainerId}', '${MONTHS.sep}');
   `);
 
+  // Ads (§5.7): the §10.2 sample's shape — lead campaigns, a sales one,
+  // a profile-visit one, and one nobody has classified, which is the
+  // case the whole cost-per-lead rule turns on.
+  const campaign = (name, goal) =>
+    `insert into public.report_entities (workspace_id, entity_type, name, campaign_goal)
+     values ('${retainerId}', 'ad_campaign', '${name}', ${goal ? `'${goal}'` : "null"});`;
+
+  sql(`
+    ${campaign("Lead form", "leads")}
+    ${campaign("Workshop opt-in", "leads")}
+    ${campaign("Retargeting sales", "sales")}
+    ${campaign("Profile visits", "profile_visits")}
+    ${campaign("Unclassified", null)}
+  `);
+
+  const spendFor = {
+    "Lead form": { spend: 250, leads: 60, clicks: 2000, impressions: 30000 },
+    "Workshop opt-in": { spend: 150, leads: 40, clicks: 1500, impressions: 20000 },
+    "Retargeting sales": { spend: 50, leads: 0, clicks: 400, impressions: 5000 },
+    "Profile visits": { spend: 100, leads: 0, clicks: 0, impressions: 3000 },
+    Unclassified: { spend: 50, leads: 0, clicks: 300, impressions: 2000 },
+  };
+
+  for (const [name, f] of Object.entries(spendFor)) {
+    sql(`
+      insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
+      select '${retainerId}', '${MONTHS.sep}', k.key, e.id, k.value, '${ids.nina}'
+        from public.report_entities e,
+             (values ('ads_spend', ${f.spend}), ('ads_leads', ${f.leads}),
+                     ('ads_link_clicks', ${f.clicks}), ('ads_impressions', ${f.impressions}))
+               as k(key, value)
+       where e.workspace_id = '${retainerId}' and e.name = '${name}';
+    `);
+  }
+
   const out = { config, ids, retainerId, selfServeId };
   if (!quiet) {
     console.log(`seeded ${config.url}`);

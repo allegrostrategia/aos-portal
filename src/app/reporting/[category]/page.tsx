@@ -12,6 +12,8 @@ import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { monthLabel } from "@/lib/reporting/months";
+import { ads as adsFormulas } from "@/lib/reporting/formulas";
+import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import {
@@ -191,6 +193,8 @@ export default async function CategoryReportPage({
             </>
           ) : null}
 
+          {category.key === "ads" ? <CampaignTable ctx={ctx} figures={figures} /> : null}
+
           {category.key === "financials" ? (
             <Card className="mt-6">
               <SectionTitle aside={ctx.month.label}>Where the money went</SectionTitle>
@@ -315,6 +319,109 @@ function OffersTable({
           </tbody>
         </table>
       </div>
+    </Card>
+  );
+}
+
+/**
+ * Each campaign this month, and the totals under them (§5.7).
+ *
+ * The totals row is the point of the table as much as the rows are: spend
+ * and leads are sums, and **cost per lead is not** — it counts lead and
+ * sales campaigns only, so a reader who divides the two columns in their
+ * head gets a different number. The footnote says which, rather than
+ * leaving somebody to wonder whether the arithmetic is broken.
+ *
+ * Reach is shown per campaign and deliberately not summed (§10.2: the same
+ * overlap problem as post reach — one person seeing three campaigns is
+ * three rows and one human being).
+ */
+function CampaignTable({
+  ctx,
+  figures,
+}: {
+  ctx: Awaited<ReturnType<typeof resolveReportContext>>;
+  figures: Awaited<ReturnType<typeof getMonthFigures>>;
+}) {
+  const rows = figures.campaignRows;
+  if (rows.length === 0) return null;
+
+  const currency = ctx.workspace.currency;
+  const totals = adsFormulas.totals(rows);
+  const unset = rows.filter((row) => row.goal === null);
+
+  return (
+    <Card className="mt-6" padded={false}>
+      <div className="p-5 sm:p-6">
+        <SectionTitle>Each campaign this month</SectionTitle>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[44rem] text-left">
+          <thead>
+            <tr className="border-y border-ink/8 text-caption text-ink/55 uppercase">
+              <th scope="col" className="px-5 py-2.5 font-medium sm:px-6">Campaign</th>
+              <th scope="col" className="px-3 py-2.5 font-medium">Goal</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Spend</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Clicks</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Leads</th>
+              <th scope="col" className="px-5 py-2.5 text-right font-medium sm:px-6">Reach</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} className="border-b border-ink/8 last:border-0">
+                <th scope="row" className="px-5 py-3 text-body font-medium text-ink sm:px-6">
+                  {row.name}
+                </th>
+                <td className="px-3 py-3 text-small text-ink/70">
+                  {row.goal ? GOAL_LABELS[row.goal] : <span className="text-ink/45">Not set</span>}
+                </td>
+                <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  {formatValue(row.spend ?? null, "currency", currency)}
+                </td>
+                <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  {formatValue(row.linkClicks ?? null, "count")}
+                </td>
+                <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  {formatValue(row.leads ?? null, "count")}
+                </td>
+                <td className="px-5 py-3 text-right font-mono text-body text-ink sm:px-6">
+                  {formatValue(figures.data.values.get("ads_reach", row.id), "count")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-ink/15">
+              <th scope="row" className="px-5 py-3 text-body font-medium text-ink sm:px-6">
+                Total
+              </th>
+              <td />
+              <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                {formatValue(totals.spend ?? null, "currency", currency)}
+              </td>
+              <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                {formatValue(totals.linkClicks ?? null, "count")}
+              </td>
+              <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                {formatValue(totals.leads ?? null, "count")}
+              </td>
+              <td className="px-5 py-3 text-right text-caption text-ink/45 sm:px-6">
+                not summed
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="px-5 pb-5 text-caption text-ink/55 sm:px-6">
+        Cost per lead counts lead and sales campaigns only, so it is not total spend
+        divided by total leads.
+        {unset.length > 0
+          ? ` ${unset.length === 1 ? "One campaign has" : `${unset.length} campaigns have`} no goal set and ${unset.length === 1 ? "is" : "are"} not counted in it.`
+          : ""}
+        {" "}Reach is shown per campaign and not added up: the same person can be reached
+        by more than one.
+      </p>
     </Card>
   );
 }

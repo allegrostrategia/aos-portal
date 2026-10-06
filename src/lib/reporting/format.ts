@@ -41,9 +41,24 @@ export function currencySymbol(currency: string): string {
  * same reason (ROAS 2.1). Hours to one, since half an hour is a real amount
  * of time.
  */
-function decimalsFor(unit: Unit): number {
+/**
+ * How many decimal places a figure gets.
+ *
+ * Money is whole pounds — £24,650, not £24,650.00 — **except when the
+ * pennies are the figure**. Cost per click is fourteen pence and cost per
+ * lead is £4.50, and rounding those to the pound printed "£0" and "£5":
+ * the §10.2 worked example is precisely that £6.00 blended against £4.50
+ * honest, and at whole pounds the difference disappeared off the screen.
+ * Found 6 Oct by a browser test expecting £4.50 and getting £5.
+ *
+ * The rule is the magnitude, not the metric, so nothing has to remember
+ * which figures are per-unit: under a thousand and not a round number
+ * keeps its pennies.
+ */
+function decimalsFor(unit: Unit, value: number): number {
   switch (unit) {
     case "currency":
+      return Math.abs(value) < 1000 && !Number.isInteger(value) ? 2 : 0;
     case "count":
       return 0;
     case "percent":
@@ -70,7 +85,7 @@ export function formatValue(
 ): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return DASH;
 
-  const decimals = decimalsFor(unit);
+  const decimals = decimalsFor(unit, value);
   const body = value.toLocaleString("en-GB", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -81,8 +96,8 @@ export function formatValue(
       // Negative money reads better as −£400 than £-400.
       return value < 0
         ? `−${currencySymbol(currency)}${Math.abs(value).toLocaleString("en-GB", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
           })}`
         : `${currencySymbol(currency)}${body}`;
     case "percent":

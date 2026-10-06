@@ -2,7 +2,7 @@ import "server-only";
 
 import { CATEGORIES, type CategoryKey } from "./categories.ts";
 import { calculate, entityAwareLookup, offerResults, type Lookup } from "./calculate.ts";
-import type { OfferMonth } from "./formulas.ts";
+import type { AdCampaign, OfferMonth } from "./formulas.ts";
 import {
   getClientFlow,
   getMetrics,
@@ -40,6 +40,8 @@ export interface MonthFigures {
   previousFigure: (metricKey: string) => number | null;
   /** The offers, with their setup, ready for the Offers screen. */
   offerRows: OfferMonth[];
+  /** The ad campaigns, with their goals, for the Ads screen (§5.7). */
+  campaignRows: (AdCampaign & { id: string })[];
   /**
    * §5.8's opening figure: the one in use, and any others sitting unused.
    *
@@ -69,6 +71,33 @@ function offerRowsFrom(data: MonthData, values: MonthData["values"]): OfferMonth
       (row) =>
         row.unitsSold !== null || row.revenue !== null || row.hoursSpent !== null,
     );
+}
+
+/**
+ * Each campaign with its month's figures (§5.7).
+ *
+ * Every campaign set up, including the ones with nothing entered: a
+ * campaign that spent nothing this month is still a row somebody may need
+ * to give a goal to, and dropping it would hide it from the entry
+ * screen's "no goal set" warning.
+ */
+function campaignRowsFrom(
+  data: MonthData,
+  values: MonthData["values"],
+): (AdCampaign & { id: string })[] {
+  return data.entities
+    .filter((e) => e.entity_type === "ad_campaign")
+    .map((campaign) => ({
+      id: campaign.id,
+      name: campaign.name,
+      goal: campaign.campaign_goal,
+      spend: values.get("ads_spend", campaign.id),
+      impressions: values.get("ads_impressions", campaign.id),
+      linkClicks: values.get("ads_link_clicks", campaign.id),
+      leads: values.get("ads_leads", campaign.id),
+      purchases: values.get("ads_purchases", campaign.id),
+      revenue: values.get("ads_revenue_from_ads", campaign.id),
+    }));
 }
 
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
@@ -113,6 +142,8 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   // nothing to compare against, and the Overview said "No month to
   // compare" on a month whose predecessor was full of figures.
   const previousOfferRows = offerRowsFrom(data, data.previous);
+  const campaignRows = campaignRowsFrom(data, data.values);
+  const previousCampaignRows = campaignRowsFrom(data, data.previous);
 
   // Every category, so the Overview can read a figure from any of them.
   // `previous` for the previous month's own calculations is the month before
@@ -125,7 +156,13 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   for (const category of CATEGORIES) {
     Object.assign(
       results,
-      calculate(category.key, { value, previous, offerRows, clientsAtStart }),
+      calculate(category.key, {
+        value,
+        previous,
+        offerRows,
+        adCampaigns: campaignRows,
+        clientsAtStart,
+      }),
     );
     Object.assign(
       previousResults,
@@ -133,6 +170,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         value: previous,
         previous: () => null,
         offerRows: previousOfferRows,
+        adCampaigns: previousCampaignRows,
         clientsAtStart: previousClientsAtStart,
       }),
     );
@@ -154,6 +192,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     figure,
     previousFigure,
     offerRows,
+    campaignRows,
     openingClients: openingFigures(flow),
     byKey,
   };

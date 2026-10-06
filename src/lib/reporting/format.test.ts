@@ -101,3 +101,18 @@ test("a pasted number survives its thousands separators", () => {
 test("nonsense in a number box is not entered rather than NaN", () => {
   assert.equal(fromInputValue("about a thousand"), null);
 });
+
+test("money keeps its pennies when the pennies are the figure", () => {
+  // Cost per lead and cost per click are small money, and at whole pounds
+  // £4.50 printed "£5" and 14p printed "£0" — which erased the §10.2
+  // worked example (£6.00 blended against £4.50 honest) from the screen.
+  assert.equal(formatValue(4.5, "currency"), "£4.50");
+  assert.equal(formatValue(0.142857, "currency"), "£0.14");
+  assert.equal(formatValue(-4.5, "currency"), "−£4.50");
+
+  // Big money stays round: nobody wants £24,650.00 on a report.
+  assert.equal(formatValue(24650, "currency"), "£24,650");
+  assert.equal(formatValue(24650.37, "currency"), "£24,650");
+  assert.equal(formatValue(6, "currency"), "£6");
+  assert.equal(formatValue(0, "currency"), "£0", "a genuine nothing is still £0");
+});

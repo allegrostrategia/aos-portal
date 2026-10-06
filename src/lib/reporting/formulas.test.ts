@@ -228,6 +228,40 @@ test("5.7 ads", () => {
   near(ads.roas(1500, 600), 2.5);
 });
 
+test("5.7 / 10.2 reach is never summed across campaigns", () => {
+  // §10.2: the same overlap problem as post reach — one person reached by
+  // three campaigns is three rows and one human being. A total would be
+  // wrong in a way nobody could spot by looking at it, so there isn't one.
+  const totals = ads.totals([
+    { name: "A", goal: "leads" as const, spend: 100, leads: 10 },
+    { name: "B", goal: "leads" as const, spend: 50, leads: 5 },
+  ]);
+
+  assert.ok(!("reach" in totals), "ads.totals must not offer a summed reach");
+  assert.deepEqual(Object.keys(totals).sort(), [
+    "impressions",
+    "leads",
+    "linkClicks",
+    "purchases",
+    "revenue",
+    "spend",
+  ]);
+});
+
+test("5.7 a campaign with no goal is left out, and is not an error", () => {
+  const campaigns = [
+    { name: "Lead form", goal: "leads" as const, spend: 250 },
+    { name: "Unclassified", goal: null, spend: 350 },
+  ];
+
+  assert.equal(ads.leadGoalSpend(campaigns), 250, "the goalless 350 is not counted");
+  assert.deepEqual(
+    ads.withoutGoal(campaigns).map((c) => c.name),
+    ["Unclassified"],
+    "and it is named, so the screen can say so",
+  );
+});
+
 test("5.7 / 10.2 cost per lead ignores awareness spend", () => {
   // The worked case in §10.2, and the whole reason campaign_goal exists:
   // blended over all spend it is £6.00, but £150 went on two profile-visit

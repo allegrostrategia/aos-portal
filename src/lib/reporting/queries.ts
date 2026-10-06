@@ -4,6 +4,7 @@ import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { CategoryKey } from "./categories.ts";
+import type { CampaignGoal } from "./formulas.ts";
 import type { MonthFlow } from "./client-flow.ts";
 
 /**
@@ -61,7 +62,8 @@ export interface ReportEntity {
   pricing_model: "one_off" | "recurring" | null;
   hourly_cost: number | null;
   linked_offer_id: string | null;
-  campaign_goal: string | null;
+  /** §5.7's goal. Null until somebody sets one, which is a real state. */
+  campaign_goal: CampaignGoal | null;
 }
 
 export interface ReportNote {

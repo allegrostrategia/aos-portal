@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { EntryForm } from "@/components/reporting/entry-form";
 import { OffersEntry } from "@/components/reporting/offers-entry";
+import { CampaignsEntry } from "@/components/reporting/campaigns-entry";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
@@ -133,6 +134,56 @@ export default async function EnterCategoryPage({
   // and not on the other eleven — Dom, 6 Oct: "I don't want Nina prompted
   // in the wrong month." It is a `core` metric, so without this the generic
   // form would render it on every screen.
+  // Ads hangs off a campaign the way Offers hangs off an offer (§5.7), so
+  // it gets its own screen for the same reason: the generic form writes
+  // one figure per metric per month and would merge nine campaigns into
+  // one set of totals.
+  if (category.key === "ads") {
+    const campaigns = data.entities.filter((e) => e.entity_type === "ad_campaign");
+    const CAMPAIGN_KEYS = [
+      "ads_spend",
+      "ads_impressions",
+      "ads_link_clicks",
+      "ads_leads",
+      "ads_purchases",
+      "ads_revenue_from_ads",
+      "ads_reach",
+    ];
+    const cell = (source: typeof data.values, key: string, id: string) =>
+      [`${key}|${id}`, source.get(key, id)] as const;
+
+    return (
+      <ReportShell
+        ctx={ctx}
+        active={category.key}
+        path={`/reporting/enter/${category.slug}`}
+        title="Enter your data"
+        tagline={`${category.label} · ${ctx.month.label}`}
+        actions={
+          <PublishBadge
+            kind={ctx.workspace.kind}
+            publishedAt={data.period?.published_at ?? null}
+            show={ctx.showDraftState}
+          />
+        }
+      >
+        <CampaignsEntry
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          previousLabel={previousLabel}
+          currency={ctx.workspace.currency}
+          campaigns={campaigns}
+          values={Object.fromEntries(
+            campaigns.flatMap((c) => CAMPAIGN_KEYS.map((k) => cell(data.values, k, c.id))),
+          )}
+          previous={Object.fromEntries(
+            campaigns.flatMap((c) => CAMPAIGN_KEYS.map((k) => cell(data.previous, k, c.id))),
+          )}
+        />
+      </ReportShell>
+    );
+  }
+
   const core = metrics
     .filter((m) => m.input_type === "core")
     .filter((m) => m.key !== OPENING_KEY || (note?.field ?? false));

@@ -9,6 +9,7 @@ import {
   social,
   trialReels,
   type Figure,
+  type AdCampaign,
   type OfferMonth,
   type Result,
 } from "./formulas.ts";
@@ -42,6 +43,14 @@ export interface CalcInput {
   previous: Lookup;
   /** Set up per offer, needed for the Offers page's sums. */
   offerRows?: OfferMonth[];
+  /**
+   * The month's ad campaigns, with their goals.
+   *
+   * Ads stores its figures per campaign (§5.7), so the account-level
+   * figures are sums over these rather than anything typed. Leads reads
+   * them too: "new leads from ads" is pulled, never entered twice.
+   */
+  adCampaigns?: AdCampaign[];
   /** For "share of total revenue". */
   totalRevenue?: Figure;
   /**
@@ -184,18 +193,24 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
       };
 
     case "leads_conversions": {
+      // Pulled from Ads, never typed here (§4, enter once). Summed over
+      // the campaigns, because that is where the figures live — reading
+      // the metric at month level finds nothing and the source silently
+      // disappears from the split.
+      const fromAds = input.adCampaigns
+        ? ads.totals(input.adCampaigns).leads
+        : v("ads_leads");
       const sources = {
         social: v("leads_conversions_new_leads_from_social"),
         email: v("leads_conversions_new_leads_from_email"),
-        // Pulled from Ads, never typed here (§4, enter once).
-        ads: v("ads_leads"),
+        ads: fromAds,
         referral: v("leads_conversions_new_leads_from_referral"),
         other: v("leads_conversions_new_leads_from_other"),
       };
       return {
         // Pulled from Ads (§5.6's table). Emitted so the Leads page can show
         // the figure without a second box for it.
-        leads_conversions_new_leads_from_ads: v("ads_leads") ?? null,
+        leads_conversions_new_leads_from_ads: fromAds ?? null,
         leads_conversions_total_leads: leads.total(sources),
         leads_conversions_call_show_up_rate: leads.callShowUpRate(
           v("leads_conversions_calls_held"),
@@ -212,20 +227,42 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
       };
     }
 
-    case "ads":
+    case "ads": {
+      // Per campaign when there are campaigns, which is how Ads works
+      // once its screen exists. The month-level fallback is what the
+      // formula tests use and what a workspace with no campaigns set up
+      // still answers sensibly.
+      const campaigns = input.adCampaigns;
+      const totals = campaigns
+        ? ads.totals(campaigns)
+        : {
+            spend: v("ads_spend"),
+            impressions: v("ads_impressions"),
+            linkClicks: v("ads_link_clicks"),
+            leads: v("ads_leads"),
+            purchases: v("ads_purchases"),
+            revenue: v("ads_revenue_from_ads"),
+          };
+
+      // Only the calculated keys come back. The raw totals are core
+      // metrics stored per campaign, and emitting them here would make
+      // `calculate` look like the place spend is decided — the Ads screen
+      // adds its own column up, the same way the Offers table does.
       return {
-        ads_cpm: ads.cpm(v("ads_spend"), v("ads_impressions")),
-        ads_ctr: ads.ctr(v("ads_link_clicks"), v("ads_impressions")),
-        ads_cpc: ads.cpc(v("ads_spend"), v("ads_link_clicks")),
-        // The blended figure. The headline one counts lead-goal campaigns
-        // only and is worked out on the Ads screen, which has the campaigns.
-        ads_cost_per_lead: ads.costPerLead(v("ads_spend"), v("ads_leads")),
-        ads_cost_per_acquisition: ads.costPerAcquisition(
-          v("ads_spend"),
-          v("ads_purchases"),
-        ),
-        ads_roas: ads.roas(v("ads_revenue_from_ads"), v("ads_spend")),
+        ads_cpm: ads.cpm(totals.spend, totals.impressions),
+        ads_ctr: ads.ctr(totals.linkClicks, totals.impressions),
+        ads_cpc: ads.cpc(totals.spend, totals.linkClicks),
+        // **Lead-goal campaigns only** (§5.7, §10.2). A campaign with no
+        // goal is not counted: see AdCampaign.goal. The blended figure
+        // over all spend is a different number and is shown beside the
+        // total, not as the headline.
+        ads_cost_per_lead: campaigns
+          ? ads.costPerLeadFromLeadCampaigns(campaigns, totals.leads)
+          : ads.costPerLead(totals.spend, totals.leads),
+        ads_cost_per_acquisition: ads.costPerAcquisition(totals.spend, totals.purchases),
+        ads_roas: ads.roas(totals.revenue, totals.spend),
       };
+    }
 
     case "client_experience": {
       const start = input.clientsAtStart ?? null;
