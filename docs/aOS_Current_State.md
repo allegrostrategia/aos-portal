@@ -3,9 +3,9 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
-## WHERE WE ARE — 5 October 2026
+## WHERE WE ARE — 6 October 2026
 
-**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 6 Oct: **456 unit / 289 + 84 schema / 300 action / 68 browser**, build, typecheck and lint clean. **Eleven commits are local only** — see the Stage 3 section. `main` is pushed and deployed to `b276796`. **Stage 3 is built**: all four remaining tabs, targets, benchmarks, traffic lights and the two panels. Everything except the Overview's own additions is behind `SHIPPED_STAGE = 2`.
+**Seventy-four migrations on disk, seventy-three applied to live.** The one outstanding is `20261006180000_top_items_delete`, deliberately held — it is waiting on Dom's approval, not drift (see "A published month is not locked"). Test suite as of 6 Oct (night): **459 unit / 289 + 84 schema / 307 action / 76 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `6854a4d` and Production shows that commit Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, every one of them behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. What is left before the flag moves: Nina's review of the Stage 3 screens, and the launch checklist.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -392,6 +392,88 @@ shim quietly lacking something: `.delete().select()` returned null so
 every checked delete looked refused; `.or()` did not exist so targets
 could not be read at all; and `report_top_items` had no delete policy,
 so an editor clearing a line was refused in silence.
+
+### 6 October (night) — Stage 3 pushed, switched off
+
+Sixteen commits, all pushed. `main` is at `6854a4d`, confirmed Ready in
+Production from the deployment list — not from a content fingerprint,
+which called a healthy deploy stalled on 5 Oct and is not to be used again.
+
+**The benchmark columns are on live.** `20261006190000_benchmark_reply`
+applied through the Management API and verified by reading the columns
+back: `benchmarks_set_at timestamptz` and `benchmarks_unmatched text[]
+not null default '{}'`.
+
+**Nothing in the push reads anything live does not have.** Checked
+rather than assumed, because the whole point of a gated release is that
+production keeps working: every `.select()` in the sixteen commits was
+listed and every column checked against `information_schema` on live.
+The one dependency live is missing is the top-items delete policy, and
+the code written for it fails honestly — an editor clearing a line is
+told "it needs an admin", and the page it is on 404s at stage 2 anyway.
+
+**The live check, as Test Client and nobody else.** A one-time magic
+link through `/auth/confirm`, the 5 October method, no password changed
+and no admin session. The Overview and all six Stage 2 tabs across both
+published months, at 1440 and at 390: every one HTTP 200, not one word
+of Stage 3 anywhere in the rendered text, and `/reporting/targets`,
+`/reporting/benchmarks` and `/reporting/ads` all 404. The script is
+deliberately **not** in `e2e/` — those specs type figures and publish
+months, and a stray `npx playwright test` pointed at live would do that
+to a real report. It only navigates and screenshots.
+
+#### A published month is not locked. Anywhere.
+
+Dom asked, before approving a delete policy on `report_top_items`,
+whether insert and update were blocked on a published month — because a
+delete that was not would let a line vanish from a report a client had
+already read. He asked for the wider answer too if the narrow one was no.
+
+It is no, and it is wider. **Every write policy on `report_values`,
+`report_top_items` and `report_notes` asks `report_can_edit(workspace_id)`
+and nothing else, and no trigger adds a publish check.** The only two
+places a published month holds still are its own publish columns
+(`report_periods_guard_publish`) and a funnel's captured price, which is
+application code. So Elize can change a published figure today and the
+client's report changes under them, silently.
+
+`supabase/tests/published-months.test.mjs` records that rather than
+closing it: an editor changing a published figure, rewriting a top-three
+line, and clearing one. They pass today and are written to fail the day
+somebody locks it, so whoever does will see exactly which behaviours
+they changed. Proved by installing a publish guard on the two tables in
+a scratch copy — **the figure and the rewrite flipped to failing; the
+clear did not, because a delete is its own event.** That last part is
+Dom's original point, demonstrated: an insert/update lock would leak.
+
+**The delete policy stays unapplied until Dom decides.** The question is
+not really the policy, it is whether a published month should be
+editable at all — and that is a decision about what a client is owed,
+not a schema detail.
+
+#### Nina's two sentences for a figure where falling is good
+
+The safe option taken on the 5th — say nothing at all about churn, cost
+per lead or clients who left — is replaced by her words, given on the
+6th:
+
+> {metric} down {n} - exactly the direction we want
+> {metric} up {n} - not the direction we want, let's dig into WHY
+
+One shape rather than her count/rate pair, because stating the change as
+a change reads correctly in any unit. `{n}` is formatted as the card
+formats it, so cost per lead keeps its pennies, and it is always
+positive — the direction is in the word. Tested on all three figures in
+both directions, with four mutations checked (panels swapped, sign left
+on, sentences swapped, the branch removed so the old bug returns), each
+caught by three tests. The browser shot of a panel with one of each is
+`e2e/screenshots/overview/08-good-down-both-ways-*.png`.
+
+**And a thing worth knowing: `npm run lint` had been reporting 707
+errors from compiled output.** `.next-e2e-stage2`, the second browser
+server's build directory, went into `.gitignore` when it was added and
+not into the eslint ignores beside `.next-e2e`. Enough noise to hide a
+real one, which is the only reason to run it.
 
 ### Stage 2's closing check, 5 October — as the client, on live
 
@@ -1153,6 +1235,16 @@ the policies are the control, and they hold whoever reads them.
 - ~~**The Stage 2 live walkthrough**~~ — **done 2 Oct on Test Client**, two months entered, one published, checked as the client. Six bugs found and fixed.
 - ~~**Checking the walkthrough fixes on localhost**~~ — **done 2 Oct**, all five confirmed, pushed as `b08c929`.
 - **Checking the sign-out on localhost** before `5c208da` is pushed — the one client-facing commit waiting.
+- **Whether a published month should be editable at all** (added 6 Oct) —
+  it is, today, on every month-keyed table; see "A published month is not
+  locked". Two answers are reasonable: lock the figures on publish and give
+  Nina an explicit unpublish-to-correct, or leave it open and show the
+  client that a figure changed. The top-items delete policy
+  (`20261006180000`, written and tested locally) is held until this is
+  answered, because approving it alone would widen the hole by one verb.
+- **Nina's review of the Stage 3 screens**, and then the launch checklist.
+  These are the only two things between here and moving `SHIPPED_STAGE` to
+  3. Screenshots at both widths are in `e2e/screenshots/`.
 - **The same walkthrough on a REAL retainer client**, which is the last piece of §11.2 and the only part that emails somebody. Create them from `/admin/reporting` **on the live site** — invitations refuse to send from a dev server, because the link they build would only work on the machine that sent it.
 
 ## Real bugs found and fixed (running list, worth knowing the shape of each)
@@ -1190,6 +1282,14 @@ the policies are the control, and they hold whoever reads them.
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
+**Seventy-four on disk, seventy-three applied to live (6 Oct).** The gap is
+one file and it is deliberate: `20261006180000_top_items_delete` is written,
+tested locally and **not approved** — see "A published month is not locked".
+Anything that counts migrations by subtracting will read this as drift; it
+is not. The three applied on 6 Oct (`opening_clients_wording`,
+`funnel_price_at_month`, `benchmark_reply`) went in through the Management
+API and were each verified by reading the result back, not by an exit code.
+
 **Sixty-eight on disk, all sixty-eight applied to live, and `migration list --linked` shows `local == remote` for every one.** The ten dated `20260930` (the reporting tool's Stage 1) went in on 30 Sep via `npm run db:push` from Claude Code's shell, which worked normally this time, and were verified over PostgREST afterwards rather than on the exit code: `report_metrics` answers with 174 rows to the service role and **zero to anon**, so RLS is live and not just local.
 
 **This section said "thirty-one" from early September until 30 Sep, and then briefly "forty-one".** The first was stale; the second was me adding ten to the stale number instead of running `ls`. It has now been counted. Same failure as the "thirteen"/"fourteen" note below, in the same paragraph that warns about it — **count the files, every time.** The fourteen from 1–3 Sep (six dated `20260901`, eight dated `20260903`) went in by hand through the SQL Editor while the CLI couldn't connect; the seventeen before them went through the CLI normally.
@@ -1234,18 +1334,30 @@ the policies are the control, and they hold whoever reads them.
 
 **Steps 1–13 are done but for one piece.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones. The exception is **Step 13's Vespa intro video**, which has no asset — the only item left in the open list.
 
-**The live work is the reporting tool.** Stages 1 and 2 are built, pushed, applied and **Stage 2 is closed** (5 Oct, on Test Client). The one §11.2 item that cannot be met before launch — a real retainer client — is on the launch checklist.
+**The live work is the reporting tool.** Stages 1 and 2 are built, pushed,
+applied and **Stage 2 is closed** (5 Oct, on Test Client). **Stage 3 is
+built and pushed, and switched off** — `SHIPPED_STAGE` is 2, so none of it
+reaches a client, and a browser test runs the same app at the production
+flag to prove the Overview is unchanged. Re-checked on live as Test Client
+after the push: six tabs, two months, both widths, nothing of Stage 3
+anywhere.
 
-**Waiting on Dom, as of 5 October, in order:**
+**Two things stand between here and flipping the switch**, and both are
+Dom's and Nina's, not code:
 
-1. The §8 walkthrough on localhost (see that section), then the real send
-   on live after the push.
-2. **Approve the Stage 3 plan for the four remaining tabs** (Trial Reels,
-   Funnels, Ads, Client Experience), and the §5.8 opening-figure migration
-   SQL before it is applied.
+1. **Nina's review of all the Stage 3 screens.** Screenshots at desktop and
+   phone are in `e2e/screenshots/`, one folder per tab.
+2. **The launch checklist** (see that section), whose one unmeetable item
+   before launch is a real retainer client.
 
-**The next piece of building is Stage 3** (§11.3): Funnels, Ads, Client Experience and Trial Reels; targets, the benchmarks admin, traffic lights, and the "Look at these first" panel. Nothing blocks starting it, but Stage 2 should be walked through on real data first — the brief sequences the stages that way on purpose, so the entry-to-publish path is proved on real figures before more surface is added on top.
+**One decision is open and it is worth answering before launch, not after:**
+a published month can still be edited — figures, notes and top-three lines
+— on every month-keyed table. Nothing about that changed with Stage 3; it
+has simply now been looked at and written down. See "A published month is
+not locked". The top-items delete policy waits on the same answer.
 
-**One decision is needed before Stage 3 touches Client Experience:** `client_experience_active_clients_at_start`, which §5.8 specifies two incompatible ways. See the reporting section.
+**One decision is needed before Stage 3 touches Client Experience:**
+`client_experience_active_clients_at_start`, which §5.8 specifies two
+incompatible ways. See the reporting section.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.
