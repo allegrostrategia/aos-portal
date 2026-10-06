@@ -6,9 +6,10 @@ import { TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts"
 /**
  * "Look at these first 👀" and "What went WELL this month".
  *
- * Nina's six sentences, given verbatim. The tests that matter are that
- * the wording is hers to the character, that one of something reads as
- * one of something, and that nothing is said about a figure there is
+ * Nina's eight sentences, given verbatim. The tests that matter are
+ * that the wording is hers to the character, that one of something
+ * reads as one of something, that a figure where falling is the good
+ * news says so, and that nothing is said about a figure there is
  * nothing to say about.
  */
 
@@ -20,7 +21,7 @@ const base = {
   target: null as number | null,
 };
 
-test("the six sentences are Nina's, to the character", () => {
+test("the eight sentences are Nina's, to the character", () => {
   // If these ever need changing they change in one file, which is the
   // point of the file. They do not get reworded by a screen.
   assert.equal(TEMPLATES.countDown, "{n} fewer {metric} than last month - worth a proper look 👀");
@@ -29,6 +30,11 @@ test("the six sentences are Nina's, to the character", () => {
   assert.equal(TEMPLATES.rateUp, "{Metric} up from {from} to {to} & that's no accident");
   assert.equal(TEMPLATES.belowTarget, "{Metric} is at {pct} of your target - not there YET");
   assert.equal(TEMPLATES.beatTarget, "{Metric} beat your target by {pct} WOOOO");
+  assert.equal(TEMPLATES.goodFall, "{Metric} down {n} - exactly the direction we want");
+  assert.equal(
+    TEMPLATES.badRise,
+    "{Metric} up {n} - not the direction we want, let's dig into WHY",
+  );
 });
 
 test("one more new client, not one more new clients", () => {
@@ -75,26 +81,92 @@ test("a rate moves from one figure to another", () => {
   assert.equal(up?.panel, "wins");
 });
 
-test("a figure where falling is good gets no movement sentence", () => {
-  // Nina's four movement sentences pair "MORE" with "stunning" and
-  // "fewer" with "worth a proper look", so they only work where higher
-  // is better. On a good-down figure they contradict themselves: two
-  // fewer clients leaving came out as "2 MORE clients who left -
-  // stunning". Rather than write a fifth sentence in her voice, these
-  // say nothing — see the parked question.
-  assert.equal(
-    highlightFor({
-      ...base,
-      label: "Cost per lead",
-      unit: "currency",
-      goodDirection: "down",
-      value: 4.5,
-      previous: 6,
-    }),
-    null,
-  );
+test("a churn rate falling is exactly the direction we want", () => {
+  const fell = highlightFor({
+    ...base,
+    label: "Churn rate",
+    unit: "percent",
+    goodDirection: "down",
+    value: 3,
+    previous: 8,
+  });
+  assert.equal(fell?.text, "Churn rate down 5.0% - exactly the direction we want");
+  assert.equal(fell?.panel, "wins");
 
-  // A target sentence reads correctly either way, so it still appears.
+  const rose = highlightFor({
+    ...base,
+    label: "Churn rate",
+    unit: "percent",
+    goodDirection: "down",
+    value: 8,
+    previous: 3,
+  });
+  assert.equal(
+    rose?.text,
+    "Churn rate up 5.0% - not the direction we want, let's dig into WHY",
+  );
+  assert.equal(rose?.panel, "attention");
+});
+
+test("cost per lead keeps its pennies in the sentence", () => {
+  // The change, formatted as the card formats it (§10.2): £1.50, not
+  // £2 and not -1.5. Under a thousand and not round keeps the pennies.
+  const fell = highlightFor({
+    ...base,
+    label: "Cost per lead",
+    unit: "currency",
+    goodDirection: "down",
+    value: 4.5,
+    previous: 6,
+  });
+  assert.equal(fell?.text, "Cost per lead down £1.50 - exactly the direction we want");
+  assert.equal(fell?.panel, "wins");
+
+  const rose = highlightFor({
+    ...base,
+    label: "Cost per lead",
+    unit: "currency",
+    goodDirection: "down",
+    value: 6,
+    previous: 4.5,
+  });
+  assert.equal(
+    rose?.text,
+    "Cost per lead up £1.50 - not the direction we want, let's dig into WHY",
+  );
+  assert.equal(rose?.panel, "attention");
+});
+
+test("the sentence that started this: clients who left", () => {
+  // Two fewer clients leaving used to come out as "2 MORE clients who
+  // left than last month - stunning". It now reads as the good news it
+  // is, and the rise reads as the bad news it is.
+  const fell = highlightFor({
+    ...base,
+    label: "Clients who left",
+    goodDirection: "down",
+    value: 1,
+    previous: 3,
+  });
+  assert.equal(fell?.text, "Clients who left down 2 - exactly the direction we want");
+  assert.equal(fell?.panel, "wins");
+  assert.ok(!fell?.text.includes("stunning"), "the old sentence is gone, not merely outvoted");
+
+  const rose = highlightFor({
+    ...base,
+    label: "Clients who left",
+    goodDirection: "down",
+    value: 3,
+    previous: 1,
+  });
+  assert.equal(
+    rose?.text,
+    "Clients who left up 2 - not the direction we want, let's dig into WHY",
+  );
+  assert.equal(rose?.panel, "attention");
+});
+
+test("a target still beats the movement sentence on a good-down figure", () => {
   const onTarget = highlightFor({
     ...base,
     label: "Cost per lead",

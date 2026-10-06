@@ -27,6 +27,15 @@ export const TEMPLATES = {
   rateUp: "{Metric} up from {from} to {to} & that's no accident",
   belowTarget: "{Metric} is at {pct} of your target - not there YET",
   beatTarget: "{Metric} beat your target by {pct} WOOOO",
+  // The two for a figure where falling is the good news — churn, cost
+  // per lead, clients who left. Given by Nina on 6 October, after the
+  // four above came out backwards on exactly those figures.
+  //
+  // She wrote the placeholder lower case, `{metric}`; it is `{Metric}`
+  // here because in her sentence the label starts it, and that is what
+  // the capital in the name means in this file. Her words are unchanged.
+  goodFall: "{Metric} down {n} - exactly the direction we want",
+  badRise: "{Metric} up {n} - not the direction we want, let's dig into WHY",
 } as const;
 
 export interface HighlightInput {
@@ -121,17 +130,33 @@ export function highlightFor(input: HighlightInput): Highlight | null {
 
   if (previous === null || previous === value) return null;
 
-  // **Nina's four movement sentences assume higher is better.** "{n}
-  // MORE" is paired with "stunning" and "{n} fewer" with "worth a proper
-  // look", so on a figure where falling is the good news they contradict
-  // themselves: a month where two fewer clients left came out as "2 MORE
-  // clients who left than last month - stunning".
+  // **Nina's first four movement sentences assume higher is better.**
+  // "{n} MORE" is paired with "stunning" and "{n} fewer" with "worth a
+  // proper look", so on a figure where falling is the good news they
+  // contradict themselves: a month where two fewer clients left came
+  // out as "2 MORE clients who left than last month - stunning".
   //
-  // Rather than invent a fifth and sixth sentence in somebody else's
-  // voice, a good-down figure gets no movement sentence at all. It still
-  // gets a target one, which reads correctly either way. Parked for Dom:
-  // what should a falling cost per lead say?
-  if (goodDirection !== "up") return null;
+  // The two below are hers too, given on 6 October for exactly this.
+  // They are one shape rather than Nina's count/rate pair, because the
+  // change is stated as a change — "down £1.50", "down 2.0%" — which
+  // reads correctly whatever the unit, so there is no "0.4 fewer
+  // unsubscribe rate" problem to avoid here.
+  if (goodDirection === "down") {
+    const fell = value < previous;
+    return {
+      key: fell ? "goodFall" : "badRise",
+      panel: fell ? "wins" : "attention",
+      size: previous === 0 ? 100 : (Math.abs(value - previous) / Math.abs(previous)) * 100,
+      text: fill(fell ? TEMPLATES.goodFall : TEMPLATES.badRise, {
+        Metric: asSentenceStart(label),
+        // The size of the move, in the unit the card shows: £4.50 stays
+        // £4.50 and a rate keeps its one decimal. Always positive — the
+        // direction is in the word "down" or "up", and "down -2" is not
+        // a sentence anybody wrote.
+        n: money(Math.abs(value - previous)),
+      }),
+    };
+  }
 
   const up = value > previous;
   const good = up;

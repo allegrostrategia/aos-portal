@@ -117,3 +117,39 @@ test("the client sees the panels and the lights, and nothing of the team's", asy
 
   await shoot(page, TAB, "07-client", w);
 });
+
+test("a figure where falling is good reads both ways in Nina's words", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+
+  // The opening figure, so churn has a denominator and the good-down
+  // figures on this tab are all live at once.
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await page.getByLabel(/clients at the start/i).fill("20");
+  await page.getByRole("button", { name: /^save/i }).first().click();
+  await expect(page.getByText(/this is the opening figure/i)).toBeVisible();
+
+  // A rise to go with the fall the seed already has: issues raised 1 in
+  // August and 4 in September, against clients who left 2 and then 0.
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.aug}`);
+  await page.getByLabel(/issues raised/i).fill("1");
+  await page.getByRole("button", { name: /^save/i }).first().click();
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.sep}`);
+  await page.getByLabel(/issues raised/i).fill("4");
+  await page.getByRole("button", { name: /^save/i }).first().click();
+
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+
+  // One of each, on one screen, to the character.
+  expect(text).toMatch(/Clients who left down 2 - exactly the direction we want/);
+  expect(text).toMatch(/Issues raised up 3 - not the direction we want, let's dig into WHY/);
+
+  // And not a word of the old contradiction: the four sentences that
+  // assume higher is better stay off these figures.
+  expect(text).not.toMatch(/MORE clients who left/);
+  expect(text).not.toMatch(/MORE issues raised/);
+  expect(text).not.toMatch(/fewer clients who left/);
+
+  await shoot(page, TAB, "08-good-down-both-ways", w);
+});
