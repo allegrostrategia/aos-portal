@@ -65,6 +65,12 @@ export default async function ReportingOverviewPage({
 
   const period = figures.data.period ?? null;
 
+  // §7's bar: up to five targets, in the metric list's own order so the
+  // same five stay in the same places month to month.
+  const [targets, benchmarks] = await Promise.all([
+    getTargets(ctx.workspace.id, ctx.month.month),
+    getBenchmarks(ctx.workspace.id),
+  ]);
   // §7's two panels. Every word in them is Nina's, from one file.
   const panels = highlights(
     figures.metrics
@@ -81,12 +87,6 @@ export default async function ReportingOverviewPage({
       })),
   );
 
-  // §7's bar: up to five targets, in the metric list's own order so the
-  // same five stay in the same places month to month.
-  const [targets, benchmarks] = await Promise.all([
-    getTargets(ctx.workspace.id, ctx.month.month),
-    getBenchmarks(ctx.workspace.id),
-  ]);
   const targetRows = figures.metrics
     .filter((metric) => targets.has(`${metric.key}|`))
     .map((metric) => ({
