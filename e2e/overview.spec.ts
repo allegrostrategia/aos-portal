@@ -106,7 +106,10 @@ test("the client sees the panels and the lights, and nothing of the team's", asy
   await page.goto(`/reporting?month=${MONTHS.sep}`);
 
   await expect(page.getByText("Look at these first 👀")).toBeVisible();
-  await expect(page.getByText(/(On track|Close|Off track) vs\./).first()).toBeVisible();
+  // Read off the rendered text: the word and "vs. …" are separate spans
+  // so each wraps as a whole, so there is no single node to match.
+  const clientText = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(clientText).toMatch(/(On track|Close|Off track) vs\. (target|benchmark|last month)/);
   // The editor's half is theirs alone.
   await expect(page.getByText(/no targets set/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: /set targets/i })).toHaveCount(0);

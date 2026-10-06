@@ -94,14 +94,20 @@ export function KpiCard({
       ) : (
         <p className="mt-2 text-small text-ink/40">No month to compare</p>
       )}
+      {/* Each phrase wraps as a whole or not at all: six cards across,
+          "On track" broke over two lines and "vs. last month" over two
+          more. Seen on the rendered card, not in the markup. */}
       {light && lightWord ? (
-        <p className="mt-2 flex items-center gap-1.5 text-caption text-ink/60">
-          <span
-            aria-hidden
-            className="size-2 shrink-0 rounded-full"
-            style={{ background: lightColour }}
-          />
-          {lightWord} <span className="text-ink/45">vs. {light.against}</span>
+        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-caption text-ink/60">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <span
+              aria-hidden
+              className="size-2 shrink-0 rounded-full"
+              style={{ background: lightColour }}
+            />
+            {lightWord}
+          </span>
+          <span className="whitespace-nowrap text-ink/45">vs. {light.against}</span>
         </p>
       ) : null}
     </>
