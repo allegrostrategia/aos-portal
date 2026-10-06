@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 5 October 2026
 
-**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 6 Oct: **416 unit / 289 + 84 schema / 268 action / 28 browser**, build, typecheck and lint clean. **Nothing is local only.** `main` is pushed and deployed to `3ab3257`. **Stage 3 is in progress**: the five charts are live; **Client Experience and Ads are built and deployed but invisible**, behind `SHIPPED_STAGE = 2`. Funnels and Trial Reels are next.
+**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 6 Oct: **456 unit / 289 + 84 schema / 300 action / 68 browser**, build, typecheck and lint clean. **Eleven commits are local only** — see the Stage 3 section. `main` is pushed and deployed to `b276796`. **Stage 3 is built**: all four remaining tabs, targets, benchmarks, traffic lights and the two panels. Everything except the Overview's own additions is behind `SHIPPED_STAGE = 2`.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -355,6 +355,43 @@ since Stage 2: Social Media's figures hang off a platform entity and the
 entry screen read them back without it, so **every box came back empty
 after a save** and "Worked out for you" showed dashes beside a report
 full of figures.
+
+### 6 October (evening) — Stage 3 finished, unpushed
+
+Eleven commits, none pushed, no live migration applied. Built against the
+local stack with browser tests at both widths throughout.
+
+**The four tabs.** Client Experience and Ads were done earlier; Funnels
+and Trial Reels followed. Funnels captures its offer's price on the
+first save of a month and never moves it on a published one, so a price
+rise cannot rewrite a report the client has read. Trial Reels has the
+top-three hooks and b-roll with a Proven marker at two months, and
+deliberately no "below benchmark" note.
+
+**Then targets, benchmarks, traffic lights and the two panels.** Every
+word in "Look at these first 👀" and "What went WELL this month" is
+Nina's, from one file, asserted character for character.
+
+**What the browser tests caught that nothing else could.** Five bugs,
+and the pattern is worth more than the list: every one was invisible to
+tests that do not render a page and read it.
+
+1. Two ReferenceErrors from a block placed above the thing it reads —
+   the Client Experience entry page and then the Overview, both
+   rendering nothing at all. **Twice in two days: inserting a block near
+   related code is not the same as inserting it after its dependencies.**
+2. The entry card disagreeing with the report on "new clients".
+3. Money rounded to whole pounds, so £0.14 printed as "£0".
+4. A category with figures that hang off a row reading as an empty
+   month — Offers said "Nothing for August" above four units sold.
+5. **A sentence that said the opposite of what happened:** two fewer
+   clients leaving came out as "2 MORE clients who left — stunning".
+
+**Three things the harness could not have found either**, all from the
+shim quietly lacking something: `.delete().select()` returned null so
+every checked delete looked refused; `.or()` did not exist so targets
+could not be read at all; and `report_top_items` had no delete policy,
+so an editor clearing a line was refused in silence.
 
 ### Stage 2's closing check, 5 October — as the client, on live
 
@@ -1183,6 +1220,8 @@ the policies are the control, and they hold whoever reads them.
 - **A failing probe is a claim about the probe until it has been read.** Two false negatives on 5 Oct came from the probe, not the system: a fingerprint sampled after the event it was meant to detect, and a `like '%before insert or update%'` run against DDL Postgres prints in capitals.
 - **Compute a palette, never look at it.** Two of the brand's six colours cannot be told apart by a protanope (blush/lemon, 0.5 separation) and two more fail the floor for full-colour readers. Both pairs look fine on screen. `scripts/check-chart-palette.mjs` prints the numbers; run it before adding a series colour, and remember a low-contrast fill owes the reader an edge and a labelled legend.
 - **Colour follows the entity, never its rank.** Sorting slices by size and then colouring them by position means a thing changes colour the month it overtakes another. Take the colour from a stable key and sort only what the reader reads.
+- **Render the page and read it.** Five bugs on 6 Oct were invisible to 456 unit tests and obvious in a screenshot: two pages that rendered nothing, a card disagreeing with its report, money rounded to "£0", and a sentence saying the opposite of what happened. A test that does not draw the screen cannot see the screen.
+- **A block goes after what it reads, not next to what it relates to.** Two ReferenceErrors in two days, both from inserting a block beside related code rather than below its dependencies, both taking a whole page down.
 - **A probe that stops where the code stops proves nothing about the code.** The live-chat probe (bug 26) first checked for `SUBSCRIBED`, exactly as the broken code did, and reported the channel healthy. When verifying a claim, the check has to go one step further than the thing being checked.
 - **Anything that has to be done in a dashboard is a step that can silently not happen.** Publication entries, buckets, policies: write the migration, guard it for the local harness, and assert the result in `test:db`.
 - **When a test disagrees with live, suspect the harness as readily as the code.** The PGlite shim diverged from PostgREST three separate ways in one afternoon — a types-only method it didn't have, a foreign key it guessed from a table name, and an upsert default it got wrong — and every one of them made correct code look broken. Fix the harness; it is supposed to bend, not the app.
