@@ -7,7 +7,7 @@ import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
-import { getClientFlow, getMetricsFor, getMonthData } from "@/lib/reporting/queries";
+import { getClientFlow, getMetrics, getMetricsFor, getMonthData } from "@/lib/reporting/queries";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
 import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -108,6 +108,27 @@ export default async function EnterCategoryPage({
     );
   }
 
+  // §5.8. Only Client Experience needs it, and loading a client's whole
+  // history for the other eight screens would be work for nothing.
+  const flow =
+    category.key === "client_experience"
+      ? await getClientFlow(ctx.workspace.id, ctx.month.month)
+      : [];
+  const opening = openingFigures(flow);
+  const clientsAtStart = activeClientsAtStart(flow, ctx.month.month) ?? null;
+  const note =
+    category.key === "client_experience"
+      ? openingNote({
+          ...opening,
+          thisMonth: ctx.month.month,
+          firstMonth: ctx.workspace.first_month,
+          carried: clientsAtStart,
+        })
+      : null;
+  // What is typed here is the figure in use only on the month that holds it
+  // — or on the month about to hold it, when there is none yet.
+  const openingAppliesHere = note?.kind === "ask" || note?.kind === "in_use";
+
   // §5.8's opening figure is typed once, so its box appears on one month
   // and not on the other eleven — Dom, 6 Oct: "I don't want Nina prompted
   // in the wrong month." It is a `core` metric, so without this the generic
@@ -162,26 +183,15 @@ export default async function EnterCategoryPage({
     }))
     .filter((r) => r.unitsSold !== null || r.revenue !== null || r.hoursSpent !== null);
 
-  // §5.8. Only Client Experience needs it, and loading a client's whole
-  // history for the other eight screens would be work for nothing.
-  const flow =
-    category.key === "client_experience"
-      ? await getClientFlow(ctx.workspace.id, ctx.month.month)
-      : [];
-  const opening = openingFigures(flow);
-  const clientsAtStart = activeClientsAtStart(flow, ctx.month.month) ?? null;
-  const note =
-    category.key === "client_experience"
-      ? openingNote({
-          ...opening,
-          thisMonth: ctx.month.month,
-          firstMonth: ctx.workspace.first_month,
-          carried: clientsAtStart,
-        })
-      : null;
-  // What is typed here is the figure in use only on the month that holds it
-  // — or on the month about to hold it, when there is none yet.
-  const openingAppliesHere = note?.kind === "ask" || note?.kind === "in_use";
+  // Every figure this category's formulas read from another one. Only
+  // month-level typed values: anything derived is worked out by the card
+  // itself, and anything per-entity has no single answer here.
+  const elsewhere = Object.fromEntries(
+    (await getMetrics())
+      .filter((m) => m.category !== category.key && m.entity_type === null)
+      .filter((m) => m.input_type === "core" || m.input_type === "optional")
+      .map((m) => [m.key, data.values.get(m.key)]),
+  );
 
   // "Save & next section" walks the entry categories in tab order.
   const order = ENTRY_CATEGORIES.filter(
@@ -209,6 +219,7 @@ export default async function EnterCategoryPage({
 
       <EntryForm
         offerRows={offerRowsForEntry}
+        elsewhere={elsewhere}
         clientsAtStart={clientsAtStart}
         openingAppliesHere={openingAppliesHere}
         category={category.key}

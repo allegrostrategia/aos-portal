@@ -146,16 +146,43 @@ await as(NINA, () =>
  * the report ever differ, one of the two is lying to whoever is reading it.
  */
 function entryCard(figures, category) {
-  // Read the way the entry screen reads, including the platform that
-  // Social Media's figures hang off — the screen itself did not, which is
-  // what this file found first time out.
+  // Read the way the entry screen reads, which is not the way the
+  // database holds it. Two differences, and both have been bugs:
+  //
+  //   · Social Media's figures hang off a platform entity, so a
+  //     month-level read finds nothing (fixed 6 Oct);
+  //   · the screen has boxes for its own category only, so a figure from
+  //     another one arrives through the page's `elsewhere` map — month
+  //     level and typed. Before that existed, the card showed a dash for
+  //     "new clients" and an "active clients at end" that ignored them.
   const platformId =
     figures.data.entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
   const entityFor = (metricKey) =>
     figures.byKey.get(metricKey)?.entity_type === "social_platform" ? platformId : null;
 
+  const ownBox = new Set(
+    figures.metrics
+      .filter((m) => m.category === category)
+      .filter((m) => m.input_type === "core" || m.input_type === "optional")
+      .map((m) => m.key),
+  );
+  const elsewhere = new Set(
+    figures.metrics
+      .filter((m) => m.category !== category && m.entity_type === null)
+      .filter((m) => m.input_type === "core" || m.input_type === "optional")
+      .map((m) => m.key),
+  );
+
+  const value = (key) => {
+    if (ownBox.has(key)) return figures.data.values.get(key, entityFor(key)) ?? null;
+    if (elsewhere.has(key)) return figures.data.values.get(key) ?? null;
+    // Anything else the card genuinely cannot see: derived, or per-entity
+    // and belonging to another screen.
+    return null;
+  };
+
   return calculate(category, {
-    value: (key) => figures.data.values.get(key, entityFor(key)) ?? null,
+    value,
     previous: (key) => figures.data.previous.get(key, entityFor(key)) ?? null,
     offerRows: figures.offerRows,
     clientsAtStart: figures.results.client_experience_active_clients_at_start ?? null,

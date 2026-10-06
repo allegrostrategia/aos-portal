@@ -62,6 +62,15 @@ export interface EntryFormProps {
    * this month's retention.
    */
   openingAppliesHere?: boolean;
+  /**
+   * Figures from other categories that this one's formulas read.
+   *
+   * Pulled metrics cross category lines — "new clients" lives in Leads and
+   * is read by Client Experience, "revenue from offers" by Financials —
+   * and a screen only has boxes for its own. Without these the live card
+   * and the report answer differently on the same month.
+   */
+  elsewhere?: Record<string, number | null>;
   /** Where "Save and next" goes, or null on the last section. */
   nextHref: string | null;
   nextLabel: string | null;
@@ -84,7 +93,15 @@ export function EntryForm(props: EntryFormProps) {
   const results = useMemo(
     () =>
       calculate(props.category, {
-        value: (key) => fromInputValue(values[key] ?? ""),
+        // A box on this screen if there is one; otherwise the figure as
+        // stored, because several formulas reach into another category.
+        // Client Experience's "new clients" comes from Leads, and without
+        // this the card showed a dash for it and an "active clients at
+        // end" that ignored everyone who had joined — while the report,
+        // which can see every category, showed both correctly. §9's
+        // disagreement, caught 6 Oct by looking at a browser screenshot.
+        value: (key) =>
+          key in values ? fromInputValue(values[key]) : (props.elsewhere?.[key] ?? null),
         // Some formulas are defined against last month: follower growth, the
         // unsubscribe rate. Those come from the server and never change here.
         previous: (key) => props.previous[key] ?? null,
@@ -101,6 +118,7 @@ export function EntryForm(props: EntryFormProps) {
       props.offerRows,
       props.clientsAtStart,
       props.openingAppliesHere,
+      props.elsewhere,
       values,
     ],
   );

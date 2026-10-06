@@ -26,6 +26,52 @@ Since the last big handoff, five things landed: **peer pairing on real dates** (
 
 **On the reporting side there is one test workspace**, "Test Client", owned by `contact+test2@allegrobusinessservices.co.uk` — a working retainer-client login Dom controls, kept deliberately because it is the only way to see the product as a client sees it. It has a password set by Claude Code and not recorded anywhere; use `/forgot-password` to take it over. A second, `nina+test@`, was created by mistake and deleted on 30 Sep along with its workspace.
 
+## RUNNING THE BROWSER TESTS (set up 6 October 2026)
+
+Playwright, against a **local Supabase stack**, as four fake accounts.
+Never against live and never as a real admin login — Dom's rule, and
+`e2e/guard.ts` enforces it rather than trusting anybody to remember: it
+refuses any Supabase host that is not `127.0.0.1`. Asked that way round
+because "is this the local stack" has one answer, while "is this the live
+one" needs a list somebody has to keep current.
+
+```
+colima start                      # after any restart — the VM does not come back on its own
+npx supabase start                # the stack: Postgres, PostgREST, GoTrue
+node scripts/seed-test-db.mjs     # four fake people, two fake businesses
+npm run test:e2e                  # both widths
+```
+
+`colima stop` when finished, or it sits there using memory. `npx supabase
+stop` leaves the data; `npx supabase stop --no-backup` throws it away.
+
+**Why Colima.** The Supabase local stack is containers, and this machine
+had no Docker, no Podman and no Postgres of any kind. Colima rather than
+Docker Desktop: lighter, and no licensing question.
+
+**Things that will bite again:**
+
+- **Next 16 refuses a second dev server in the same build directory.** The
+  lock lives there, so the test server sets `NEXT_DIST_DIR=.next-e2e`
+  (`next.config.ts` reads it) and runs on port 3100. Without that, running
+  the suite means killing the dev server you are working in.
+- **`devices["iPhone 14"]` is WebKit**, which will not take
+  `channel: "chrome"`. The phone project overrides `browserName` and
+  `defaultBrowserType` to keep the iPhone's metrics on the installed
+  Chrome. Real device emulation, not a small window — Chrome headless has
+  a 500px floor and a "390px" window is a cropped desktop render.
+- **Playwright transpiles specs to CommonJS**, so `import.meta` in a
+  helper is a syntax error. Use `__dirname`.
+- **The tests seed before every test, not once.** They type figures and
+  publish months, so one leaves the next a different world — and the
+  desktop project would otherwise decide what the phone project sees.
+- The stack applies **every** migration in the folder, including ones held
+  back from live. Local and live can therefore differ by a held migration;
+  as of 6 Oct that is `20261006100000_opening_clients_wording`.
+
+**Screenshots** land in `e2e/screenshots/<tab>/<name>-<width>.png`, full
+page, both widths, overwritten each run.
+
 ## LAUNCH CHECKLIST — things that can only be done when there are real clients
 
 Not pending work and not bugs. Each one needs a real client, Nina's eyes, or
