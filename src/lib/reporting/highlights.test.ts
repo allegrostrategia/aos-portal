@@ -75,17 +75,46 @@ test("a rate moves from one figure to another", () => {
   assert.equal(up?.panel, "wins");
 });
 
-test("good down is good: a falling cost is a win", () => {
-  const win = highlightFor({
+test("a figure where falling is good gets no movement sentence", () => {
+  // Nina's four movement sentences pair "MORE" with "stunning" and
+  // "fewer" with "worth a proper look", so they only work where higher
+  // is better. On a good-down figure they contradict themselves: two
+  // fewer clients leaving came out as "2 MORE clients who left -
+  // stunning". Rather than write a fifth sentence in her voice, these
+  // say nothing — see the parked question.
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Cost per lead",
+      unit: "currency",
+      goodDirection: "down",
+      value: 4.5,
+      previous: 6,
+    }),
+    null,
+  );
+
+  // A target sentence reads correctly either way, so it still appears.
+  const onTarget = highlightFor({
     ...base,
     label: "Cost per lead",
     unit: "currency",
     goodDirection: "down",
     value: 4.5,
     previous: 6,
+    target: 5,
   });
-  assert.equal(win?.panel, "wins");
-  assert.equal(win?.text, "Cost per lead up from £6 to £4.50 & that's no accident");
+  assert.equal(onTarget?.text, "Cost per lead beat your target by 10% WOOOO");
+});
+
+test("one sentence per figure, even when two metrics share a name", () => {
+  // "New clients" is both Leads' own figure and Client Experience's
+  // copy of it. Two sentences would read as two pieces of news.
+  const { wins } = highlights([
+    { ...base, label: "New clients", value: 8, previous: 4 },
+    { ...base, label: "New clients", value: 8, previous: 4 },
+  ]);
+  assert.equal(wins.length, 1);
 });
 
 test("a target beats a comparison with last month", () => {

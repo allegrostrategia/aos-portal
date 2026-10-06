@@ -121,8 +121,20 @@ export function highlightFor(input: HighlightInput): Highlight | null {
 
   if (previous === null || previous === value) return null;
 
+  // **Nina's four movement sentences assume higher is better.** "{n}
+  // MORE" is paired with "stunning" and "{n} fewer" with "worth a proper
+  // look", so on a figure where falling is the good news they contradict
+  // themselves: a month where two fewer clients left came out as "2 MORE
+  // clients who left than last month - stunning".
+  //
+  // Rather than invent a fifth and sixth sentence in somebody else's
+  // voice, a good-down figure gets no movement sentence at all. It still
+  // gets a target one, which reads correctly either way. Parked for Dom:
+  // what should a falling cost per lead say?
+  if (goodDirection !== "up") return null;
+
   const up = value > previous;
-  const good = goodDirection === "up" ? up : !up;
+  const good = up;
 
   // A count moved by a number of things; a rate moved from one figure to
   // another. Nina's templates say it both ways and they are not
@@ -160,10 +172,24 @@ export function highlightFor(input: HighlightInput): Highlight | null {
  * nothing to look at first.
  */
 export function highlights(inputs: HighlightInput[], perPanel = 3) {
+  // One sentence per label. Two metrics share a label where one is
+  // pulled from the other — "New clients" is both Leads' own figure and
+  // Client Experience's copy of it — and saying it twice reads as two
+  // separate pieces of news about the same thing.
+  const seen = new Set<string>();
   const all = inputs
-    .map(highlightFor)
-    .filter((h): h is Highlight => h !== null)
-    .sort((a, b) => b.size - a.size);
+    .map((input) => ({ input, highlight: highlightFor(input) }))
+    .filter(
+      (row): row is { input: HighlightInput; highlight: Highlight } => row.highlight !== null,
+    )
+    .sort((a, b) => b.highlight.size - a.highlight.size)
+    .filter((row) => {
+      const label = row.input.label.toLowerCase();
+      if (seen.has(label)) return false;
+      seen.add(label);
+      return true;
+    })
+    .map((row) => row.highlight);
 
   return {
     attention: all.filter((h) => h.panel === "attention").slice(0, perPanel),
