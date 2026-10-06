@@ -7,6 +7,9 @@ import { Objectives } from "@/components/reporting/objectives";
 import { ClientReplies } from "@/components/reporting/replies";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { leadsBySource } from "@/lib/reporting/chart-data";
+import { getTargets } from "@/lib/reporting/queries";
+import { buttonClasses } from "@/components/ui/button";
+import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { ENTRY_CATEGORIES, categoryByKey } from "@/lib/reporting/categories";
@@ -59,6 +62,19 @@ export default async function ReportingOverviewPage({
     !ctx.canEdit && ctx.workspace.kind === "retainer" && ctx.monthPublished;
 
   const period = figures.data.period ?? null;
+
+  // §7's bar: up to five targets, in the metric list's own order so the
+  // same five stay in the same places month to month.
+  const targets = await getTargets(ctx.workspace.id, ctx.month.month);
+  const targetRows = figures.metrics
+    .filter((metric) => targets.has(`${metric.key}|`))
+    .map((metric) => ({
+      metric,
+      target: targets.get(`${metric.key}|`) as number,
+      value: figures.figure(metric.key),
+    }))
+    .filter((row) => row.value !== null)
+    .slice(0, 5);
 
   // §5.1's own chart. Drawn from the figures, never from its own sums.
   const leads = ctx.workspace.hidden_categories.includes("leads_conversions")
@@ -175,6 +191,75 @@ export default async function ReportingOverviewPage({
           })}
         </div>
       </section>
+
+      {targetRows.length > 0 ? (
+        <Card className="mt-8">
+          <SectionTitle
+            aside={
+              ctx.canEdit ? (
+                <Link
+                  href={reportHref("/reporting/targets", ctx)}
+                  className={buttonClasses("secondary", "sm")}
+                >
+                  Set targets
+                </Link>
+              ) : undefined
+            }
+          >
+            How this month is going
+          </SectionTitle>
+          <ul className="mt-1 flex flex-col gap-4">
+            {targetRows.map(({ metric, target, value }) => {
+              const share = target > 0 ? ((value ?? 0) / target) * 100 : 0;
+              const good =
+                metric.good_direction === "up" ? share >= 100 : (value ?? 0) <= target;
+              return (
+                <li key={metric.key}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-small text-ink">{metric.label}</span>
+                    <span className="font-mono text-small text-ink/70">
+                      {formatValue(value, metric.unit, ctx.workspace.currency)} of{" "}
+                      {formatValue(target, metric.unit, ctx.workspace.currency)}
+                      <span className="ml-2 text-ink/50">{Math.round(share)}%</span>
+                    </span>
+                  </div>
+                  <div className="relative mt-1.5 h-3">
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: "var(--aos-cream-deep)" }}
+                    />
+                    <div
+                      aria-hidden
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, share))}%`,
+                        background: good ? "var(--aos-navy)" : "var(--aos-orange)",
+                        boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--aos-ink) 14%, transparent)",
+                      }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      ) : ctx.canEdit ? (
+        <Card className="mt-8">
+          <SectionTitle>No targets set</SectionTitle>
+          <p className="text-body text-ink/70">
+            Targets give every figure something to be measured against, and put a
+            progress bar here.{" "}
+            <Link
+              href={reportHref("/reporting/targets", ctx)}
+              className="underline underline-offset-4"
+            >
+              Set them for this client
+            </Link>
+            .
+          </p>
+        </Card>
+      ) : null}
 
       {ctx.canEdit && leadsCard ? <div className="mt-8">{leadsCard}</div> : null}
 

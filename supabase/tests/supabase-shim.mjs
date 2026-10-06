@@ -274,6 +274,7 @@ export function createShimClient(db, uid) {
       filters: [],
       inFilters: [],
       isFilters: [],
+      or: [],
       columns: "*",
       count: null,
       head: false,
@@ -317,6 +318,28 @@ export function createShimClient(db, uid) {
             }`,
       );
       clauses.push(...isClauses);
+
+      // PostgREST's `.or("a.is.null,b.eq.x")`: a comma-separated list of
+      // its own filter syntax, joined with OR and ANDed with the rest.
+      // Only the forms the app actually uses are translated, and an
+      // unknown one throws rather than quietly matching everything —
+      // a filter that silently widens is how a client sees another
+      // client's row.
+      for (const group of state.or) {
+        const parts = group.split(",").map((part) => {
+          const [column, op, ...rest] = part.split(".");
+          const raw = rest.join(".");
+          if (op === "is" && raw === "null") return `${quoteIdent(column)} is null`;
+          if (op === "eq") {
+            params.push(raw);
+            return `${quoteIdent(column)} = $${params.length}`;
+          }
+          throw new Error(
+            `The shim does not translate .or("${part}") yet. Add it rather than guessing.`,
+          );
+        });
+        clauses.push(`(${parts.join(" or ")})`);
+      }
 
       const whereSql = clauses.length ? ` where ${clauses.join(" and ")}` : "";
       const orderTerms = state.order.map(
@@ -569,6 +592,10 @@ export function createShimClient(db, uid) {
       },
       lte(column, value) {
         state.filters.push([column, value, "<="]);
+        return api;
+      },
+      or(expression) {
+        state.or.push(expression);
         return api;
       },
       limit(n) {
