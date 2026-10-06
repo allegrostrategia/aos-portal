@@ -91,6 +91,14 @@ a real month, and none of them can be finished before launch.
       **Decide before a real client reads a mid-relationship month.**
       (Dom, 6 Oct. Both halves are asserted in
       `supabase/tests/client-experience.test.mjs`.)
+- [ ] **If an offer price is wrong on a published month, the fix is
+      unpublish, correct, republish** — and the client gets the "has been
+      updated" email. A funnel month captures its offer's price on the
+      first save and a published month never changes it by any route, so
+      there is deliberately no quiet way to fix one. **Nina should know
+      this before the first real client**, because the alternative she
+      might expect — "just change the price and it will catch up" — does
+      nothing. (Dom, 6 Oct.)
 - [ ] **Nina reads the publish email's wording before the first real one goes
       out.** `src/lib/reporting/publish-email.ts` holds every word of it, in one
       file, specifically so she can change it without touching a screen. The
