@@ -12,6 +12,8 @@ import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { calculateFunnel } from "@/lib/reporting/calculate";
+import { TopItemsReport } from "@/components/reporting/top-items";
+import { getTopItems } from "@/lib/reporting/queries";
 import { monthLabel } from "@/lib/reporting/months";
 import { ads as adsFormulas } from "@/lib/reporting/formulas";
 import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
@@ -58,6 +60,10 @@ export default async function CategoryReportPage({
   if (ctx.workspace.hidden_categories.includes(category.key)) notFound();
 
   const figures = await getMonthFigures(ctx);
+  const topItems =
+    category.key === "trial_reels"
+      ? await getTopItems(ctx.workspace.id, ctx.month.month)
+      : null;
   const previousLabel = ctx.month.previous
     ? monthLabel(ctx.month.previous).split(" ")[0]
     : null;
@@ -214,6 +220,10 @@ export default async function CategoryReportPage({
           {category.key === "ads" ? <CampaignTable ctx={ctx} figures={figures} /> : null}
 
           {category.key === "funnels" ? <FunnelTable ctx={ctx} figures={figures} /> : null}
+
+          {topItems ? (
+            <TopItemsReport thisMonth={topItems.thisMonth} history={topItems.history} />
+          ) : null}
 
           {category.key === "financials" ? (
             <Card className="mt-6">

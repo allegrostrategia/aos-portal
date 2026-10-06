@@ -5,11 +5,18 @@ import { EntryForm } from "@/components/reporting/entry-form";
 import { OffersEntry } from "@/components/reporting/offers-entry";
 import { CampaignsEntry } from "@/components/reporting/campaigns-entry";
 import { FunnelsEntry } from "@/components/reporting/funnels-entry";
+import { TopItemsEntry } from "@/components/reporting/top-items";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
-import { getClientFlow, getMetrics, getMetricsFor, getMonthData } from "@/lib/reporting/queries";
+import {
+  getClientFlow,
+  getMetrics,
+  getMetricsFor,
+  getMonthData,
+  getTopItems,
+} from "@/lib/reporting/queries";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
 import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -290,6 +297,13 @@ export default async function EnterCategoryPage({
     }))
     .filter((r) => r.unitsSold !== null || r.revenue !== null || r.hoursSpent !== null);
 
+  // §5.3's two lists are words rather than figures, so they sit under
+  // the generic form rather than inside it.
+  const topItems =
+    category.key === "trial_reels"
+      ? await getTopItems(ctx.workspace.id, ctx.month.month)
+      : null;
+
   // Every figure this category's formulas read from another one. Only
   // month-level typed values: anything derived is worked out by the card
   // itself, and anything per-entity has no single answer here.
@@ -347,6 +361,15 @@ export default async function EnterCategoryPage({
         // to the Email section. The mockup's own wording avoids that.
         nextLabel={next ? "Save & next section" : null}
       />
+
+      {topItems ? (
+        <TopItemsEntry
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          thisMonth={topItems.thisMonth}
+          history={topItems.history}
+        />
+      ) : null}
     </ReportShell>
   );
 }

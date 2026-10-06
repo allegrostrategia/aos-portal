@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { CategoryKey } from "./categories.ts";
 import type { CampaignGoal } from "./formulas.ts";
 import type { MonthFlow } from "./client-flow.ts";
+import type { TopItem } from "./top-items.ts";
 
 /**
  * Reading a workspace's figures.
@@ -335,6 +336,36 @@ export async function getClientFlow(
   }
 
   return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
+}
+
+/**
+ * The top-three lists for a month, and every month before it.
+ *
+ * Both in one call because the screen needs both: this month's six rows
+ * to show, and the history to know which of them are proven. The history
+ * is small — six rows a month — so a year is seventy-two rows and the
+ * 1,000-row cap is nowhere near.
+ */
+export async function getTopItems(
+  workspaceId: string,
+  uptoMonth: string,
+): Promise<{ thisMonth: TopItem[]; history: TopItem[] }> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("report_top_items")
+    .select("id, month, item_type, rank, body, views")
+    .eq("workspace_id", workspaceId)
+    .lte("month", uptoMonth)
+    .order("month")
+    .order("item_type")
+    .order("rank")
+    .returns<TopItem[]>();
+
+  const history = data ?? [];
+  return {
+    thisMonth: history.filter((item) => item.month === uptoMonth),
+    history,
+  };
 }
 
 export interface ReportTarget {

@@ -407,11 +407,16 @@ export function createShimClient(db, uid) {
         }
 
         if (state.delete) {
-          await run(
-            `delete from public.${quoteIdent(state.table)}${whereSql}`,
+          // `.delete().select(...)` returns what went, which is the only
+          // way to tell a delete that removed nothing from one RLS
+          // refused — both are a success with no error. Code that checks
+          // it was getting null here and reading it as "refused".
+          const returning = state.columns ? ` returning ${state.columns}` : "";
+          const r = await run(
+            `delete from public.${quoteIdent(state.table)}${whereSql}${returning}`,
             params,
           );
-          return { data: null, error: null };
+          return { data: state.columns ? r.rows : null, error: null };
         }
 
         if (state.update) {

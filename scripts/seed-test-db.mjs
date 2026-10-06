@@ -269,6 +269,23 @@ export async function seed({ quiet = false } = {}) {
      where workspace_id = '${retainerId}' and name = 'Signature programme';
   `);
 
+  // Trial Reels (§5.3): figures for September, and two months of hooks
+  // so one of them is Proven and one is not.
+  sql(`
+    ${v(MONTHS.sep, "trial_reels_trial_reels_posted", 8)}
+    ${v(MONTHS.sep, "trial_reels_total_views", 120000)}
+    ${v(MONTHS.sep, "trial_reels_new_followers_from_trial_reels", 240)}
+    ${v(MONTHS.sep, "trial_reels_profile_visits", 1200)}
+    ${v(MONTHS.sep, "trial_reels_hours_spent_on_trial_reels", 16)}
+
+    insert into public.report_top_items (workspace_id, month, item_type, rank, body, views) values
+      ('${retainerId}', '${MONTHS.aug}', 'hook', 1, 'The one thing nobody tells you', 40000),
+      ('${retainerId}', '${MONTHS.aug}', 'hook', 2, 'A one-off that did well', 18000),
+      ('${retainerId}', '${MONTHS.sep}', 'hook', 1, 'The one thing nobody tells you', 51000),
+      ('${retainerId}', '${MONTHS.sep}', 'hook', 2, 'Brand new this month', 12000),
+      ('${retainerId}', '${MONTHS.sep}', 'b_roll', 1, 'Walking into the studio', 30000);
+  `);
+
   const out = { config, ids, retainerId, selfServeId };
   if (!quiet) {
     console.log(`seeded ${config.url}`);
