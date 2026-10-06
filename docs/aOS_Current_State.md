@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 5 October 2026
 
-**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 5 Oct: **395 unit / 289 + 84 schema / 242 action**, build, typecheck and lint clean. **Nothing is local only.** `main` is pushed and deployed to `7c10ea8`: §8's three pieces, the contact-name field, and **Stage 3's first release, the five single-month charts**.
+**All sixty-nine migrations are applied and verified on live**, the sixty-ninth (`20261005120000_report_publish_email`) by Dom on 5 October. Test suite as of 6 Oct: **416 unit / 289 + 84 schema / 268 action / 28 browser**, build, typecheck and lint clean. **Nothing is local only.** `main` is pushed and deployed to `3ab3257`. **Stage 3 is in progress**: the five charts are live; **Client Experience and Ads are built and deployed but invisible**, behind `SHIPPED_STAGE = 2`. Funnels and Trial Reels are next.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -298,6 +298,55 @@ not been shown.
 
 Everything rendered at 1440 and 390 through CDP device emulation and looked
 at. No horizontal overflow at either width.
+
+### 6 October — Stage 3: Client Experience and Ads, behind the flag
+
+Both built, tested and deployed, and **neither is visible to anybody**:
+`PRODUCTION_STAGE` is still 2, so their tabs have no route. Dom looks at
+each on localhost before that number moves.
+
+**Client Experience** is §5.8's opening figure and the four figures it
+unblocks — retention, churn, upsell and active-at-end, all of which had
+been null on every month of every client because "active clients at
+start" is a *pulled* metric and so can never be typed. Migration
+`20261005140000` applied 5 Oct. The chain is in `client-flow.ts`: the
+earliest stored opening figure wins, and every later month adds who
+joined and subtracts who left. The box appears on **one** month, and a
+second figure is named as not in use rather than ignored.
+
+**Ads** is §5.7: one block per campaign, each with a goal, and the goal
+decides whether its spend counts towards cost per lead — £4.50 against a
+blended £6.00 on the §10.2 sample. **A campaign with no goal is left out
+and said to be left out**, never counted by default. Reach is shown per
+campaign and never summed. Leads now reach the Leads page without being
+typed twice.
+
+**Three bugs found by the browser tests, within minutes of each other.**
+All three had passed every unit test, because none of those renders a
+page or looks at one:
+
+1. **A ReferenceError on the Client Experience entry page** — `note` used
+   by a filter declared above it — so the page rendered nothing at all.
+2. **§9 again.** The entry card showed "New clients —" and an "active
+   clients at end" of 15 where the report said 4 and 19: the live card
+   reads boxes on its own screen, and "new clients" lives in Leads. The
+   page now hands it the figures its formulas reach for.
+3. **Money was rounded to whole pounds everywhere**, so cost per click
+   printed "£0" and cost per lead "£5". The §10.2 example is precisely
+   £6.00 against £4.50, and at whole pounds the difference was invisible.
+   Small money keeps its pennies now — under a thousand and not a round
+   number.
+
+**The third one is client-visible and went out with this push.** On Test
+Client's live Offers page the effective hourly rate reads **£107.14**
+where it read £107; nothing else on live changes, because every other
+figure there is a round number. Flagged to Dom rather than slipped in.
+
+**And one the figure-agreement tests found on their first run**, live
+since Stage 2: Social Media's figures hang off a platform entity and the
+entry screen read them back without it, so **every box came back empty
+after a save** and "Worked out for you" showed dashes beside a report
+full of figures.
 
 ### Stage 2's closing check, 5 October — as the client, on live
 
