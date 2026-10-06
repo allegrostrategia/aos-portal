@@ -26,6 +26,7 @@ export function KpiCard({
   currency,
   previousLabel,
   href,
+  light,
 }: {
   label: string;
   value: number | null;
@@ -35,6 +36,17 @@ export function KpiCard({
   currency: string;
   previousLabel: string | null;
   href?: string;
+  /**
+   * §7's traffic light, worked out by `trafficLight()` against a target,
+   * a benchmark or last month — in that order, using the first one the
+   * client actually has.
+   *
+   * **Never colour alone.** The dot carries a word with it, because a
+   * red and a green dot are the pair most colourblind readers cannot
+   * separate, and because a dot on its own says nothing about what it
+   * was measured against.
+   */
+  light?: { tone: "green" | "amber" | "red"; against: string } | null;
 }) {
   const change = monthOnMonthChange(value, previous);
   const tone = changeTone(change, goodDirection);
@@ -46,6 +58,24 @@ export function KpiCard({
       : tone === "bad"
         ? "text-deep-red"
         : "text-ink/55";
+
+  // Colour plus a word, always. The dot alone would be the one pair a
+  // colourblind reader cannot separate, and it would not say what the
+  // figure was measured against either.
+  const lightWord =
+    light?.tone === "green"
+      ? "On track"
+      : light?.tone === "amber"
+        ? "Close"
+        : light?.tone === "red"
+          ? "Off track"
+          : null;
+  const lightColour =
+    light?.tone === "green"
+      ? "#1f7a4d"
+      : light?.tone === "amber"
+        ? "var(--aos-orange)"
+        : "var(--aos-deep-red)";
 
   const body = (
     <>
@@ -64,6 +94,16 @@ export function KpiCard({
       ) : (
         <p className="mt-2 text-small text-ink/40">No month to compare</p>
       )}
+      {light && lightWord ? (
+        <p className="mt-2 flex items-center gap-1.5 text-caption text-ink/60">
+          <span
+            aria-hidden
+            className="size-2 shrink-0 rounded-full"
+            style={{ background: lightColour }}
+          />
+          {lightWord} <span className="text-ink/45">vs. {light.against}</span>
+        </p>
+      ) : null}
     </>
   );
 

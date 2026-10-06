@@ -7,7 +7,8 @@ import { Objectives } from "@/components/reporting/objectives";
 import { ClientReplies } from "@/components/reporting/replies";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { leadsBySource } from "@/lib/reporting/chart-data";
-import { getTargets } from "@/lib/reporting/queries";
+import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
+import { lightFor } from "@/lib/reporting/lights";
 import { buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
@@ -65,7 +66,10 @@ export default async function ReportingOverviewPage({
 
   // §7's bar: up to five targets, in the metric list's own order so the
   // same five stay in the same places month to month.
-  const targets = await getTargets(ctx.workspace.id, ctx.month.month);
+  const [targets, benchmarks] = await Promise.all([
+    getTargets(ctx.workspace.id, ctx.month.month),
+    getBenchmarks(ctx.workspace.id),
+  ]);
   const targetRows = figures.metrics
     .filter((metric) => targets.has(`${metric.key}|`))
     .map((metric) => ({
@@ -186,6 +190,13 @@ export default async function ReportingOverviewPage({
                     ? reportHref(`/reporting/${category.slug}`, ctx)
                     : undefined
                 }
+                light={lightFor({
+                  value: figures.figure(kpi.metricKey),
+                  target: targets.get(`${kpi.metricKey}|`),
+                  benchmark: benchmarks.get(kpi.metricKey),
+                  lastMonth: figures.previousFigure(kpi.metricKey),
+                  goodDirection: metric.good_direction,
+                })}
               />
             );
           })}
