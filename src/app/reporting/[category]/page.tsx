@@ -78,7 +78,20 @@ export default async function CategoryReportPage({
   // §4: "A category with no data for a month doesn't appear in that month's
   // report. No toggles needed." Here that means saying so plainly rather than
   // drawing a page of dashes.
-  const empty = headline.length === 0 && rest.length === 0;
+  //
+  // **A category whose figures hang off a row has none at month level.**
+  // Counting only month-level figures called Offers empty on a month with
+  // offers in it, whenever those offers produced no month-level total —
+  // units sold entered but no revenue yet, say — and the page then said
+  // "Nothing for August" directly above the table of offers it drew next.
+  const entityRows =
+    category.key === "offers"
+      ? figures.offerRows.length
+      : category.key === "ads"
+        ? figures.campaignRows.filter((row) => row.spend !== null).length
+        : 0;
+
+  const empty = headline.length === 0 && rest.length === 0 && entityRows === 0;
 
   return (
     <ReportShell
