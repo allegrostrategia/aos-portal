@@ -125,12 +125,23 @@ export default async function EnterCategoryPage({
 
   // The calculated card needs last month for growth and rate-against-last-
   // month figures, and every typed field needs it for the hint underneath.
-  const keysNeeded = [...core, ...optional, ...calculated].map((m) => m.key);
+  // Social Media's figures hang off a platform, not off the month (§5.2),
+  // and `saveCategoryValues` writes them that way. Reading them back
+  // without the platform finds nothing — so every box came back empty
+  // after a save, and "Worked out for you" showed dashes beside a report
+  // full of figures. §9's disagreement, live since Stage 2, found 6 Oct by
+  // the figure-agreement test on its first run.
+  const platformId =
+    data.entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
+  const entityOf = (metric: { entity_type: string | null }) =>
+    metric.entity_type === "social_platform" ? platformId : null;
+
+  const forEntry = [...core, ...optional, ...calculated];
   const initial = Object.fromEntries(
-    [...core, ...optional].map((m) => [m.key, data.values.get(m.key)]),
+    [...core, ...optional].map((m) => [m.key, data.values.get(m.key, entityOf(m))]),
   );
   const previous = Object.fromEntries(
-    keysNeeded.map((key) => [key, data.previous.get(key)]),
+    forEntry.map((m) => [m.key, data.previous.get(m.key, entityOf(m))]),
   );
 
   // The month's offers, in the shape the formulas take. Financials pulls
