@@ -14,7 +14,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
-import { ENTRY_CATEGORIES, categoryByKey } from "@/lib/reporting/categories";
+import { ENTRY_CATEGORIES, STAGE_3, categoryByKey } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
 import { monthLabel } from "@/lib/reporting/months";
@@ -207,20 +207,20 @@ export default async function ReportingOverviewPage({
                     ? reportHref(`/reporting/${category.slug}`, ctx)
                     : undefined
                 }
-                light={lightFor({
+                light={STAGE_3 ? lightFor({
                   value: figures.figure(kpi.metricKey),
                   target: targets.get(`${kpi.metricKey}|`),
                   benchmark: benchmarks.get(kpi.metricKey),
                   lastMonth: figures.previousFigure(kpi.metricKey),
                   goodDirection: metric.good_direction,
-                })}
+                }) : null}
               />
             );
           })}
         </div>
       </section>
 
-      {panels.attention.length > 0 || panels.wins.length > 0 ? (
+      {STAGE_3 && (panels.attention.length > 0 || panels.wins.length > 0) ? (
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {panels.attention.length > 0 ? (
             <Card>
@@ -250,7 +250,7 @@ export default async function ReportingOverviewPage({
         </div>
       ) : null}
 
-      {targetRows.length > 0 ? (
+      {STAGE_3 && targetRows.length > 0 ? (
         <Card className="mt-8">
           <SectionTitle
             aside={
@@ -302,7 +302,7 @@ export default async function ReportingOverviewPage({
             })}
           </ul>
         </Card>
-      ) : ctx.canEdit ? (
+      ) : STAGE_3 && ctx.canEdit ? (
         <Card className="mt-8">
           <SectionTitle>No targets set</SectionTitle>
           <p className="text-body text-ink/70">

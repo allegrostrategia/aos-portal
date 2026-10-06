@@ -161,6 +161,18 @@ export const SHIPPED_STAGE: 2 | 3 | 4 =
     ? (Number(process.env.NEXT_PUBLIC_REPORTING_STAGE) as 2 | 3 | 4) || PRODUCTION_STAGE
     : PRODUCTION_STAGE;
 
+/**
+ * Whether Stage 3's additions to screens that already shipped are on.
+ *
+ * The four new tabs are hidden by having no route. The Overview is a
+ * Stage 2 screen that a client opens today, so its Stage 3 additions —
+ * the two panels, the traffic lights, the target bar — need their own
+ * switch, and it is this one. Pushing Stage 3 then changes nothing a
+ * client sees until `PRODUCTION_STAGE` moves, which is the same
+ * promise the tabs make (Dom, 6 October).
+ */
+export const STAGE_3 = SHIPPED_STAGE >= 3;
+
 export const SHIPPED_CATEGORIES = CATEGORIES.filter((c) => c.stage <= SHIPPED_STAGE);
 
 /** The categories a month's figures are typed into, in tab order. */

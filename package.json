@@ -16,7 +16,8 @@
     "test": "npm run test:unit && npm run test:db",
     "dev:e2e": "node scripts/dev-e2e.mjs",
     "test:e2e": "playwright test",
-    "e2e:setup": "npx supabase start && node scripts/seed-test-db.mjs"
+    "e2e:setup": "npx supabase start && node scripts/seed-test-db.mjs",
+    "dev:e2e:stage2": "REPORTING_STAGE_OFF=1 node scripts/dev-e2e.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

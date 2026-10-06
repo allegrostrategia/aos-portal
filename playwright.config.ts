@@ -23,6 +23,8 @@ import { defineConfig, devices } from "@playwright/test";
  */
 
 const PORT = 3100;
+/** The same app with the flag where production has it. */
+export const STAGE_2_PORT = 3101;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -64,14 +66,28 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    // Its own port and its own environment, so a dev server already
-    // running against live cannot be the one the tests drive.
-    command: "npm run dev:e2e",
-    url: `http://127.0.0.1:${PORT}/login`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer: [
+    {
+      // Its own port and its own environment, so a dev server already
+      // running against live cannot be the one the tests drive.
+      command: "npm run dev:e2e",
+      url: `http://127.0.0.1:${PORT}/login`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      // The same app at the stage production is on, so a test can prove
+      // that Stage 3 adds nothing to a screen a client already opens.
+      // Without this, "it is behind the flag" is a claim about code
+      // rather than something anybody has watched not happen.
+      command: `E2E_PORT=${STAGE_2_PORT} npm run dev:e2e:stage2`,
+      url: `http://127.0.0.1:${STAGE_2_PORT}/login`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  ],
 });

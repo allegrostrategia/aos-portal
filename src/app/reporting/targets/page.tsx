@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ReportShell } from "@/components/reporting/report-shell";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { TargetsForm, type TargetRow } from "@/components/reporting/targets-form";
-import { CATEGORIES } from "@/lib/reporting/categories";
+import { CATEGORIES, STAGE_3 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getMetrics } from "@/lib/reporting/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -26,6 +26,10 @@ export const metadata: Metadata = {
  * `canEdit` rather than `isAdmin`.
  */
 export default async function TargetsPage({ searchParams }: PageProps<"/reporting/targets">) {
+  // Stage 3, so no route until the flag moves — §13's one-route rule
+  // applies to a page nobody should reach yet as much as to a tab.
+  if (!STAGE_3) notFound();
+
   const search = await searchParams;
   const ctx = await resolveReportContext({
     workspace: typeof search.workspace === "string" ? search.workspace : undefined,

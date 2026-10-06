@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ReportShell } from "@/components/reporting/report-shell";
 import { BenchmarksForm } from "@/components/reporting/benchmarks-form";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { STAGE_3 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { getBenchmarks, getMetrics } from "@/lib/reporting/queries";
@@ -24,6 +25,10 @@ export const metadata: Metadata = {
 export default async function BenchmarksPage({
   searchParams,
 }: PageProps<"/reporting/benchmarks">) {
+  // Stage 3, so no route until the flag moves — §13's one-route rule
+  // applies to a page nobody should reach yet as much as to a tab.
+  if (!STAGE_3) notFound();
+
   const search = await searchParams;
   const ctx = await resolveReportContext({
     workspace: typeof search.workspace === "string" ? search.workspace : undefined,

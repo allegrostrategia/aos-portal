@@ -52,9 +52,11 @@ spawn("npx", ["next", "dev", "--port", PORT], {
     NEXT_PUBLIC_SITE_URL: `http://127.0.0.1:${PORT}`,
     // Stage 3's tabs have no route in production yet, and the tests are
     // for the tabs. Development-only, enforced by NODE_ENV in categories.ts.
-    NEXT_PUBLIC_REPORTING_STAGE: "3",
+    // REPORTING_STAGE_OFF runs the app exactly as production has it, so
+    // a test can watch Stage 3 not appear.
+    NEXT_PUBLIC_REPORTING_STAGE: process.env.REPORTING_STAGE_OFF ? "2" : "3",
     // Its own build directory, or Next 16 refuses to start beside the dev
     // server already running on 3000.
-    NEXT_DIST_DIR: ".next-e2e",
+    NEXT_DIST_DIR: process.env.REPORTING_STAGE_OFF ? ".next-e2e-stage2" : ".next-e2e",
   },
 }).on("exit", (code) => process.exit(code ?? 0));
