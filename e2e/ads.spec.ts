@@ -151,3 +151,36 @@ test("the client cannot reach the entry screen at all", async ({ page }) => {
   await expect(page).toHaveURL(/\/reporting\/ads/);
   await expect(page.getByRole("button", { name: /save this month/i })).toHaveCount(0);
 });
+
+test("the Leads tab shows the real figure from Ads, not a second box", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+
+  // §4, "enter once, use everywhere": "new leads from ads" is pulled, so
+  // the number on Leads must be the one the campaigns add up to — and
+  // there must be nowhere to type it a second time and disagree.
+  await page.goto(`/reporting/ads?month=${MONTHS.sep}`);
+  const adsText = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  const adsLeads = adsText.match(/Total\s+£600\s+4,200\s+([\d,]+)/)?.[1];
+  expect(adsLeads, `the Ads total row did not parse: ${adsText.slice(0, 300)}`).toBe("100");
+
+  await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
+  const leadsText = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  const fromAds = leadsText.match(/New leads from ads\s+([\d,]+)/i)?.[1];
+
+  expect(fromAds, `"New leads from ads" is not on the Leads page at all`).toBeTruthy();
+  expect(fromAds, `Ads says ${adsLeads}, Leads says ${fromAds}`).toBe("100");
+
+  // And it is in the source split, so the total counts it.
+  const total = leadsText.match(/Total leads\s+([\d,]+)/i)?.[1];
+  expect(total, "Total leads is not on the page").toBeTruthy();
+  expect(Number(total?.replace(",", ""))).toBeGreaterThanOrEqual(100);
+
+  await shoot(page, TAB, "07-leads-from-ads", w);
+
+  // Nowhere to type it: a box here would be a second answer.
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.sep}`);
+  await expect(page.getByLabel(/new leads from ads/i)).toHaveCount(0);
+});
