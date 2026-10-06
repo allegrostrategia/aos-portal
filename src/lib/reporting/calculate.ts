@@ -353,6 +353,61 @@ export function calculateOffer(
   };
 }
 
+export interface FunnelMonth {
+  id: string;
+  name: string;
+  linkedOfferId: string | null;
+  landingPageViews: Figure;
+  optIns: Figure;
+  salesPageViews: Figure;
+  checkoutsStarted: Figure;
+  purchases: Figure;
+  orderBumps: Figure;
+  upsells: Figure;
+  /**
+   * The linked offer's price **as captured with this month**, not as it
+   * stands now. A price rise in November must not move October's revenue
+   * on a report the client was sent in October (Dom, 6 October).
+   */
+  priceAtMonth: Figure;
+}
+
+/**
+ * One funnel's worked-out figures for a month.
+ *
+ * Revenue is a dash, never a zero, when there is no captured price or no
+ * linked offer — §4, and Dom's rule of 5 October. Zero would read as "this
+ * funnel earned nothing", which is a different and usually untrue claim.
+ */
+export function calculateFunnel(funnel: FunnelMonth): CalcResults {
+  const revenue = funnels.revenue(funnel.purchases, funnel.priceAtMonth);
+  return {
+    funnels_opt_in_rate: funnels.optInRate(funnel.optIns, funnel.landingPageViews),
+    funnels_sales_page_conversion: funnels.salesPageConversion(
+      funnel.purchases,
+      funnel.salesPageViews,
+    ),
+    funnels_checkout_completion: funnels.checkoutCompletion(
+      funnel.purchases,
+      funnel.checkoutsStarted,
+    ),
+    funnels_overall_conversion: funnels.overallConversion(
+      funnel.purchases,
+      funnel.landingPageViews,
+    ),
+    funnels_order_bump_take_rate: funnels.orderBumpTakeRate(
+      funnel.orderBumps,
+      funnel.purchases,
+    ),
+    funnels_upsell_take_rate: funnels.upsellTakeRate(funnel.upsells, funnel.purchases),
+    funnels_funnel_revenue: revenue,
+    funnels_revenue_per_visitor: funnels.revenuePerVisitor(
+      revenue,
+      funnel.landingPageViews,
+    ),
+  };
+}
+
 /**
  * Every offer with its own worked-out figures.
  *

@@ -227,6 +227,48 @@ export async function seed({ quiet = false } = {}) {
     `);
   }
 
+  // Funnels (§5.5): an offer with a price, a funnel selling it, and one
+  // funnel selling nothing — the dash case. July's figures are saved
+  // before the price rises, so a browser test can watch the month keep
+  // its own price.
+  sql(`
+    insert into public.report_entities (workspace_id, entity_type, name, price, pricing_model, hourly_cost)
+    values ('${retainerId}', 'offer', 'Signature programme', 500, 'one_off', 40);
+    insert into public.report_entities (workspace_id, entity_type, name, linked_offer_id)
+    select '${retainerId}', 'funnel', 'Webinar funnel', id
+      from public.report_entities
+     where workspace_id = '${retainerId}' and entity_type = 'offer' and name = 'Signature programme';
+    insert into public.report_entities (workspace_id, entity_type, name)
+    values ('${retainerId}', 'funnel', 'Unlinked funnel');
+  `);
+
+  const funnelValue = (month, key, value, funnel) =>
+    `insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
+     select '${retainerId}', '${month}', '${key}', e.id, ${value}, '${ids.nina}'
+       from public.report_entities e
+      where e.workspace_id = '${retainerId}' and e.name = '${funnel}';`;
+
+  // July: saved at £500, then published. Its price must never move.
+  sql(`
+    ${funnelValue(MONTHS.jul, "funnels_landing_page_views", 1000, "Webinar funnel")}
+    ${funnelValue(MONTHS.jul, "funnels_opt_ins", 200, "Webinar funnel")}
+    ${funnelValue(MONTHS.jul, "funnels_purchases", 10, "Webinar funnel")}
+    ${funnelValue(MONTHS.jul, "funnels_offer_price_at_month", 500, "Webinar funnel")}
+  `);
+
+  // September is a draft, captured at £500, and the offer now sells for
+  // £800 — which is the state the correction button exists for.
+  sql(`
+    ${funnelValue(MONTHS.sep, "funnels_landing_page_views", 2000, "Webinar funnel")}
+    ${funnelValue(MONTHS.sep, "funnels_opt_ins", 500, "Webinar funnel")}
+    ${funnelValue(MONTHS.sep, "funnels_purchases", 8, "Webinar funnel")}
+    ${funnelValue(MONTHS.sep, "funnels_offer_price_at_month", 500, "Webinar funnel")}
+    ${funnelValue(MONTHS.sep, "funnels_landing_page_views", 400, "Unlinked funnel")}
+    ${funnelValue(MONTHS.sep, "funnels_purchases", 3, "Unlinked funnel")}
+    update public.report_entities set price = 800
+     where workspace_id = '${retainerId}' and name = 'Signature programme';
+  `);
+
   const out = { config, ids, retainerId, selfServeId };
   if (!quiet) {
     console.log(`seeded ${config.url}`);

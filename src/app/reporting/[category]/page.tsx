@@ -11,6 +11,7 @@ import { categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
+import { calculateFunnel } from "@/lib/reporting/calculate";
 import { monthLabel } from "@/lib/reporting/months";
 import { ads as adsFormulas } from "@/lib/reporting/formulas";
 import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
@@ -89,7 +90,11 @@ export default async function CategoryReportPage({
       ? figures.offerRows.length
       : category.key === "ads"
         ? figures.campaignRows.filter((row) => row.spend !== null).length
-        : 0;
+        : category.key === "funnels"
+          ? figures.funnelRows.filter(
+              (row) => row.landingPageViews !== null || row.purchases !== null,
+            ).length
+          : 0;
 
   const empty = headline.length === 0 && rest.length === 0 && entityRows === 0;
 
@@ -207,6 +212,8 @@ export default async function CategoryReportPage({
           ) : null}
 
           {category.key === "ads" ? <CampaignTable ctx={ctx} figures={figures} /> : null}
+
+          {category.key === "funnels" ? <FunnelTable ctx={ctx} figures={figures} /> : null}
 
           {category.key === "financials" ? (
             <Card className="mt-6">
@@ -434,6 +441,81 @@ function CampaignTable({
           : ""}
         {" "}Reach is shown per campaign and not added up: the same person can be reached
         by more than one.
+      </p>
+    </Card>
+  );
+}
+
+/**
+ * Each funnel this month (§5.5).
+ *
+ * The price column is the one a reader might not expect: it is the
+ * offer's price **as it was when this month was saved**, not as it is
+ * now, so revenue here cannot move after the client has read it. A funnel
+ * with no linked offer shows a dash for revenue rather than £0 — it did
+ * not earn nothing, we have no price to work it out with.
+ */
+function FunnelTable({
+  ctx,
+  figures,
+}: {
+  ctx: Awaited<ReturnType<typeof resolveReportContext>>;
+  figures: Awaited<ReturnType<typeof getMonthFigures>>;
+}) {
+  const rows = figures.funnelRows;
+  if (rows.length === 0) return null;
+
+  const currency = ctx.workspace.currency;
+
+  return (
+    <Card className="mt-6" padded={false}>
+      <div className="p-5 sm:p-6">
+        <SectionTitle>Each funnel this month</SectionTitle>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[44rem] text-left">
+          <thead>
+            <tr className="border-y border-ink/8 text-caption text-ink/55 uppercase">
+              <th scope="col" className="px-5 py-2.5 font-medium sm:px-6">Funnel</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Visitors</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Opt-in rate</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Purchases</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Price</th>
+              <th scope="col" className="px-5 py-2.5 text-right font-medium sm:px-6">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const results = calculateFunnel(row);
+              return (
+                <tr key={row.id} className="border-b border-ink/8 last:border-0">
+                  <th scope="row" className="px-5 py-3 text-body font-medium text-ink sm:px-6">
+                    {row.name}
+                  </th>
+                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                    {formatValue(row.landingPageViews ?? null, "count")}
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                    {formatValue(results.funnels_opt_in_rate ?? null, "percent")}
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                    {formatValue(row.purchases ?? null, "count")}
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                    {formatValue(row.priceAtMonth ?? null, "currency", currency)}
+                  </td>
+                  <td className="px-5 py-3 text-right font-mono text-body text-ink sm:px-6">
+                    {formatValue(results.funnels_funnel_revenue ?? null, "currency", currency)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-5 pb-5 text-caption text-ink/55 sm:px-6">
+        The price is the one this funnel&rsquo;s offer was selling at when the month was
+        put together, so this month&rsquo;s revenue does not change if the price does.
       </p>
     </Card>
   );

@@ -90,11 +90,12 @@ await check("no calc metric is missing its formula", async () =>
   )).rows[0].c === 0);
 
 // The count is deliberate: it notices a metric added or lost by accident.
-// 174 at the Stage 1 seed, 175 from 5 Oct 2026 — §5.8's opening figure
-// (20261005140000), which exists because "active clients at start" is
-// pulled and so can never be typed.
+// 174 at the Stage 1 seed; 175 from 5 Oct (§5.8's opening figure, which
+// exists because "active clients at start" is pulled and so can never be
+// typed); 176 from 6 Oct (§5.5's captured funnel price, so a price rise
+// cannot rewrite a month the client has read).
 await check("anyone signed in reads the metric list", async () =>
-  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 175);
+  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 176);
 
 await rejects("a client cannot add a metric", () =>
   as(MEMBER, () => db.query(`

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { EntryForm } from "@/components/reporting/entry-form";
 import { OffersEntry } from "@/components/reporting/offers-entry";
 import { CampaignsEntry } from "@/components/reporting/campaigns-entry";
+import { FunnelsEntry } from "@/components/reporting/funnels-entry";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
@@ -134,6 +135,61 @@ export default async function EnterCategoryPage({
   // and not on the other eleven — Dom, 6 Oct: "I don't want Nina prompted
   // in the wrong month." It is a `core` metric, so without this the generic
   // form would render it on every screen.
+  // Funnels hangs off a funnel, and additionally depends on another
+  // entity's price — see funnel-price.ts for why the month keeps its own.
+  if (category.key === "funnels") {
+    const funnels = data.entities.filter((e) => e.entity_type === "funnel");
+    const offers = data.entities
+      .filter((e) => e.entity_type === "offer")
+      .map((o) => ({ id: o.id, name: o.name, price: o.price }));
+    const FUNNEL_KEYS = [
+      "funnels_landing_page_views",
+      "funnels_opt_ins",
+      "funnels_sales_page_views",
+      "funnels_checkouts_started",
+      "funnels_purchases",
+      "funnels_order_bumps_taken",
+      "funnels_upsells_taken",
+      "funnels_offer_price_at_month",
+    ];
+    const cell = (source: typeof data.values, key: string, id: string) =>
+      [`${key}|${id}`, source.get(key, id)] as const;
+
+    return (
+      <ReportShell
+        ctx={ctx}
+        active={category.key}
+        path={`/reporting/enter/${category.slug}`}
+        title="Enter your data"
+        tagline={`${category.label} · ${ctx.month.label}`}
+        actions={
+          <PublishBadge
+            kind={ctx.workspace.kind}
+            publishedAt={data.period?.published_at ?? null}
+            show={ctx.showDraftState}
+          />
+        }
+      >
+        <FunnelsEntry
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          monthLabel={ctx.month.label}
+          published={Boolean(data.period?.published_at)}
+          previousLabel={previousLabel}
+          currency={ctx.workspace.currency}
+          funnels={funnels}
+          offers={offers}
+          values={Object.fromEntries(
+            funnels.flatMap((f) => FUNNEL_KEYS.map((k) => cell(data.values, k, f.id))),
+          )}
+          previous={Object.fromEntries(
+            funnels.flatMap((f) => FUNNEL_KEYS.map((k) => cell(data.previous, k, f.id))),
+          )}
+        />
+      </ReportShell>
+    );
+  }
+
   // Ads hangs off a campaign the way Offers hangs off an offer (§5.7), so
   // it gets its own screen for the same reason: the generic form writes
   // one figure per metric per month and would merge nine campaigns into

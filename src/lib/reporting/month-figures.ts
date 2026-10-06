@@ -1,7 +1,13 @@
 import "server-only";
 
 import { CATEGORIES, type CategoryKey } from "./categories.ts";
-import { calculate, entityAwareLookup, offerResults, type Lookup } from "./calculate.ts";
+import {
+  calculate,
+  entityAwareLookup,
+  offerResults,
+  type FunnelMonth,
+  type Lookup,
+} from "./calculate.ts";
 import type { AdCampaign, OfferMonth } from "./formulas.ts";
 import {
   getClientFlow,
@@ -42,6 +48,8 @@ export interface MonthFigures {
   offerRows: OfferMonth[];
   /** The ad campaigns, with their goals, for the Ads screen (§5.7). */
   campaignRows: (AdCampaign & { id: string })[];
+  /** The funnels, each with the price captured for this month (§5.5). */
+  funnelRows: FunnelMonth[];
   /**
    * §5.8's opening figure: the one in use, and any others sitting unused.
    *
@@ -100,6 +108,24 @@ function campaignRowsFrom(
     }));
 }
 
+function funnelRowsFrom(data: MonthData, values: MonthData["values"]): FunnelMonth[] {
+  return data.entities
+    .filter((e) => e.entity_type === "funnel")
+    .map((funnel) => ({
+      id: funnel.id,
+      name: funnel.name,
+      linkedOfferId: funnel.linked_offer_id,
+      landingPageViews: values.get("funnels_landing_page_views", funnel.id),
+      optIns: values.get("funnels_opt_ins", funnel.id),
+      salesPageViews: values.get("funnels_sales_page_views", funnel.id),
+      checkoutsStarted: values.get("funnels_checkouts_started", funnel.id),
+      purchases: values.get("funnels_purchases", funnel.id),
+      orderBumps: values.get("funnels_order_bumps_taken", funnel.id),
+      upsells: values.get("funnels_upsells_taken", funnel.id),
+      priceAtMonth: values.get("funnels_offer_price_at_month", funnel.id),
+    }));
+}
+
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
   const [metrics, data, flow] = await Promise.all([
     getMetrics(),
@@ -143,6 +169,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   // compare" on a month whose predecessor was full of figures.
   const previousOfferRows = offerRowsFrom(data, data.previous);
   const campaignRows = campaignRowsFrom(data, data.values);
+  const funnelRows = funnelRowsFrom(data, data.values);
   const previousCampaignRows = campaignRowsFrom(data, data.previous);
 
   // Every category, so the Overview can read a figure from any of them.
@@ -193,6 +220,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     previousFigure,
     offerRows,
     campaignRows,
+    funnelRows,
     openingClients: openingFigures(flow),
     byKey,
   };
