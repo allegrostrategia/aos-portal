@@ -119,3 +119,41 @@ test("an assigned team member can paste one; the client cannot", async () => {
   configure(db, NINA);
   assert.equal((await getBenchmarks(WS)).get("email_average_open_rate"), 44);
 });
+
+test("the new columns sit on the editor side of the workspace guard", async () => {
+  // report_workspaces has guard_report_workspace_admin_fields, which
+  // holds back kind, owner, access window and first month from anyone
+  // but an admin. benchmarks_set_at and benchmarks_unmatched are
+  // deliberately NOT in that list: its own comment says "an editor may
+  // set hidden categories, benchmark answers, target rate, name and
+  // currency", and pasting a reply is exactly that.
+  //
+  // A retainer client is held back a layer earlier, by the update
+  // policy, because report_can_edit() is false for them — so no trigger
+  // is needed and adding one would be belt over a belt.
+  const blocked = await rows(`
+    select pg_get_functiondef(oid) as def from pg_proc
+     where proname = 'guard_report_workspace_admin_fields'`);
+  assert.ok(
+    !/benchmarks_set_at|benchmarks_unmatched/.test(blocked[0].def),
+    "the guard must not hold back the benchmark columns from an editor",
+  );
+  assert.match(blocked[0].def, /first_month/, "and must still hold back the ones it did");
+
+  // Elize, through the real action, writes both.
+  await as(ELIZE, () => saveBenchmarkReply(null, form("Average open rate: 41%")));
+  const [stamped] = await rows(`
+    select benchmarks_set_at is not null as stamped from public.report_workspaces where id = '${WS}'`);
+  assert.equal(stamped.stamped, true);
+
+  // The client cannot, and it is the policy that stops them.
+  await asMember(db, CLIENT, async () => {
+    const { rows: changed } = await db.query(`
+      update public.report_workspaces set benchmarks_set_at = null
+       where id = '${WS}' returning id`);
+    assert.equal(changed.length, 0, "RLS admits no update of theirs at all");
+  });
+  const [after] = await rows(`
+    select benchmarks_set_at is not null as stamped from public.report_workspaces where id = '${WS}'`);
+  assert.equal(after.stamped, true, "unchanged");
+});
