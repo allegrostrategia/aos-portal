@@ -9,6 +9,7 @@ import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { leadsBySource } from "@/lib/reporting/chart-data";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { lightFor } from "@/lib/reporting/lights";
+import { PANELS, highlights } from "@/lib/reporting/highlights";
 import { buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
@@ -63,6 +64,22 @@ export default async function ReportingOverviewPage({
     !ctx.canEdit && ctx.workspace.kind === "retainer" && ctx.monthPublished;
 
   const period = figures.data.period ?? null;
+
+  // §7's two panels. Every word in them is Nina's, from one file.
+  const panels = highlights(
+    figures.metrics
+      .filter((metric) => metric.entity_type === null && metric.good_direction !== "none")
+      .filter((metric) => !ctx.workspace.hidden_categories.includes(metric.category))
+      .map((metric) => ({
+        label: metric.label,
+        unit: metric.unit,
+        goodDirection: metric.good_direction,
+        value: figures.figure(metric.key),
+        previous: figures.previousFigure(metric.key),
+        target: targets.get(`${metric.key}|`) ?? null,
+        currency: ctx.workspace.currency,
+      })),
+  );
 
   // §7's bar: up to five targets, in the metric list's own order so the
   // same five stay in the same places month to month.
@@ -202,6 +219,36 @@ export default async function ReportingOverviewPage({
           })}
         </div>
       </section>
+
+      {panels.attention.length > 0 || panels.wins.length > 0 ? (
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          {panels.attention.length > 0 ? (
+            <Card>
+              <SectionTitle>{PANELS.attention}</SectionTitle>
+              <ul className="flex flex-col gap-2.5">
+                {panels.attention.map((item) => (
+                  <li key={item.text} className="text-body text-ink/80">
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+
+          {panels.wins.length > 0 ? (
+            <Card>
+              <SectionTitle>{PANELS.wins}</SectionTitle>
+              <ul className="flex flex-col gap-2.5">
+                {panels.wins.map((item) => (
+                  <li key={item.text} className="text-body text-ink/80">
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
 
       {targetRows.length > 0 ? (
         <Card className="mt-8">
