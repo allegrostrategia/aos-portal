@@ -43,17 +43,26 @@ export function unpublishWarning(
 
   const labels = [...laterPublished].sort().map(monthLabel);
   const named = listOf(labels);
-  // Dom's wording, 7 October, kept to the word in the single case. The
-  // plural only changes what grammar forces: "It" to "They", and the
-  // repeated month name to "them", since naming four months twice in one
-  // sentence stops being a warning and starts being a paragraph.
+  // Dom's final wording, 7 October, after the first draft said "will show
+  // dashes" and the measurement showed worse than dashes: three figures
+  // disappear and one comes out WRONG, because "start + new − left"
+  // computed happily from a start it could not read.
+  //
+  // "Missing" is true of live today — both published months already show a
+  // dash there, since `left` is unset and `difference` was always strict
+  // about it. It becomes true in general with the strict
+  // `activeClientsAtEnd`, which is approved and held for Dom's word.
+  //
+  // The plural changes only what grammar forces: "uses" to "use", "its" to
+  // "their", and the repeated month name to "them", since naming four
+  // months twice in one sentence stops being a warning and starts being a
+  // paragraph.
   const one = labels.length === 1;
-  const subject = one ? "It" : "They";
   const republish = one ? named : "them";
 
   return (
     `${named} ${one ? "uses" : "use"} figures from this month. ` +
-    `${subject} will show dashes until you republish, and if you change ` +
-    `anything here, republish ${republish} too.`
+    `Until you republish, some of ${one ? "its" : "their"} figures will be ` +
+    `missing. If you change anything here, republish ${republish} too.`
   );
 }

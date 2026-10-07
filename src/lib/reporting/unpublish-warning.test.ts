@@ -10,20 +10,21 @@ import { unpublishWarning } from "./unpublish-warning.ts";
  * is the one she will almost always meet.
  */
 
-test("Dom's sentence, to the word", () => {
+test("Dom's final sentence, to the word", () => {
   assert.equal(
     unpublishWarning(["2026-09-01"], true),
-    "September 2026 uses figures from this month. It will show dashes until " +
-      "you republish, and if you change anything here, republish September 2026 too.",
+    "September 2026 uses figures from this month. Until you republish, some " +
+      "of its figures will be missing. If you change anything here, republish " +
+      "September 2026 too.",
   );
 });
 
 test("more than one later month reads as a person would say it", () => {
   assert.equal(
     unpublishWarning(["2026-10-01", "2026-09-01"], true),
-    "September 2026 and October 2026 use figures from this month. They will " +
-      "show dashes until you republish, and if you change anything here, " +
-      "republish them too.",
+    "September 2026 and October 2026 use figures from this month. Until you " +
+      "republish, some of their figures will be missing. If you change " +
+      "anything here, republish them too.",
   );
 
   assert.match(

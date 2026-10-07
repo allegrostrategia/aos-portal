@@ -149,7 +149,7 @@ test("unpublishing warns about the months that read from this one", async ({ pag
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
   await expect(page.getByText(/august 2026 uses figures from this month/i)).toBeVisible();
   await expect(
-    page.getByText(/it will show dashes until you republish/i),
+    page.getByText(/until you republish, some of its figures will be missing/i),
   ).toBeVisible();
   await shoot(page, TAB, "08-unpublish-warning", w);
 
