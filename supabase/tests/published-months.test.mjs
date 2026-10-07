@@ -35,6 +35,7 @@ const { publishMonth, unpublishMonth, saveStrategistNote } = await import(
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveTopItems } = await import("../../src/lib/reporting/top-item-actions.ts");
 const { saveTargets } = await import("../../src/lib/reporting/target-actions.ts");
+const { saveObjectives } = await import("../../src/lib/reporting/objective-actions.ts");
 const { addClientReply, editClientReply } = await import(
   "../../src/lib/reporting/reply-actions.ts"
 );
@@ -447,6 +448,83 @@ test("a reply cannot be smuggled in as a strategist note", async () => {
   assert.equal(notes[0].c, 1, "still only the one Nina wrote");
 });
 
+test("the editor cannot change the objectives on a published month", async () => {
+  // "What we're focusing on next month" is §8's up-to-three objectives,
+  // and they are on the client's Overview. They live in report_notes as
+  // note_type = 'objective', so the lock covers them — the carve-out is
+  // client_reply alone. Asserted rather than assumed, because "it is the
+  // same table" is exactly the reasoning that misses one.
+  const result = await as(ELIZE, () =>
+    saveObjectives(
+      null,
+      form({
+        workspace_id: WS,
+        month: AUG,
+        "objective_1": "Actually, something else entirely",
+      }),
+    ),
+  );
+  assert.match(result?.error ?? "", LOCKED);
+
+  const objectives = await rows(`
+    select count(*)::int c from public.report_notes
+     where workspace_id = '${WS}' and month = '${AUG}' and note_type = 'objective'`);
+  assert.equal(objectives[0].c, 0, "none were written");
+});
+
+test("an editor cannot put words in the client's mouth — in any month", async () => {
+  // Dom's question, 7 October: the guard lets a client_reply through on a
+  // published month, so does anything stop ELIZE writing one?
+  //
+  // Until 20261007110000, no. `author_id` is pinned to the writer, so she
+  // could not claim the client's user id — but `author_name` is free text
+  // and it is what `replies.tsx` prints. A reply signed "Bella Rossi"
+  // landed on the client's own published report.
+  for (const month of [AUG, SEP]) {
+    await asMember(db, ELIZE, async () => {
+      await assert.rejects(
+        () => db.query(`
+          insert into public.report_notes
+            (workspace_id, month, note_type, author_id, author_name, body)
+          values ('${WS}', '${month}', 'client_reply', '${ELIZE}',
+                  'Bella Rossi', 'Happy with everything, no notes!')`),
+        /row-level security|policy/i,
+        `a team member authored a client reply on ${month}`,
+      );
+    });
+  }
+
+  // Published or draft, nothing of hers is in the thread.
+  const forged = await rows(`
+    select count(*)::int c from public.report_notes
+     where note_type = 'client_reply' and author_id = '${ELIZE}'`);
+  assert.equal(forged[0].c, 0);
+});
+
+test("and the real client is unaffected — the policy narrowed, it did not close", async () => {
+  // The mutation test for the line above: tighten it wrongly and this is
+  // what breaks. The client's reply from earlier is still theirs, and they
+  // can still send another.
+  const sent = await as(CLIENT, () =>
+    addClientReply(null, form({ workspace_id: WS, month: AUG, body: "One more thing." })),
+  );
+  assert.equal(sent?.error, undefined, sent?.error);
+
+  const mine = await rows(`
+    select count(*)::int c from public.report_notes
+     where note_type = 'client_reply' and author_id = '${CLIENT}'`);
+  assert.equal(mine[0].c, 2);
+});
+
+test("Elize's own half of the conversation still works", async () => {
+  // §8: her reply to a client is the strategist's note, not a note in
+  // their voice. On a draft month, she writes it as she always could.
+  const note = await as(ELIZE, () =>
+    saveStrategistNote(null, form({ workspace_id: WS, month: SEP, body: "On the costs: here is why." })),
+  );
+  assert.equal(note?.error, undefined, note?.error);
+});
+
 // --- the admin -------------------------------------------------------------
 
 test("the admin passes the guard, as every guard in this codebase lets her", async () => {
@@ -544,8 +622,9 @@ test("the client's reply survived the correction", async () => {
   // republishing must not take the conversation with it.
   const replies = await rows(`
     select body from public.report_notes
-     where workspace_id = '${WS}' and month = '${AUG}' and note_type = 'client_reply'`);
-  assert.equal(replies.length, 1);
+     where workspace_id = '${WS}' and month = '${AUG}' and note_type = 'client_reply'
+     order by created_at`);
+  assert.equal(replies.length, 2, "both of theirs, and nothing of anybody else's");
   assert.equal(replies[0].body, "Can we talk about the fixed costs?");
 });
 
