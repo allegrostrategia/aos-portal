@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
+import { DERIVED_FROM, TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
 
 /**
  * "Look at these first 👀" and "What went WELL this month".
@@ -239,4 +239,107 @@ test("the panels take the biggest movements, three each", () => {
     attention[0].text.startsWith("9 fewer"),
     `biggest first, got "${attention[0].text}"`,
   );
+});
+
+test("a rate drops out when its own count is saying the same thing", () => {
+  // Dom's case, 7 October: "Issues raised up 3" and "Issues per 10 clients
+  // up 1.0" are one event described twice. The count stays, being the
+  // plain one.
+  const { attention } = highlights([
+    {
+      ...base,
+      key: "client_experience_issues_raised",
+      label: "Issues raised",
+      goodDirection: "down",
+      value: 4,
+      previous: 1,
+    },
+    {
+      ...base,
+      key: "client_experience_issues_per_10_clients",
+      label: "Issues per 10 clients",
+      unit: "ratio",
+      goodDirection: "down",
+      value: 2,
+      previous: 1,
+    },
+  ]);
+
+  assert.equal(attention.length, 1);
+  assert.match(attention[0].text, /^Issues raised up 3/);
+});
+
+test("but it stays when the two are telling different stories", () => {
+  // New clients up while the close rate falls is not one event: more calls
+  // converting worse. Different panels, so both are news. The rule keys on
+  // the panel for exactly this.
+  const { wins, attention } = highlights([
+    {
+      ...base,
+      key: "leads_conversions_new_clients",
+      label: "New clients",
+      value: 8,
+      previous: 4,
+    },
+    {
+      ...base,
+      key: "leads_conversions_close_rate",
+      label: "Close rate",
+      unit: "percent",
+      value: 12,
+      previous: 30,
+    },
+  ]);
+
+  assert.equal(wins.length, 1, "the count is a win");
+  assert.equal(attention.length, 1, "and the rate is still worth a look");
+  assert.match(wins[0].text, /4 MORE new clients/);
+  assert.match(attention[0].text, /Close rate dropped from 30.0% to 12.0%/);
+});
+
+test("the rate stands alone when its count has nothing to say", () => {
+  // Churn moved because the client base grew, not because anybody left:
+  // clients who left is unchanged, so it produces no sentence and there is
+  // nothing for churn to duplicate.
+  const { wins } = highlights([
+    {
+      ...base,
+      key: "client_experience_clients_who_left",
+      label: "Clients who left",
+      goodDirection: "down",
+      value: 2,
+      previous: 2,
+    },
+    {
+      ...base,
+      key: "client_experience_churn_rate",
+      label: "Churn rate",
+      unit: "percent",
+      goodDirection: "down",
+      value: 4,
+      previous: 8,
+    },
+  ]);
+
+  assert.equal(wins.length, 1);
+  assert.match(wins[0].text, /^Churn rate down 4.0%/);
+});
+
+test("every derived metric names a real base, and never itself", () => {
+  // A typo in the map is a sentence that silently never appears. There is
+  // no metric list in this module to check against, so what can be checked
+  // here is the shape: distinct keys, same category, no chains.
+  for (const [derived, root] of Object.entries(DERIVED_FROM)) {
+    assert.notEqual(derived, root);
+    assert.equal(
+      DERIVED_FROM[root],
+      undefined,
+      `${root} is itself derived — a chain would need the rule to be transitive`,
+    );
+    assert.equal(
+      derived.split("_")[0],
+      root.split("_")[0],
+      `${derived} and ${root} should be in the same category`,
+    );
+  }
 });

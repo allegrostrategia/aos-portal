@@ -38,7 +38,40 @@ export const TEMPLATES = {
   badRise: "{Metric} up {n} - not the direction we want, let's dig into WHY",
 } as const;
 
+/**
+ * A rate and the count that drives it, where both can reach a panel.
+ *
+ * Dom, 7 October 2026: "when two related figures move together (Issues
+ * raised and Issues per 10 clients), show only one sentence, the plain
+ * count." Two sentences about one event read as two events — the panel's
+ * whole job is to say what is worth looking at, and saying it twice makes
+ * the list longer and the month look worse than it was.
+ *
+ * **Only where the count is the rate's numerator**, so the count moving is
+ * what moved the rate. Retention rate is left out deliberately although it
+ * is built from clients who left: it is `(start − left) ÷ start`, so it
+ * moves the other way and reads as its own piece of news. So are the
+ * per-offer and per-campaign rates, which never reach a panel — the
+ * Overview feeds it `entity_type === null` metrics only.
+ *
+ * Keyed by metric, not by label, because a label is a thing somebody may
+ * reword and a key is not.
+ */
+export const DERIVED_FROM: Record<string, string> = {
+  client_experience_issues_per_10_clients: "client_experience_issues_raised",
+  client_experience_churn_rate: "client_experience_clients_who_left",
+  client_experience_upsell_rate: "client_experience_renewals_and_upsells",
+  email_unsubscribe_rate: "email_unsubscribes",
+  leads_conversions_close_rate: "leads_conversions_new_clients",
+  leads_conversions_lead_to_client_rate: "leads_conversions_new_clients",
+  leads_conversions_call_show_up_rate: "leads_conversions_calls_held",
+  financials_profit_margin: "financials_profit",
+  financials_costs_as_percent_of_revenue: "financials_total_costs",
+};
+
 export interface HighlightInput {
+  /** The metric key, for the derived-figure rule. */
+  key?: string;
   label: string;
   unit: Unit;
   goodDirection: GoodDirection;
@@ -202,7 +235,7 @@ export function highlights(inputs: HighlightInput[], perPanel = 3) {
   // Client Experience's copy of it — and saying it twice reads as two
   // separate pieces of news about the same thing.
   const seen = new Set<string>();
-  const all = inputs
+  const kept = inputs
     .map((input) => ({ input, highlight: highlightFor(input) }))
     .filter(
       (row): row is { input: HighlightInput; highlight: Highlight } => row.highlight !== null,
@@ -213,6 +246,18 @@ export function highlights(inputs: HighlightInput[], perPanel = 3) {
       if (seen.has(label)) return false;
       seen.add(label);
       return true;
+    });
+
+  // A rate drops out when the count it is computed from is saying the same
+  // thing beside it. **Same panel is the test**, because that is what "move
+  // together" means: new clients up while the close rate falls is two
+  // pieces of news — more calls, converting worse — and both belong. Issues
+  // raised up and issues per 10 clients up is one.
+  const panelOf = new Map(kept.map((row) => [row.input.key, row.highlight.panel]));
+  const all = kept
+    .filter((row) => {
+      const base = row.input.key ? DERIVED_FROM[row.input.key] : undefined;
+      return !base || panelOf.get(base) !== row.highlight.panel;
     })
     .map((row) => row.highlight);
 
