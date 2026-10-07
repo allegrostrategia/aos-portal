@@ -81,22 +81,27 @@ a real month, and none of them can be finished before launch.
       past months entered, one published, and the client reading it. Everything
       about it is proved on Test Client (Stage 2, closed 5 Oct); what is left is
       a client to do it with.
-- [ ] **A retainer client sees dashes for Client Experience figures when an
-      earlier month in the chain is still a draft.** RLS hands them published
-      months only, so if the month holding §5.8's opening figure is not
-      published they cannot derive "active clients at start" — and a figure
-      derived from half the history would disagree with the team's screen,
-      which §9 forbids. A dash is not obviously the *right* answer for a
-      client joining mid-relationship.
+- [ ] **What a client sees on a month whose earlier months were never
+      published.** Rewritten 7 Oct; the previous wording said a dash was
+      "the safe answer and the one built", and neither half was true. The
+      figure came out as a NUMBER worked out from a start the client could
+      not read — 3 where they had been shown 25 — because `sum` is lenient
+      about missing inputs. The strict `activeClientsAtEnd` fixed that, and
+      the carried-figure snapshot (`docs/freeze-plan.md`, decisions 1–3
+      approved 7 Oct) stops the figures being derived at read time at all,
+      so a published month keeps what it went out with.
+      **What is still open is the client who joins mid-relationship**, whose
+      first months are never published and so have no snapshot to carry: a
+      dash is honest, and is not obviously what they should see.
       **Decide before a real client reads a mid-relationship month.**
-      (Dom, 6 Oct. Both halves are asserted in
+      (Dom, 6 Oct; corrected and narrowed 7 Oct. Both halves are asserted in
       `supabase/tests/client-experience.test.mjs`.)
-      **Corrected 7 Oct: "a dash is the safe answer and the one built" was
-      not true when it was written.** "Active clients at end" came out as a
-      NUMBER worked out from a start it could not read — 3 where the client
-      had been shown 25. The strict `activeClientsAtEnd` made the dash real;
-      the question above is still open, and `docs/freeze-plan.md` is the
-      answer to it.
+- [ ] **Trend charts and the Proven marker still read live history.** A
+      chart can change if an earlier month is unpublished. The snapshot
+      freezes a month's own figures and what it compares against; freezing
+      a chart would mean storing its whole series on every month, which is
+      a different and much larger thing. Flagged rather than solved
+      (Dom, 7 Oct).
 - [ ] **If an offer price is wrong on a published month, the fix is
       unpublish, correct, republish** — and the client gets the "has been
       updated" email. A funnel month captures its offer's price on the

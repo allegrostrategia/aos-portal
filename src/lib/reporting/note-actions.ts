@@ -11,6 +11,8 @@ import { getWorkspace } from "./queries.ts";
 import { canWriteStrategistNote } from "./access.ts";
 import { sendPublishEmail } from "./publish-send.ts";
 import { lockedError } from "./locked.ts";
+import { computeCarried, draftMonthsBefore } from "./carried-build.ts";
+import { publishWarning } from "./publish-warning.ts";
 
 /**
  * Notes, and publishing.
@@ -19,7 +21,12 @@ import { lockedError } from "./locked.ts";
  * file or anything it calls goes near an AI (CLAUDE.md rule 2).
  */
 
-export type NoteState = { error?: string; notice?: string } | null;
+export type NoteState = {
+  error?: string;
+  notice?: string;
+  /** Publishing out of order: say it again and it goes (7 Oct 2026). */
+  needsConfirm?: boolean;
+} | null;
 
 /**
  * Write or revise a strategist note.
@@ -157,6 +164,24 @@ export async function publishMonth(
     .eq("month", month)
     .maybeSingle<{ email_sent_at: string | null }>();
 
+  // **Publishing out of order is refused once, then allowed.** The
+  // snapshot below freezes the earlier month's unfinished figures into
+  // this one permanently, and publishing emails the client on the way, so
+  // she is asked rather than told. Enforced here rather than in the
+  // component: a confirm step that lives in `useState` is a confirm step
+  // that does not exist before hydration, and the first click published
+  // the month exactly that way while this was being built.
+  if (String(formData.get("confirm") ?? "") !== "1") {
+    const warning = publishWarning(await draftMonthsBefore(workspaceId, month), month);
+    if (warning) return { error: warning, needsConfirm: true };
+  }
+
+  // What the report contains, frozen onto the month before it goes out, so
+  // editing an earlier month later cannot change it (docs/freeze-plan.md).
+  // Computed with the service role: the snapshot must be what the report
+  // truly contains, not what the publisher can see.
+  const carried = await computeCarried(workspaceId, month);
+
   const { error } = await supabase
     .from("report_periods")
     .upsert(
@@ -165,6 +190,7 @@ export async function publishMonth(
         month,
         published_at: new Date().toISOString(),
         published_by: reportUser.id,
+        carried,
       },
       { onConflict: "workspace_id,month" },
     );

@@ -43,26 +43,26 @@ export function unpublishWarning(
 
   const labels = [...laterPublished].sort().map(monthLabel);
   const named = listOf(labels);
-  // Dom's final wording, 7 October, after the first draft said "will show
-  // dashes" and the measurement showed worse than dashes: three figures
-  // disappear and one comes out WRONG, because "start + new − left"
-  // computed happily from a start it could not read.
+  // Dom's wording, 7 October, third and final version — and the three
+  // versions are the story of what was actually wrong.
   //
-  // "Missing" is true of live today — both published months already show a
-  // dash there, since `left` is unset and `difference` was always strict
-  // about it. It becomes true in general with the strict
-  // `activeClientsAtEnd`, which is approved and held for Dom's word.
+  //   1. "will show dashes"  — contradicted by the measurement: three
+  //      figures vanished and one came out WRONG, reading 3 where the
+  //      client had been shown 25.
+  //   2. "some of its figures will be missing" — true once the strict
+  //      `activeClientsAtEnd` stopped the wrong number.
+  //   3. this one — true once the snapshot means a published month stops
+  //      losing anything at all. Nothing goes missing any more; what is
+  //      left is that the later month keeps the figures it went out with
+  //      until somebody republishes it.
   //
-  // The plural changes only what grammar forces: "uses" to "use", "its" to
-  // "their", and the repeated month name to "them", since naming four
-  // months twice in one sentence stops being a warning and starts being a
-  // paragraph.
+  // The plural changes only what grammar forces.
   const one = labels.length === 1;
   const republish = one ? named : "them";
 
   return (
     `${named} ${one ? "uses" : "use"} figures from this month. ` +
-    `Until you republish, some of ${one ? "its" : "their"} figures will be ` +
-    `missing. If you change anything here, republish ${republish} too.`
+    `If you change anything here, republish ${republish} too, so ` +
+    `${one ? "it picks" : "they pick"} up the correction.`
   );
 }

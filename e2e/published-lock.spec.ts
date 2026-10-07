@@ -149,7 +149,7 @@ test("unpublishing warns about the months that read from this one", async ({ pag
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
   await expect(page.getByText(/august 2026 uses figures from this month/i)).toBeVisible();
   await expect(
-    page.getByText(/until you republish, some of its figures will be missing/i),
+    page.getByText(/republish august 2026 too, so it picks up the correction/i),
   ).toBeVisible();
   await shoot(page, TAB, "08-unpublish-warning", w);
 
@@ -239,4 +239,51 @@ test("what unpublishing really does to a later published month", async ({ page }
   await signIn(page, "client");
   const restored = await readAugust();
   expect(restored.end).toBe("25");
+});
+
+test("publishing out of order asks twice before it emails anybody", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+
+  // September is a draft with figures in it. Taking August back makes it
+  // an earlier draft, so publishing September would freeze August's
+  // unfinished figures into it — permanently, because the snapshot does
+  // not change afterwards.
+  await takeBackToDraft(MONTHS.aug);
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+
+  await expect(
+    page.getByText(/august 2026 is still a draft\. publish it first/i),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/september 2026 will be compared against unfinished figures/i),
+  ).toBeVisible();
+  await shoot(page, TAB, "13-out-of-order-warning", w);
+
+  // The first click does not publish — it asks, and the SERVER is what
+  // refuses. Dom's "let Nina continue if she chooses", where choosing is
+  // an act rather than the absence of one, on a button that emails a
+  // client. Enforced server-side because a confirm held in `useState` is
+  // no confirm at all before hydration: the first click published the
+  // month exactly that way while this was being written.
+  await page.getByRole("button", { name: /^publish this month$/i }).click();
+  const anyway = page.getByRole("button", { name: /publish anyway/i });
+  await expect(anyway).toBeVisible();
+  await expect(page.getByText(/^Published$/)).toHaveCount(0);
+  await shoot(page, TAB, "14-publish-anyway", w);
+
+  // The second click does.
+  await anyway.click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+});
+
+test("a month whose predecessors are all out is published in one click", async ({ page }) => {
+  // The common case by a long way. A confirm step on every publish would
+  // be read past within a month, which is how a warning stops working.
+  await signIn(page, "nina");
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+
+  await expect(page.getByText(/is still a draft/i)).toHaveCount(0);
+  await page.getByRole("button", { name: /^publish this month$/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
 });

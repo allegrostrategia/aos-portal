@@ -90,6 +90,12 @@ export interface ReportPeriod {
   email_sent_at: string | null;
   /** Why it did not go, in the sender's own words. */
   email_error: string | null;
+  /**
+   * What this month was published with (7 Oct 2026). `{}` on a draft and on
+   * any month published before the backfill; `readCarried` turns both into
+   * null, meaning "work it out live".
+   */
+  carried: unknown;
   /** The address it went to, copied at send time. */
   email_to: string | null;
 }

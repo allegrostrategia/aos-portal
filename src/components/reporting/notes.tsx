@@ -161,6 +161,7 @@ export function PublishControl({
   emailError,
   emailTo,
   unpublishWarning,
+  publishWarning,
 }: {
   workspaceId: string;
   month: string;
@@ -171,11 +172,19 @@ export function PublishControl({
   emailTo: string | null;
   /** What unpublishing would do to the months after this one, or null. */
   unpublishWarning: string | null;
+  /** What publishing out of order would freeze into this month, or null. */
+  publishWarning: string | null;
 }) {
   const [state, action] = useActionState<NoteState, FormData>(
     publishedAt ? unpublishMonth : publishMonth,
     null,
   );
+
+  // The server refuses the first publish when an earlier month is still a
+  // draft and says why; the second carries `confirm` and goes. State, not
+  // `useState`, so the step exists before hydration too — it was a
+  // `useState` first, and the first click published the month.
+  const confirming = Boolean(state?.needsConfirm);
 
   return (
     <Card>
@@ -195,10 +204,17 @@ export function PublishControl({
         </p>
       ) : null}
 
+      {publishWarning && !publishedAt ? (
+        <p className="mt-4 rounded-xl bg-cream-deep px-4 py-3 text-small text-ink/80">
+          {publishWarning}
+        </p>
+      ) : null}
+
       <form action={action} className="mt-4 flex flex-wrap items-center gap-3">
         <input type="hidden" name="workspace_id" value={workspaceId} />
         <input type="hidden" name="month" value={month} />
-        <PublishButton published={Boolean(publishedAt)} />
+        <input type="hidden" name="confirm" value={confirming ? "1" : ""} />
+        <PublishButton published={Boolean(publishedAt)} confirming={confirming} />
         <p
           aria-live="polite"
           className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
@@ -298,8 +314,21 @@ function ResendButton({ again }: { again: boolean }) {
   );
 }
 
-function PublishButton({ published }: { published: boolean }) {
+function PublishButton({
+  published,
+  confirming,
+}: {
+  published: boolean;
+  confirming: boolean;
+}) {
   const { pending } = useFormStatus();
+  if (confirming && !published) {
+    return (
+      <Button type="submit" variant="primary" disabled={pending}>
+        {pending ? "Publishing…" : "Publish anyway"}
+      </Button>
+    );
+  }
   return (
     <Button
       type="submit"

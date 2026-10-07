@@ -43,6 +43,19 @@ export function monthLabel(month: string): string {
   return `${MONTH_NAMES[Number(monthNumber) - 1]} ${year}`;
 }
 
+/**
+ * The calendar month before this one.
+ *
+ * `MonthView.previous` is the previous month in the workspace's own list,
+ * which is the same thing inside its range and null at its first month.
+ * The snapshot needs this one at publish time, where there is no
+ * `MonthView` — a month outside the range simply has no figures, so it
+ * freezes as nothing, which is what the first month should carry.
+ */
+export function previousMonthOf(month: string): string {
+  return shift(month, -1);
+}
+
 function shift(month: string, by: number): string {
   const [year, monthNumber] = month.split("-").map(Number);
   // Month is 1-based here and 0-based in Date, which cancels out: passing the

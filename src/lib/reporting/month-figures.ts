@@ -16,6 +16,9 @@ import {
   type MonthData,
   type ReportMetric,
 } from "./queries.ts";
+import { readCarried, type Carried } from "./carried.ts";
+import { monthIsLocked } from "./locked.ts";
+import { ValueBag } from "./queries.ts";
 import { activeClientsAtStart, openingFigures, type OpeningFigure } from "./client-flow.ts";
 import type { ReportContext } from "./context.ts";
 
@@ -40,6 +43,8 @@ export interface MonthFigures {
   results: Record<string, number | null>;
   /** The same for last month, so cards can show their arrows. */
   previousResults: Record<string, number | null>;
+  /** The snapshot this month was published with, or null on a draft. */
+  carried: Carried | null;
   /** This month's figure, typed or derived. */
   figure: (metricKey: string) => number | null;
   /** Last month's, for the change. */
@@ -133,12 +138,64 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     getClientFlow(ctx.workspace.id, ctx.month.month),
   ]);
 
+  /**
+   * On a published month, everything that comes from OTHER months comes
+   * from the snapshot instead (decision 3, `docs/freeze-plan.md`).
+   *
+   * The same predicate as the lock — published, and a retainer — so the
+   * month that cannot be edited is exactly the month that is not
+   * recomputed. Editors included: Nina and the client see the same report,
+   * which is §9's rule, and the live view she wants while correcting is
+   * the draft view, which she gets by unpublishing.
+   *
+   * Null means no snapshot: a draft, or a month published before the
+   * backfill. Both fall back to the live walk, which is what they did
+   * before this existed.
+   */
+  const carried = monthIsLocked(ctx.workspace, data.period?.published_at)
+    ? readCarried(data.period?.carried)
+    : null;
+
   // §5.8. Both months, because the arrows on Client Experience compare
   // against last month and last month's start is as derived as this one's.
-  const clientsAtStart = activeClientsAtStart(flow, ctx.month.month);
-  const previousClientsAtStart = ctx.month.previous
-    ? activeClientsAtStart(flow, ctx.month.previous)
-    : null;
+  const clientsAtStart = carried
+    ? carried.clientsAtStart
+    : activeClientsAtStart(flow, ctx.month.month);
+  const previousClientsAtStart = carried
+    ? carried.previousClientsAtStart
+    : ctx.month.previous
+      ? activeClientsAtStart(flow, ctx.month.previous)
+      : null;
+
+  // The previous month's figures, as they stood when this month went out.
+  // Rebuilt into a ValueBag so every reader below is unchanged — the one
+  // thing that differs is where the numbers came from.
+  const previousValues = carried
+    ? new ValueBag(
+        Object.entries(carried.previous).map(([key, value]) => {
+          const sep = key.lastIndexOf("|");
+          return {
+            metric_key: key.slice(0, sep),
+            entity_id: key.slice(sep + 1) || null,
+            value,
+            source: "manual" as const,
+          };
+        }),
+      )
+    : data.previous;
+
+  // The row labels and the one setting that changes a number. A campaign's
+  // goal decides whose spend counts towards cost per lead (§10.2), so it
+  // belongs to the report as much as any figure in it.
+  const entities = carried
+    ? data.entities.map((e) =>
+        carried.entities[e.id]
+          ? { ...e, name: carried.entities[e.id].name,
+              campaign_goal: carried.entities[e.id].goal as typeof e.campaign_goal }
+          : e,
+      )
+    : data.entities;
+  const frozen = { ...data, previous: previousValues, entities };
 
   const byKey = new Map(metrics.map((m) => [m.key, m]));
   const metricEntityType = new Map(metrics.map((m) => [m.key, m.entity_type]));
@@ -147,30 +204,30 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   // this build; offers, funnels and campaigns are addressed per row instead,
   // so they have no single answer and are read directly.
   const platformId =
-    data.entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
+    frozen.entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
   const entityFor = (entityType: string) =>
     entityType === "social_platform" ? platformId : null;
 
   const value: Lookup = entityAwareLookup(
-    (key, entityId) => data.values.get(key, entityId),
+    (key, entityId) => frozen.values.get(key, entityId),
     metricEntityType,
     entityFor,
   );
   const previous: Lookup = entityAwareLookup(
-    (key, entityId) => data.previous.get(key, entityId),
+    (key, entityId) => frozen.previous.get(key, entityId),
     metricEntityType,
     entityFor,
   );
 
-  const offerRows = offerRowsFrom(data, data.values);
+  const offerRows = offerRowsFrom(frozen, frozen.values);
   // Last month's offers, worked out the same way. Without these, every
   // figure derived from the offers — Revenue, Profit, the margin — had
   // nothing to compare against, and the Overview said "No month to
   // compare" on a month whose predecessor was full of figures.
-  const previousOfferRows = offerRowsFrom(data, data.previous);
-  const campaignRows = campaignRowsFrom(data, data.values);
-  const funnelRows = funnelRowsFrom(data, data.values);
-  const previousCampaignRows = campaignRowsFrom(data, data.previous);
+  const previousOfferRows = offerRowsFrom(frozen, frozen.previous);
+  const campaignRows = campaignRowsFrom(frozen, frozen.values);
+  const funnelRows = funnelRowsFrom(frozen, frozen.values);
+  const previousCampaignRows = campaignRowsFrom(frozen, frozen.previous);
 
   // Every category, so the Overview can read a figure from any of them.
   // `previous` for the previous month's own calculations is the month before
@@ -213,7 +270,8 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
 
   return {
     metrics,
-    data,
+    data: frozen,
+    carried,
     results,
     previousResults,
     figure,

@@ -11,6 +11,8 @@ import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { lightFor } from "@/lib/reporting/lights";
 import { monthIsLocked } from "@/lib/reporting/locked";
 import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
+import { publishWarning } from "@/lib/reporting/publish-warning";
+import { draftMonthsBefore } from "@/lib/reporting/carried-build";
 import { getPublishedMonths } from "@/lib/reporting/queries";
 import { PANELS, highlights } from "@/lib/reporting/highlights";
 import { buttonClasses } from "@/components/ui/button";
@@ -86,12 +88,34 @@ export default async function ReportingOverviewPage({
     figures.data.values.size > 0,
   );
 
+  // Only worth asking before a month goes out, and only of the person who
+  // can send it. An earlier draft would be frozen into this month's
+  // snapshot, and finishing it afterwards would not undo that.
+  const outOfOrderWarning =
+    ctx.canPublish && !period?.published_at
+      ? publishWarning(
+          await draftMonthsBefore(ctx.workspace.id, ctx.month.month),
+          ctx.month.month,
+        )
+      : null;
+
   // §7's bar: up to five targets, in the metric list's own order so the
   // same five stay in the same places month to month.
-  const [targets, benchmarks] = await Promise.all([
+  // On a published month these come from the snapshot too (decision 2):
+  // "New clients is at 40% of your target" is a sentence in the client's
+  // own report, and a standing target or a benchmark belongs to no month,
+  // so the published-month lock cannot reach either. This is what closes
+  // those two holes.
+  const [liveTargets, liveBenchmarks] = await Promise.all([
     getTargets(ctx.workspace.id, ctx.month.month),
     getBenchmarks(ctx.workspace.id),
   ]);
+  const targets = figures.carried
+    ? new Map(Object.entries(figures.carried.targets))
+    : liveTargets;
+  const benchmarks = figures.carried
+    ? new Map(Object.entries(figures.carried.benchmarks))
+    : liveBenchmarks;
   // §7's two panels. Every word in them is Nina's, from one file.
   const panels = highlights(
     figures.metrics
@@ -163,6 +187,7 @@ export default async function ReportingOverviewPage({
           emailError={period?.email_error ?? null}
           emailTo={period?.email_to ?? null}
           unpublishWarning={takingItBackWarning}
+          publishWarning={outOfOrderWarning}
         />
       ) : null}
     </>
