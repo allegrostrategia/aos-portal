@@ -8,14 +8,32 @@ test("a restrict refusal becomes an instruction, not a constraint name", () => {
     { code: "23503", message: 'violates RESTRICT setting of foreign key constraint "report_values_entity_id_fkey"' },
     "offer",
   );
-  assert.match(message ?? "", /already gone out/);
-  assert.match(message ?? "", /Retire this offer/);
+  assert.equal(
+    message,
+    "This offer has figures saved against it, so deleting it would take them " +
+      "off its reports. Use \u201cRetire this offer\u201d instead. It comes off " +
+      "the entry screens and the history stays.",
+  );
   assert.doesNotMatch(message ?? "", /constraint|foreign key|23503/i);
 });
 
-test("each kind names its own button", () => {
-  assert.match(deleteEntityMessage({ code: "23503" }, "campaign") ?? "", /Retire this campaign/);
-  assert.match(deleteEntityMessage({ code: "23503" }, "funnel") ?? "", /Retire this funnel/);
+test("each kind names itself, twice, in its own words", () => {
+  // `restrict` is on report_values.entity_id, which carries offers,
+  // campaigns and funnels alike — so all three can meet this.
+  for (const what of ["offer", "campaign", "funnel"] as const) {
+    const m = deleteEntityMessage({ code: "23503" }, what) ?? "";
+    assert.match(m, new RegExp(`^This ${what} has figures saved against it`));
+    assert.match(m, new RegExp(`Retire this ${what}`));
+  }
+});
+
+test("it does not promise the figures are only on published months", () => {
+  // The first draft said "months that have already gone out". Restrict
+  // fires on any referencing row, so a draft month's figures block the
+  // delete just the same, and the sentence would have been a lie in the
+  // commonest case.
+  const m = deleteEntityMessage({ code: "23503" }, "funnel") ?? "";
+  assert.doesNotMatch(m, /published|gone out|client has read/i);
 });
 
 test("any other failure is left alone to say what it is", () => {

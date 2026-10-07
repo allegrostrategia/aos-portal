@@ -40,6 +40,12 @@
 --   delete is ever added, `deleteEntityMessage` in `src/lib/reporting/
 --   entity-delete.ts` is the sentence to show: it names the constraint by
 --   error code rather than matching on wording, and says to retire instead.
+--
+--   It does NOT say "months the client has already read", which the first
+--   draft did. `restrict` fires on any referencing row, so a draft month's
+--   figures block the delete exactly as a published month's do — and this
+--   is on campaigns and funnels as much as offers, since they all live in
+--   `report_entities` (Dom's correction, 7 October).
 
 alter table public.report_values
   drop constraint report_values_entity_id_fkey,
@@ -54,7 +60,7 @@ alter table public.report_targets
     on delete restrict;
 
 comment on constraint report_values_entity_id_fkey on public.report_values is
-  'Restrict, not cascade: deleting an offer would take its figures off months the client has already read (rule 7). Retire it instead (Dom, 7 Oct 2026).';
+  'Restrict, not cascade: deleting an entity would take every figure saved against it, on any month, published or draft (rule 7). Retire it instead (Dom, 7 Oct 2026).';
 
 comment on constraint report_targets_entity_id_fkey on public.report_targets is
   'Restrict, not cascade. Same reason as report_values: a target belongs to the record, not to the row being tidied away.';

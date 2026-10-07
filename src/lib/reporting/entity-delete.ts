@@ -27,16 +27,14 @@ export function deleteEntityMessage(
 ): string | null {
   if (error.code !== FOREIGN_KEY_VIOLATION) return null;
 
-  const retire = {
-    offer: "Retire this offer",
-    campaign: "Retire this campaign",
-    funnel: "Retire this funnel",
-  }[what];
-
+  // Dom's wording, 7 October, correcting mine. The first draft said "months
+  // that have already gone out", which is wrong twice over: `restrict`
+  // fires on ANY referencing row, so a draft month's figures block the
+  // delete exactly as a published one's do, and it is on campaigns and
+  // funnels as much as offers.
   return (
-    `This ${what} has figures on months that have already gone out, so ` +
-    `deleting it would take them off reports the client has read. ` +
-    `Use “${retire}” instead — it comes off the entry screens and the ` +
-    `history stays.`
+    `This ${what} has figures saved against it, so deleting it would take ` +
+    `them off its reports. Use “Retire this ${what}” instead. It comes off ` +
+    `the entry screens and the history stays.`
   );
 }
