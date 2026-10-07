@@ -389,9 +389,28 @@ export const ads = {
 // ---------------------------------------------------------------------------
 
 export const clientExperience = {
+  /**
+   * Start + new − left, and **only when all three are known**.
+   *
+   * Not `sum` here, which is deliberately lenient — a total of what is
+   * present is the right answer for likes + saves + shares. A missing
+   * opening figure is not zero, it is unknown, and `sum(null, 5)` is 5, so
+   * this used to print "0 + 5 − 2 = 3" as a client count.
+   *
+   * Measured on 7 October: a client's published August read 3 active
+   * clients at end where it had read 25, because July had gone back to
+   * draft and RLS hands a client published months only. Retention and
+   * churn, built on strict helpers, correctly showed nothing; this one went
+   * wrong instead of quiet, which is the worse of the two.
+   *
+   * §4's rule for a figure that cannot be worked out is a dash, never a
+   * number. Approved by Dom, 7 October. The cost is that a month where
+   * nobody joined and nobody typed "0" now shows a dash — which is the
+   * honest reading of a box nobody filled in.
+   */
   activeClientsAtEnd: (start: Figure, newClients: Figure, left: Figure): Result => {
-    const gained = sum(start, newClients);
-    return difference(gained, left);
+    if (!known(start) || !known(newClients) || !known(left)) return null;
+    return start + newClients - left;
   },
 
   retentionRate: (start: Figure, left: Figure): Result =>

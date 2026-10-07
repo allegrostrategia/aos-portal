@@ -170,20 +170,22 @@ test("unpublishing warns about the months that read from this one", async ({ pag
 test("what unpublishing really does to a later published month", async ({ page }, info) => {
   const w = width(info.project.name);
 
-  // **Measured on 7 October, and worse than "dashes".** The client's
-  // August report, which stays published throughout, goes from
+  // **The history of this test is the point of it.** Measured on 7 October,
+  // the client's published August went from
   //
-  //     Active clients at start 22 · at end 25 · retention 90.9% · churn 9.1%
-  //  to Active clients at start —  · at end  3 · retention —     · churn —
+  //     start 22 · at end 25 · retention 90.9% · churn 9.1%
+  //  to start —  · at end  3 · retention —     · churn —
   //
-  // Three figures disappear and one CHANGES, because "start + new − left"
-  // computes happily from a start it cannot read. A client opening their
-  // report mid-correction reads that they ended August with 3 clients.
+  // when July went back to draft. Three figures disappeared and one came
+  // out WRONG: "start + new − left" computed happily from a start it could
+  // not read, so a client reading mid-correction was told they ended
+  // August with 3 clients.
   //
-  // Not caused by the lock — it was always reachable — but the lock makes
-  // unpublishing the routine way to fix a figure, which is what turns it
-  // from a corner into a path. The warning is the stopgap; freezing a
-  // month's carried figures at publication is the fix.
+  // The strict `activeClientsAtEnd` fixed that, so this now asserts the
+  // behaviour the warning describes: figures go MISSING, and none of them
+  // lies. What is still unfixed is that they go missing at all — the
+  // freeze-at-publish plan is for that, and until it ships the warning is
+  // what stands between Nina and a surprised client.
   await signIn(page, "nina");
   await takeBackToDraft(MONTHS.jul);
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
@@ -220,7 +222,10 @@ test("what unpublishing really does to a later published month", async ({ page }
   await signIn(page, "client");
   const after = await readAugust();
   expect(after.start, "the opening figure is gone from the client's view").toBeUndefined();
-  expect(after.end, "and the one that remains is WRONG, not missing").toBe("3");
+  // The one that used to read "3". A dash now, or no row at all — never a
+  // number worked out from a figure the reader cannot see.
+  expect(after.end === undefined || after.end === "—", `at end was "${after.end}"`).toBe(true);
+  expect(after.text).not.toMatch(/ACTIVE CLIENTS AT END\s*[0-9]/);
   expect(after.text).not.toMatch(/RETENTION RATE\s*[0-9]/);
   expect(after.text).not.toMatch(/CHURN RATE\s*[0-9]/);
   await shoot(page, TAB, "12-client-after-unpublish", w);
