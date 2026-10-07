@@ -525,6 +525,82 @@ test("Elize's own half of the conversation still works", async () => {
   assert.equal(note?.error, undefined, note?.error);
 });
 
+test("nobody signs a note as somebody else — not even Nina", async () => {
+  // Dom asked whether the 7 October policy stops an ADMIN writing a
+  // client_reply. It does not, and cannot: `report_notes_all_admin` is a
+  // `for all` policy and Postgres ORs permissive policies, so she never
+  // reaches `report_notes_write`'s CASE. Confirmed against live.
+  //
+  // The signature trigger is what closes it, for everyone at once. She may
+  // still insert the row — that is what admin means here — but it is
+  // signed with HER name, so it reads as what it is.
+  await asMember(db, NINA, async () => {
+    await db.query(`
+      insert into public.report_notes
+        (workspace_id, month, note_type, author_id, author_name, body)
+      values ('${WS}', '${AUG}', 'client_reply', '${NINA}',
+              'Bella Test', 'Happy with everything, no notes!')`);
+  });
+
+  const [forged] = await rows(`
+    select author_name from public.report_notes
+     where note_type = 'client_reply' and author_id = '${NINA}'`);
+  assert.equal(forged.author_name, "Nina Oliver", "signed with her own name, not the client's");
+
+  await asMember(db, NINA, () =>
+    db.query(`delete from public.report_notes where note_type = 'client_reply' and author_id = '${NINA}'`),
+  );
+});
+
+test("a client cannot sign their own reply as their strategist either", async () => {
+  // The other half of the same hole: the name was free text for its
+  // rightful owner too. The trigger derives it from their grant, so what
+  // they send is ignored rather than refused.
+  const sent = await as(CLIENT, () =>
+    addClientReply(null, form({ workspace_id: WS, month: AUG, body: "Signed by someone else?" })),
+  );
+  assert.equal(sent?.error, undefined, sent?.error);
+
+  await asMember(db, CLIENT, async () => {
+    await db.query(`
+      insert into public.report_notes
+        (workspace_id, month, note_type, author_id, author_name, body)
+      values ('${WS}', '${AUG}', 'client_reply', '${CLIENT}',
+              'Nina Oliver', 'This is from your strategist, honest')`);
+  });
+
+  const names = await rows(`
+    select distinct author_name from public.report_notes
+     where note_type = 'client_reply' and author_id = '${CLIENT}'`);
+  assert.deepEqual(names.map((r) => r.author_name), ["Bella Test"]);
+});
+
+test("and a signature does not move once it is written", async () => {
+  // Re-deriving on update would re-sign an old note whenever somebody's
+  // display name changed — "Bella Rossi" becoming "Bella R" on a reply she
+  // sent in August. So the name is fixed at the moment it is written, for
+  // the admin and the service role as well.
+  // Its own reply, by body: picking "the first" one would reword whichever
+  // reply another test is watching, which is how a suite starts failing in
+  // a place that has nothing to do with the change.
+  const [reply] = await rows(`
+    select id from public.report_notes
+     where note_type = 'client_reply' and body = 'Signed by someone else?'`);
+
+  await asMember(db, NINA, async () => {
+    await assert.rejects(
+      () => db.query(`update public.report_notes set author_name = 'Someone Else' where id = '${reply.id}'`),
+      /keeps the name that signed it/,
+    );
+  });
+
+  // The body is still theirs to reword; only the signature is held.
+  const reworded = await as(CLIENT, () =>
+    editClientReply(null, form({ note_id: reply.id, body: "Reworded, same signature." })),
+  );
+  assert.equal(reworded?.error, undefined, reworded?.error);
+});
+
 // --- the admin -------------------------------------------------------------
 
 test("the admin passes the guard, as every guard in this codebase lets her", async () => {
@@ -579,6 +655,59 @@ test("a self-serve month is never locked, even with published_at set", async () 
   assert.equal(await figure(SELF), 120);
 });
 
+test("an entity cannot be deleted out from under a published month", async () => {
+  // Decision 4 of the freeze plan. Both entity_id foreign keys were
+  // `on delete cascade`, so deleting one offer deleted every figure ever
+  // recorded against it, on published months included — rule 7 inverted,
+  // and not something a snapshot could fix: the row the client reads would
+  // survive while the record behind it was gone.
+  let offer;
+  await asMember(db, NINA, async () => {
+    offer = (
+      await db.query(`insert into public.report_entities (workspace_id, entity_type, name, active)
+                      values ('${WS}', 'offer', 'Starter package', true) returning id`)
+    ).rows[0].id;
+    await db.query(`insert into public.report_values
+                      (workspace_id, month, metric_key, entity_id, value, entered_by)
+                    values ('${WS}', '${SEP}', 'offers_units_sold', '${offer}', 4, '${NINA}')`);
+  });
+
+  await assert.rejects(
+    () => db.query(`delete from public.report_entities where id = '${offer}'`),
+    /violates RESTRICT|foreign key/i,
+    "even as the service role, which passes every guard in this file",
+  );
+});
+
+test("but a workspace can still be deleted, which was the risk in that change", async () => {
+  // `report_entities` cascades from `report_workspaces`, so a restrict on
+  // the figures could have made a workspace undeletable. It does not:
+  // Postgres removes the referencing values in the same statement as the
+  // entities, so the constraint never fires. Checked rather than assumed,
+  // because "it is probably fine" is how a migration takes something else
+  // with it.
+  let throwaway;
+  await asMember(db, NINA, async () => {
+    throwaway = (
+      await db.query(`select (public.create_report_workspace(
+        '${MEMBER}', 'retainer', 'Throwaway Ltd', 'Someone', '${AUG}')).id as id`)
+    ).rows[0].id;
+    const e = (
+      await db.query(`insert into public.report_entities (workspace_id, entity_type, name, active)
+                      values ('${throwaway}', 'offer', 'Gone', true) returning id`)
+    ).rows[0].id;
+    await db.query(`insert into public.report_values
+                      (workspace_id, month, metric_key, entity_id, value, entered_by)
+                    values ('${throwaway}', '${AUG}', 'offers_units_sold', '${e}', 1, '${NINA}')`);
+  });
+
+  await db.query(`delete from public.report_workspaces where id = '${throwaway}'`);
+  const left = await rows(
+    `select count(*)::int c from public.report_workspaces where id = '${throwaway}'`,
+  );
+  assert.equal(left[0].c, 0);
+});
+
 // --- the way through -------------------------------------------------------
 
 test("unpublish -> fix -> republish works end to end", async () => {
@@ -620,12 +749,20 @@ test("unpublish -> fix -> republish works end to end", async () => {
 test("the client's reply survived the correction", async () => {
   // Rule 7, in the place it would be easiest to lose: unpublishing and
   // republishing must not take the conversation with it.
-  const replies = await rows(`
-    select body from public.report_notes
+  // The specific reply, not a count: later tests in this file add more, and
+  // a count would make this one fail for a reason that has nothing to do
+  // with what it is checking.
+  const survived = await rows(`
+    select count(*)::int c from public.report_notes
      where workspace_id = '${WS}' and month = '${AUG}' and note_type = 'client_reply'
-     order by created_at`);
-  assert.equal(replies.length, 2, "both of theirs, and nothing of anybody else's");
-  assert.equal(replies[0].body, "Can we talk about the fixed costs?");
+       and body = 'Can we talk about the fixed costs?'`);
+  assert.equal(survived[0].c, 1, "the reply they sent before the correction is still there");
+
+  // And nothing in the thread belongs to anybody but them.
+  const authors = await rows(`
+    select distinct author_id from public.report_notes
+     where workspace_id = '${WS}' and month = '${AUG}' and note_type = 'client_reply'`);
+  assert.deepEqual(authors.map((r) => r.author_id), [CLIENT]);
 });
 
 test("a draft month was never affected by any of this", async () => {
