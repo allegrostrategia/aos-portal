@@ -9,6 +9,8 @@ import { TopItemsEntry } from "@/components/reporting/top-items";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
+import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
+import { getPublishedMonths } from "@/lib/reporting/queries";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
@@ -324,6 +326,14 @@ export default async function EnterCategoryPage({
   // applies, from the same helper, so a form never submits into a refusal.
   const locked = monthIsLocked(ctx.workspace, data.period?.published_at);
 
+  // Only when the card is going to be drawn, and only for the person who
+  // can press the button it sits under.
+  const laterPublished =
+    locked && ctx.canPublish
+      ? (await getPublishedMonths(ctx.workspace.id)).filter((m) => m > ctx.month.month)
+      : [];
+  const takingItBackWarning = unpublishWarning(laterPublished, data.values.size > 0);
+
   const position = order.findIndex((c) => c.key === category.key);
   const next = position >= 0 ? order[position + 1] : undefined;
 
@@ -348,6 +358,7 @@ export default async function EnterCategoryPage({
           month={ctx.month.month}
           monthLabel={ctx.month.label}
           canUnpublish={ctx.canPublish}
+          warning={takingItBackWarning}
         />
       ) : null}
 

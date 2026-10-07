@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { MONTHS } from "./guard.ts";
-import { requireLocalStack, shoot, signIn } from "./helpers.ts";
+import { requireLocalStack, shoot, signIn, takeBackToDraft } from "./helpers.ts";
 
 /**
  * A published month is read-only, and there is one way through it.
@@ -138,4 +138,100 @@ test("the client can still reply to a published month", async ({ page }, info) =
   await page.getByRole("button", { name: /send to your strategist/i }).click();
   await expect(page.getByText(/could you check the fixed costs/i)).toBeVisible();
   await shoot(page, TAB, "07-client-can-still-reply", w);
+});
+
+test("unpublishing warns about the months that read from this one", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+
+  // July is published and August is published after it, so taking July
+  // back would empty part of an August report the client still has.
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await expect(page.getByText(/august 2026 uses figures from this month/i)).toBeVisible();
+  await expect(
+    page.getByText(/it will show dashes until you republish/i),
+  ).toBeVisible();
+  await shoot(page, TAB, "08-unpublish-warning", w);
+
+  // The same warning where the button also lives, on the Overview.
+  await page.goto(`/reporting?month=${MONTHS.jul}`);
+  await expect(page.getByText(/august 2026 uses figures from this month/i)).toBeVisible();
+  await shoot(page, TAB, "09-unpublish-warning-overview", w);
+
+  // August is the last published month, so nothing reads from it and
+  // there is nothing to warn about. A warning on every month would stop
+  // being read by the second week.
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.aug}`);
+  await expect(page.getByText(/has gone out/i)).toBeVisible();
+  await expect(page.getByText(/uses figures from this month/i)).toHaveCount(0);
+  await shoot(page, TAB, "10-no-warning-last-month", w);
+});
+
+test("what unpublishing really does to a later published month", async ({ page }, info) => {
+  const w = width(info.project.name);
+
+  // **Measured on 7 October, and worse than "dashes".** The client's
+  // August report, which stays published throughout, goes from
+  //
+  //     Active clients at start 22 · at end 25 · retention 90.9% · churn 9.1%
+  //  to Active clients at start —  · at end  3 · retention —     · churn —
+  //
+  // Three figures disappear and one CHANGES, because "start + new − left"
+  // computes happily from a start it cannot read. A client opening their
+  // report mid-correction reads that they ended August with 3 clients.
+  //
+  // Not caused by the lock — it was always reachable — but the lock makes
+  // unpublishing the routine way to fix a figure, which is what turns it
+  // from a corner into a path. The warning is the stopgap; freezing a
+  // month's carried figures at publication is the fix.
+  await signIn(page, "nina");
+  await takeBackToDraft(MONTHS.jul);
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await page.getByLabel(/clients at the start/i).fill("20");
+  await page.getByRole("button", { name: /^save/i }).first().click();
+  await expect(page.getByText(/this is the opening figure/i)).toBeVisible();
+  await page.goto(`/reporting?month=${MONTHS.jul}`);
+  await page.getByRole("button", { name: /publish this month/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  const readAugust = async () => {
+    await page.goto(`/reporting/client-experience?month=${MONTHS.aug}`);
+    const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+    return {
+      text,
+      end: text.match(/ACTIVE CLIENTS AT END\s*([0-9—.]+)/i)?.[1],
+      start: text.match(/Active clients at start\s*([0-9—.]+)/i)?.[1],
+    };
+  };
+
+  await signIn(page, "client");
+  const before = await readAugust();
+  expect(before.start).toBe("22");
+  expect(before.end).toBe("25");
+  expect(before.text).toMatch(/RETENTION RATE\s*[0-9]/);
+  expect(before.text).toMatch(/CHURN RATE\s*[0-9]/);
+  await shoot(page, TAB, "11-client-before-unpublish", w);
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await page.getByRole("button", { name: /unpublish to make changes/i }).click();
+  await expect(page.getByText(/has gone out/i)).toHaveCount(0);
+
+  await signIn(page, "client");
+  const after = await readAugust();
+  expect(after.start, "the opening figure is gone from the client's view").toBeUndefined();
+  expect(after.end, "and the one that remains is WRONG, not missing").toBe("3");
+  expect(after.text).not.toMatch(/RETENTION RATE\s*[0-9]/);
+  expect(after.text).not.toMatch(/CHURN RATE\s*[0-9]/);
+  await shoot(page, TAB, "12-client-after-unpublish", w);
+
+  // It comes back. The damage is the window, not the data.
+  await signIn(page, "nina");
+  await page.goto(`/reporting?month=${MONTHS.jul}`);
+  await page.getByRole("button", { name: /publish this month/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  await signIn(page, "client");
+  const restored = await readAugust();
+  expect(restored.end).toBe("25");
 });

@@ -10,6 +10,8 @@ import { leadsBySource } from "@/lib/reporting/chart-data";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { lightFor } from "@/lib/reporting/lights";
 import { monthIsLocked } from "@/lib/reporting/locked";
+import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
+import { getPublishedMonths } from "@/lib/reporting/queries";
 import { PANELS, highlights } from "@/lib/reporting/highlights";
 import { buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
@@ -72,6 +74,17 @@ export default async function ReportingOverviewPage({
   // §13's rule — which is why the lock reuses it rather than greying out a
   // textarea the client's own view never had.
   const locked = monthIsLocked(ctx.workspace, period?.published_at);
+
+  // What taking this month back to draft would do to the months after it.
+  // Only worth asking where somebody can actually do it; a client's page
+  // should not spend a query on a button they will never see.
+  const laterPublished = ctx.canPublish
+    ? (await getPublishedMonths(ctx.workspace.id)).filter((m) => m > ctx.month.month)
+    : [];
+  const takingItBackWarning = unpublishWarning(
+    laterPublished,
+    figures.data.values.size > 0,
+  );
 
   // §7's bar: up to five targets, in the metric list's own order so the
   // same five stay in the same places month to month.
@@ -149,6 +162,7 @@ export default async function ReportingOverviewPage({
           emailSentAt={period?.email_sent_at ?? null}
           emailError={period?.email_error ?? null}
           emailTo={period?.email_to ?? null}
+          unpublishWarning={takingItBackWarning}
         />
       ) : null}
     </>

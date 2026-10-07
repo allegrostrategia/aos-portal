@@ -27,12 +27,15 @@ export function PublishedLock({
   month,
   monthLabel,
   canUnpublish,
+  warning,
 }: {
   workspaceId: string;
   month: string;
   monthLabel: string;
   /** Publishing, and taking it back, is Nina's alone (30 Sep 2026). */
   canUnpublish: boolean;
+  /** What unpublishing would do to the months after this one, or null. */
+  warning: string | null;
 }) {
   const [state, action] = useActionState<NoteState, FormData>(unpublishMonth, null);
 
@@ -48,6 +51,15 @@ export function PublishedLock({
         take it back to draft, make the change, and publish again — they are
         emailed to say it has been updated.
       </p>
+
+      {warning ? (
+        // Before the click, not after it: this is the thing she needs in
+        // order to decide, and the card unmounts the moment the month is
+        // a draft again.
+        <p className="mt-4 rounded-xl bg-cream-deep px-4 py-3 text-small text-ink/80">
+          {warning}
+        </p>
+      ) : null}
 
       {canUnpublish ? (
         <form action={action} className="mt-4 flex flex-wrap items-center gap-3">

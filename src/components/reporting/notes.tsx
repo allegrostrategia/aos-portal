@@ -160,6 +160,7 @@ export function PublishControl({
   emailSentAt,
   emailError,
   emailTo,
+  unpublishWarning,
 }: {
   workspaceId: string;
   month: string;
@@ -168,6 +169,8 @@ export function PublishControl({
   emailSentAt: string | null;
   emailError: string | null;
   emailTo: string | null;
+  /** What unpublishing would do to the months after this one, or null. */
+  unpublishWarning: string | null;
 }) {
   const [state, action] = useActionState<NoteState, FormData>(
     publishedAt ? unpublishMonth : publishMonth,
@@ -182,6 +185,15 @@ export function PublishControl({
           ? `${monthLabel} is visible to the client. Take it back to draft if something needs fixing.`
           : `${monthLabel} is a draft. Nothing in it is visible to the client until you publish.`}
       </p>
+
+      {publishedAt && unpublishWarning ? (
+        // Only while it is published: before it goes out there is nothing
+        // downstream to empty, and the same sentence on a draft month
+        // would be a warning about something that cannot happen.
+        <p className="mt-4 rounded-xl bg-cream-deep px-4 py-3 text-small text-ink/80">
+          {unpublishWarning}
+        </p>
+      ) : null}
 
       <form action={action} className="mt-4 flex flex-wrap items-center gap-3">
         <input type="hidden" name="workspace_id" value={workspaceId} />
