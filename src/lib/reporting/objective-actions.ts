@@ -8,6 +8,7 @@ import { firstOfMonth } from "./months.ts";
 import { getWorkspace } from "./queries.ts";
 import { canEdit } from "./access.ts";
 import type { NoteState } from "./note-actions.ts";
+import { lockedError } from "./locked.ts";
 
 /**
  * "What we're focusing on next month" — §8's up-to-three objectives.
@@ -89,7 +90,7 @@ export async function saveObjectives(
         .from("report_notes")
         .update({ body })
         .eq("id", row.id);
-      if (error) return { error: `Couldn't save objective ${position}: ${error.message}` };
+      if (error) return { error: lockedError(error) ?? `Couldn't save objective ${position}: ${error.message}` };
       continue;
     }
 
@@ -106,7 +107,7 @@ export async function saveObjectives(
       body,
       position,
     });
-    if (error) return { error: `Couldn't save objective ${position}: ${error.message}` };
+    if (error) return { error: lockedError(error) ?? `Couldn't save objective ${position}: ${error.message}` };
   }
 
   revalidatePath("/reporting", "layout");

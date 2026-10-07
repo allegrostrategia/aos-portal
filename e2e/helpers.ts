@@ -76,3 +76,30 @@ export async function expectNothingAdminish(page: Page) {
   await expect(page.getByRole("button", { name: /publish this month/i })).toHaveCount(0);
   await expect(page.getByText("DRAFT", { exact: true })).toHaveCount(0);
 }
+
+/**
+ * Take a month back to draft so a test can type into it.
+ *
+ * From 7 October a published month is read-only — Dom's decision after the
+ * finding that nothing held one still. The seed publishes July and August,
+ * so a test about anything else that needs to enter a figure there has to
+ * do what Nina would do first. Written as a step rather than worked around
+ * by moving those tests to September, because where the opening figure is
+ * asked for is the point of several of them: it lives on the workspace's
+ * first month, and that month is published.
+ *
+ * Straight to the database rather than through the button: unpublishing is
+ * covered by its own spec, and a test that needs a draft should say so in
+ * one line rather than navigate somewhere else first.
+ */
+export async function takeBackToDraft(month: string, business = "Northwind Studio") {
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  sql(`
+    update public.report_periods p
+       set published_at = null, published_by = null
+      from public.report_workspaces w
+     where w.id = p.workspace_id
+       and w.business_name = '${business}'
+       and p.month = '${month}-01';
+  `);
+}

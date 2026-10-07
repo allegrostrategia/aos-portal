@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 import { MONTHS } from "./guard.ts";
-import { expectNothingAdminish, requireLocalStack, shoot, signIn } from "./helpers.ts";
+import {
+  expectNothingAdminish,
+  requireLocalStack,
+  shoot,
+  signIn,
+  takeBackToDraft,
+} from "./helpers.ts";
 
 /**
  * The Overview — the screen a client opens.
@@ -121,6 +127,12 @@ test("the client sees the panels and the lights, and nothing of the team's", asy
 test("a figure where falling is good reads both ways in Nina's words", async ({ page }, info) => {
   const w = width(info.project.name);
   await signIn(page, "nina");
+
+  // July and August are published in the seed, and from 7 October that
+  // means read-only. This test is about the sentences, not the lock, so it
+  // takes both back to draft the way Nina would before typing.
+  await takeBackToDraft(MONTHS.jul);
+  await takeBackToDraft(MONTHS.aug);
 
   // The opening figure, so churn has a denominator and the good-down
   // figures on this tab are all live at once.

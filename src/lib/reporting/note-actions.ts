@@ -10,6 +10,7 @@ import { firstOfMonth } from "./months.ts";
 import { getWorkspace } from "./queries.ts";
 import { canWriteStrategistNote } from "./access.ts";
 import { sendPublishEmail } from "./publish-send.ts";
+import { lockedError } from "./locked.ts";
 
 /**
  * Notes, and publishing.
@@ -92,7 +93,7 @@ export async function saveStrategistNote(
       .from("report_notes")
       .update({ body })
       .eq("id", mine.id);
-    if (error) return { error: `Couldn't save the note: ${error.message}` };
+    if (error) return { error: lockedError(error) ?? `Couldn't save the note: ${error.message}` };
   } else {
     const { error } = await supabase.from("report_notes").insert({
       workspace_id: workspaceId,
@@ -103,7 +104,7 @@ export async function saveStrategistNote(
       author_name: authorName,
       body,
     });
-    if (error) return { error: `Couldn't save the note: ${error.message}` };
+    if (error) return { error: lockedError(error) ?? `Couldn't save the note: ${error.message}` };
   }
 
   revalidatePath("/reporting", "layout");

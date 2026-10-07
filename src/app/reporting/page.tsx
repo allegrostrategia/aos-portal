@@ -9,6 +9,7 @@ import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { leadsBySource } from "@/lib/reporting/chart-data";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { lightFor } from "@/lib/reporting/lights";
+import { monthIsLocked } from "@/lib/reporting/locked";
 import { PANELS, highlights } from "@/lib/reporting/highlights";
 import { buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
@@ -65,6 +66,13 @@ export default async function ReportingOverviewPage({
 
   const period = figures.data.period ?? null;
 
+  // A published month is read-only for everyone (Dom, 7 Oct 2026), so the
+  // note and the objectives render as the client reads them. `canWrite` is
+  // the switch those components already have for "removed, not hidden" —
+  // §13's rule — which is why the lock reuses it rather than greying out a
+  // textarea the client's own view never had.
+  const locked = monthIsLocked(ctx.workspace, period?.published_at);
+
   // §7's bar: up to five targets, in the metric list's own order so the
   // same five stay in the same places month to month.
   const [targets, benchmarks] = await Promise.all([
@@ -77,6 +85,7 @@ export default async function ReportingOverviewPage({
       .filter((metric) => metric.entity_type === null && metric.good_direction !== "none")
       .filter((metric) => !ctx.workspace.hidden_categories.includes(metric.category))
       .map((metric) => ({
+        key: metric.key,
         label: metric.label,
         unit: metric.unit,
         goodDirection: metric.good_direction,
@@ -329,7 +338,7 @@ export default async function ReportingOverviewPage({
         <div className="flex flex-col gap-6">
           <StrategistNotes
             notes={overviewNotes}
-            canWrite={ctx.canEdit && ctx.workspace.kind === "retainer"}
+            canWrite={ctx.canEdit && ctx.workspace.kind === "retainer" && !locked}
             workspaceId={ctx.workspace.id}
             month={ctx.month.month}
             category=""
@@ -341,7 +350,7 @@ export default async function ReportingOverviewPage({
             <>
               <Objectives
                 objectives={objectives}
-                canWrite={ctx.canEdit}
+                canWrite={ctx.canEdit && !locked}
                 workspaceId={ctx.workspace.id}
                 month={ctx.month.month}
               />

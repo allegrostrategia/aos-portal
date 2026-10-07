@@ -7,6 +7,8 @@ import { CampaignsEntry } from "@/components/reporting/campaigns-entry";
 import { FunnelsEntry } from "@/components/reporting/funnels-entry";
 import { TopItemsEntry } from "@/components/reporting/top-items";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
+import { PublishedLock } from "@/components/reporting/published-lock";
+import { monthIsLocked } from "@/lib/reporting/locked";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
@@ -318,6 +320,10 @@ export default async function EnterCategoryPage({
   const order = ENTRY_CATEGORIES.filter(
     (c) => !ctx.workspace.hidden_categories.includes(c.key),
   );
+  // Published and retainer: the same two conditions the database guard
+  // applies, from the same helper, so a form never submits into a refusal.
+  const locked = monthIsLocked(ctx.workspace, data.period?.published_at);
+
   const position = order.findIndex((c) => c.key === category.key);
   const next = position >= 0 ? order[position + 1] : undefined;
 
@@ -336,8 +342,26 @@ export default async function EnterCategoryPage({
         />
       }
     >
+      {locked ? (
+        <PublishedLock
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          monthLabel={ctx.month.label}
+          canUnpublish={ctx.canPublish}
+        />
+      ) : null}
+
       {note ? <OpeningFigureNote note={note} /> : null}
 
+      {/* One disabled fieldset over the lot, rather than a `locked` prop
+          threaded through every entry component: native, so it catches
+          every control including ones added later, and it cannot be got
+          round by a form this page forgot about. `display: contents` so
+          the layout is exactly as it was.
+
+          The database refuses these writes independently. This is the
+          half that means nobody is invited to make one. */}
+      <fieldset disabled={locked} className="contents">
       <EntryForm
         offerRows={offerRowsForEntry}
         elsewhere={elsewhere}
@@ -370,6 +394,7 @@ export default async function EnterCategoryPage({
           history={topItems.history}
         />
       ) : null}
+      </fieldset>
     </ReportShell>
   );
 }

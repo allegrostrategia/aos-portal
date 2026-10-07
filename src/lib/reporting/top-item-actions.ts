@@ -9,6 +9,7 @@ import { fromInputValue } from "./format.ts";
 import { getWorkspace } from "./queries.ts";
 import { canEdit } from "./access.ts";
 import type { TopItemType } from "./top-items.ts";
+import { lockedError } from "./locked.ts";
 
 /**
  * The top three hooks and the top three b-roll clips (§5.3).
@@ -115,7 +116,7 @@ export async function saveTopItems(
         .delete()
         .eq("id", id)
         .select("id");
-      if (error) return { error: `Couldn't clear that line: ${error.message}` };
+      if (error) return { error: lockedError(error) ?? `Couldn't clear that line: ${error.message}` };
       if (!removed || removed.length === 0) {
         return {
           error:
@@ -139,7 +140,7 @@ export async function saveTopItems(
           views: row.views,
         });
 
-    if (error) return { error: `Couldn't save that line: ${error.message}` };
+    if (error) return { error: lockedError(error) ?? `Couldn't save that line: ${error.message}` };
   }
 
   revalidatePath("/reporting", "layout");

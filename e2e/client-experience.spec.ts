@@ -6,6 +6,7 @@ import {
   requireLocalStack,
   shoot,
   signIn,
+  takeBackToDraft,
 } from "./helpers.ts";
 
 /**
@@ -35,6 +36,11 @@ requireLocalStack();
 test.beforeEach(async () => {
   const { seed } = await import("../scripts/seed-test-db.mjs");
   await seed({ quiet: true });
+  // The opening figure is asked for on the workspace's first month, and the
+  // seed publishes that month. Since 7 October a published month is
+  // read-only, so these tests do what Nina would have to do: take it back
+  // to draft first. The lock itself is `published-lock.spec.ts`.
+  await takeBackToDraft(MONTHS.jul);
 });
 
 const TAB = "client-experience";
@@ -179,6 +185,16 @@ test.describe("what the client sees", () => {
     await page.getByLabel(/clients at the start/i).fill("10");
     await page.getByRole("button", { name: /^save/i }).first().click();
     await expect(page.getByText(/this is the opening figure/i)).toBeVisible();
+
+    // And publishes July again, because the beforeEach took it back to
+    // draft to let her type. **This is not test housekeeping.** September's
+    // "Active clients at start" is carried from July, and a client can only
+    // read a published month — so with July a draft, the admin sees 15 here
+    // and the client sees nothing. Unpublishing an early month to correct
+    // it quietly empties the later months the client already has.
+    await page.goto(`/reporting?month=${MONTHS.jul}`);
+    await page.getByRole("button", { name: /publish this month/i }).click();
+    await expect(page.getByText(/published/i).first()).toBeVisible();
 
     // Then publishes September.
     await page.goto(`/reporting?month=${MONTHS.sep}`);

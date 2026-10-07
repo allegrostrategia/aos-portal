@@ -11,6 +11,7 @@ import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { isInternalReportPath } from "./paths.ts";
 import { canEdit } from "./access.ts";
+import { lockedError } from "./locked.ts";
 
 /**
  * Saving a month's figures.
@@ -176,7 +177,7 @@ export async function saveCategoryValues(
 
   if (inserts.length > 0) {
     const { error } = await supabase.from("report_values").insert(inserts);
-    if (error) return { error: `Couldn't save: ${error.message}` };
+    if (error) return { error: lockedError(error) ?? `Couldn't save: ${error.message}` };
   }
 
   if (updates.length > 0) {
@@ -186,7 +187,7 @@ export async function saveCategoryValues(
     const { error } = await supabase
       .from("report_values")
       .upsert(updates, { onConflict: "id" });
-    if (error) return { error: `Couldn't save: ${error.message}` };
+    if (error) return { error: lockedError(error) ?? `Couldn't save: ${error.message}` };
   }
 
   revalidatePath("/reporting", "layout");
