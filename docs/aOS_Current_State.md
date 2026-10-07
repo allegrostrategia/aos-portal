@@ -3,9 +3,9 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
-## WHERE WE ARE — 6 October 2026
+## WHERE WE ARE — 7 October 2026
 
-**Seventy-four migrations on disk, seventy-three applied to live.** The one outstanding is `20261006180000_top_items_delete`, deliberately held — it is waiting on Dom's approval, not drift (see "A published month is not locked"). Test suite as of 6 Oct (night): **459 unit / 289 + 84 schema / 307 action / 76 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `6854a4d` and Production shows that commit Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, every one of them behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. What is left before the flag moves: Nina's review of the Stage 3 screens, and the launch checklist.
+**Seventy-seven migrations on disk, all seventy-seven applied to live and verified by reading each result back.** Test suite as of 7 Oct: **472 unit / 289 + 86 schema / 331 action / 92 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `a1abe87` and Production shows it Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, every one behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. **A published month is now locked**, which was the 6 October finding and is the whole of 7 October's work — see that section. What is left before the flag moves: Nina's review of the Stage 3 screens, and the launch checklist.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -86,11 +86,17 @@ a real month, and none of them can be finished before launch.
       months only, so if the month holding §5.8's opening figure is not
       published they cannot derive "active clients at start" — and a figure
       derived from half the history would disagree with the team's screen,
-      which §9 forbids. A dash is the safe answer and the one built; it is
-      not obviously the *right* answer for a client joining mid-relationship.
+      which §9 forbids. A dash is not obviously the *right* answer for a
+      client joining mid-relationship.
       **Decide before a real client reads a mid-relationship month.**
       (Dom, 6 Oct. Both halves are asserted in
       `supabase/tests/client-experience.test.mjs`.)
+      **Corrected 7 Oct: "a dash is the safe answer and the one built" was
+      not true when it was written.** "Active clients at end" came out as a
+      NUMBER worked out from a start it could not read — 3 where the client
+      had been shown 25. The strict `activeClientsAtEnd` made the dash real;
+      the question above is still open, and `docs/freeze-plan.md` is the
+      answer to it.
 - [ ] **If an offer price is wrong on a published month, the fix is
       unpublish, correct, republish** — and the client gets the "has been
       updated" email. A funnel month captures its offer's price on the
@@ -474,6 +480,139 @@ errors from compiled output.** `.next-e2e-stage2`, the second browser
 server's build directory, went into `.gitignore` when it was added and
 not into the eslint ignores beside `.next-e2e`. Enough noise to hide a
 real one, which is the only reason to run it.
+
+### 7 October — a published month stops changing
+
+Dom's decision, after the 6 October finding that nothing held one still.
+**Corrections go unpublish → fix → republish**, and republishing sends the
+"has been updated" email. Four migrations, all applied to live and verified
+by reading each result back rather than trusting an exit code.
+
+**The lock** (`20261007100000`). Insert, update AND delete on
+`report_values`, `report_top_items`, `report_notes` and `report_targets`,
+on a published **retainer** month. All three verbs because a lock over two
+of them leaks through the third — proved on the 6th, where a guard over
+insert and update left clearing a top-three line working. Admin and the
+service role pass, as every guard here does.
+
+Four things in it that are not obvious, and each has a test that fails
+without it:
+
+- **Retainer only.** A self-serve client is also their own editor, so an
+  unscoped lock would be a trap: one `published_at` on an `aos_member`
+  period and they are shut out of their own figures, behind an unpublish
+  button only an admin can see.
+- **A client's reply is carved out by name.** Publishing is what *creates*
+  the reply box; a blanket lock on `report_notes` would delete §8's
+  conversation outright.
+- **An update is checked against the month it came FROM as well.** Dragging
+  a figure out of a published August into a draft September would otherwise
+  pass — the column-ownership trap in its other shape.
+- **On `report_notes` an update is judged by what the row IS**, not what it
+  is becoming, because this trigger sorts before `report_notes_guard_update`
+  and would otherwise answer a question nobody asked.
+
+**A standing target is NOT locked, and that is a decision.** It belongs to
+no month; a guard refusing it whenever any month was published would make
+targets uneditable forever after the first report. It still moves the bar on
+every published month without one of its own — for the freeze plan to close.
+
+**Two delete policies shipped inside the lock**, because the guard is what
+makes a delete policy safe to add. `report_top_items` had none (an emptied
+line was refused in silence) and neither did `report_targets` — so clearing
+a target had been **admin-only since Stage 3 was written**, with Elize
+getting "A target could not be cleared". Unshipped, so nobody met it.
+
+**The screens** stop inviting a change they cannot take: one disabled
+`<fieldset>` over the whole entry page, native so it catches controls added
+later; the Overview's note and objectives use the `canWrite={false}` path
+those components already have (§13's "removed, not hidden"). Nina gets the
+**Unpublish to make changes** button inline; Elize is told whose it is
+rather than given a button that would refuse her.
+
+#### An editor could put words in the client's mouth
+
+Dom asked, reviewing the lock, whether anything stopped Elize writing a
+`client_reply`. Nothing did. `report_notes_write` asked
+`report_can_view(workspace_id)`, true for a team member; `author_id` is
+pinned to the writer, but **`author_name` is free text and it is what the
+screen prints**. A reply signed "Bella Rossi" landed on the client's own
+published report. Proved before the fix was written.
+
+Two migrations closed it. `20261007110000` stops a team member authoring one
+at all — in the **policy**, not the guard, because "is this a reply" and "who
+may write a reply" are different questions and asking one in two places is
+how two answers drift. `20261007120000` then takes the choice away from
+everybody: a trigger derives the signature from the author's grant, or their
+`members` row for an admin, and a second trigger holds it still afterwards.
+
+**An admin is not stopped by a policy and cannot be** — `report_notes_all_admin`
+is `for all` and Postgres ORs permissive policies, so Nina never reaches the
+CASE. She can still insert the row; it comes out signed with her own name.
+Checked against live before applying: all six notes there already carried
+exactly the name the trigger derives, so it rewrote nothing.
+
+#### Unpublishing empties the months after it
+
+Found by a browser test, then measured. A client's figures are computed from
+the months **they** can read, and `getTrend` uses the member-facing client,
+so RLS applies. Taking July back to draft changed the client's **still
+published** August:
+
+| | before | after |
+| --- | --- | --- |
+| Active clients at start | 22 | gone |
+| **Active clients at end** | **25** | **3** |
+| Retention rate | 90.9% | gone |
+| Churn rate | 9.1% | gone |
+
+Three figures vanish and one **was wrong**: `sum` is deliberately lenient
+(`present.length === 0 ? null : …`), so "start + new − left" computed from a
+start it could not read. A client reading mid-correction was told they ended
+August with 3 clients.
+
+Two answers, both Dom's. **Now:** a warning beside the Unpublish button,
+before the click — *"[Later month] uses figures from this month. Until you
+republish, some of its figures will be missing. If you change anything here,
+republish [later month] too."* And the **strict `activeClientsAtEnd`**: a
+dash unless all three inputs are known. The fix is local to that one formula
+— changing `sum` would break the cases its leniency is right for. **Live
+impact: none**, computed with the real module against the real figures;
+both published months already showed a dash, because `left` is unset and
+`difference` was always strict. **Later:** `docs/freeze-plan.md`.
+
+#### An entity is retired, never deleted
+
+`report_values.entity_id` and `report_targets.entity_id` were both
+`on delete cascade`, so deleting one offer would delete every figure ever
+recorded against it — rule 7 inverted. Now `on delete restrict`
+(`20261007130000`), with `deleteEntityMessage` ready for the day a delete
+button exists, matched on **SQLSTATE 23503** rather than Postgres's wording,
+which names the constraint and has changed between major versions.
+
+The obvious risk, checked rather than assumed: `report_entities` cascades
+from `report_workspaces`, so a restrict here could have made a workspace
+undeletable. It does not — Postgres removes the referencing values in the
+same statement. Both halves are tests.
+
+#### The panels: two figures that are one event
+
+Dom, 7 October: "when two related figures move together (Issues raised and
+Issues per 10 clients), show only one sentence, the plain count." **The test
+is the panel** — same panel means one event told twice, so the count stays
+and the rate goes; different panels (new clients up, close rate down) is two
+pieces of news and both stay. Nine pairs, keyed by metric rather than label,
+with a schema test checking every key against `report_metrics`.
+
+#### Two false greens in one day, both in the checking
+
+Worth more than the features. **A suite reported "92 passed" when it had
+failed 12** — the exit code came from the `tail` at the end of the pipe, not
+from Playwright. And a wait loop reported "done" while the suite was still
+running, because `pgrep -f "playwright/cli.js test"` does not match the
+process Playwright actually runs. Both were caught, but only by looking
+again. **Capture the runner's own exit code (`cmd > log; echo $?`) and wait
+on the summary line, never on a process name.**
 
 ### Stage 2's closing check, 5 October — as the client, on live
 
@@ -1235,13 +1374,17 @@ the policies are the control, and they hold whoever reads them.
 - ~~**The Stage 2 live walkthrough**~~ — **done 2 Oct on Test Client**, two months entered, one published, checked as the client. Six bugs found and fixed.
 - ~~**Checking the walkthrough fixes on localhost**~~ — **done 2 Oct**, all five confirmed, pushed as `b08c929`.
 - **Checking the sign-out on localhost** before `5c208da` is pushed — the one client-facing commit waiting.
-- **Whether a published month should be editable at all** (added 6 Oct) —
-  it is, today, on every month-keyed table; see "A published month is not
-  locked". Two answers are reasonable: lock the figures on publish and give
-  Nina an explicit unpublish-to-correct, or leave it open and show the
-  client that a figure changed. The top-items delete policy
-  (`20261006180000`, written and tested locally) is held until this is
-  answered, because approving it alone would widen the hole by one verb.
+- ~~**Whether a published month should be editable at all**~~ — **answered
+  7 Oct: lock it.** Built, applied and live. See "7 October — a published
+  month stops changing".
+- **The freeze plan's decisions 1, 2 and 3** (`docs/freeze-plan.md`) —
+  one column or a table; whether the snapshot includes targets and
+  benchmarks; and whether an editor sees the snapshot or the live figures
+  on a published month. Each has a recommendation. Decision 4 is already
+  done. **Nothing is built from it until these are answered.**
+- **`author_name` is still free text for its rightful owner** — closed for
+  everyone by `20261007120000`, so this is now only a note that the name on
+  a note is derived, not chosen. Nothing outstanding.
 - **Nina's review of the Stage 3 screens**, and then the launch checklist.
   These are the only two things between here and moving `SHIPPED_STAGE` to
   3. Screenshots at both widths are in `e2e/screenshots/`.
@@ -1282,13 +1425,18 @@ the policies are the control, and they hold whoever reads them.
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Seventy-four on disk, seventy-three applied to live (6 Oct).** The gap is
-one file and it is deliberate: `20261006180000_top_items_delete` is written,
-tested locally and **not approved** — see "A published month is not locked".
-Anything that counts migrations by subtracting will read this as drift; it
-is not. The three applied on 6 Oct (`opening_clients_wording`,
-`funnel_price_at_month`, `benchmark_reply`) went in through the Management
-API and were each verified by reading the result back, not by an exit code.
+**Seventy-seven on disk, all seventy-seven applied to live (7 Oct).** No
+gap: `20261006180000_top_items_delete` was deleted rather than applied —
+its policy moved into the lock migration, because a delete policy without
+the guard is the hole the lock exists to close.
+
+The four on 7 Oct (`lock_published_months`, `client_reply_is_the_clients`,
+`a_note_is_signed_by_its_author`, `an_entity_is_retired_not_deleted`) and
+the three on 6 Oct went in through the Management API, each inside one
+transaction with its own `schema_migrations` row, and each **verified by
+reading the result back** — the triggers from `pg_trigger`, the policies
+from `pg_policies`, the foreign keys' `confdeltype` from `pg_constraint` —
+never by an exit code.
 
 **Sixty-eight on disk, all sixty-eight applied to live, and `migration list --linked` shows `local == remote` for every one.** The ten dated `20260930` (the reporting tool's Stage 1) went in on 30 Sep via `npm run db:push` from Claude Code's shell, which worked normally this time, and were verified over PostgREST afterwards rather than on the exit code: `report_metrics` answers with 174 rows to the service role and **zero to anon**, so RLS is live and not just local.
 
@@ -1316,6 +1464,8 @@ API and were each verified by reading the result back, not by an exit code.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
 - **An admin's RLS view is not their own view.** A policy of `using (is_portal_admin())` returns every row, so any code doing `rows.find(matching the thing I'm looking at)` and reading an identity off the result gets somebody else's — the client's, on a workspace with one client and one admin. Filter by `user_id` when the question is "mine", even where RLS already returned something plausible (state doc, 5 Oct; it signed Nina's notes with the client's name).
 - **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
+- **Read the runner's own exit code, never a pipeline's.** `npx playwright test | tail -20` exits with `tail`'s status, so a run that failed 12 tests reported success on 7 Oct and was believed for a minute. Capture it on its own line — `cmd > log; echo "EXIT: $?"` — and read the summary line out of the log.
+- **Wait on the thing, not on a process name.** A loop watching `pgrep -f "playwright/cli.js test"` reported the suite finished while it was on test 88 of 92, because that is not the process Playwright runs. Wait for the output a finished run produces.
 - **Do not infer a deployment from content fingerprints.** A server-action id, a build id or a static file's `last-modified` will not tell you whether a push went out: ids are not comparable between a local build and Vercel's, and Vercel reuses an unchanged file's blob and mtime. Read the Vercel dashboard, or probe a behaviour only the new code has. Claude called a healthy deploy stalled for an hour this way on 5 Oct.
 - **A failing probe is a claim about the probe until it has been read.** Two false negatives on 5 Oct came from the probe, not the system: a fingerprint sampled after the event it was meant to detect, and a `like '%before insert or update%'` run against DDL Postgres prints in capitals.
 - **Compute a palette, never look at it.** Two of the brand's six colours cannot be told apart by a protanope (blush/lemon, 0.5 separation) and two more fail the floor for full-colour readers. Both pairs look fine on screen. `scripts/check-chart-palette.mjs` prints the numbers; run it before adding a series colour, and remember a low-contrast fill owes the reader an edge and a labelled legend.
@@ -1350,11 +1500,16 @@ Dom's and Nina's, not code:
 2. **The launch checklist** (see that section), whose one unmeetable item
    before launch is a real retainer client.
 
-**One decision is open and it is worth answering before launch, not after:**
-a published month can still be edited — figures, notes and top-three lines
-— on every month-keyed table. Nothing about that changed with Stage 3; it
-has simply now been looked at and written down. See "A published month is
-not locked". The top-items delete policy waits on the same answer.
+**The 6 October hole is closed.** A published month is locked — figures,
+notes, objectives, top-three lines and month-keyed targets — and
+corrections go unpublish → fix → republish, which emails the client. Live
+and verified.
+
+**What it uncovered is not closed:** unpublishing a month empties the
+carried figures from the published months after it, for the client only.
+A warning now says so before the click, and the figure that used to come
+out *wrong* now comes out as a dash. The real fix is `docs/freeze-plan.md`,
+which needs decisions 1–3 answered before anyone builds it.
 
 **One decision is needed before Stage 3 touches Client Experience:**
 `client_experience_active_clients_at_start`, which §5.8 specifies two
