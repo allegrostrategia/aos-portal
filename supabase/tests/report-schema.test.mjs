@@ -440,10 +440,21 @@ await check("a retainer client can reply, and always reads their own reply", asy
     where note_type = 'client_reply'`)) === 1;
 });
 
-await rejects("a retainer client cannot write a strategist note", () =>
+// October is published above, so from 7 October two things refuse this and
+// the published-month guard is the one that speaks: a BEFORE trigger runs
+// ahead of the policy's WITH CHECK. Both messages are the right answer; the
+// pair below is what keeps the RLS half honest, since a lock that happened
+// to cover every case would hide its removal.
+await rejects("a retainer client cannot write a strategist note on a published month", () =>
   as(RETAINER, () => db.query(`
     insert into public.report_notes (workspace_id, month, note_type, author_id, author_name, body)
     values ('${WS_R}', '2026-10-01', 'strategist', '${RETAINER}', 'Bella', 'I am my own strategist')`)),
+  "That month is published");
+
+await rejects("nor on a month with no lock on it — RLS is what refuses there", () =>
+  as(RETAINER, () => db.query(`
+    insert into public.report_notes (workspace_id, month, note_type, author_id, author_name, body)
+    values ('${WS_R}', '2026-11-01', 'strategist', '${RETAINER}', 'Bella', 'I am my own strategist')`)),
   "row-level security");
 
 await rejects("a self-serve member cannot write a strategist note about themselves", () =>
@@ -708,6 +719,34 @@ await rejects("the same reminder cannot be logged twice", async () => {
   return db.query(
     `insert into public.report_reminders (workspace_id, month, reminder) values ('${WS_M}', '${MONTH}', 1)`);
 }, "report_reminders_workspace_id_month_reminder_key");
+
+// The panel's derived-figure rule (Dom, 7 Oct 2026) is a map of metric key
+// to metric key, living in a TypeScript module that has no sight of the
+// metric list. A typo in it is not an error anywhere — it is a sentence
+// that quietly never gets suppressed, or one that quietly disappears. This
+// is the only place the two can be put side by side.
+const { DERIVED_FROM } = await import("../../src/lib/reporting/highlights.ts");
+
+await check("every derived-figure pair is a real metric that reaches a panel", async () => {
+  const keys = Object.entries(DERIVED_FROM).flat();
+  const found = await db.query(`
+    select key, entity_type, good_direction from public.report_metrics
+     where key = any($1)`, [keys]);
+
+  const byKey = new Map(found.rows.map((r) => [r.key, r]));
+  const problems = [];
+  for (const key of keys) {
+    const metric = byKey.get(key);
+    if (!metric) { problems.push(`${key}: no such metric`); continue; }
+    // The Overview feeds the panels `entity_type === null` metrics whose
+    // direction is not 'none'. A pair involving anything else can never
+    // fire, so it is dead weight pretending to be a rule.
+    if (metric.entity_type !== null) problems.push(`${key}: per-${metric.entity_type}, never reaches a panel`);
+    if (metric.good_direction === "none") problems.push(`${key}: good_direction 'none', never gets a sentence`);
+  }
+  if (problems.length) console.log("   ", problems.join("\n    "));
+  return problems.length === 0;
+});
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
