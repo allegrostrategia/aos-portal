@@ -34,6 +34,7 @@ const { publishMonth, unpublishMonth, saveStrategistNote } = await import(
 );
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveTopItems } = await import("../../src/lib/reporting/top-item-actions.ts");
+const { saveTargets } = await import("../../src/lib/reporting/target-actions.ts");
 const { addClientReply, editClientReply } = await import(
   "../../src/lib/reporting/reply-actions.ts"
 );
@@ -288,6 +289,95 @@ test("the editor cannot drag a figure out of a published month into a draft one"
     );
   });
   assert.equal(await figure(), 300);
+});
+
+test("the editor cannot move a target on a published month", async () => {
+  // A target is client-visible on a published month: §7's bar reads "4 of
+  // 10 — 40%" and the panel says "is at 40% of your target". Moving it
+  // after publication rewrites how the client's own figures read, without
+  // touching a figure.
+  const result = await as(ELIZE, () =>
+    saveTargets(
+      null,
+      form({
+        workspace_id: WS,
+        month: AUG,
+        "target:financials_fixed_costs": 250,
+        "scope:financials_fixed_costs": "month",
+      }),
+    ),
+  );
+  assert.match(result?.error ?? "", LOCKED);
+
+  const rows_ = await rows(`
+    select count(*)::int c from public.report_targets
+     where workspace_id = '${WS}' and month = '${AUG}'`);
+  assert.equal(rows_[0].c, 0, "nothing was set");
+});
+
+test("nor clear one — which an editor could not do at all until now", async () => {
+  // Two things at once, so they are not confused. `saveTargets` clears an
+  // emptied box with a delete, and report_targets had no delete policy, so
+  // clearing was admin-only by accident. The policy ships in this
+  // migration; the guard is what makes that safe.
+  await as(NINA, () =>
+    saveTargets(
+      null,
+      form({
+        workspace_id: WS,
+        month: SEP,
+        "target:financials_fixed_costs": 400,
+        "scope:financials_fixed_costs": "month",
+      }),
+    ),
+  );
+
+  // September is a draft, so Elize may clear it — the new policy at work.
+  const cleared = await as(ELIZE, () =>
+    saveTargets(
+      null,
+      form({
+        workspace_id: WS,
+        month: SEP,
+        "target:financials_fixed_costs": "",
+        "scope:financials_fixed_costs": "month",
+      }),
+    ),
+  );
+  assert.equal(cleared?.error, undefined, cleared?.error);
+  const after = await rows(`
+    select count(*)::int c from public.report_targets
+     where workspace_id = '${WS}' and month = '${SEP}'`);
+  assert.equal(after[0].c, 0, "the delete policy is really there");
+});
+
+test("a STANDING target is not locked, and that is a known hole", async () => {
+  // It belongs to no month, so a month-keyed guard cannot reach it — and
+  // one that refused it whenever ANY month was published would make
+  // targets uneditable forever after the first report went out.
+  //
+  // It does move the bar on every published month without a target of its
+  // own. That is for the carried-figure freeze to close, by storing what a
+  // month was published with. Written down here so the hole is a decision
+  // somebody can find, not a gap somebody assumes was covered.
+  const result = await as(ELIZE, () =>
+    saveTargets(
+      null,
+      form({
+        workspace_id: WS,
+        month: AUG,
+        "target:financials_fixed_costs": 275,
+        "scope:financials_fixed_costs": "standing",
+      }),
+    ),
+  );
+  assert.equal(result?.error, undefined, result?.error);
+
+  const [standing] = await rows(`
+    select target_value::float v from public.report_targets
+     where workspace_id = '${WS}' and month is null
+       and metric_key = 'financials_fixed_costs'`);
+  assert.equal(standing.v, 275);
 });
 
 // --- the client ------------------------------------------------------------

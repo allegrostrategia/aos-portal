@@ -12,10 +12,16 @@
 -- product, not a side effect: the screens go read-only and say so.
 --
 -- WHAT IS LOCKED
---   report_values, report_top_items, report_notes — insert, update AND delete.
---   All three verbs, because a lock on two of them leaks through the third:
---   proved on 6 October, where a publish guard on insert/update left clearing
---   a top-three line still working, a delete being its own trigger event.
+--   report_values, report_top_items, report_notes, report_targets — insert,
+--   update AND delete. All three verbs, because a lock on two of them leaks
+--   through the third: proved on 6 October, where a publish guard on
+--   insert/update left clearing a top-three line still working, a delete
+--   being its own trigger event.
+--
+--   report_targets joined the list on Dom's word, 7 October. It is month-keyed
+--   and it is client-visible: §7's target bar reads "4 of 10 — 40%" and the
+--   panel says "New clients is at 40% of your target", so a target changed
+--   after publication changes the report the client was sent.
 --
 -- WHAT IS NOT, AND WHY IT MUST NOT BE
 --   · A client's reply (`note_type = 'client_reply'`). Publishing is what
@@ -24,6 +30,12 @@
 --     Their own reply stays editable too; `guard_report_note_update` already
 --     pins which note it is and who wrote it, so a reply cannot be edited
 --     into a strategist's note.
+--   · A STANDING target (`report_targets.month is null`), which belongs to no
+--     month and so cannot be locked by one. Changing it does move the bar on
+--     every published month that has no target of its own — the same hole
+--     benchmarks have, and the same answer: it is for the carried-figure
+--     freeze to close by storing what a month was published with, not for a
+--     month-keyed guard to reach.
 --   · Anything on a workspace that is not a retainer. See below.
 --   · report_periods' own columns, which are how a month gets unpublished and
 --     how the email records its outcome. Already guarded, separately.
@@ -124,6 +136,14 @@ begin
     v_month := new.month;
   end if;
 
+  -- A standing target has no month. `report_month_is_locked` would answer
+  -- false for it anyway — `p.month = null` matches nothing — but leaning on
+  -- three-valued logic for a security decision is how a guard quietly stops
+  -- guarding. Said out loud instead.
+  if v_month is null then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+
   if public.report_month_is_locked(v_workspace, v_month) then
     raise exception 'That month is published. Unpublish it to make changes.'
       using errcode = 'check_violation';
@@ -167,6 +187,11 @@ create trigger report_notes_guard_published
   for each row
   execute function public.guard_report_published_month();
 
+create trigger report_targets_guard_published
+  before insert or update or delete on public.report_targets
+  for each row
+  execute function public.guard_report_published_month();
+
 -- -----------------------------------------------------------------------------
 -- The top-items delete policy, which waited for this
 -- -----------------------------------------------------------------------------
@@ -185,3 +210,24 @@ create policy report_top_items_delete_editors
 
 comment on policy report_top_items_delete_editors on public.report_top_items is
   'An emptied line is removed, not stored blank. Bounded by the published-month guard, which refuses the delete on a month the client has already read.';
+
+-- -----------------------------------------------------------------------------
+-- And the same omission on targets, found on the way in
+-- -----------------------------------------------------------------------------
+-- `saveTargets` clears an emptied box with a delete — "a target of nothing is
+-- not a target, and leaving a zero behind would turn every figure red" — and
+-- there has never been a delete policy for it. So clearing a target has been
+-- admin-only since Stage 3 was written: Elize got "A target could not be
+-- cleared", from the read-back the action does precisely because a delete
+-- refused by RLS is not an error.
+--
+-- Unshipped, so nobody has met it. It ships here because the guard above is
+-- what makes a delete policy safe to add, and adding one without the guard is
+-- the mistake this whole migration exists to avoid making twice.
+create policy report_targets_delete_editors
+  on public.report_targets for delete
+  to authenticated
+  using (public.report_can_edit(workspace_id));
+
+comment on policy report_targets_delete_editors on public.report_targets is
+  'An emptied target box removes the row. Bounded by the published-month guard for a target that belongs to a month.';
