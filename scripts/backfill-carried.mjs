@@ -28,6 +28,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
+// Before any import of app code: registers the `@/` alias and the
+// extensions TypeScript omits. Static imports run in order, which is what
+// makes that reliable.
+import "./app-module-hooks.mjs";
+
 const ROOT = path.join(import.meta.dirname, "..");
 const WRITE = process.argv.includes("--write");
 const FORCE = process.argv.includes("--force");
@@ -57,10 +62,13 @@ async function rest(pathAndQuery, init = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-// The app's own modules, so there is one implementation of the arithmetic.
+// The app's own module, so there is one implementation of the arithmetic
+// AND one set of queries — the target precedence in particular, which a
+// second copy would get subtly wrong and nobody would see.
 process.env.NEXT_PUBLIC_SUPABASE_URL = URL;
 process.env.SUPABASE_SERVICE_ROLE_KEY = KEY;
-const { computeCarried } = await import("../src/lib/reporting/carried-build.ts");
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const { computeCarried } = await import("@/lib/reporting/carried-build");
 
 const periods = await rest(
   "report_periods?select=id,month,workspace_id,carried," +

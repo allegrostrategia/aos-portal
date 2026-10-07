@@ -48,9 +48,13 @@ export default async function ReportingOverviewPage({
   });
 
   const figures = await getMonthFigures(ctx);
-  const previousLabel = ctx.month.previous
-    ? monthLabel(ctx.month.previous).split(" ")[0]
-    : null;
+  // On a published month, the month it was compared against comes from
+  // the snapshot too. `ctx.month.previous` is the previous month the
+  // VIEWER can see, and a client sees published ones only — so without
+  // this, unpublishing July turns "vs. July" into "No month to compare"
+  // on an August that still holds July's figures.
+  const comparedWith = figures.carried?.previousMonth ?? ctx.month.previous;
+  const previousLabel = comparedWith ? monthLabel(comparedWith).split(" ")[0] : null;
 
   const overviewNotes = figures.data.notes.filter(
     (n) => n.note_type === "strategist" && n.category === null,

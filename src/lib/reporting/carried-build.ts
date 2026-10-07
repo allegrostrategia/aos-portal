@@ -106,6 +106,10 @@ export async function computeCarried(
     clientsAtStart: activeClientsAtStart(flow, month),
     previousClientsAtStart: previousMonth ? activeClientsAtStart(flow, previousMonth) : null,
     previous,
+    // Only when it actually holds something: a month before the
+    // workspace's first has no figures, and naming it would put
+    // "vs. June" on a card with nothing behind it.
+    previousMonth: Object.keys(previous).length > 0 ? previousMonth : null,
     targets,
     benchmarks,
     entities: entityRes.data ?? [],

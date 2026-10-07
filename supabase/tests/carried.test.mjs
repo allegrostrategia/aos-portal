@@ -25,6 +25,7 @@ const { computeCarried, draftMonthsBefore } = await import(
   "../../src/lib/reporting/carried-build.ts"
 );
 const { readCarried } = await import("../../src/lib/reporting/carried.ts");
+const { getMonthFigures } = await import("../../src/lib/reporting/month-figures.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
 const ELIZE = "22222222-2222-2222-2222-222222222222";
@@ -260,6 +261,39 @@ test("and republishing August picks the correction up, which is the way through"
   const carried = await carriedOn(AUG);
   // 500 opening + 3 joined − 1 left.
   assert.equal(carried.clientsAtStart, 502);
+});
+
+test("a published month with an empty snapshot falls back, rather than going blank", async () => {
+  // Dom, 7 October. A month the backfill missed, or one published before
+  // the column existed, holds `{}` — the default. If that were read as "a
+  // snapshot saying nothing", every carried figure on it would be a dash
+  // and a client's report would go blank for want of a row nobody wrote.
+  //
+  // So `{}` means "work it out live", which is exactly what that month did
+  // before any of this existed. The test drives the real `getMonthFigures`
+  // rather than `readCarried` alone, because the fallback has to survive
+  // the whole path, not just the parser.
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_periods set carried = '{}'::jsonb
+               where workspace_id = '${WS}' and month = '${AUG}'`),
+  );
+  assert.equal(await carriedOn(AUG), null, "read as no snapshot at all");
+
+  const ctx = {
+    workspace: { id: WS, kind: "retainer", currency: "GBP", hidden_categories: [] },
+    month: { month: AUG, previous: JUL, label: "August 2026" },
+  };
+  configure(db, NINA);
+  const figures = await getMonthFigures(ctx);
+
+  assert.equal(figures.carried, null, "and getMonthFigures agrees");
+  // The live walk: 500 opening + 3 joined − 1 left by the start of August.
+  assert.equal(figures.figure("client_experience_active_clients_at_start"), 502);
+  assert.ok(figures.data.values.size > 0, "the month is not blank");
+
+  // Put the real snapshot back for anything after this.
+  await publish(AUG);
+  assert.ok(await carriedOn(AUG));
 });
 
 test("a draft month has no snapshot, and says so as null rather than empty", async () => {

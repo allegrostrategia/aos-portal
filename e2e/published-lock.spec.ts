@@ -287,3 +287,81 @@ test("a month whose predecessors are all out is published in one click", async (
   await page.getByRole("button", { name: /^publish this month$/i }).click();
   await expect(page.getByText(/^Published$/).first()).toBeVisible();
 });
+
+test("a published month, before and after its previous month is unpublished", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+
+  // What Dom asked to see, 7 October: the thing the snapshot exists to
+  // prevent, photographed from both sides. August stays published
+  // throughout; only July moves.
+  //
+  // These months carry figures across — July's opening figure feeds
+  // August's "active clients at start", and August compares against July
+  // on every tab — so if the freeze ever stops working, it shows here
+  // first.
+  await signIn(page, "nina");
+  await takeBackToDraft(MONTHS.jul);
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await page.getByLabel(/clients at the start/i).fill("20");
+  await page.getByRole("button", { name: /^save/i }).first().click();
+  await expect(page.getByText(/this is the opening figure/i)).toBeVisible();
+  await page.goto(`/reporting?month=${MONTHS.jul}`);
+  await page.getByRole("button", { name: /^publish this month$/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  // **August needs a real snapshot, and the seed does not give it one.**
+  // The seed publishes by writing `published_at` straight into the table,
+  // so its months carry `{}` — which is the state live is in before the
+  // backfill, and which correctly falls back to the live walk. Falling
+  // back is what this test must NOT be measuring, so August is published
+  // through the app, the way a month gets a snapshot.
+  await takeBackToDraft(MONTHS.aug);
+  await page.goto(`/reporting?month=${MONTHS.aug}`);
+  await page.getByRole("button", { name: /^publish this month$/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  const shoots = async (when: string) => {
+    await signIn(page, "nina");
+    await page.goto(`/reporting?month=${MONTHS.aug}`);
+    await shoot(page, TAB, `${when}-admin-overview`, w);
+    await page.goto(`/reporting/client-experience?month=${MONTHS.aug}`);
+    const admin = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+    await shoot(page, TAB, `${when}-admin-client-experience`, w);
+
+    await signIn(page, "client");
+    await page.goto(`/reporting?month=${MONTHS.aug}`);
+    await shoot(page, TAB, `${when}-client-overview`, w);
+    await page.goto(`/reporting/client-experience?month=${MONTHS.aug}`);
+    const client = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+    await shoot(page, TAB, `${when}-client-client-experience`, w);
+    return { admin, client };
+  };
+
+  const before = await shoots("15-before");
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await page.getByRole("button", { name: /unpublish to make changes/i }).click();
+  await expect(page.getByText(/has gone out/i)).toHaveCount(0);
+
+  const after = await shoots("16-after");
+
+  // The figures August went out with, whatever happened to July — AND
+  // what it says they are compared against. The comparison is the half
+  // the first version of this test missed: the figures held and every
+  // card still flipped to "No month to compare", because the month name
+  // came from the viewer's own list rather than from the snapshot.
+  const figures = (text: string) =>
+    (text.match(
+      /(ACTIVE CLIENTS AT (START|END)|RETENTION RATE|CHURN RATE)\s*[0-9.—%]+|vs\. [A-Z][a-z]+|No month to compare/gi,
+    ) ?? []).map((m) => m.replace(/\s+/g, " "));
+  expect(figures(after.client)).toEqual(figures(before.client));
+  expect(figures(after.admin)).toEqual(figures(before.admin));
+  // Decision 3: the two of them see the same report, which is §9's rule.
+  expect(figures(after.admin)).toEqual(figures(after.client));
+  expect(figures(before.client).length, "there were figures to compare").toBeGreaterThan(0);
+  expect(figures(before.client).join(" "), "and a comparison to keep").toMatch(/vs\. July/);
+  expect(figures(after.client).join(" "), "still there with July a draft").toMatch(/vs\. July/);
+});

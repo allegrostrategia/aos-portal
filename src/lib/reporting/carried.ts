@@ -36,6 +36,17 @@ export interface Carried {
   previousClientsAtStart: number | null;
   /** The previous month's figures, for every "vs. last month" comparison. */
   previous: Record<ValueKey, number | null>;
+  /**
+   * WHICH month those are, so the card can still say "vs. July".
+   *
+   * Found by the before/after screenshots on 7 October: freezing the
+   * figures was not enough. `MonthView.previous` is the previous month
+   * the VIEWER can see, and a retainer client sees published ones only —
+   * so unpublishing July turned every "↑ 14% vs. July" on a published
+   * August into "No month to compare", with the frozen figures sitting
+   * right there unused.
+   */
+  previousMonth: string | null;
   /** §7's bar and "is at 40% of your target" — a sentence in the report. */
   targets: Record<ValueKey, number>;
   /** What the traffic lights were drawn against. */
@@ -52,6 +63,7 @@ export const EMPTY_CARRIED: Carried = {
   clientsAtStart: null,
   previousClientsAtStart: null,
   previous: {},
+  previousMonth: null,
   targets: {},
   benchmarks: {},
   entities: {},
@@ -109,6 +121,7 @@ export function readCarried(carried: unknown): Carried | null {
     clientsAtStart: figure(raw.clientsAtStart),
     previousClientsAtStart: figure(raw.previousClientsAtStart),
     previous: nullableNumbers(raw.previous),
+    previousMonth: typeof raw.previousMonth === "string" ? raw.previousMonth : null,
     targets: numbers(raw.targets),
     benchmarks: numbers(raw.benchmarks),
     entities,
@@ -127,6 +140,7 @@ export function buildCarried(input: {
   previousClientsAtStart: Figure;
   /** Every figure of the previous month, keyed `metric_key|entity_id`. */
   previous: Record<ValueKey, number | null>;
+  previousMonth: string | null;
   targets: Record<ValueKey, number>;
   benchmarks: Record<string, number>;
   entities: { id: string; name: string; campaign_goal: string | null }[];
@@ -136,6 +150,7 @@ export function buildCarried(input: {
     previousClientsAtStart:
       typeof input.previousClientsAtStart === "number" ? input.previousClientsAtStart : null,
     previous: input.previous,
+    previousMonth: input.previousMonth,
     targets: input.targets,
     benchmarks: input.benchmarks,
     entities: Object.fromEntries(
