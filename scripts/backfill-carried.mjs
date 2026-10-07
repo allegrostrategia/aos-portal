@@ -93,6 +93,9 @@ for (const period of periods) {
   const summary =
     `start=${carried.clientsAtStart ?? "—"}` +
     ` prev=${Object.keys(carried.previous).length}` +
+    // Named, not counted: it is what the card says it is compared
+    // against, and "none" here must mean "No month to compare" on screen.
+    ` vs=${carried.previousMonth ?? "none"}` +
     ` targets=${Object.keys(carried.targets).length}` +
     ` benchmarks=${Object.keys(carried.benchmarks).length}` +
     ` entities=${Object.keys(carried.entities).length}`;
