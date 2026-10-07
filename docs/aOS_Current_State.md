@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 7 October 2026
 
-**Seventy-seven migrations on disk, all seventy-seven applied to live and verified by reading each result back.** Test suite as of 7 Oct: **472 unit / 289 + 86 schema / 331 action / 92 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `a1abe87` and Production shows it Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, every one behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. **A published month is now locked**, which was the 6 October finding and is the whole of 7 October's work — see that section. What is left before the flag moves: Nina's review of the Stage 3 screens, and the launch checklist.
+**Seventy-eight migrations on disk, all seventy-eight applied to live and verified by reading each result back.** Test suite as of 7 Oct: **476 unit / 289 + 86 schema / 342 action / 98 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `5348d66` and Production shows it Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. **A published month is locked, and now keeps the figures it was published with** — the lock and the carried-figure snapshot are the whole of 7 October. What is left before the flag moves: Nina's review of the Stage 3 screens, and the launch checklist.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -618,6 +618,92 @@ running, because `pgrep -f "playwright/cli.js test"` does not match the
 process Playwright actually runs. Both were caught, but only by looking
 again. **Capture the runner's own exit code (`cmd > log; echo $?`) and wait
 on the summary line, never on a process name.**
+
+### 7 October (later) — a published month keeps what it went out with
+
+`docs/freeze-plan.md`, decisions 1–3 approved, built, applied and live.
+The lock stopped a published month being edited; this stops it being
+**recomputed**, which was the hole the lock uncovered rather than caused.
+
+**One column**, `report_periods.carried jsonb`, written by `publishMonth`
+with the service role and read in preference to the live walk once the
+month is published. It holds what the month needs from outside itself: the
+opening-figure chain resolved, the previous month's figures and **which
+month those were**, the targets and benchmarks it was drawn against, and
+the entity names and campaign goals. Decision 2 means it also closes the
+two holes the month-keyed lock could not reach — a standing target and a
+benchmark belong to no month.
+
+**Decision 3: everybody reads the snapshot on a published month**, editors
+included, so Nina and the client see the same report (§9). The live view
+she wants while correcting is the draft view, which unpublishing gives her.
+
+**`carried` is in `guard_report_period_publish`'s protected list**, insert
+and update, beside the email columns. Without it the guard is silent about
+the column and `report_periods_update_editors` admits the row — the
+column-ownership trap, on the column added to close a gap.
+
+**Three things found by building it, each worth more than the feature:**
+
+1. **Freezing the figures was not enough.** The before/after screenshots
+   Dom asked for showed August holding July's frozen numbers and still
+   saying "No month to compare" on every card, because `previousLabel`
+   comes from the previous month the VIEWER can see and a client sees
+   published months only. `carried.previousMonth` is the fix. No code test
+   had caught it; the screenshots did, immediately.
+2. **The confirm step for publishing out of order was worthless in
+   `useState`.** Playwright clicked before hydration and the month
+   published on the first click — React runs a form `action` whatever an
+   `onSubmit` handler does with the event, and a `type="button"` step would
+   be dead without JS. The server refuses the first attempt now.
+3. **The seed publishes by writing `published_at` straight into the
+   table**, so its published months carry `{}` — which is exactly the state
+   live was in before the backfill, and which correctly falls back to the
+   live walk. A test that had not noticed would have been measuring the
+   fallback rather than the freeze.
+
+**`{}` means "work it out live", not "a snapshot saying nothing."** A month
+the backfill missed, or one published before the column existed, must not
+go blank for want of a row nobody wrote. Asserted through the real
+`getMonthFigures`, not the parser alone.
+
+#### The backfill, and how it was checked
+
+`scripts/backfill-carried.mjs`, dry-run by default, retainer workspaces
+only. It reuses `computeCarried` rather than reimplementing the
+opening-figure walk in SQL — §9's rule is that two implementations of the
+same arithmetic disagree, and this one would disagree silently.
+
+Run against live on 7 October, two months, after a dry run whose output was
+checked line by line against what the screens showed:
+
+```
+  wrote  Test Client 2026-08-01 — start=— prev=0  vs=none       entities=2
+  wrote  Test Client 2026-09-01 — start=20 prev=39 vs=2026-08-01 entities=2
+```
+
+`vs=` is named rather than counted precisely so it can be checked: "none"
+has to mean "No month to compare" on screen, and it did — August showed six
+of those and September six "vs. August", before anything was written.
+
+**Then proved, not asserted.** All six Stage 2 tabs were captured as Test
+Client before the backfill and again after the deploy; `diff -r` on the
+twelve files is empty. Every figure and every comparison label is identical,
+with live now reading snapshots instead of computing.
+
+**August's frozen "start" is a dash, and that is correct.** Test Client's
+opening figure sits on September rather than on their first month, so
+August has never had a start to show. **If the opening figure is ever moved
+to August, August will not pick it up until it is republished.** That is
+the design, not a bug: a published month keeps what it went out with, and
+republishing is the way to change it.
+
+#### Still live history, on purpose
+
+Trend charts and the Trial Reels "Proven" marker read across months by
+design. Freezing those would mean storing a chart's whole series on every
+month. A client's trend chart can still change if an earlier month is
+unpublished — on the launch checklist, flagged rather than solved.
 
 ### Stage 2's closing check, 5 October — as the client, on live
 
@@ -1382,11 +1468,9 @@ the policies are the control, and they hold whoever reads them.
 - ~~**Whether a published month should be editable at all**~~ — **answered
   7 Oct: lock it.** Built, applied and live. See "7 October — a published
   month stops changing".
-- **The freeze plan's decisions 1, 2 and 3** (`docs/freeze-plan.md`) —
-  one column or a table; whether the snapshot includes targets and
-  benchmarks; and whether an editor sees the snapshot or the live figures
-  on a published month. Each has a recommendation. Decision 4 is already
-  done. **Nothing is built from it until these are answered.**
+- ~~**The freeze plan's decisions 1, 2 and 3**~~ — **all four answered
+  7 Oct, built, applied and live.** See "a published month keeps what it
+  went out with". `docs/freeze-plan.md` is kept as the record of why.
 - **`author_name` is still free text for its rightful owner** — closed for
   everyone by `20261007120000`, so this is now only a note that the name on
   a note is derived, not chosen. Nothing outstanding.
@@ -1430,13 +1514,14 @@ the policies are the control, and they hold whoever reads them.
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Seventy-seven on disk, all seventy-seven applied to live (7 Oct).** No
+**Seventy-eight on disk, all seventy-eight applied to live (7 Oct).** No
 gap: `20261006180000_top_items_delete` was deleted rather than applied —
 its policy moved into the lock migration, because a delete policy without
 the guard is the hole the lock exists to close.
 
-The four on 7 Oct (`lock_published_months`, `client_reply_is_the_clients`,
-`a_note_is_signed_by_its_author`, `an_entity_is_retired_not_deleted`) and
+The five on 7 Oct (`lock_published_months`, `client_reply_is_the_clients`,
+`a_note_is_signed_by_its_author`, `an_entity_is_retired_not_deleted`,
+`carried_figures`) and
 the three on 6 Oct went in through the Management API, each inside one
 transaction with its own `schema_migrations` row, and each **verified by
 reading the result back** — the triggers from `pg_trigger`, the policies
@@ -1510,11 +1595,14 @@ notes, objectives, top-three lines and month-keyed targets — and
 corrections go unpublish → fix → republish, which emails the client. Live
 and verified.
 
-**What it uncovered is not closed:** unpublishing a month empties the
-carried figures from the published months after it, for the client only.
-A warning now says so before the click, and the figure that used to come
-out *wrong* now comes out as a dash. The real fix is `docs/freeze-plan.md`,
-which needs decisions 1–3 answered before anyone builds it.
+**And what it uncovered is closed too.** A published month no longer
+derives anything at read time: it keeps the figures, the comparison, the
+targets, the benchmarks and the row labels it went out with. Proved by
+diffing every Stage 2 tab as the client before and after the change —
+twelve files, no difference.
+
+**What remains live history, on purpose:** trend charts and the Proven
+marker. On the launch checklist.
 
 **One decision is needed before Stage 3 touches Client Experience:**
 `client_experience_active_clients_at_start`, which §5.8 specifies two

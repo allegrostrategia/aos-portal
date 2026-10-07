@@ -4,11 +4,20 @@ Plan for approval · 7 October 2026 · aOS reporting tool
 
 A published report should not change because an earlier month was edited. Today it does: taking July back to draft empties part of a client's published August, with no notice to anyone. This plan stores a month's carried figures on that month when it is published, so the report a client was sent stays the report they read.
 
-> **Status, 7 October.** Nothing here is built. Two things named below have
-> since shipped on their own and are marked where they appear: **decision 4**
-> (entity deletes are `on delete restrict`, live) and the **strict
-> `activeClientsAtEnd`** (a dash rather than a wrong number, live). The
-> unpublish warning is live too, and is the stopgap this plan replaces.
+> **Status, 7 October — BUILT AND LIVE.** All four decisions were approved
+> and the whole of this plan is applied: `report_periods.carried`, written
+> at publish with the service role, read in preference to the live walk on
+> a published month. Backfilled over Test Client's two published months,
+> and every Stage 2 tab diffed as the client before and after — no figure
+> and no comparison label changed.
+>
+> Two things this document did not anticipate, both now in:
+> **`carried.previousMonth`** (freezing the figures was not enough — the
+> card also has to say what they are compared against), and the **`{}`
+> fallback**, so a month the backfill misses works out its figures live
+> rather than going blank.
+>
+> Kept as the record of why, not as work outstanding.
 
 ---
 
