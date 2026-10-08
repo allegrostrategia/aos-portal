@@ -1676,6 +1676,7 @@ never by an exit code.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
 - **An admin's RLS view is not their own view.** A policy of `using (is_portal_admin())` returns every row, so any code doing `rows.find(matching the thing I'm looking at)` and reading an identity off the result gets somebody else's — the client's, on a workspace with one client and one admin. Filter by `user_id` when the question is "mine", even where RLS already returned something plausible (state doc, 5 Oct; it signed Nina's notes with the client's name).
 - **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
+- **Default to plain HTML for anything interactive — forms, links, `<details>`/`<summary>` — and reach for JavaScript only when there is a real reason.** Three controls in this build worked only once hydrated, and all three were silently wrong before that: the publish confirm *published the month* on the first click, the phone tab bar never scrolled the current tab into view, and "+ Another stage" added no row at all. A browser clicks faster than a dev server hydrates and so does a person on a slow phone, so the broken state is the normal one. A `<details>` opens, a link navigates and a form submits with no script at all (Dom, 8 Oct).
 - **Read the runner's own exit code, never a pipeline's.** `npx playwright test | tail -20` exits with `tail`'s status, so a run that failed 12 tests reported success on 7 Oct and was believed for a minute. Capture it on its own line — `cmd > log; echo "EXIT: $?"` — and read the summary line out of the log.
 - **Wait on the thing, not on a process name.** A loop watching `pgrep -f "playwright/cli.js test"` reported the suite finished while it was on test 88 of 92, because that is not the process Playwright runs. Wait for the output a finished run produces.
 - **Do not infer a deployment from content fingerprints.** A server-action id, a build id or a static file's `last-modified` will not tell you whether a push went out: ids are not comparable between a local build and Vercel's, and Vercel reuses an unchanged file's blob and mtime. Read the Vercel dashboard, or probe a behaviour only the new code has. Claude called a healthy deploy stalled for an hour this way on 5 Oct.
@@ -1709,10 +1710,34 @@ then **Stage 5** (aOS members), then **Stage 6** (Meta CSV import). Nobody
 joins until all three are done, and **Nina reviews once, at the end** —
 so the Stage 3 flag stays at 2 throughout, however finished Stage 3 looks.
 
-**Stage 4 is planned and waiting on Dom**: `docs/stage-4-plan.md`. It is
-the stage with the most already underneath it — every table and every
-calculation in §6 exists and is tested, including the planner — and the
-least visible: no route, no screen. One migration, for a storage bucket.
+**Stage 4 is built**, behind `STAGE_4`, so none of it reaches a client:
+the list, the report, the planner, the setup screens, the entry screens,
+"Compare launches" and the monthly Launches tab. Plan in
+`docs/stage-4-plan.md`. Four migrations are live — the launch lock, the
+private cover bucket, the delete sweep, and `carried` on launches. 34
+browser tests across both widths, 23 harness tests through the real
+actions, and screenshots 01–17 in `e2e/screenshots/launches/`.
+
+**Three things Stage 4 taught, each of which cost real time:**
+
+- **A class holding a `Map` cannot cross into a Client Component.** React
+  refuses it outright — "Only plain objects, and a few built-ins" — and
+  the whole route 500s. `LaunchValues` is fine on the server (the report
+  page reads it directly); the entry form needed `values.fields()`, a
+  plain object. The server-only boundary bites the same way: the field
+  name builder had to move to `src/lib/reporting/launch-fields.ts`,
+  because `launch-queries.ts` is `server-only` and the form is not.
+- **A mutation run overwrites the screenshots.** A deliberately broken
+  build got past the visibility assertions, shot an entry screen with
+  every box blank, and only then failed. The blank screenshot sat on disk
+  looking like a real bug. **Regenerate screenshots after mutation
+  testing, before looking at them or committing them.**
+- **Name a form field in exactly one place.** Each box on the entry screen
+  was named by a template literal and filled from a differently-shaped
+  key — `-` for "none" in one, `""` in the other. The only symptom would
+  have been a box that came back empty. One builder now, pinned to the
+  harness's hand-written spelling by a test, so a drift in either is
+  caught where it happens rather than on screen.
 
 **The Stage 5 plan is dropped for now** rather than written and left to go
 stale. What a self-serve member would need is in the 7 Oct answer above;
