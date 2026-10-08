@@ -286,7 +286,101 @@ export async function seed({ quiet = false } = {}) {
       ('${retainerId}', '${MONTHS.sep}', 'b_roll', 1, 'Walking into the studio', 30000);
   `);
 
-  const out = { config, ids, retainerId, selfServeId };
+  // --- Stage 4: one launch, finished, with a second still planning ------
+  //
+  // Two so the list has something to compare and the cards show two
+  // statuses; one of them carries real figures so the report page is not
+  // a grid of dashes. Numbers from §6.6's worked example, so the planner
+  // and the conversion rate agree with the brief rather than with
+  // whatever looked plausible: 1,277 sign-ups, 600 live on day one, 30
+  // sales at £500.
+  sql(`
+    insert into public.report_launches
+      (workspace_id, name, description, status, goal_good, goal_better, goal_best,
+       planner_show_up_rate, planner_conversion_rate)
+    values
+      ('${retainerId}', 'Autumn challenge', 'Five days, then the masterclass',
+       'completed', 30, 45, 60, 47, 5),
+      ('${retainerId}', 'Spring relaunch', null, 'planning', 40, 60, 80, 47, 5);
+  `);
+
+  const launchId = one(
+    `select id from public.report_launches
+      where workspace_id = '${retainerId}' and name = 'Autumn challenge';`,
+  );
+
+  sql(`
+    insert into public.report_launch_stages
+      (launch_id, position, stage_type, name, live_days, sign_up_goal, attendance_goal,
+       promo_start, promo_end, live_start, live_end, is_main_selling_stage)
+    values
+      ('${launchId}', 1, 'challenge', 'Five day challenge', 5, 1277, 600,
+       '2026-09-01', '2026-09-13', '2026-09-14', '2026-09-18', false),
+      ('${launchId}', 2, 'masterclass', 'The masterclass', 1, null, 600,
+       '2026-09-14', '2026-09-18', '2026-09-19', '2026-09-19', true);
+
+    insert into public.report_launch_prices (launch_id, name, price, instalments, instalment_amount, is_main)
+    values
+      ('${launchId}', 'Pay in full early bird', 500, null, null, true),
+      ('${launchId}', 'Payment plan', 600, 3, 200, false);
+  `);
+
+  const stageOne = one(
+    `select id from public.report_launch_stages
+      where launch_id = '${launchId}' and position = 1;`,
+  );
+  const stageTwo = one(
+    `select id from public.report_launch_stages
+      where launch_id = '${launchId}' and position = 2;`,
+  );
+  const fullPrice = one(
+    `select id from public.report_launch_prices
+      where launch_id = '${launchId}' and is_main;`,
+  );
+  const planPrice = one(
+    `select id from public.report_launch_prices
+      where launch_id = '${launchId}' and not is_main;`,
+  );
+
+  const lv = (metric, value, at = {}) =>
+    `insert into public.report_launch_values
+       (launch_id, metric_key, stage_id, price_id, day_number, email_number, value)
+     values ('${launchId}', '${metric}',
+             ${at.stage ? `'${at.stage}'` : "null"},
+             ${at.price ? `'${at.price}'` : "null"},
+             ${at.day ?? "null"}, ${at.email ?? "null"}, ${value});`;
+
+  sql(`
+    ${lv("launches_sign_ups", 1277, { stage: stageOne })}
+    ${lv("launches_live_attendees", 600, { stage: stageOne, day: 1 })}
+    ${lv("launches_live_attendees", 540, { stage: stageOne, day: 2 })}
+    ${lv("launches_live_attendees", 470, { stage: stageOne, day: 3 })}
+    ${lv("launches_live_attendees", 430, { stage: stageOne, day: 4 })}
+    ${lv("launches_live_attendees", 410, { stage: stageOne, day: 5 })}
+    ${lv("launches_sign_ups", 900, { stage: stageTwo })}
+    ${lv("launches_live_attendees", 600, { stage: stageTwo, day: 1 })}
+    ${lv("launches_live_at_start", 600, { stage: stageTwo })}
+    ${lv("launches_live_at_pitch", 520, { stage: stageTwo })}
+    ${lv("launches_live_at_end_of_pitch", 430, { stage: stageTwo })}
+
+    ${lv("launches_email_open_rate", 42, { stage: stageOne, email: 1 })}
+    ${lv("launches_email_open_rate", 38, { stage: stageOne, email: 2 })}
+    ${lv("launches_email_open_rate", 35, { stage: stageOne, email: 3 })}
+    ${lv("launches_email_click_rate", 4.2, { stage: stageOne, email: 1 })}
+    ${lv("launches_email_click_rate", 3.6, { stage: stageOne, email: 2 })}
+    ${lv("launches_email_open_rate", 51, { stage: stageTwo, email: 1 })}
+    ${lv("launches_email_click_rate", 6.1, { stage: stageTwo, email: 1 })}
+
+    ${lv("launches_sales_per_price_option", 22, { price: fullPrice })}
+    ${lv("launches_sales_per_price_option", 8, { price: planPrice })}
+    ${lv("launches_sales_from_stage", 18)}
+    ${lv("launches_sales_from_email", 7)}
+    ${lv("launches_sales_from_dm", 3)}
+    ${lv("launches_sales_from_referral", 2)}
+    ${lv("launches_cash_collected_to_date", 12600)}
+  `);
+
+  const out = { config, ids, retainerId, selfServeId, launchId };
   if (!quiet) {
     console.log(`seeded ${config.url}`);
     console.log(`  ${RETAINER} ${retainerId}`);

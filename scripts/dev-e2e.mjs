@@ -54,7 +54,10 @@ spawn("npx", ["next", "dev", "--port", PORT], {
     // for the tabs. Development-only, enforced by NODE_ENV in categories.ts.
     // REPORTING_STAGE_OFF runs the app exactly as production has it, so
     // a test can watch Stage 3 not appear.
-    NEXT_PUBLIC_REPORTING_STAGE: process.env.REPORTING_STAGE_OFF ? "2" : "3",
+    // The highest stage being built, so the browser tests see the work in
+    // progress — and so every earlier stage is exercised with the later
+    // one switched on, which is where a regression would otherwise hide.
+    NEXT_PUBLIC_REPORTING_STAGE: process.env.REPORTING_STAGE_OFF ? "2" : "4",
     // Its own build directory, or Next 16 refuses to start beside the dev
     // server already running on 3000.
     NEXT_DIST_DIR: process.env.REPORTING_STAGE_OFF ? ".next-e2e-stage2" : ".next-e2e",

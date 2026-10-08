@@ -90,6 +90,11 @@ test("Stage 3's own pages and tabs have no route at the production flag", async 
     "/reporting/trial-reels",
     "/reporting/client-experience",
     "/reporting/enter/ads",
+    // Stage 4. The Launches TAB hides itself, because `categoryBySlug`
+    // refuses a category ahead of the build — but the module's own pages
+    // are not categories and have no such cover, so each asks `STAGE_4`.
+    "/reporting/launches",
+    "/reporting/launches/compare",
   ]) {
     const response = await page.goto(`${STAGE_2}${path}`);
     expect(response?.status(), `${path} should not exist at stage 2`).toBe(404);
@@ -97,7 +102,7 @@ test("Stage 3's own pages and tabs have no route at the production flag", async 
 
   // And the tab bar does not offer them either.
   await page.goto(`${STAGE_2}/reporting?month=${MONTHS.sep}`);
-  for (const tab of ["Ads", "Funnels", "Trial Reels", "Client Experience"]) {
+  for (const tab of ["Ads", "Funnels", "Trial Reels", "Client Experience", "Launches"]) {
     await expect(page.getByRole("link", { name: tab, exact: true })).toHaveCount(0);
   }
 });

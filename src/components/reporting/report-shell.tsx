@@ -118,9 +118,27 @@ function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey }) {
   return (
     <nav
       aria-label="Report sections"
-      className="-mx-4 mt-6 overflow-x-auto px-4 sm:-mx-6 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      // Scrolls sideways on a phone, where eleven tabs in a column would
+      // push the report off the screen; wraps from `sm` up, where there is
+      // room for two lines and a tab scrolled out of sight is just a tab
+      // nobody finds.
+      //
+      // Stage 4's Launches made eleven, and at 1440px the last one sat
+      // half outside the scroller — so landing on Launches showed a bar
+      // with no lit tab on it. Wrapping needs no JavaScript and cannot
+      // fail quietly.
+      //
+      // **On a phone it is still scrolled out of sight**, and two attempts
+      // to fix that failed: `scrollIntoView` and then setting `scrollLeft`
+      // by arithmetic both left the bar at 0. Measured rather than
+      // guessed — on a 390px screen the bar is 1188px of content and the
+      // Launches tab sits at 1075, so it needs ~798px of scroll it never
+      // gets. Not a regression: Financials was the tenth tab and already
+      // off-screen there. Left as it is, written down here, and flagged
+      // for Dom rather than fixed badly.
+      className="-mx-4 mt-6 overflow-x-auto px-4 sm:-mx-6 sm:overflow-x-visible sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      <ul className="flex w-max min-w-full gap-1 pb-px">
+      <ul className="flex w-max min-w-full gap-1 pb-px sm:w-full sm:flex-wrap">
         {visible.map((category) => {
           const isActive = category.key === active;
           const href =

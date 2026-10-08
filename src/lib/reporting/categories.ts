@@ -173,6 +173,21 @@ export const SHIPPED_STAGE: 2 | 3 | 4 =
  */
 export const STAGE_3 = SHIPPED_STAGE >= 3;
 
+/**
+ * Whether Stage 4's Launches module is on.
+ *
+ * The Launches TAB hides itself, because `categoryBySlug` refuses a
+ * category whose stage is ahead of the build. The module's own pages —
+ * the list, a launch, compare — are not categories and have no such
+ * cover, so each one asks this and 404s without it.
+ *
+ * Same promise as Stage 3's: pushing finished Launches work changes
+ * nothing a client can see until `PRODUCTION_STAGE` moves (Dom,
+ * 8 October). `NEXT_PUBLIC_REPORTING_STAGE=4 npm run dev` is the only
+ * way to look at it, and only on a development server.
+ */
+export const STAGE_4 = SHIPPED_STAGE >= 4;
+
 export const SHIPPED_CATEGORIES = CATEGORIES.filter((c) => c.stage <= SHIPPED_STAGE);
 
 /** The categories a month's figures are typed into, in tab order. */
