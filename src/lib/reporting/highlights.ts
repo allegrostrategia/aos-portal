@@ -69,6 +69,38 @@ export const DERIVED_FROM: Record<string, string> = {
   financials_costs_as_percent_of_revenue: "financials_total_costs",
 };
 
+/**
+ * A figure that is literally another figure, copied across.
+ *
+ * Different from `DERIVED_FROM` above, and the difference is the whole
+ * point. A rate is its own figure: new clients up while the close rate
+ * falls is two pieces of news, so that map only suppresses when both land
+ * in the same panel. A PULLED figure is the same number in two places —
+ * Financials shows the Offers total — so there is no case where saying it
+ * twice is right, and it is suppressed whatever the panels do.
+ *
+ * Found by Dom on an Overview screenshot, 8 October: "Total revenue from
+ * offers" and "Revenue from offers" both in "What went WELL", both
+ * £2,000 to £3,000. The label dedupe missed it because the two labels are
+ * not the same string, which is exactly why this is keyed by metric.
+ *
+ * The one `pulled` metric deliberately absent is
+ * `client_experience_active_clients_at_start`, which has no good
+ * direction and so never gets a sentence to suppress.
+ */
+export const PULLED_FROM: Record<string, string> = {
+  financials_revenue_from_offers: "offers_total_revenue_from_offers",
+  // Caught today by the label dedupe, because both are called "New
+  // clients". Named here as well so a relabel cannot quietly reopen it.
+  client_experience_new_clients: "leads_conversions_new_clients",
+  // Cannot collide today — `ads_leads` is per campaign, so it never
+  // reaches a panel to be said twice. Named anyway, because the
+  // relationship is real and the day Ads grows a month-level leads figure
+  // is not the day to rediscover it. The suppression only fires when the
+  // source actually speaks, so listing it costs nothing.
+  leads_conversions_new_leads_from_ads: "ads_leads",
+};
+
 export interface HighlightInput {
   /** The metric key, for the derived-figure rule. */
   key?: string;
@@ -254,9 +286,20 @@ export function highlights(inputs: HighlightInput[], perPanel = 3) {
   // pieces of news — more calls, converting worse — and both belong. Issues
   // raised up and issues per 10 clients up is one.
   const panelOf = new Map(kept.map((row) => [row.input.key, row.highlight.panel]));
+  const speaking = new Set(kept.map((row) => row.input.key));
   const all = kept
     .filter((row) => {
-      const base = row.input.key ? DERIVED_FROM[row.input.key] : undefined;
+      const key = row.input.key;
+      if (!key) return true;
+
+      // The same number in two places: never worth saying twice.
+      const pulled = PULLED_FROM[key];
+      if (pulled && speaking.has(pulled)) return false;
+
+      // A rate and the count behind it: worth saying twice only when they
+      // are telling different stories, which is what different panels
+      // mean.
+      const base = DERIVED_FROM[key];
       return !base || panelOf.get(base) !== row.highlight.panel;
     })
     .map((row) => row.highlight);

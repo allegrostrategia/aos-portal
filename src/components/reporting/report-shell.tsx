@@ -5,6 +5,7 @@ import { signOut } from "@/lib/auth/actions";
 import { SHIPPED_CATEGORIES, type CategoryKey } from "@/lib/reporting/categories";
 import { reportHref, type ReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
+import { SectionPicker } from "./section-picker";
 
 /**
  * The frame every reporting screen sits in.
@@ -115,55 +116,63 @@ function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey }) {
     (c) => !ctx.workspace.hidden_categories.includes(c.key),
   );
 
-  return (
-    <nav
-      aria-label="Report sections"
-      // Scrolls sideways on a phone, where eleven tabs in a column would
-      // push the report off the screen; wraps from `sm` up, where there is
-      // room for two lines and a tab scrolled out of sight is just a tab
-      // nobody finds.
-      //
-      // Stage 4's Launches made eleven, and at 1440px the last one sat
-      // half outside the scroller — so landing on Launches showed a bar
-      // with no lit tab on it. Wrapping needs no JavaScript and cannot
-      // fail quietly.
-      //
-      // **On a phone it is still scrolled out of sight**, and two attempts
-      // to fix that failed: `scrollIntoView` and then setting `scrollLeft`
-      // by arithmetic both left the bar at 0. Measured rather than
-      // guessed — on a 390px screen the bar is 1188px of content and the
-      // Launches tab sits at 1075, so it needs ~798px of scroll it never
-      // gets. Not a regression: Financials was the tenth tab and already
-      // off-screen there. Left as it is, written down here, and flagged
-      // for Dom rather than fixed badly.
-      className="-mx-4 mt-6 overflow-x-auto px-4 sm:-mx-6 sm:overflow-x-visible sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      <ul className="flex w-max min-w-full gap-1 pb-px sm:w-full sm:flex-wrap">
-        {visible.map((category) => {
-          const isActive = category.key === active;
-          const href =
-            category.key === "overview"
-              ? reportHref("/reporting", ctx)
-              : reportHref(`/reporting/${category.slug}`, ctx);
+  const hrefFor = (category: (typeof visible)[number]) =>
+    category.key === "overview"
+      ? reportHref("/reporting", ctx)
+      : reportHref(`/reporting/${category.slug}`, ctx);
 
-          return (
-            <li key={category.key}>
-              <Link
-                href={href}
-                aria-current={isActive ? "page" : undefined}
-                className={`inline-block rounded-t-xl border-b-2 px-4 py-3 text-small font-medium whitespace-nowrap transition ${
-                  isActive
-                    ? "border-orange text-ink"
-                    : "border-transparent text-ink/55 hover:text-ink"
-                }`}
-              >
-                {category.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+  const sections = visible.map((category) => ({
+    label: category.label,
+    href: hrefFor(category),
+  }));
+  const currentHref = (() => {
+    const found = visible.find((c) => c.key === active);
+    return found ? hrefFor(found) : (sections[0]?.href ?? "");
+  })();
+
+  return (
+    <>
+      {/* Below `sm`, one control saying where you are. Eleven tabs in a
+          sideways scroller left the current one off the screen — measured
+          at 390px, and nothing would scroll it there. */}
+      <SectionPicker
+        sections={sections}
+        currentLabel={visible.find((c) => c.key === active)?.label ?? "Report"}
+        currentHref={currentHref}
+      />
+
+      <nav
+        aria-label="Report sections"
+        data-tabs
+        // Tabs from `sm` up, where there is room for two lines. Eleven do
+        // not fit on one at 1440, and the eleventh sat half outside the
+        // old scroller, so landing on Launches showed a bar with no lit
+        // tab on it. Measured at production stage: six tabs, one line.
+        className="mt-6 hidden sm:block"
+      >
+        <ul className="flex w-full flex-wrap gap-1 pb-px">
+          {visible.map((category) => {
+            const isActive = category.key === active;
+
+            return (
+              <li key={category.key}>
+                <Link
+                  href={hrefFor(category)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`inline-block rounded-t-xl border-b-2 px-4 py-3 text-small font-medium whitespace-nowrap transition ${
+                    isActive
+                      ? "border-orange text-ink"
+                      : "border-transparent text-ink/55 hover:text-ink"
+                  }`}
+                >
+                  {category.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </>
   );
 }
 

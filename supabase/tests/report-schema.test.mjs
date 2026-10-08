@@ -743,10 +743,10 @@ await rejects("the same reminder cannot be logged twice", async () => {
 // metric list. A typo in it is not an error anywhere — it is a sentence
 // that quietly never gets suppressed, or one that quietly disappears. This
 // is the only place the two can be put side by side.
-const { DERIVED_FROM } = await import("../../src/lib/reporting/highlights.ts");
+const { DERIVED_FROM, PULLED_FROM } = await import("../../src/lib/reporting/highlights.ts");
 
 await check("every derived-figure pair is a real metric that reaches a panel", async () => {
-  const keys = Object.entries(DERIVED_FROM).flat();
+  const keys = [...Object.entries(DERIVED_FROM).flat(), ...Object.entries(PULLED_FROM).flat()];
   const found = await db.query(`
     select key, entity_type, good_direction from public.report_metrics
      where key = any($1)`, [keys]);
@@ -758,10 +758,45 @@ await check("every derived-figure pair is a real metric that reaches a panel", a
     if (!metric) { problems.push(`${key}: no such metric`); continue; }
     // The Overview feeds the panels `entity_type === null` metrics whose
     // direction is not 'none'. A pair involving anything else can never
-    // fire, so it is dead weight pretending to be a rule.
-    if (metric.entity_type !== null) problems.push(`${key}: per-${metric.entity_type}, never reaches a panel`);
+    // fire, so it is dead weight pretending to be a rule — EXCEPT a
+    // pulled figure's source, which is named to document the link even
+    // where it cannot collide (`ads_leads` is per campaign).
+    const isPulledSource = Object.values(PULLED_FROM).includes(key);
+    if (metric.entity_type !== null && !isPulledSource) {
+      problems.push(`${key}: per-${metric.entity_type}, never reaches a panel`);
+    }
     if (metric.good_direction === "none") problems.push(`${key}: good_direction 'none', never gets a sentence`);
   }
+  if (problems.length) console.log("   ", problems.join("\n    "));
+  return problems.length === 0;
+});
+
+await check("every pulled pair matches what the metric list says is pulled", async () => {
+  // `PULLED_FROM` says "this figure IS that one", and the metric list is
+  // the only thing that knows which figures are copies. A pair naming a
+  // metric that is not `pulled` would be suppressing a real second piece
+  // of news.
+  const found = await db.query(`
+    select key, input_type from public.report_metrics where key = any($1)`,
+    [Object.keys(PULLED_FROM)]);
+
+  const problems = [];
+  for (const [copy, source] of Object.entries(PULLED_FROM)) {
+    const row = found.rows.find((r) => r.key === copy);
+    if (!row) problems.push(`${copy}: no such metric`);
+    else if (row.input_type !== "pulled") problems.push(`${copy}: is '${row.input_type}', not 'pulled'`);
+    if (copy === source) problems.push(`${copy}: pulled from itself`);
+  }
+
+  // And every `pulled` metric that CAN reach a panel is in the map —
+  // which is how the Financials/Offers pair was missed in the first place.
+  const pulled = await db.query(`
+    select key from public.report_metrics
+     where input_type = 'pulled' and entity_type is null and good_direction <> 'none'`);
+  for (const row of pulled.rows) {
+    if (!(row.key in PULLED_FROM)) problems.push(`${row.key}: pulled, reaches a panel, not in the map`);
+  }
+
   if (problems.length) console.log("   ", problems.join("\n    "));
   return problems.length === 0;
 });

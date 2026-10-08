@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { DERIVED_FROM, TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
+import { DERIVED_FROM, PULLED_FROM, TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
 
 /**
  * "Look at these first 👀" and "What went WELL this month".
@@ -325,6 +325,20 @@ test("the rate stands alone when its count has nothing to say", () => {
   assert.match(wins[0].text, /^Churn rate down 4.0%/);
 });
 
+test("every pulled pair names a different metric, and never itself", () => {
+  // The metric list is what proves these are real and really pulled —
+  // that check lives in the schema test, which can see it. What can be
+  // checked here is the shape.
+  for (const [copy, source] of Object.entries(PULLED_FROM)) {
+    assert.notEqual(copy, source);
+    assert.equal(
+      PULLED_FROM[source],
+      undefined,
+      `${source} is itself a copy — a chain would need the rule to be transitive`,
+    );
+  }
+});
+
 test("every derived metric names a real base, and never itself", () => {
   // A typo in the map is a sentence that silently never appears. There is
   // no metric list in this module to check against, so what can be checked
@@ -342,4 +356,86 @@ test("every derived metric names a real base, and never itself", () => {
       `${derived} and ${root} should be in the same category`,
     );
   }
+});
+
+test("a figure pulled from another place is not reported twice", () => {
+  // Dom's bug, 8 October: "Total revenue from offers" and "Revenue from
+  // offers" both in "What went WELL", both £2,000 to £3,000. One figure,
+  // two places — Financials shows the Offers total — and the label dedupe
+  // missed it because the two labels are different strings.
+  const { wins } = highlights([
+    {
+      ...base,
+      key: "offers_total_revenue_from_offers",
+      label: "Total revenue from offers",
+      unit: "currency",
+      value: 3000,
+      previous: 2000,
+    },
+    {
+      ...base,
+      key: "financials_revenue_from_offers",
+      label: "Revenue from offers",
+      unit: "currency",
+      value: 3000,
+      previous: 2000,
+    },
+  ]);
+
+  assert.equal(wins.length, 1, "the source says it; the copy does not say it again");
+  assert.match(wins[0].text, /^Total revenue from offers/);
+});
+
+test("and it stays suppressed even if the two land in different panels", () => {
+  // The difference from DERIVED_FROM, and the reason this is its own map.
+  // A rate and its count can tell different stories, so that rule keys on
+  // the panel. A pulled figure is the SAME NUMBER, so there is no reading
+  // in which saying it twice is right — and nothing should depend on the
+  // two happening to agree about direction.
+  const { wins, attention } = highlights([
+    {
+      ...base,
+      key: "leads_conversions_new_clients",
+      label: "New clients",
+      value: 8,
+      previous: 4,
+    },
+    {
+      ...base,
+      key: "client_experience_new_clients",
+      label: "Clients gained",
+      goodDirection: "down",
+      value: 8,
+      previous: 4,
+    },
+  ]);
+
+  assert.equal(wins.length, 1);
+  assert.equal(attention.length, 0, "the copy is gone, whichever panel it wanted");
+});
+
+test("a pulled figure stands alone when its source says nothing", () => {
+  // Financials moved and Offers did not — which cannot happen while one
+  // is the sum of the other, but the rule should not depend on that.
+  const { wins } = highlights([
+    {
+      ...base,
+      key: "offers_total_revenue_from_offers",
+      label: "Total revenue from offers",
+      unit: "currency",
+      value: 3000,
+      previous: 3000,
+    },
+    {
+      ...base,
+      key: "financials_revenue_from_offers",
+      label: "Revenue from offers",
+      unit: "currency",
+      value: 3000,
+      previous: 2000,
+    },
+  ]);
+
+  assert.equal(wins.length, 1);
+  assert.match(wins[0].text, /^Revenue from offers/);
 });

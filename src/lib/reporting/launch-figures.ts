@@ -153,14 +153,15 @@ export function stageFigures(detail: LaunchDetail): StageFigures[] {
       attendeesByDay: byDay,
       showUpRate: launchFormulas.showUpRate(dayOne, signUps),
       dayDropOff: byDay.map((d) => launchFormulas.dayDropOff(d, dayOne)),
-      // §6.2 to the letter: "Live at end of pitch ÷ live at start" — the
-      // start of the session, not `launches_live_at_pitch`, which is its
-      // own optional figure and feeds nothing. That reads oddly and it is
-      // what the brief says; flagged for Dom rather than reinterpreted,
-      // because how a figure is worked out is not mine to change.
+      // **Against the audience when the pitch began**, not the audience
+      // when the session began. §6.2's table says "live at start", which
+      // would leave `launches_live_at_pitch` feeding nothing at all — and
+      // a figure the brief asks to be collected and then never uses is
+      // better read as the one it meant. Dom's call, 8 October; on Nina's
+      // list to confirm, since it changes a number she will quote.
       pitchRetention: launchFormulas.pitchRetention(
         detail.values.get("launches_live_at_end_of_pitch", { stageId: stage.id }),
-        detail.values.get("launches_live_at_start", { stageId: stage.id }),
+        detail.values.get("launches_live_at_pitch", { stageId: stage.id }),
       ),
       percentOfSignUpGoal: launchFormulas.percentOfSignUpGoal(signUps, stage.sign_up_goal),
       averageOpenRate: launchFormulas.averageRatePerStage(

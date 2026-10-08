@@ -73,3 +73,65 @@ test("once published, the client sees it", async ({ page }, info) => {
   await expect(page.getByRole("link", { name: "Spring relaunch" })).toHaveCount(0);
   await shoot(page, TAB, "03-list-client", w);
 });
+
+test("on a phone the sections are a picker, not a bar you have to scroll", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+
+  const tabs = page.locator("nav[data-tabs]");
+
+  if (w === "phone") {
+    // Eleven tabs in a sideways scroller left the one you were on off
+    // the screen — measured at 390px, and nothing would scroll it there.
+    const summary = page.locator("[data-section-picker] > summary");
+    await expect(summary).toBeVisible();
+    await expect(summary).toHaveText(/Launches/);
+    await expect(tabs).toBeHidden();
+    await shoot(page, TAB, "04-sections-picker-admin", w);
+
+    // It opens with no script, because it is a disclosure and not a menu.
+    await summary.click();
+    await expect(page.getByRole("link", { name: "Financials", exact: true })).toBeVisible();
+    await shoot(page, TAB, "05-sections-picker-open", w);
+
+    // And every entry is a real link.
+    await page.getByRole("link", { name: "Financials", exact: true }).click();
+    await page.waitForURL(/\/reporting\/financials/);
+    await expect(page.locator("[data-section-picker] > summary")).toHaveText(/Financials/);
+    await shoot(page, TAB, "06-sections-picker-moved", w);
+  } else {
+    // And on a laptop it is tabs, all of them on screen.
+    await expect(tabs).toBeVisible();
+    await expect(page.locator("[data-section-picker] > summary")).toBeHidden();
+    await expect(tabs.getByRole("link").last()).toBeInViewport();
+  }
+});
+
+test("the client gets the picker too, with only their own sections", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "client");
+  await page.goto("/reporting");
+
+  if (w === "phone") {
+    const summary = page.locator("[data-section-picker] > summary");
+    await expect(summary).toBeVisible();
+    await expect(summary).toHaveText(/Overview/);
+    await summary.click();
+    // **Every section, Launches included.** A client gets the tab at
+    // stage 4 — what they do not get is anybody else's launches, which
+    // the page itself decides and the test above proves. An earlier
+    // version of this assumed the tab was the team's and was simply
+    // wrong about the product.
+    await expect(page.getByRole("link", { name: "Financials", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Launches", exact: true })).toBeVisible();
+    // The editor-only screens are not sections and never appear here.
+    await expect(page.getByRole("link", { name: /^Targets$/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Benchmarks$/ })).toHaveCount(0);
+    await shoot(page, TAB, "07-sections-picker-client", w);
+  } else {
+    await expect(page.locator("nav[data-tabs]")).toBeVisible();
+  }
+});

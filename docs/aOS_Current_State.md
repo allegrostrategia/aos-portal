@@ -1521,6 +1521,41 @@ last.
     as an enum, a column and an index — in no formula, in none of the 46
     launch metrics, and in no calculation. Every figure beside it is held
     by the lock. One line to reverse (Dom agreed 8 Oct).
+16. **Pitch retention is measured against the audience when the pitch
+    began**, not when the session began. §6.2's table says "live at
+    start", which would leave "Live at pitch" collected and never used —
+    and a figure the brief asks for and never spends is better read as
+    the one it meant. It changes a number Nina will quote out loud, so it
+    needs her word (Dom, 8 Oct).
+17. **Conversion rate is measured against the main selling stage's live
+    attendees**, not every attendee of every stage. A launch with a
+    waitlist and a challenge before the masterclass would otherwise read
+    as converting a fraction of a far larger number. §6.4 says this; it
+    is listed because it is the kind of thing that looks wrong at a
+    glance and is right.
+18. **The panels repeat their tail on every line, and nothing has been
+    changed about it yet.** Stacked, three sentences ending "…not the
+    direction we want, let's dig into WHY" read as templated rather than
+    written. Three ways out, for her to pick:
+    **(a)** the tail on the first line only, the rest plain;
+    **(b)** two or three rotating versions she writes;
+    **(c)** the tail once under the heading, and the lines plain.
+    **Recommended: (a)** — it keeps her voice where the eye lands first
+    and costs her no new writing. Nothing is built either way until she
+    chooses (Dom, 8 Oct).
+19. **A phone shows the sections as a dropdown, not tabs.** Eleven tabs
+    in a sideways scroller left the one you were on off the screen —
+    measured at 390px — and two attempts to scroll it there failed. The
+    bar is now a disclosure saying where you are, opening to the full
+    list. Built as plain HTML rather than a `<select>` and a router,
+    because the select never navigated: it needed hydration, and this
+    project has now been caught twice by behaviour that only exists once
+    the JavaScript arrives. It also fixes today's off-screen Financials
+    (Dom, 8 Oct).
+20. **Does "Total hours spent delivering" going up count as bad?** It is
+    marked good-when-falling today, so a month where she delivered more
+    reads as a problem — which is right for efficiency and wrong for a
+    growing business. Her call, and it is one line.
 
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
