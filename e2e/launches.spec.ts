@@ -135,3 +135,86 @@ test("the client gets the picker too, with only their own sections", async ({ pa
     await expect(page.locator("nav[data-tabs]")).toBeVisible();
   }
 });
+
+test("the launch report, end to end", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+  await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]+/);
+
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+
+  // §6.4's headline figures, from the seed's §6.6 numbers: 22 at £500 plus
+  // 8 at £600 at full contract value, £12,600 collected.
+  expect(text).toMatch(/TOTAL SALES 30/);
+  expect(text).toMatch(/TOTAL REVENUE £15,800/);
+  expect(text).toMatch(/STILL TO COLLECT £3,200/);
+  // 15,800 ÷ 30.
+  expect(text).toMatch(/AVERAGE ORDER VALUE £526\.67/);
+  // 30 sales against the MAIN SELLING STAGE's 600 attendees, not the
+  // challenge's 2,450 across five days — the thing that would read as 1%.
+  expect(text).toMatch(/CONVERSION RATE 5\.0%/);
+
+  // The three goals, and which stage the selling happened on.
+  expect(text).toMatch(/Good 30 of 30\s*100%/);
+  expect(text).toMatch(/Better 30 of 45\s*67%/);
+  expect(text).toMatch(/Where the selling happened/);
+
+  await shoot(page, TAB, "08-report-admin", w);
+});
+
+test("the planner reads §6.6's own worked example back", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  // 30 sales at 5% is 600 live attendees; at 47% show-up that is 1,277
+  // sign-ups. The brief says the approved mockup's 600 is wrong, and this
+  // is the assertion that keeps us on the formula rather than the mockup.
+  expect(text).toMatch(/LIVE ATTENDEES NEEDED 600/);
+  expect(text).toMatch(/SIGN-UPS NEEDED 1,277/);
+  await shoot(page, TAB, "09-planner", w);
+});
+
+test("the client sees a published launch's report and none of the planner", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  sql(`update public.report_launches l set published_at = now(),
+         published_by = (select id from public.members where role = 'admin' limit 1)
+        from public.report_workspaces w
+       where w.id = l.workspace_id and w.business_name = 'Northwind Studio'
+         and l.name = 'Autumn challenge';`);
+
+  await signIn(page, "client");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(text).toMatch(/TOTAL REVENUE £15,800/);
+  // The planner is a planning tool for a conversation, not a number to
+  // hand somebody — §6.6 is the team's.
+  expect(text).not.toMatch(/Working backwards/);
+  expect(text).not.toMatch(/SIGN-UPS NEEDED/);
+  await shoot(page, TAB, "10-report-client", w);
+});
+
+test("one client cannot open another's launch", async ({ page }) => {
+  // Not found and not yours are the same answer — §13: never confirm that
+  // another client's record exists.
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  const id = sql(`select l.id from public.report_launches l
+                    join public.report_workspaces w on w.id = l.workspace_id
+                   where w.business_name = 'Northwind Studio' and l.name = 'Autumn challenge';`)
+    .trim()
+    .split("\n")
+    .pop();
+
+  await signIn(page, "member");
+  const response = await page.goto(`/reporting/launches/${id}`);
+  expect(response?.status()).toBe(404);
+});
