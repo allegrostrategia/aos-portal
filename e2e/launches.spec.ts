@@ -161,6 +161,10 @@ test("the launch report, end to end", async ({ page }, info) => {
   expect(text).toMatch(/Better 30 of 45\s*67%/);
   expect(text).toMatch(/Where the selling happened/);
 
+  // A stage with one email has no line to read, so its dot carries the
+  // number — the masterclass sent one, at 51%.
+  expect(text).toMatch(/51%/);
+
   await shoot(page, TAB, "08-report-admin", w);
 });
 

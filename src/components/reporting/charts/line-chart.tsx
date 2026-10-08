@@ -128,6 +128,33 @@ export function LineChart({
                   strokeWidth="2"
                 />
               ))}
+
+              {/* A stage with ONE email has no line to read, so the dot
+                  carries its own number — otherwise it reads as a stray
+                  mark rather than a figure (Dom, 8 October). Only the
+                  lone ones: a number on every point is the thing direct
+                  labelling is supposed to avoid.
+
+                  Above the dot where there is room, below where there is
+                  not, so a 60% point at the top of the scale does not
+                  print into the frame. */}
+              {drawn.length === 1
+                ? drawn.map((p) => {
+                    const above = y(p.value) - PAD.top > 18;
+                    return (
+                      <text
+                        key={`label-${p.i}`}
+                        x={x(p.i)}
+                        y={y(p.value) + (above ? -12 : 18)}
+                        textAnchor="middle"
+                        className="fill-ink font-mono text-[0.65rem]"
+                      >
+                        {p.value}
+                        {unitSuffix}
+                      </text>
+                    );
+                  })
+                : null}
             </g>
           );
         })}

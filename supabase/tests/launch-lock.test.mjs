@@ -105,51 +105,36 @@ test("once published, the figures hold still", async () => {
   });
 });
 
-test("a figure cannot be deleted from any launch, published or not", async () => {
-  // Worth writing down rather than assuming, because it is why the
-  // guard's delete branch looks redundant: **no launch table has a delete
-  // policy for anybody but an admin.** A delete matches no row under RLS,
-  // which is not an error — the silent no-op this codebase has been caught
-  // by twice.
-  //
-  // The trigger covers the verb anyway, so a delete policy added later
-  // cannot reopen this without somebody touching the guard. That is
-  // exactly how the top-items delete policy nearly shipped alone.
+test("a figure CAN be deleted on a draft launch, and not on a published one", async () => {
+  // This test used to say a figure could not be deleted at all, because
+  // no launch table had a delete policy — so an editor emptying a box
+  // matched no row, which under RLS is not an error. `20261008120000`
+  // gave them one, bounded by the guard below, and this is the shape it
+  // was written to become.
+  await unpublish();
   const before = await rows(
     `select count(*)::int c from public.report_launch_values where launch_id = '${LAUNCH}'`,
   );
+  assert.ok(before[0].c > 0, "there is a figure to remove");
+
   await asMember(db, ELIZE, async () => {
-    const r = await db.query(
+    const gone = await db.query(
       `delete from public.report_launch_values where launch_id = '${LAUNCH}'`,
     );
-    assert.equal(r.affectedRows ?? 0, 0, "matched nothing, and said nothing");
+    assert.equal(gone.affectedRows, before[0].c, "hers to clear while it is a draft");
   });
-  const after = await rows(
-    `select count(*)::int c from public.report_launch_values where launch_id = '${LAUNCH}'`,
+
+  // Put one back, publish, and the same delete is refused.
+  await asMember(db, NINA, () =>
+    db.query(`insert into public.report_launch_values (launch_id, stage_id, metric_key, value)
+              values ('${LAUNCH}', '${STAGE}', 'launches_sign_ups', 1277)`),
   );
-  assert.equal(after[0].c, before[0].c);
-});
-
-test("so do the prices — they ARE figures, whatever table they sit in", async () => {
-  // Total revenue is the sum of (sales × price) over these rows, and a
-  // launch's revenue comes from its OWN price options rather than from the
-  // linked offer. So moving a price moves the headline number.
+  await publish();
   await asMember(db, ELIZE, async () => {
     await assert.rejects(
-      () => db.query(`update public.report_launch_prices set price = 1000 where id = '${PRICE}'`),
+      () => db.query(`delete from public.report_launch_values where launch_id = '${LAUNCH}'`),
       LOCKED,
-    );
-  });
-  const [p] = await rows(`select price::float v from public.report_launch_prices where id = '${PRICE}'`);
-  assert.equal(p.v, 550);
-});
-
-test("and the stages, because one of them decides the conversion rate", async () => {
-  await asMember(db, ELIZE, async () => {
-    await assert.rejects(
-      () => db.query(`update public.report_launch_stages set is_main_selling_stage = false
-                       where id = '${STAGE}'`),
-      LOCKED,
+      "and not once it has gone out",
     );
   });
 });

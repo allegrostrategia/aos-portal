@@ -1552,7 +1552,12 @@ last.
     project has now been caught twice by behaviour that only exists once
     the JavaScript arrives. It also fixes today's off-screen Financials
     (Dom, 8 Oct).
-20. **Does "Total hours spent delivering" going up count as bad?** It is
+20. **A stage with one email shows its open rate on the dot.** One point
+    has no line to read, so without the number it looks like a stray
+    mark. The alternative Nina may prefer: leave single-email stages off
+    the chart entirely and show them as a figure beside it. Labelled on
+    the chart for now (Dom, 8 Oct).
+21. **Does "Total hours spent delivering" going up count as bad?** It is
     marked good-when-falling today, so a month where she delivered more
     reads as a problem — which is right for efficiency and wrong for a
     growing business. Her call, and it is one line.
