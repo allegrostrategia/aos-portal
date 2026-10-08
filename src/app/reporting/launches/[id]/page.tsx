@@ -84,12 +84,20 @@ export default async function LaunchPage({
       tagline={`${detail.launch.description ?? "EVERY LAUNCH, END TO END"} · ${ctx.workspace.business_name}`}
       actions={
         ctx.canEdit ? (
-          <Link
-            href={reportHref(`/reporting/launches/${id}/edit`, ctx)}
-            className={buttonClasses("secondary", "sm")}
-          >
-            Edit launch details
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={reportHref(`/reporting/launches/${id}/edit`, ctx)}
+              className={buttonClasses("secondary", "sm")}
+            >
+              Edit launch details
+            </Link>
+            <Link
+              href={reportHref(`/reporting/launches/${id}/enter`, ctx)}
+              className={buttonClasses("primary", "sm")}
+            >
+              Enter data
+            </Link>
+          </div>
         ) : null
       }
     >

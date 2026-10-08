@@ -435,3 +435,40 @@ test("the status still moves on a published launch, and nothing else does", asyn
 
   await as(NINA, () => unpublishLaunch(null, form({ launch_id: LAUNCH })));
 });
+
+test("the entry screen's box names are the names this parser reads", async () => {
+  // Every other test in this file spells the field names out by hand, on
+  // purpose: the parser should be held to the written contract rather
+  // than to whatever the form happens to emit. This is the one place the
+  // two are brought together, so a change to either is caught here
+  // instead of showing up as a box that silently comes back empty —
+  // which is precisely how it went wrong the first time, when the box
+  // was named with `-` for "none" and its value looked up under `""`.
+  const { launchFieldName } = await import("../../src/lib/reporting/launch-fields.ts");
+
+  assert.equal(launchFieldName("launches_cash_collected_to_date"),
+    "launch:launches_cash_collected_to_date:-:-:-:-");
+  assert.equal(launchFieldName("launches_sign_ups", { stageId: "S" }),
+    "launch:launches_sign_ups:S:-:-:-");
+  assert.equal(launchFieldName("launches_live_attendees", { stageId: "S", day: 3 }),
+    "launch:launches_live_attendees:S:-:3:-");
+  assert.equal(launchFieldName("launches_email_open_rate", { stageId: "S", email: 2 }),
+    "launch:launches_email_open_rate:S:-:-:2");
+  assert.equal(launchFieldName("launches_sales_per_price_option", { priceId: "P" }),
+    "launch:launches_sales_per_price_option:-:P:-:-");
+
+  // And a figure saved under a built name comes back under the same one,
+  // which is the round trip the screen actually depends on.
+  const [stage] = await rows(`select id from public.report_launch_stages
+                               where launch_id = '${LAUNCH}' and position = 1`);
+  const name = launchFieldName("launches_replay_watchers", { stageId: stage.id });
+  const result = await as(ELIZE, () => saveLaunchFigures(null, form({
+    launch_id: LAUNCH,
+    [name]: 310,
+  })));
+  assert.equal(result?.error, undefined, result?.error);
+
+  const { getLaunch } = await import("../../src/lib/reporting/launch-queries.ts");
+  const detail = await as(ELIZE, () => getLaunch(LAUNCH));
+  assert.equal(detail.values.fields()[name], 310);
+});

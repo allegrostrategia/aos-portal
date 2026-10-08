@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { launchFieldName, type LaunchAt, type LaunchFigures } from "./launch-fields.ts";
 
 /**
  * Reading launches (§6).
@@ -116,10 +117,7 @@ export class LaunchValues {
     return Number.isFinite(n) ? n : null;
   }
 
-  private static key(
-    metricKey: string,
-    at: { stageId?: string | null; priceId?: string | null; day?: number | null; email?: number | null },
-  ): string {
+  private static key(metricKey: string, at: LaunchAt): string {
     return [
       metricKey,
       at.stageId ?? "",
@@ -129,15 +127,30 @@ export class LaunchValues {
     ].join("|");
   }
 
-  get(
-    metricKey: string,
-    at: { stageId?: string | null; priceId?: string | null; day?: number | null; email?: number | null } = {},
-  ): number | null {
+  get(metricKey: string, at: LaunchAt = {}): number | null {
     return this.byKey.get(LaunchValues.key(metricKey, at)) ?? null;
   }
 
   get size(): number {
     return this.byKey.size;
+  }
+
+  /** The same figures as a plain object the entry form can be handed,
+   *  keyed by the name of the box each one belongs in. */
+  fields(): LaunchFigures {
+    const out: LaunchFigures = {};
+    for (const [key, value] of this.byKey) {
+      const [metricKey, stageId, priceId, day, email] = key.split("|");
+      out[
+        launchFieldName(metricKey, {
+          stageId: stageId || null,
+          priceId: priceId || null,
+          day: day ? Number(day) : null,
+          email: email ? Number(email) : null,
+        })
+      ] = value;
+    }
+    return out;
   }
 }
 

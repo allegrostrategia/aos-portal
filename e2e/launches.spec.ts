@@ -305,3 +305,41 @@ test("a published launch's setup is read-only, except its status", async ({ page
   await expect(page.getByText(/^Status saved\.$/)).toBeVisible();
   await shoot(page, TAB, "14-edit-locked", w);
 });
+
+test("typing a launch's figures in, and seeing them on its report", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+  await page.getByRole("link", { name: /^enter data$/i }).click();
+  await page.waitForURL(/\/enter/);
+
+  // A box per stage, per day, per email, per price option — all four of
+  // the contexts a launch figure can hang off, on one screen.
+  await expect(page.getByText(/^Five day challenge$/)).toBeVisible();
+  await expect(page.getByText(/^Day 5$/)).toBeVisible();
+  await expect(page.getByText(/^Email 1$/).first()).toBeVisible();
+  await shoot(page, TAB, "15-enter-admin", w);
+
+  await page.getByLabel("Replay watchers", { exact: true }).first().fill("310");
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved/i).first()).toBeVisible();
+
+  // And it is there when the screen comes back — which is also the one
+  // check that a box's name and its lookup still agree. Name them
+  // differently and this is what fails.
+  await page.reload();
+  await expect(page.getByLabel("Replay watchers", { exact: true }).first()).toHaveValue("310");
+});
+
+test("a launch with no stages says where its figures would go", async ({ page }) => {
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Spring relaunch" }).click();
+  await page.getByRole("link", { name: /^enter data$/i }).click();
+
+  // §13: a dead end gets a route out of it, not an explanation.
+  await expect(page.getByText(/no stages yet/i)).toBeVisible();
+  await page.getByRole("link", { name: /set its stages up/i }).click();
+  await page.waitForURL(/\/edit/);
+});
