@@ -3,8 +3,10 @@ import { test } from "node:test";
 
 import {
   firstOfMonth,
+  lastDayOf,
   latestReportableMonth,
   monthLabel,
+  previousMonthOf,
   resolveMonth,
 } from "./months.ts";
 
@@ -166,4 +168,20 @@ test("an editor is unrestricted, as before", () => {
   const view = resolveMonth(undefined, TODAY, FIRST);
   assert.equal(view.options.length, 8);
   assert.equal(view.month, "2026-08-01");
+});
+
+test("the last day of a month, including the awkward ones", () => {
+  assert.equal(lastDayOf("2026-09-01"), "2026-09-30");
+  assert.equal(lastDayOf("2026-10-01"), "2026-10-31");
+  assert.equal(lastDayOf("2026-02-01"), "2026-02-28");
+  // 2028 is a leap year; 2100 is not, which is the rule people forget.
+  assert.equal(lastDayOf("2028-02-01"), "2028-02-29");
+  assert.equal(lastDayOf("2100-02-01"), "2100-02-28");
+  assert.equal(lastDayOf("2026-12-01"), "2026-12-31");
+});
+
+test("the month before, across a year boundary", () => {
+  assert.equal(previousMonthOf("2026-09-01"), "2026-08-01");
+  assert.equal(previousMonthOf("2026-01-01"), "2025-12-01");
+  assert.equal(previousMonthOf("2026-03-01"), "2026-02-01");
 });

@@ -173,3 +173,17 @@ export function resolveMonth(
     options,
   };
 }
+
+/**
+ * The last day of a month, as a date string.
+ *
+ * For asking whether a launch's live dates touch a month: a launch that
+ * ran from late September into October belongs to both, so the test is
+ * an overlap rather than a match, and an overlap needs both ends.
+ */
+export function lastDayOf(month: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  // Day 0 of the next month is the last day of this one.
+  const d = new Date(Date.UTC(year, monthNumber, 0));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}

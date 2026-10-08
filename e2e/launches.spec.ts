@@ -381,3 +381,32 @@ test("compare is the team's screen, not the client's", async ({ page }) => {
   await page.goto("/reporting/launches/compare");
   await page.waitForURL(/\/reporting\/launches(\?|$)/);
 });
+
+test("the Launches tab separates this month's launches from the rest", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { MONTHS, sql } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+  await page.goto(`/reporting/launches?month=${MONTHS.sep}`);
+
+  await expect(page.getByText(/live in september 2026/i)).toBeVisible();
+  await expect(page.getByText(/every other launch/i)).toBeVisible();
+  await shoot(page, TAB, "17-month-split", w);
+
+  // A month no launch touched has no "live in" heading at all, rather
+  // than an empty one.
+  await page.goto(`/reporting/launches?month=${MONTHS.jul}`);
+  await expect(page.getByText(/live in july 2026/i)).toHaveCount(0);
+
+  // A launch spanning two months belongs to BOTH, which is the whole
+  // reason this is an overlap rather than a match on the start date.
+  // (Tested across August and September, not September and October: the
+  // newest month anybody can report on is the last one that finished, so
+  // an October URL falls back to September — by design, not a bug.)
+  sql(`update public.report_launch_stages s set live_start = '2026-08-28', live_end = '2026-09-03'
+        from public.report_launches l
+       where l.id = s.launch_id and l.name = 'Autumn challenge';`);
+  await page.goto(`/reporting/launches?month=${MONTHS.sep}`);
+  await expect(page.getByText(/live in september 2026/i)).toBeVisible();
+  await page.goto(`/reporting/launches?month=${MONTHS.aug}`);
+  await expect(page.getByText(/live in august 2026/i)).toBeVisible();
+});
