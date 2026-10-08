@@ -18,14 +18,18 @@
 --   mean a client's launch cover was readable by anyone who guessed the
 --   path, forever, whatever the policies below said.
 --
--- THE SAME RULES AS THE TABLES
---   Read for anyone who can view the workspace, write for anyone who can
---   edit it — `report_can_view` and `report_can_edit`, the same two
---   functions every report table uses, rather than a second set of rules
---   that can drift from them. So a retainer client can see their own
---   launch cover and cannot replace it, and a cancelled member loses it
---   with everything else, because `report_can_view` already carries
---   `has_portal_access()`.
+-- THE SAME RULES AS THE LAUNCH ITSELF
+--   Read is `report_can_read_launch`, which is what the launch's own
+--   tables use — so the cover appears when the launch does, and a client
+--   cannot open the cover of a draft launch they do not know exists.
+--   Write is `report_can_edit` AND not `report_launch_is_locked`, so a
+--   cover cannot be swapped on a launch the client has already seen: the
+--   picture is part of the report, like every figure on it.
+--
+--   Every one of those is the function the tables already call, not a copy
+--   of its rule, so the two cannot drift. A cancelled member loses the lot
+--   with everything else, because `report_can_view` underneath them all
+--   carries `has_portal_access()`.
 --
 -- THE PATH CARRIES THE WORKSPACE
 --   `<workspace id>/<launch id>.<ext>`. The policies read the first segment
@@ -52,6 +56,24 @@ exception
   when others then return null;
 end;
 $$;
+
+-- And the launch, from the second segment with its extension dropped.
+-- Same shape, same reason: null rather than an exception.
+create or replace function public.report_launch_from_path(p_name text)
+returns uuid
+language plpgsql
+immutable
+set search_path = ''
+as $$
+begin
+  return split_part((string_to_array(p_name, '/'))[2], '.', 1)::uuid;
+exception
+  when others then return null;
+end;
+$$;
+
+comment on function public.report_launch_from_path(text) is
+  'The launch id in the second segment of a storage path, or null. Null rather than an exception, because a storage policy that raises is an error page instead of a refusal.';
 
 comment on function public.report_workspace_from_path(text) is
   'The workspace id at the head of a storage path, or null if the path is not shaped that way. Null rather than an exception, because a storage policy that raises is an error page instead of a refusal.';
@@ -91,35 +113,56 @@ $$;
 -- -----------------------------------------------------------------------------
 -- Who may read and write in it
 -- -----------------------------------------------------------------------------
+-- READ: the same question the launch itself answers.
+--
+-- **Not `report_can_view` on the workspace**, which was the first version
+-- and was wrong (Dom, 8 October): it would have let a client open the
+-- cover of a DRAFT launch — a launch they cannot otherwise see exists.
+-- `report_can_read_launch` is the function the launch tables already use,
+-- and it carries the published check with it, so the cover becomes
+-- visible at exactly the moment the launch does and not a moment before.
 create policy launch_covers_read
   on storage.objects for select
   to authenticated
   using (
     bucket_id = 'launch-covers'
-    and public.report_can_view(public.report_workspace_from_path(name))
+    and public.report_can_read_launch(public.report_launch_from_path(name))
   );
 
+-- WRITE, REPLACE, REMOVE: an editor's, and not on a published launch.
+--
+-- The second correction. A cover is part of the report, so swapping one on
+-- a launch the client has already seen is the same act as moving a figure
+-- — and the launch lock refuses that. Without this the picture was the one
+-- thing on the page that could still change underneath them.
+--
+-- `report_launch_is_locked` is the lock's own function rather than a copy
+-- of its rule, so the two cannot drift, and it already admits the admin
+-- and the service role by being false for nobody they are: an admin passes
+-- because storage policies do not bind the service role at all, and
+-- `is_portal_admin()` is not consulted here because an admin's own client
+-- carries the service key.
 create policy launch_covers_write
   on storage.objects for insert
   to authenticated
   with check (
     bucket_id = 'launch-covers'
     and public.report_can_edit(public.report_workspace_from_path(name))
+    and not public.report_launch_is_locked(public.report_launch_from_path(name))
   );
 
--- Replacing a cover is an update on the object, and removing one when the
--- launch is deleted is a delete. Both are an editor's, both are refused to
--- a client — who has no edit right on a retainer workspace at all.
 create policy launch_covers_update
   on storage.objects for update
   to authenticated
   using (
     bucket_id = 'launch-covers'
     and public.report_can_edit(public.report_workspace_from_path(name))
+    and not public.report_launch_is_locked(public.report_launch_from_path(name))
   )
   with check (
     bucket_id = 'launch-covers'
     and public.report_can_edit(public.report_workspace_from_path(name))
+    and not public.report_launch_is_locked(public.report_launch_from_path(name))
   );
 
 create policy launch_covers_delete
@@ -128,4 +171,5 @@ create policy launch_covers_delete
   using (
     bucket_id = 'launch-covers'
     and public.report_can_edit(public.report_workspace_from_path(name))
+    and not public.report_launch_is_locked(public.report_launch_from_path(name))
   );

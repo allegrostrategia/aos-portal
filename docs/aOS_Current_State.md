@@ -1513,6 +1513,14 @@ last.
 14. **The monthly Launches tab lists the launches whose live dates fall in
     that month**, as cards linking through — so a month's report says a
     launch happened without duplicating its figures.
+15. **A published launch's status may still change; nothing else about it
+    may.** Planning → Live now → Completed describes the launch rather
+    than the report, and a client looking at "Live now" three weeks after
+    the cart shut is worse served than one whose badge changed quietly.
+    **Checked before deciding: `status` feeds no figure.** It appears only
+    as an enum, a column and an index — in no formula, in none of the 46
+    launch metrics, and in no calculation. Every figure beside it is held
+    by the lock. One line to reverse (Dom agreed 8 Oct).
 
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.

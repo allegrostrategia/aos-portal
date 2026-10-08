@@ -232,13 +232,99 @@ test("the cover bucket is private, images only, and capped", async () => {
 
 test("a path that is not a workspace id resolves to nobody, rather than raising", async () => {
   // An exception inside a storage policy is an error page, not a refusal.
+  // BOTH helpers, because both sit in a policy. An earlier version of
+  // this test checked only the workspace one, and a mutation making the
+  // launch one raise went straight through it.
   const [r] = await rows(`select
       coalesce(public.report_workspace_from_path('not-a-uuid/x.png')::text, 'null') as a,
       coalesce(public.report_workspace_from_path('')::text, 'null') as b,
-      public.report_workspace_from_path('${WS}/cover.png')::text as c`);
-  assert.equal(r.a, "null");
-  assert.equal(r.b, "null");
+      public.report_workspace_from_path('${WS}/${LAUNCH}.png')::text as c,
+      coalesce(public.report_launch_from_path('${WS}/not-a-uuid.png')::text, 'null') as d,
+      coalesce(public.report_launch_from_path('${WS}')::text, 'null') as e,
+      coalesce(public.report_launch_from_path('')::text, 'null') as f,
+      public.report_launch_from_path('${WS}/${LAUNCH}.png')::text as g`);
+  assert.equal(r.a, "null", "a workspace segment that is not an id");
+  assert.equal(r.b, "null", "an empty path");
   assert.equal(r.c, WS);
+  assert.equal(r.d, "null", "a launch segment that is not an id");
+  assert.equal(r.e, "null", "no launch segment at all");
+  assert.equal(r.f, "null");
+  assert.equal(r.g, LAUNCH, "and the real thing, extension dropped");
+});
+
+/** Where a cover for a launch lives: <workspace>/<launch>.png */
+const coverPath = (launchId, ws = WS) => `${ws}/${launchId}.png`;
+
+test("a client cannot read the cover of a DRAFT launch", async () => {
+  // The first of Dom's two corrections, 8 October. The first version asked
+  // `report_can_view` on the workspace, which is true for the client all
+  // the time — so they could have opened the picture for a launch they do
+  // not know exists. `report_can_read_launch` carries the published check,
+  // so the cover appears when the launch does.
+  let draft;
+  await asMember(db, NINA, async () => {
+    draft = (
+      await db.query(`insert into public.report_launches (workspace_id, name)
+                      values ('${WS}', 'Not out yet') returning id`)
+    ).rows[0].id;
+  });
+  await db.query(`insert into storage.objects (bucket_id, name)
+                  values ('launch-covers', '${coverPath(draft)}')`);
+
+  const seen = async (uid) =>
+    (
+      await asMember(db, uid, () =>
+        db.query(`select count(*)::int c from storage.objects
+                   where name = '${coverPath(draft)}'`),
+      )
+    ).rows[0].c;
+
+  assert.equal(await seen(CLIENT), 0, "a draft launch's cover is not theirs to open");
+  assert.equal(await seen(ELIZE), 1, "and it is Elize's, because she is building it");
+
+  // And the moment it goes out, they can.
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_launches set published_at = now(), published_by = '${NINA}'
+               where id = '${draft}'`),
+  );
+  assert.equal(await seen(CLIENT), 1, "published, so the cover is theirs too");
+});
+
+test("an editor cannot replace the cover of a PUBLISHED launch", async () => {
+  // The second correction. A cover is part of the report, so swapping one
+  // on a launch the client has already seen is the same act as moving a
+  // figure — which the lock refuses. Without this the picture was the one
+  // thing on the page that could still change underneath them.
+  //
+  // LAUNCH is published by the test above it.
+  const path = coverPath(LAUNCH);
+  await db.query(`insert into storage.objects (bucket_id, name) values ('launch-covers', '${path}')`);
+
+  await asMember(db, ELIZE, async () => {
+    const replaced = await db.query(
+      `update storage.objects set name = '${path}' where name = '${path}'`,
+    );
+    assert.equal(replaced.affectedRows ?? 0, 0, "the row is not hers to change while it is out");
+
+    const removed = await db.query(`delete from storage.objects where name = '${path}'`);
+    assert.equal(removed.affectedRows ?? 0, 0, "nor to remove");
+
+    const added = await db.query(`insert into storage.objects (bucket_id, name)
+                                  select 'launch-covers', '${WS}/${LAUNCH}-new.png'
+                                   where public.report_can_edit('${WS}')
+                                     and not public.report_launch_is_locked('${LAUNCH}')`);
+    assert.equal(added.affectedRows ?? 0, 0, "and a new one is refused by the same rule");
+  });
+
+  // Taken back to draft, it is hers again — the way through, as everywhere.
+  await unpublish();
+  await asMember(db, ELIZE, async () => {
+    const replaced = await db.query(
+      `update storage.objects set owner = '${ELIZE}' where name = '${path}'`,
+    );
+    assert.equal(replaced.affectedRows ?? 0, 1);
+  });
+  await publish();
 });
 
 test("the cover's read and write rules are the workspace's own", async () => {
