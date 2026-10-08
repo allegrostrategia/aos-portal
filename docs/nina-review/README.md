@@ -115,6 +115,8 @@ These are written down in one place and nowhere else, so changing one changes it
 
 ## Things we decided for you — please confirm
 
+*These seven are also kept in the project's own notes, under "Decided on Nina's behalf", along with everything decided in the later stages. When the whole tool is finished this pack is rebuilt to cover all of it, and that list becomes its first section — so nothing gets decided for you and quietly forgotten.*
+
 **1. The two sentences for figures where falling is good.**
 Churn, cost per lead and clients who left were coming out backwards: two fewer clients leaving was being called "2 MORE clients who left - stunning". You gave us the two sentences above on 6 October and we've used them. Please check they read right to you in place.
 
@@ -140,7 +142,9 @@ On the Ads table, campaigns with a goal leave that column empty and only the uns
 
 ## Not in this pack, and not in Stage 3
 
-So you're not looking for them: **uploading a CSV from Meta or your email platform**, **the Launches planner**, and **the reminders on the 1st and 8th for aOS members** are all still to come, in later stages. Dom has the detail.
+So you're not looking for them: **the Launches planner**, **aOS members using this themselves**, and **uploading a CSV from Meta** are all still to come, in that order. Email-platform CSVs are deliberately not planned — those figures stay typed in by hand.
+
+Nothing goes live and nobody new joins until all of it is built, and then you see the whole thing at once rather than a stage at a time.
 
 ---
 

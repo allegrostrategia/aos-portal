@@ -5,7 +5,7 @@
 
 ## WHERE WE ARE — 7 October 2026
 
-**Seventy-eight migrations on disk, all seventy-eight applied to live and verified by reading each result back.** Test suite as of 7 Oct: **476 unit / 289 + 86 schema / 342 action / 98 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `5348d66` and Production shows it Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. **A published month is locked, and now keeps the figures it was published with** — the lock and the carried-figure snapshot are the whole of 7 October. What is left before the flag moves: Nina's review of the Stage 3 screens, and the launch checklist.
+**Seventy-eight migrations on disk, all seventy-eight applied to live and verified by reading each result back.** Test suite as of 7 Oct: **476 unit / 289 + 86 schema / 342 action / 98 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `5348d66` and Production shows it Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. **A published month is locked, and now keeps the figures it was published with** — the lock and the carried-figure snapshot are the whole of 7 October. **The Stage 3 switch stays off until Nina's final review, which happens once, at the end of Stage 6** (Dom, 8 Oct) — so what is left is Stages 4, 5 and 6, then that review, then the launch checklist.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -96,6 +96,14 @@ a real month, and none of them can be finished before launch.
       **Decide before a real client reads a mid-relationship month.**
       (Dom, 6 Oct; corrected and narrowed 7 Oct. Both halves are asserted in
       `supabase/tests/client-experience.test.mjs`.)
+- [ ] **Nobody joins until Stages 4, 5 and 6 are built** (Dom, 8 Oct). No aOS
+      member, no Chiarezza attendee and no new retainer client starts on a
+      half-finished tool, and Nina reviews the whole of it once rather than
+      stage by stage. The Stage 3 flag stays at 2 until that review.
+- [ ] **Regenerate `docs/nina-review/` at the end of Stage 6** so it covers
+      every stage, with "Decided on Nina's behalf" as its first section.
+      `npx playwright test nina-review.spec.ts` rebuilds the pictures; the
+      README is written by hand. Last built 7 Oct, Stage 3 only.
 - [ ] **Trend charts and the Proven marker still read live history.** A
       chart can change if an earlier month is unpublished. The snapshot
       freezes a month's own figures and what it compares against; freezing
@@ -1440,6 +1448,72 @@ the policies are the control, and they hold whoever reads them.
   login. That is accepted. **A real client's name, address or figures is
   not** — it goes in a document, not in the repo.
 
+## Decided on Nina's behalf, for her final review
+
+A running list. Every time a question is really hers and the build could not
+wait, the answer taken goes here with the reason — so her final review is a
+list of things to confirm or overturn, not an archaeology exercise.
+
+**Nobody joins until Stages 4–6 are built, and Nina reviews once, at the
+end** (Dom, 8 Oct). So this list will get longer before anybody reads it,
+and that is the arrangement rather than a backlog.
+
+**At the end of Stage 6, `docs/nina-review/` is regenerated to cover every
+stage, with this list as its first section.** On the launch checklist too,
+because it is the kind of thing that gets forgotten precisely because it is
+last.
+
+### From Stage 3 (the review pack, 7 Oct)
+
+1. **The two sentences for figures where falling is good.** Churn, cost per
+   lead and clients who left were coming out backwards — two fewer clients
+   leaving read as "2 MORE clients who left - stunning". Nina gave the
+   replacement wording on 6 Oct and it is in; what she has not done is see
+   it in place.
+2. **Targets appear in the metric list's own order, not worst-first.** So
+   the same five bars stay in the same places month to month and she can
+   find one by eye rather than by reading.
+3. **Two figures that are one piece of news show one sentence.** "Issues
+   raised up 3" and "Issues per 10 clients up 1.0" are one event told
+   twice, so only the plain count appears — but two figures genuinely
+   telling different stories both still appear.
+4. **Benchmarks are per client, not per funnel or per campaign.** One
+   benchmark per figure for the whole business.
+5. **A figure nobody can work out shows a dash, never a guess.** The cost
+   is that a month where nobody typed "0" shows a dash rather than a
+   number.
+6. **Primary buttons are orange with ink text, not white.** White on the
+   brand orange is ~2.9:1 and fails AA. The one place the screens
+   deliberately differ from the L'Editoriale reference poster, on
+   readability rather than preference.
+7. **Only the campaign with no goal set is flagged in the Ads Goal
+   column.** Campaigns with a goal leave it blank; the problem is what gets
+   named.
+
+### From Stage 4 (the plan, 8 Oct — Dom approved for now)
+
+8. **The planner's first-launch defaults are 47% show-up and 5%
+   conversion** — the numbers in Nina's own worked example in the brief, so
+   its first answer matches one she has already sanity-checked. Editable.
+9. **A launch's status is set by hand**, with nothing changing it
+   automatically. Dates slip, and "finished" is a judgement about whether
+   the cart is really shut.
+10. **Publishing a launch does not email the client.** Publishing a month
+    does. The launch page becomes visible and the next monthly report is
+    where it is mentioned — one email a month rather than two.
+11. **"Compare launches" is the team's screen only.** Showing a client this
+    launch against their better one is a conversation Nina should choose to
+    have.
+12. **A launch's cover image is optional.** A launch mid-flight should not
+    be blocked on finding a picture.
+13. **Sales by source that does not add up warns, and does not refuse.** A
+    real launch has sales nobody can attribute, and forcing them to
+    reconcile would mean inventing an attribution. (This one is the
+    brief's own answer, kept.)
+14. **The monthly Launches tab lists the launches whose live dates fall in
+    that month**, as cards linking through — so a month's report says a
+    launch happened without duplicating its figures.
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
@@ -1582,13 +1656,23 @@ flag to prove the Overview is unchanged. Re-checked on live as Test Client
 after the push: six tabs, two months, both widths, nothing of Stage 3
 anywhere.
 
-**Two things stand between here and flipping the switch**, and both are
-Dom's and Nina's, not code:
+**The order from here is settled** (Dom, 8 Oct): **Stage 4** (Launches),
+then **Stage 5** (aOS members), then **Stage 6** (Meta CSV import). Nobody
+joins until all three are done, and **Nina reviews once, at the end** —
+so the Stage 3 flag stays at 2 throughout, however finished Stage 3 looks.
 
-1. **Nina's review of all the Stage 3 screens.** Screenshots at desktop and
-   phone are in `e2e/screenshots/`, one folder per tab.
-2. **The launch checklist** (see that section), whose one unmeetable item
-   before launch is a real retainer client.
+**Stage 4 is planned and waiting on Dom**: `docs/stage-4-plan.md`. It is
+the stage with the most already underneath it — every table and every
+calculation in §6 exists and is tested, including the planner — and the
+least visible: no route, no screen. One migration, for a storage bucket.
+
+**The Stage 5 plan is dropped for now** rather than written and left to go
+stale. What a self-serve member would need is in the 7 Oct answer above;
+it gets a plan of its own when Stage 4 is done.
+
+**`docs/nina-review/` is Stage 3 only** and is regenerated at the end of
+Stage 6 to cover everything. The running list of what was decided for her
+is in "Decided on Nina's behalf, for her final review".
 
 **The 6 October hole is closed.** A published month is locked — figures,
 notes, objectives, top-three lines and month-keyed targets — and
