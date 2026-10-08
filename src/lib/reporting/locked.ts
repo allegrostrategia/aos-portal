@@ -30,6 +30,40 @@ export function monthIsLocked(
 }
 
 /**
+ * Is this launch closed to edits?
+ *
+ * The screen half of `report_launch_is_locked()`, and the same two
+ * conditions in the same order, for the reason `monthIsLocked` gives: a
+ * form that submits into a refusal reads as the app being broken, and one
+ * that refuses where the database would not reads as the app being wrong.
+ *
+ * **Not conditioned on who is looking**, again. An admin passes the
+ * database guard because she is the only person who can unpublish, but
+ * her screens go read-only with everybody else's.
+ */
+export function launchIsLocked(
+  workspace: Pick<ReportWorkspace, "kind">,
+  publishedAt: string | null | undefined,
+): boolean {
+  // Publishing is a retainer concept. A self-serve member's launch is
+  // visible to them from the moment they type it and they are their own
+  // editor, so a lock here would shut them out of their own work.
+  if (workspace.kind !== "retainer") return false;
+  return Boolean(publishedAt);
+}
+
+/** What the database says when a launch guard refuses. */
+export const LAUNCH_LOCKED_MESSAGE =
+  "That launch report is published. Unpublish it to make changes.";
+
+/** Hand a launch guard's refusal back plainly, or nothing. */
+export function launchLockedError(error: { message: string }): string | null {
+  return error.message.includes("That launch report is published")
+    ? LAUNCH_LOCKED_MESSAGE
+    : null;
+}
+
+/**
  * What the database says when the guard refuses, in its own words.
  *
  * Kept here beside `monthIsLocked` so the string appears twice in the
@@ -48,5 +82,12 @@ export const LOCKED_MESSAGE = "That month is published. Unpublish it to make cha
  * answer, and names the way out.
  */
 export function lockedError(error: { message: string }): string | null {
-  return error.message.includes("That month is published") ? LOCKED_MESSAGE : null;
+  if (error.message.includes("That month is published")) return LOCKED_MESSAGE;
+  // The launch guard says almost the same thing about a different kind of
+  // report, and every action that already asks this question should get
+  // the sentence rather than the raw refusal.
+  if (error.message.includes("That launch report is published")) {
+    return LAUNCH_LOCKED_MESSAGE;
+  }
+  return null;
 }

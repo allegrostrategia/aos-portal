@@ -222,3 +222,86 @@ test("one client cannot open another's launch", async ({ page }) => {
   const response = await page.goto(`/reporting/launches/${id}`);
   expect(response?.status()).toBe(404);
 });
+
+test("setting a launch up, start to finish", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+
+  await page.getByRole("link", { name: "+ New launch" }).click();
+  await page.waitForURL(/\/reporting\/launches\/new/);
+  await shoot(page, TAB, "11-new-launch", w);
+
+  await page.getByLabel("Name", { exact: true }).fill("Winter intensive");
+  await page.getByLabel(/^Description/).fill("Two weeks, one workshop");
+  await page.getByLabel(/^good$/i).fill("20");
+  await page.getByLabel(/^better$/i).fill("30");
+  await page.getByLabel(/^best$/i).fill("40");
+  await page.getByLabel(/show-up rate/i).fill("47");
+  await page.getByLabel(/conversion rate/i).fill("5");
+  await page.getByRole("button", { name: /create this launch/i }).click();
+
+  // It lands on the setup screen, because a stage needs a launch to
+  // belong to.
+  await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]+\/edit/);
+  await expect(page.getByText(/the stages, in order/i)).toBeVisible();
+  await shoot(page, TAB, "12-edit-empty", w);
+
+  // Two blank rows are already there — no "add" button to hydrate first.
+  await page.getByLabel(/^Stage 1/).fill("The workshop");
+  await page.getByRole("button", { name: /save the stages/i }).click();
+  await expect(page.getByText(/^Saved\.$/)).toBeVisible();
+
+  // And a price option.
+  await page.getByLabel(/^Name — empty it/).first().fill("Pay in full");
+  await page.getByLabel(/^Price$/).first().fill("400");
+  await page.getByRole("button", { name: /save the prices/i }).click();
+  await expect(page.getByText(/^Saved\.$/).first()).toBeVisible();
+  await shoot(page, TAB, "13-edit-filled", w);
+
+  // The goals it was given are on its report.
+  await page.getByRole("link", { name: /see the report/i }).click();
+  await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]+(\?|$)/);
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(text).toMatch(/Good — of 20/);
+  expect(text).toMatch(/The workshop/);
+});
+
+test("goals that do not go up are refused in her words", async ({ page }) => {
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+  await page.getByRole("link", { name: /edit launch details/i }).click();
+
+  await page.getByLabel(/^good$/i).fill("60");
+  await page.getByLabel(/^better$/i).fill("45");
+  await page.getByLabel(/^best$/i).fill("30");
+  await page.getByRole("button", { name: /^save$/i }).click();
+  await expect(page.getByText(/go up in that order/i)).toBeVisible();
+});
+
+test("a published launch's setup is read-only, except its status", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+
+  await page.getByRole("button", { name: /^publish this launch$/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  await page.getByRole("link", { name: /edit launch details/i }).click();
+  await expect(page.getByText(/has gone out/i)).toBeVisible();
+  await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel(/^Stage 1/)).toBeDisabled();
+  await expect(page.getByRole("button", { name: /save the stages/i })).toBeDisabled();
+
+  // Decision 15: the status still moves, because it describes the launch
+  // rather than the report. A disabled fieldset disables every
+  // descendant, so this only works because the field sits outside it.
+  const status = page.getByRole("combobox", { name: "Status", exact: true });
+  await expect(status).toBeEnabled();
+  await status.selectOption("completed");
+  await page.getByRole("button", { name: /save the status/i }).click();
+  await expect(page.getByText(/^Status saved\.$/)).toBeVisible();
+  await shoot(page, TAB, "14-edit-locked", w);
+});

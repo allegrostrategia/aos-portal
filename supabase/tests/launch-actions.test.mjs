@@ -12,9 +12,16 @@ import "./hooks.mjs";
 import { createTestDatabase, asMember } from "./pglite.mjs";
 import { configure } from "./stubs/supabase-server.mjs";
 
-const { createLaunch, updateLaunch, saveStages, savePrices, saveLaunchFigures } = await import(
-  "../../src/lib/reporting/launch-actions.ts"
-);
+const {
+  createLaunch,
+  updateLaunch,
+  updateLaunchStatus,
+  saveStages,
+  savePrices,
+  saveLaunchFigures,
+  publishLaunch,
+  unpublishLaunch,
+} = await import("../../src/lib/reporting/launch-actions.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
 const ELIZE = "22222222-2222-2222-2222-222222222222";
@@ -368,4 +375,63 @@ test("once published, every one of these is refused", async () => {
     (await as(ELIZE, () => updateLaunch(null, form({
       launch_id: LAUNCH, name: "Renamed", goal_good: 30,
     }))))?.error ?? "", LOCKED);
+});
+
+test("publishing is Nina's, and taking it back too", async () => {
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_launches set published_at = null, published_by = null
+               where id = '${LAUNCH}'`));
+
+  const refused = await as(ELIZE, () => publishLaunch(null, form({ launch_id: LAUNCH })));
+  assert.match(refused?.error ?? "", /Only Nina can publish a launch report/);
+
+  const published = await as(NINA, () => publishLaunch(null, form({ launch_id: LAUNCH })));
+  assert.equal(published?.error, undefined, published?.error);
+  assert.match(published?.notice ?? "", /The client can see this launch now/);
+  // Decision 10: no email. The next monthly report is where it is
+  // mentioned, which is one email a month rather than two.
+  assert.doesNotMatch(published?.notice ?? "", /email/i);
+});
+
+test("publishing freezes the offer's name, which is all it carries from outside", async () => {
+  // A launch's revenue comes from its OWN price options, so the one
+  // thing that crosses the boundary is the label.
+  let offer;
+  await asMember(db, NINA, async () => {
+    offer = (await db.query(`insert into public.report_entities
+        (workspace_id, entity_type, name, active) values ('${WS}', 'offer', 'Signature programme', true)
+      returning id`)).rows[0].id;
+    await db.query(`update public.report_launches set published_at = null, published_by = null,
+                      offer_entity_id = '${offer}' where id = '${LAUNCH}'`);
+  });
+
+  await as(NINA, () => publishLaunch(null, form({ launch_id: LAUNCH })));
+  const [row] = await rows(`select carried->>'offerName' as n from public.report_launches
+                             where id = '${LAUNCH}'`);
+  assert.equal(row.n, "Signature programme");
+
+  // Renamed afterwards, the published launch keeps what it went out with.
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_entities set name = 'Something else' where id = '${offer}'`));
+  const [after] = await rows(`select carried->>'offerName' as n from public.report_launches
+                               where id = '${LAUNCH}'`);
+  assert.equal(after.n, "Signature programme");
+});
+
+test("the status still moves on a published launch, and nothing else does", async () => {
+  // Nina's decision 15, and the reason it needs its own action: a
+  // disabled field does not submit, so the main form on a published
+  // launch would carry a status and no name at all.
+  const moved = await as(ELIZE, () =>
+    updateLaunchStatus(null, form({ launch_id: LAUNCH, status: "completed" })));
+  assert.equal(moved?.error, undefined, moved?.error);
+
+  const [row] = await rows(`select status::text from public.report_launches where id = '${LAUNCH}'`);
+  assert.equal(row.status, "completed");
+
+  const refused = await as(ELIZE, () =>
+    updateLaunch(null, form({ launch_id: LAUNCH, name: "Renamed", goal_good: 30 })));
+  assert.match(refused?.error ?? "", /launch report is published/i);
+
+  await as(NINA, () => unpublishLaunch(null, form({ launch_id: LAUNCH })));
 });

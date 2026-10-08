@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LaunchCard } from "@/components/reporting/launch-card";
 import { ReportShell } from "@/components/reporting/report-shell";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { launchSummary } from "@/lib/reporting/launch-figures";
@@ -60,9 +62,19 @@ export default async function LaunchesPage({
       path="/reporting/launches"
       title="Launches"
       tagline={`EVERY LAUNCH, END TO END · ${ctx.workspace.business_name}`}
-      // §13: every clickable thing has exactly one route in. "+ New
-      // launch" and "Compare launches" arrive with their own pages rather
-      // than before them — a button that 404s is worse than no button.
+      // §13: every clickable thing has exactly one route in. "Compare
+      // launches" is still absent because its page is — a button that
+      // 404s is worse than no button.
+      actions={
+        ctx.canEdit ? (
+          <Link
+            href={reportHref("/reporting/launches/new", ctx)}
+            className={buttonClasses("primary", "sm")}
+          >
+            + New launch
+          </Link>
+        ) : null
+      }
         >
       {shown.length === 0 ? (
         <Card>

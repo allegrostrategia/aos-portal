@@ -456,3 +456,121 @@ export async function saveLaunchFigures(
   revalidatePath("/reporting/launches", "layout");
   return { notice: saved === 0 ? "Nothing to save." : "Saved." };
 }
+
+/**
+ * Publishing a launch, and taking it back (§6).
+ *
+ * Nina's alone, the same as a month — `guard_report_launch_publish` has
+ * refused a team member since 30 September, and this is the wording when
+ * it does.
+ *
+ * **No email.** Publishing a month emails the client a link; a launch
+ * does not, and the next monthly report is where it gets mentioned. One
+ * email a month rather than two — Nina's decision 10.
+ *
+ * What it freezes: the offer's name, which is the one thing on the page
+ * that belongs to the workspace rather than to the launch. Rename
+ * "Signature programme" afterwards and the published report would
+ * otherwise quietly say something else.
+ */
+export async function publishLaunch(
+  _prev: LaunchState,
+  formData: FormData,
+): Promise<LaunchState> {
+  const reportUser = await requireReportUser();
+  if (!reportUser.isAdmin) return { error: "Only Nina can publish a launch report." };
+
+  const id = String(formData.get("launch_id") ?? "");
+  if (!id) return { error: "That was missing something. Reload and try again." };
+
+  const supabase = await createClient();
+  const { data: launch } = await supabase
+    .from("report_launches")
+    .select("offer_entity_id")
+    .eq("id", id)
+    .maybeSingle<{ offer_entity_id: string | null }>();
+
+  let offerName: string | null = null;
+  if (launch?.offer_entity_id) {
+    const { data: offer } = await supabase
+      .from("report_entities")
+      .select("name")
+      .eq("id", launch.offer_entity_id)
+      .maybeSingle<{ name: string }>();
+    offerName = offer?.name ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("report_launches")
+    .update({
+      published_at: new Date().toISOString(),
+      published_by: reportUser.id,
+      carried: offerName ? { offerName } : {},
+    })
+    .eq("id", id)
+    .select("id");
+
+  if (error) return { error: `Couldn't publish: ${error.message}` };
+  if (!data || data.length === 0) return { error: "That launch isn't yours to publish." };
+
+  revalidatePath("/reporting/launches", "layout");
+  return { notice: "Published. The client can see this launch now." };
+}
+
+export async function unpublishLaunch(
+  _prev: LaunchState,
+  formData: FormData,
+): Promise<LaunchState> {
+  const reportUser = await requireReportUser();
+  if (!reportUser.isAdmin) return { error: "Only Nina can unpublish a launch report." };
+
+  const id = String(formData.get("launch_id") ?? "");
+  if (!id) return { error: "That was missing something. Reload and try again." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("report_launches")
+    .update({ published_at: null, published_by: null })
+    .eq("id", id)
+    .select("id");
+
+  if (error) return { error: `Couldn't unpublish: ${error.message}` };
+  if (!data || data.length === 0) return { error: "That launch isn't yours to unpublish." };
+
+  revalidatePath("/reporting/launches", "layout");
+  return { notice: "Back to draft. The client can no longer see this launch." };
+}
+
+/**
+ * The status, on its own (§6, Nina's decision 15).
+ *
+ * Its own action and its own form, because **a disabled field does not
+ * submit**. On a published launch every other box is disabled, so the
+ * main form would arrive carrying a status and nothing else — and be
+ * refused for having no name. Separating them means the one field the
+ * lock leaves alone behaves the same whether the launch is out or not.
+ */
+export async function updateLaunchStatus(
+  _prev: LaunchState,
+  formData: FormData,
+): Promise<LaunchState> {
+  await requireReportUser();
+  const id = String(formData.get("launch_id") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!id || !["planning", "live", "completed"].includes(status)) {
+    return { error: "That was missing something. Reload and try again." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("report_launches")
+    .update({ status })
+    .eq("id", id)
+    .select("id");
+
+  if (error) return { error: refused(error, "save the status") };
+  if (!data || data.length === 0) return { error: "That launch isn't yours to change." };
+
+  revalidatePath("/reporting/launches", "layout");
+  return { notice: "Status saved." };
+}

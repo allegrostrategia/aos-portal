@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { BarChart } from "@/components/reporting/charts/bar-chart";
@@ -6,11 +7,13 @@ import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import { LineChart } from "@/components/reporting/charts/line-chart";
 import { KpiCard } from "@/components/reporting/kpi-card";
 import { LaunchPlanner } from "@/components/reporting/launch-planner";
+import { LaunchPublishControl } from "@/components/reporting/launch-publish";
 import { ReportShell } from "@/components/reporting/report-shell";
 import { StageTimeline } from "@/components/reporting/stage-timeline";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
-import { resolveReportContext } from "@/lib/reporting/context";
+import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { launchSummary, stageFigures } from "@/lib/reporting/launch-figures";
 import { getLaunch } from "@/lib/reporting/launch-queries";
@@ -79,6 +82,16 @@ export default async function LaunchPage({
       path={`/reporting/launches/${id}`}
       title={detail.launch.name}
       tagline={`${detail.launch.description ?? "EVERY LAUNCH, END TO END"} · ${ctx.workspace.business_name}`}
+      actions={
+        ctx.canEdit ? (
+          <Link
+            href={reportHref(`/reporting/launches/${id}/edit`, ctx)}
+            className={buttonClasses("secondary", "sm")}
+          >
+            Edit launch details
+          </Link>
+        ) : null
+      }
     >
       {/* §6.4's headline figures. No month to compare against — a launch
           is not a month and has no previous one — so every card says so
@@ -281,6 +294,14 @@ export default async function LaunchPage({
           </dl>
         </Card>
       </div>
+
+      {ctx.canPublish && ctx.workspace.kind === "retainer" ? (
+        <LaunchPublishControl
+          launchId={id}
+          name={detail.launch.name}
+          publishedAt={detail.launch.published_at}
+        />
+      ) : null}
 
       {ctx.canEdit ? (
         <LaunchPlanner
