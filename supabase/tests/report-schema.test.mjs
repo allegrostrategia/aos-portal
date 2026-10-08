@@ -654,11 +654,29 @@ await check("once Nina publishes it, the client sees it and its stages", async (
     && (await count(RETAINER, `select count(*)::int c from public.report_launch_stages`)) === 1;
 });
 
-await rejects("only one stage can be the main selling stage", () =>
+// From 8 October two things refuse this on a PUBLISHED launch, and the
+// published-launch guard speaks first — a BEFORE trigger runs ahead of the
+// index. Both are the right answer; the pair below is what keeps the index
+// honest, since a lock that happened to cover every case would hide its
+// removal. LAUNCH was published by the check above.
+await rejects("a published launch refuses a new stage at all", () =>
   as(ELIZE, () => db.query(`
     insert into public.report_launch_stages (launch_id, position, stage_type, name, is_main_selling_stage)
     values ('${LAUNCH}', 2, 'masterclass', 'Masterclass', true)`)),
-  "report_launch_stages_one_main");
+  "launch report is published");
+
+await rejects("and on a draft one, only one stage can be the main selling stage", async () => {
+  const draft = await as(NINA, () => db.query(`
+    insert into public.report_launches (workspace_id, name)
+    values ('${WS_R}', 'A draft launch') returning id`));
+  const id = draft.rows[0].id;
+  await as(ELIZE, () => db.query(`
+    insert into public.report_launch_stages (launch_id, position, stage_type, name, is_main_selling_stage)
+    values ('${id}', 1, 'challenge', 'Challenge', true)`));
+  return as(ELIZE, () => db.query(`
+    insert into public.report_launch_stages (launch_id, position, stage_type, name, is_main_selling_stage)
+    values ('${id}', 2, 'masterclass', 'Masterclass', true)`));
+}, "report_launch_stages_one_main");
 
 await rejects("a non-launch metric cannot be stored as a launch figure", () =>
   as(ELIZE, () => db.query(`

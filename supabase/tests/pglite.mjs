@@ -59,6 +59,17 @@ export async function createTestDatabase() {
     -- and can be exercised. foldername() mirrors Supabase's: the path segments
     -- MINUS the filename, so 'abc/photo.jpg' yields {abc} and [1] is the owner.
     create schema storage;
+    -- Supabase's own bucket registry, enough of it that a migration
+    -- creating a bucket really runs here instead of being skipped. A
+    -- guarded block that only ever takes the other branch locally is a
+    -- block nobody has watched work.
+    create table storage.buckets (
+      id text primary key,
+      name text not null,
+      public boolean not null default false,
+      file_size_limit bigint,
+      allowed_mime_types text[]
+    );
     create table storage.objects (
       id uuid primary key default gen_random_uuid(),
       bucket_id text not null,
