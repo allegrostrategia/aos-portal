@@ -677,6 +677,25 @@ test("an entity cannot be deleted out from under a published month", async () =>
     /violates RESTRICT|foreign key/i,
     "even as the service role, which passes every guard in this file",
   );
+
+  // **And the sentence the editor would read actually fires**, which the
+  // unit test could not prove: it fed `deleteEntityMessage` a hand-made
+  // `{ code: "23503" }`, and `ON DELETE RESTRICT` raises **23001**. So the
+  // message was dead from the day it was written until 8 October, and
+  // only a real refusal showed it.
+  const { deleteEntityMessage } = await import("../../src/lib/reporting/entity-delete.ts");
+  let real;
+  try {
+    await db.query(`delete from public.report_entities where id = '${offer}'`);
+  } catch (error) {
+    real = error;
+  }
+  assert.equal(real?.code, "23001", "restrict_violation, not foreign_key_violation");
+  assert.match(
+    deleteEntityMessage(real, "offer") ?? "",
+    /has figures saved against it/,
+    "the editor reads a sentence, not a constraint name",
+  );
 });
 
 test("but a workspace can still be deleted, which was the risk in that change", async () => {

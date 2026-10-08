@@ -515,7 +515,16 @@ export function createShimClient(db, uid) {
         }
         return { data: r.rows, error: null };
       } catch (error) {
-        return { data: null, count: null, error: { message: error.message } };
+        // SQLSTATE as `code`, the way PostgREST sends it. Without it,
+        // app code that matches on the code — which is what this project
+        // asks for, because Postgres's wording changes between major
+        // versions — sees `undefined` here and falls through to its raw
+        // message. The harness bends; the app does not.
+        return {
+          data: null,
+          count: null,
+          error: { message: error.message, code: error.code ?? null },
+        };
       }
     }
 
@@ -712,7 +721,7 @@ export function createShimClient(db, uid) {
         }
         return { data, error: null };
       } catch (error) {
-        return { data: null, error: { message: error.message } };
+        return { data: null, error: { message: error.message, code: error.code ?? null } };
       }
     },
   };

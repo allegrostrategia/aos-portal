@@ -365,3 +365,50 @@ test("a published month, before and after its previous month is unpublished", as
   expect(figures(before.client).join(" "), "and a comparison to keep").toMatch(/vs\. July/);
   expect(figures(after.client).join(" "), "still there with July a draft").toMatch(/vs\. July/);
 });
+
+test("deleting a benchmark leaves a published month exactly as the client read it", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+
+  // A benchmark the traffic lights can be drawn against, then a month
+  // published with it. A benchmark belongs to no month, so the
+  // published-month lock cannot reach it — the snapshot is the only thing
+  // between a deleted benchmark and a light changing on a report the
+  // client has already read.
+  sql(`insert into public.report_benchmarks (workspace_id, metric_key, benchmark_value)
+       select w.id, 'leads_conversions_new_clients', 7 from public.report_workspaces w
+        where w.business_name = 'Northwind Studio'
+       on conflict (workspace_id, metric_key) do update set benchmark_value = 7;`);
+
+  await signIn(page, "nina");
+  await takeBackToDraft(MONTHS.sep);
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await page.getByRole("button", { name: /^publish this month$/i }).click();
+  const anyway = page.getByRole("button", { name: /publish anyway/i });
+  if (await anyway.count()) await anyway.click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  const readSeptember = async () => {
+    await page.goto(`/reporting?month=${MONTHS.sep}`);
+    const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+    return (text.match(/(On track|Close|Off track) vs\. (target|benchmark|last month)/g) ?? []).sort();
+  };
+
+  await signIn(page, "client");
+  const before = await readSeptember();
+  expect(before.length, "there are lights to compare").toBeGreaterThan(0);
+  expect(before.join(" "), "and one of them is against the benchmark").toMatch(/vs\. benchmark/);
+  await shoot(page, TAB, "17-before-benchmark-deleted", w);
+
+  // Take the benchmark off entirely — which the 8 October policy lets an
+  // editor do.
+  sql(`delete from public.report_benchmarks b using public.report_workspaces w
+        where w.id = b.workspace_id and w.business_name = 'Northwind Studio';`);
+
+  await signIn(page, "client");
+  const after = await readSeptember();
+  expect(after).toEqual(before);
+  await shoot(page, TAB, "18-after-benchmark-deleted", w);
+});

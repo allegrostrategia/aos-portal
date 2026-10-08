@@ -44,6 +44,18 @@ test("any other failure is left alone to say what it is", () => {
   assert.equal(deleteEntityMessage({ code: null }, "offer"), null);
 });
 
+test("a real RESTRICT refusal is 23001, and that one counts too", () => {
+  // The bug this file did not catch for a day. Every test here builds its
+  // own error object, so they only ever proved what they already assumed
+  // — and they assumed 23503. `ON DELETE RESTRICT` raises **23001**, so
+  // the message was dead in production the whole time.
+  //
+  // The test that CAN prove it drives a real delete against a real
+  // constraint, and lives in `published-months.test.mjs`.
+  assert.ok(deleteEntityMessage({ code: "23001" }, "offer"));
+  assert.ok(deleteEntityMessage({ code: "23503" }, "offer"));
+});
+
 test("the code is what is matched, not the wording", () => {
   // Postgres's message for 23503 names the constraint and the table and has
   // changed between major versions. A message match would stop working one

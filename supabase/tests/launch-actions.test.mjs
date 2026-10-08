@@ -243,6 +243,55 @@ test("a worked-out figure cannot be typed in", async () => {
   assert.match(result?.error ?? "", /worked out rather than stored/i);
 });
 
+test("a stage with figures on it refuses to go, and says what to do", async () => {
+  // The restrict, from the editor's side. Removing a stage used to take
+  // its sign-ups and its whole email sequence with it — silently, because
+  // a foreign key cascade does not consult RLS or fire a policy.
+  const result = await as(ELIZE, () => saveStages(null, form({
+    launch_id: LAUNCH, main_stage: 2,
+    "stage:1:name": "", "stage:1:type": "challenge",
+    "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
+  })));
+  assert.match(result?.error ?? "", /Five day challenge\u201d has figures saved against it/);
+  assert.match(result?.error ?? "", /Clear the figures first/);
+
+  const stages = await rows(
+    `select count(*)::int c from public.report_launch_stages where launch_id = '${LAUNCH}'`);
+  assert.equal(stages[0].c, 2, "and it is still there");
+});
+
+test("cleared of its figures, the same stage goes", async () => {
+  const [stage] = await rows(`select id from public.report_launch_stages
+                               where launch_id = '${LAUNCH}' and position = 1`);
+  const figures = await rows(`select metric_key, coalesce(day_number, -1) d,
+                                     coalesce(email_number, -1) e
+                                from public.report_launch_values
+                               where stage_id = '${stage.id}'`);
+  const cleared = {};
+  for (const f of figures) {
+    cleared[`launch:${f.metric_key}:${stage.id}:-:${f.d === -1 ? "-" : f.d}:${f.e === -1 ? "-" : f.e}`] = "";
+  }
+  await as(ELIZE, () => saveLaunchFigures(null, form({ launch_id: LAUNCH, ...cleared })));
+
+  const result = await as(ELIZE, () => saveStages(null, form({
+    launch_id: LAUNCH, main_stage: 2,
+    "stage:1:name": "", "stage:1:type": "challenge",
+    "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
+  })));
+  assert.equal(result?.error, undefined, result?.error);
+
+  const stages = await rows(
+    `select count(*)::int c from public.report_launch_stages where launch_id = '${LAUNCH}'`);
+  assert.equal(stages[0].c, 1);
+
+  // Put it back for the tests below.
+  await as(ELIZE, () => saveStages(null, form({
+    launch_id: LAUNCH, main_stage: 2,
+    "stage:1:name": "Five day challenge", "stage:1:type": "challenge", "stage:1:live_days": 5,
+    "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
+  })));
+});
+
 test("a client cannot remove a launch's parts", async () => {
   const [stage] = await rows(`select id from public.report_launch_stages
                                where launch_id = '${LAUNCH}' limit 1`);

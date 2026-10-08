@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
+import { launchDeleteMessage } from "./launch-delete.ts";
 import { lockedError } from "./locked.ts";
 import { getWorkspace } from "./queries.ts";
 
@@ -159,11 +160,11 @@ export async function saveStages(
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("report_launch_stages")
-    .select("id, position")
+    .select("id, position, name")
     .eq("launch_id", launchId)
-    .returns<{ id: string; position: number }[]>();
+    .returns<{ id: string; position: number; name: string }[]>();
 
-  const byPosition = new Map((existing ?? []).map((row) => [row.position, row.id]));
+  const byPosition = new Map((existing ?? []).map((row) => [row.position, row]));
   const main = Number(String(formData.get("main_stage") ?? "0"));
 
   // Positions are read from the form rather than counted, so a gap left by
@@ -177,7 +178,8 @@ export async function saveStages(
   for (const position of positions) {
     const at = (field: string) => formData.get(`stage:${position}:${field}`);
     const name = String(at("name") ?? "").trim();
-    const id = byPosition.get(position);
+    const stored = byPosition.get(position);
+    const id = stored?.id;
 
     if (name === "") {
       if (!id) continue;
@@ -186,7 +188,15 @@ export async function saveStages(
         .delete()
         .eq("id", id)
         .select("id");
-      if (error) return { error: refused(error, "remove that stage") };
+      if (error) {
+        return {
+          // Its STORED name, not the form's: the form's is empty, because
+          // emptying it is how a stage is removed.
+          error:
+            launchDeleteMessage(error, "stage", stored?.name ?? "That stage") ??
+            refused(error, "remove that stage"),
+        };
+      }
       if (!removed || removed.length === 0) {
         return { error: "That stage could not be removed — it needs an admin." };
       }
@@ -307,7 +317,13 @@ export async function savePrices(
   for (const row of existing ?? []) {
     if (keep.has(row.id)) continue;
     const { error } = await supabase.from("report_launch_prices").delete().eq("id", row.id);
-    if (error) return { error: refused(error, "remove a price option") };
+    if (error) {
+      return {
+        error:
+          launchDeleteMessage(error, "price option", row.name) ??
+          refused(error, "remove a price option"),
+      };
+    }
   }
 
   const { error: clearError } = await supabase

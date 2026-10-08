@@ -18,14 +18,24 @@
  * the raw error.
  */
 
-/** Postgres `foreign_key_violation`. */
-const FOREIGN_KEY_VIOLATION = "23503";
+/**
+ * The two SQLSTATEs a blocked delete can raise.
+ *
+ * **`ON DELETE RESTRICT` raises 23001, not 23503.** Postgres keeps
+ * `restrict_violation` separate from `foreign_key_violation`, and the
+ * first version of this checked only the second — so the sentence below
+ * would never have appeared and the editor would have read a constraint
+ * name instead. Found on 8 October by a test that used a REAL refusal
+ * rather than a hand-made error object, which is the only reason it was
+ * found at all.
+ */
+const BLOCKED_BY_A_REFERENCE = new Set(["23001", "23503"]);
 
 export function deleteEntityMessage(
   error: { code?: string | null; message?: string | null },
   what: "offer" | "campaign" | "funnel",
 ): string | null {
-  if (error.code !== FOREIGN_KEY_VIOLATION) return null;
+  if (!error.code || !BLOCKED_BY_A_REFERENCE.has(error.code)) return null;
 
   // Dom's wording, 7 October, correcting mine. The first draft said "months
   // that have already gone out", which is wrong twice over: `restrict`

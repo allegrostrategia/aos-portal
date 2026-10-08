@@ -296,6 +296,45 @@ test("a published month with an empty snapshot falls back, rather than going bla
   assert.ok(await carriedOn(AUG));
 });
 
+test("deleting a benchmark does not touch a month already published", async () => {
+  // Dom's confirmation, 8 October, before shipping the benchmark delete
+  // policy. A benchmark belongs to no month, so the published-month lock
+  // cannot reach it — the snapshot is the only thing standing between a
+  // deleted benchmark and a traffic light changing on a report the client
+  // has read.
+  await asMember(db, NINA, () =>
+    db.query(`insert into public.report_benchmarks (workspace_id, metric_key, benchmark_value)
+              values ('${WS}', 'leads_conversions_new_clients', 7)
+              on conflict (workspace_id, metric_key) do update set benchmark_value = 7`),
+  );
+
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_periods set published_at = null, published_by = null
+               where workspace_id = '${WS}' and month = '${SEP}'`),
+  );
+  await publish(SEP);
+
+  const before = await carriedOn(SEP);
+  assert.equal(before.benchmarks["leads_conversions_new_clients"], 7, "frozen at publication");
+
+  // Now take it off — which the new policy lets an editor do.
+  await asMember(db, ELIZE, async () => {
+    const gone = await db.query(
+      `delete from public.report_benchmarks where workspace_id = '${WS}'`,
+    );
+    assert.ok((gone.affectedRows ?? 0) > 0, "hers to remove, which is the point of the policy");
+  });
+
+  const live = await rows(
+    `select count(*)::int c from public.report_benchmarks where workspace_id = '${WS}'`,
+  );
+  assert.equal(live[0].c, 0, "gone from the workspace");
+
+  const after = await carriedOn(SEP);
+  assert.deepEqual(after, before, "and the published month carries exactly what it did");
+  assert.equal(after.benchmarks["leads_conversions_new_clients"], 7);
+});
+
 test("a draft month has no snapshot, and says so as null rather than empty", async () => {
   // `{}` is the column default, so every month looks like that before it
   // is published. null means "work it out live", which is what a draft and
