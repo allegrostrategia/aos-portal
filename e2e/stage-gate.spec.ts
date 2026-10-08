@@ -95,6 +95,12 @@ test("Stage 3's own pages and tabs have no route at the production flag", async 
     // are not categories and have no such cover, so each asks `STAGE_4`.
     "/reporting/launches",
     "/reporting/launches/compare",
+    "/reporting/launches/new",
+    // The per-launch routes (`/[id]`, `/[id]/edit`, `/[id]/enter`) are
+    // deliberately NOT here. They take an id, and a made-up one 404s
+    // whether the gate is present or not — the lookup fails either way —
+    // so the test could never fail and would only cost a cold compile.
+    // Their gate is the same one line, read off the source instead.
   ]) {
     const response = await page.goto(`${STAGE_2}${path}`);
     expect(response?.status(), `${path} should not exist at stage 2`).toBe(404);
