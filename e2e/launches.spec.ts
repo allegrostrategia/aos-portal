@@ -343,3 +343,41 @@ test("a launch with no stages says where its figures would go", async ({ page })
   await page.getByRole("link", { name: /set its stages up/i }).click();
   await page.waitForURL(/\/edit/);
 });
+
+test("comparing two launches, side by side", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: /compare/i }).click();
+  await page.waitForURL(/\/compare/);
+
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(text).toMatch(/Total revenue/);
+  expect(text).toMatch(/Conversion rate/);
+  expect(text).toMatch(/Cost per sale/);
+
+  // The caption names the two launches in the order the columns run. It
+  // used to read them right-to-left, so the heading said one thing and
+  // the table said the other.
+  const caption = await page.getByText(/→/).first().innerText();
+  const [first, second] = caption.split("→").map((part) => part.trim());
+  const headers = (await page.locator("th").allInnerTexts()).map((h) => h.toLowerCase());
+  const firstAt = headers.findIndex((h) => h === first.toLowerCase());
+  const secondAt = headers.findIndex((h) => h === second.toLowerCase());
+  expect(firstAt).toBeGreaterThan(-1);
+  expect(secondAt).toBeGreaterThan(firstAt);
+
+  await shoot(page, TAB, "16-compare", w);
+
+  // A plain GET form, so the pair is in the URL and the view is linkable.
+  await page.getByRole("button", { name: /compare|show/i }).first().click();
+  await page.waitForURL(/left=/);
+});
+
+test("compare is the team's screen, not the client's", async ({ page }) => {
+  // Nina's decision 11. A client who reaches it by URL lands on their own
+  // list rather than on a refusal.
+  await signIn(page, "client");
+  await page.goto("/reporting/launches/compare");
+  await page.waitForURL(/\/reporting\/launches(\?|$)/);
+});
