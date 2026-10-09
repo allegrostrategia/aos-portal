@@ -77,6 +77,23 @@ page, both widths, overwritten each run.
 Not pending work and not bugs. Each one needs a real client, Nina's eyes, or
 a real month, and none of them can be finished before launch.
 
+- [ ] **The live sign-in checks for Stage 5, not done.** Skipped on
+      9 October: Test Client's password is not recorded anywhere (the
+      route in is `/forgot-password`, which emails a real inbox) and
+      there are no credentials for `dom`. Nothing about the deploy was
+      unsafe — every Stage 5 surface is behind `SHIPPED_STAGE`, which is
+      pinned to `PRODUCTION_STAGE` outside a development server and
+      cannot be moved by a Vercel variable — but it is unverified on the
+      live site, and **it has to be done before any switch goes on**:
+      - As **Test Client**: `/reporting` shows six tabs, the strategist
+        note card, and none of "Your reflection", "Your report settings"
+        or "What you're focusing on next month".
+      - As **dom**: `/piazza` has no "It is not finished yet" card,
+        `/you` has no "Your monthly report" row, and
+        `/reporting/settings` is a 404.
+      - As an admin: `/admin/reporting` shows three headings with counts,
+        and a status line against `dom`. This one is live already and is
+        the only Stage 5 change that is.
 - [ ] **§11.2's last item: the reporting tool on a real retainer client** — two
       past months entered, one published, and the client reading it. Everything
       about it is proved on Test Client (Stage 2, closed 5 Oct); what is left is
