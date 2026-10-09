@@ -320,3 +320,34 @@ export function buildCheckInCopy(input: {
     ],
   };
 }
+
+/**
+ * §8.1's two report reminders, in the brief's own words.
+ *
+ * Verbatim from the brief, which is already Nina's voice — the only
+ * additions are the greeting and the link, which every other email here
+ * carries. On Nina's list for her to reword if she wants (decision 24's
+ * sentences are the save confirmations; these are the two emails).
+ *
+ * **There is no third.** The brief is explicit: "No further reminders
+ * after that."
+ */
+export function reportReminderCopy(input: {
+  firstName: string;
+  monthLabel: string;
+  reportUrl: string;
+  second: boolean;
+}): EmailCopy {
+  return {
+    subject: input.second
+      ? `Don't forget your ${input.monthLabel} report`
+      : `Time to fill in your ${input.monthLabel} report`,
+    body: [
+      `${input.firstName},`,
+      input.second
+        ? `Don't forget to fill in your monthly report for ${input.monthLabel}.`
+        : `Time to fill in your report for ${input.monthLabel}.`,
+      `Your report: ${input.reportUrl}`,
+    ],
+  };
+}

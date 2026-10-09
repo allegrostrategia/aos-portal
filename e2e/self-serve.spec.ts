@@ -222,3 +222,44 @@ test("a figure pulled into another section survives its own being hidden", async
   const after = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(after, "and still does with Offers hidden").toMatch(/4,000|4000/);
 });
+
+test("her reflection and her objectives, where a client reads Nina's note", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "member");
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+
+  await expect(page.getByRole("heading", { name: /your reflection/i })).toBeVisible();
+  await page.getByRole("textbox", { name: /your reflection on/i })
+    .fill("Quiet month. The challenge took more time than it earned.");
+  await page.getByRole("button", { name: /^save$/i }).first().click();
+  await expect(page.getByText(/^Saved\.$/).first()).toBeVisible();
+
+  // It is still there when the page comes back, and editing replaces it
+  // rather than adding a second.
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: /your reflection on/i }))
+    .toHaveValue(/took more time than it earned/);
+  await shoot(page, TAB, "04-reflection", w);
+
+  // Objectives are hers too — and worded as hers. The card told a
+  // retainer client's story: "the client sees them once this month is
+  // published", which is two things a member does not have.
+  const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(body).toMatch(/What you.{0,3}re focusing on next month/i);
+  expect(body, "not spoken about in the third person").not.toMatch(/the client sees them/i);
+  expect(body, "and nothing about publishing").not.toMatch(/once this month is published/i);
+});
+
+test("a retainer client gets the reply box, not a reflection", async ({ page }) => {
+  // The one thing that stays Allegro's side of the line: a reply is a
+  // conversation with Nina, a reflection is a note to yourself.
+  await signIn(page, "client");
+  await page.goto("/reporting");
+
+  const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(body, "no reflection box").not.toMatch(/your reflection/i);
+  expect(body, "their strategist's note is still theirs").toMatch(/strategist/i);
+});

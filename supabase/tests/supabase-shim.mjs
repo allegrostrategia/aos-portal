@@ -595,6 +595,10 @@ export function createShimClient(db, uid) {
         state.filters.push([column, value, ">="]);
         return api;
       },
+      neq(column, value) {
+        state.filters.push([column, value, "<>"]);
+        return api;
+      },
       lt(column, value) {
         state.filters.push([column, value, "<"]);
         return api;

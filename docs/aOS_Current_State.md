@@ -1634,6 +1634,16 @@ last.
     show a dash when they are not. **Her call** — it is her marker and
     her definition of done (Dom, 9 Oct).
 
+32. **The two report reminders go to aOS members only, not to
+    Chiarezza.** §8.1 is headed "aOS members: completion and reminders"
+    and names only them — and it is the only thing the schema allows:
+    `due_jobs.member_id` is a foreign key to `members`, and a Chiarezza
+    attendee has no members row at all, so queuing one for them fails
+    the key. Found by the key refusing it. *Recommended: leave it.* If
+    she wants attendees reminded, the thing that changes is the queue,
+    not the rule — the expired-Chiarezza exclusion is already written
+    and tested for that day (Dom, 9 Oct).
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.

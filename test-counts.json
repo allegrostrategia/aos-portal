@@ -1,8 +1,8 @@
 {
   "note": "The number of tests in each suite. Checked by scripts/test-census.mjs, which refuses a drop. Raise it with `node scripts/test-census.mjs --update`; to lower it, edit by hand and say why in droppedBecause, in the same commit.",
   "counts": {
-    "unit": 490,
-    "db": 391,
-    "e2e": 156
+    "unit": 499,
+    "db": 395,
+    "e2e": 160
   }
 }

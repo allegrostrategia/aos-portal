@@ -25,11 +25,15 @@ export function Objectives({
   canWrite,
   workspaceId,
   month,
+  selfServe = false,
 }: {
   objectives: ReportNote[];
   canWrite: boolean;
   workspaceId: string;
   month: string;
+  /** A member writing their own. There is no client to show them to and
+   *  no publishing to wait for, so the card says neither (Dom, 9 Oct). */
+  selfServe?: boolean;
 }) {
   const written = objectives
     .filter((note) => note.body.trim() !== "")
@@ -39,7 +43,11 @@ export function Objectives({
     if (written.length === 0) return null;
     return (
       <Card>
-        <SectionTitle>What we&rsquo;re focusing on next month</SectionTitle>
+        <SectionTitle>
+          {selfServe
+            ? "What you\u2019re focusing on next month"
+            : "What we\u2019re focusing on next month"}
+        </SectionTitle>
         <ol className="mt-1">
           {written.map((note, index) => (
             <NumberedRow key={note.id} index={index + 1} title={note.body} />
@@ -49,17 +57,26 @@ export function Objectives({
     );
   }
 
-  return <ObjectiveEditor objectives={objectives} workspaceId={workspaceId} month={month} />;
+  return (
+    <ObjectiveEditor
+      objectives={objectives}
+      workspaceId={workspaceId}
+      month={month}
+      selfServe={selfServe}
+    />
+  );
 }
 
 function ObjectiveEditor({
   objectives,
   workspaceId,
   month,
+  selfServe,
 }: {
   objectives: ReportNote[];
   workspaceId: string;
   month: string;
+  selfServe: boolean;
 }) {
   const [state, action] = useActionState<NoteState, FormData>(saveObjectives, null);
 
@@ -68,10 +85,15 @@ function ObjectiveEditor({
 
   return (
     <Card>
-      <SectionTitle>What we&rsquo;re focusing on next month</SectionTitle>
+      <SectionTitle>
+        {selfServe
+          ? "What you\u2019re focusing on next month"
+          : "What we\u2019re focusing on next month"}
+      </SectionTitle>
       <p className="text-body text-ink/70">
-        Up to three. The client sees them once this month is published, and
-        empty ones simply don&rsquo;t appear — you are never made to fill three.
+        {selfServe
+          ? "Up to three. Empty ones simply don\u2019t appear — you are never made to fill three."
+          : "Up to three. The client sees them once this month is published, and empty ones simply don\u2019t appear — you are never made to fill three."}
       </p>
 
       <form action={action} className="mt-4 flex flex-col gap-3">

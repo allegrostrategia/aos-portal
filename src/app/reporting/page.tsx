@@ -4,6 +4,7 @@ import Link from "next/link";
 import { KpiCard } from "@/components/reporting/kpi-card";
 import { PublishControl, StrategistNotes } from "@/components/reporting/notes";
 import { Objectives } from "@/components/reporting/objectives";
+import { Reflection } from "@/components/reporting/reflection";
 import { ClientReplies } from "@/components/reporting/replies";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { leadsBySource } from "@/lib/reporting/chart-data";
@@ -413,6 +414,39 @@ export default async function ReportingOverviewPage({
               category=""
               mine={mine}
               emptyMessage="Your strategist hasn't written this month's note yet."
+            />
+          ) : null}
+
+          {/* §8's member half: their own reflection, where a retainer
+              client reads Nina's note. Not locked, because a member's
+              months never are — they are their own editor. */}
+          {selfServe && ctx.canEdit ? (
+            <Reflection
+              note={
+                figures.data.notes.find(
+                  (n) =>
+                    n.note_type === "reflection" &&
+                    n.author_id === ctx.reportUser.id &&
+                    !n.category,
+                ) ?? null
+              }
+              workspaceId={ctx.workspace.id}
+              month={ctx.month.month}
+              monthLabel={ctx.month.label}
+            />
+          ) : null}
+
+          {/* Objectives are both kinds' — "what we are doing about it"
+              is as much a member's question as a client's. Only the
+              reply box is a conversation with Allegro, so only it stays
+              retainer-only. */}
+          {selfServe ? (
+            <Objectives
+              objectives={objectives}
+              canWrite={ctx.canEdit}
+              workspaceId={ctx.workspace.id}
+              month={ctx.month.month}
+              selfServe
             />
           ) : null}
 

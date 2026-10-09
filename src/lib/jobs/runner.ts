@@ -3,6 +3,14 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { sendEmail, isEmailConfigured } from "@/lib/email/send";
+import { APP_TIME_ZONE, formatCalendarMonth } from "@/lib/time-zone";
+import { monthIsFinished } from "@/lib/reporting/completion-input";
+import {
+  planReminders as planReportReminderRules,
+  ukDayOfMonth,
+  ukPreviousMonth,
+  type ReminderCandidate,
+} from "@/lib/reporting/reminder-plan";
 import { mondayOf, addDays } from "@/lib/onboarding/cadence";
 import {
   reminderKindForDate,
@@ -17,6 +25,7 @@ import {
   hotSeatCopy,
   pairingBookedCopy,
   roadmapIdleCopy,
+  reportReminderCopy,
   pairingStalledCopy,
   renderEmail,
   weeklyLogCopy,
@@ -872,6 +881,168 @@ export async function runRoadmapIdle(
   return "sent";
 }
 
+/**
+ * §8.1's two report reminders, planned.
+ *
+ * The rules themselves are pure and live in
+ * `src/lib/reporting/reminder-plan.ts`, with their own tests — which is
+ * how the three exclusions Dom named can be proved without waiting for
+ * the 1st of a month. This half is only the reading and the writing.
+ *
+ * **Everything here runs as the service role**, whose `auth.uid()` is
+ * null. Nothing it touches may be guarded on `is_portal_admin()` alone.
+ */
+export async function planReportReminders(instant = new Date()): Promise<number> {
+  const day = ukDayOfMonth(instant);
+  if (day !== 1 && day !== 8) return 0;
+
+  const admin = createAdminClient();
+  const month = ukPreviousMonth(instant);
+
+  const [{ data: workspaceRows }, { data: sentRows }] = await Promise.all([
+    // **`aos_member` only, and that is forced as well as intended.**
+    // §8.1 is headed "aOS members: completion and reminders" and names
+    // only them. It is also the only thing possible: `due_jobs.member_id`
+    // is a foreign key to `members`, and a Chiarezza attendee has no
+    // members row at all — they are a login with a grant. Queuing one
+    // for them fails the key, which is how this was found.
+    //
+    // The expired-Chiarezza rule stays in `planReminders` even so: it is
+    // the rule as specified, it is tested, and the day somebody wants
+    // Chiarezza reminded, the thing that has to change is the queue, not
+    // the rule.
+    admin
+      .from("report_workspaces")
+      .select("id, owner_user_id, kind, access_end_date")
+      .eq("kind", "aos_member"),
+    admin.from("report_reminders").select("workspace_id, reminder").eq("month", month),
+  ]);
+
+  const workspaces = (workspaceRows ?? []) as {
+    id: string;
+    owner_user_id: string;
+    kind: "retainer" | "aos_member" | "chiarezza";
+    access_end_date: string | null;
+  }[];
+  if (workspaces.length === 0) return 0;
+
+  // A cancelled membership keeps every record and loses every nudge
+  // (rule 7). A login with no `members` row is a Chiarezza attendee,
+  // whose end date answers the same question a different way.
+  const { data: memberRows } = await admin
+    .from("members")
+    .select("id, status")
+    .in("id", workspaces.map((w) => w.owner_user_id));
+  const statusOf = new Map(
+    ((memberRows ?? []) as { id: string; status: string }[]).map((m) => [m.id, m.status]),
+  );
+
+  const sent = new Map<string, number[]>();
+  for (const row of (sentRows ?? []) as { workspace_id: string; reminder: number }[]) {
+    sent.set(row.workspace_id, [...(sent.get(row.workspace_id) ?? []), row.reminder]);
+  }
+
+  // Only the 8th asks whether the month is done, and only for the ones
+  // still in the running — a completion check per workspace is the
+  // expensive part of this job.
+  const candidates: ReminderCandidate[] = [];
+  for (const workspace of workspaces) {
+    const status = statusOf.get(workspace.owner_user_id);
+    candidates.push({
+      workspaceId: workspace.id,
+      ownerUserId: workspace.owner_user_id,
+      kind: workspace.kind,
+      accessEndDate: workspace.access_end_date,
+      memberHasAccess: status === undefined ? null : status !== "cancelled",
+      monthIsDone: day === 8 ? await monthIsFinished(admin, workspace.id, month) : false,
+      alreadySent: sent.get(workspace.id) ?? [],
+    });
+  }
+
+  const planned = planReportReminderRules(candidates, instant);
+  if (planned.length === 0) return 0;
+
+  const { data: inserted, error } = await admin
+    .from("due_jobs")
+    .upsert(
+      planned.map((p) => ({
+        kind: p.reminder === 1 ? ("report_reminder_1" as const) : ("report_reminder_2" as const),
+        member_id: p.ownerUserId,
+        due_on: new Intl.DateTimeFormat("en-CA", { timeZone: APP_TIME_ZONE }).format(instant),
+        // Per workspace per month per reminder, so a catch-up run after a
+        // missed morning does not queue a second copy.
+        dedupe_key: `report_reminder:${p.workspaceId}:${p.month}:${p.reminder}`,
+        payload: { workspace_id: p.workspaceId, month: p.month, reminder: p.reminder },
+      })),
+      { onConflict: "dedupe_key", ignoreDuplicates: true },
+    )
+    .select("id");
+
+  // Checked, not swallowed. A queue write that fails quietly is a month
+  // where nobody is reminded and nothing says so — and the first version
+  // of this did exactly that, returning 0 as though there had been
+  // nobody to remind.
+  if (error) throw new Error(`Couldn't queue the report reminders: ${error.message}`);
+
+  return (inserted ?? []).length;
+}
+
+/** Send one, and check again at send time. */
+export async function runReportReminder(
+  admin: ReturnType<typeof createAdminClient>,
+  job: { member_id: string; kind: string; payload: Record<string, unknown> },
+): Promise<"sent" | "skipped" | "failed"> {
+  const workspaceId = String(job.payload.workspace_id ?? "");
+  const month = String(job.payload.month ?? "");
+  const reminder = Number(job.payload.reminder ?? 0);
+  if (!workspaceId || !month) return "skipped";
+
+  const { data: member } = await admin
+    .from("members")
+    .select("email, full_name, status, notify_reminders")
+    .eq("id", job.member_id)
+    .maybeSingle();
+
+  const to = member as
+    | { email: string; full_name: string; status: string; notify_reminders: boolean }
+    | null;
+  if (!to || to.status === "cancelled" || !to.notify_reminders) return "skipped";
+
+  // The second check, and the one that matters: somebody who filled it
+  // in between 08:00 and the send should not be chased. The queue being
+  // long is exactly when this happens.
+  if (reminder === 2 && (await monthIsFinished(admin, workspaceId, month))) {
+    return "skipped";
+  }
+
+  const copy = reportReminderCopy({
+    firstName: to.full_name.split(" ")[0],
+    monthLabel: formatCalendarMonth(month),
+    reportUrl: `${env.siteUrl}/reporting`,
+    second: reminder === 2,
+  });
+
+  const result = await sendEmail({
+    to: to.email,
+    subject: copy.subject,
+    text: renderEmail(copy),
+  });
+  if (!result.ok) throw new Error(result.error ?? "Send failed");
+
+  // The record that stops a third. Checked, not assumed: if this write
+  // fails the next run would send again, and a silent failure here is
+  // the whole reason the table exists.
+  const { error } = await admin
+    .from("report_reminders")
+    .upsert(
+      { workspace_id: workspaceId, month, reminder, sent_at: new Date().toISOString() },
+      { onConflict: "workspace_id,month,reminder", ignoreDuplicates: true },
+    );
+  if (error) throw new Error(`Sent, but not recorded: ${error.message}`);
+
+  return "sent";
+}
+
 async function planBuildCheckIns(today: string): Promise<number> {
   const admin = createAdminClient();
   const cutoff = addDays(today, -CHECK_IN_AFTER_DAYS);
@@ -1014,7 +1185,8 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
     (await planHoursLedger(today)) +
     (await planChatNotifications(new Date())) +
     (await planBuildCheckIns(today)) +
-    (await planRoadmapIdle(today));
+    (await planRoadmapIdle(today)) +
+    (await planReportReminders());
 
   const admin = createAdminClient();
 
@@ -1078,6 +1250,8 @@ export async function runDueJobs(today: string): Promise<RunSummary> {
         outcome = await runPairingDay7(admin, job);
       } else if (job.kind === "roadmap_idle") {
         outcome = await runRoadmapIdle(admin, job);
+      } else if (job.kind === "report_reminder_1" || job.kind === "report_reminder_2") {
+        outcome = await runReportReminder(admin, job);
       } else if (job.kind === "build_check_in") {
         outcome = await runBuildCheckIn(admin, job);
       } else {
