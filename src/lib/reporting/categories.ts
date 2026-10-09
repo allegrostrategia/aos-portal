@@ -156,9 +156,9 @@ const PRODUCTION_STAGE = 2;
  * does nothing at all, which is the point — an unfinished tab in front of a
  * real client is exactly the failure this is meant to avoid.
  */
-export const SHIPPED_STAGE: 2 | 3 | 4 =
+export const SHIPPED_STAGE: 2 | 3 | 4 | 5 =
   process.env.NODE_ENV === "development"
-    ? (Number(process.env.NEXT_PUBLIC_REPORTING_STAGE) as 2 | 3 | 4) || PRODUCTION_STAGE
+    ? (Number(process.env.NEXT_PUBLIC_REPORTING_STAGE) as 2 | 3 | 4 | 5) || PRODUCTION_STAGE
     : PRODUCTION_STAGE;
 
 /**
@@ -187,6 +187,27 @@ export const STAGE_3 = SHIPPED_STAGE >= 3;
  * way to look at it, and only on a development server.
  */
 export const STAGE_4 = SHIPPED_STAGE >= 4;
+
+/**
+ * Whether Stage 5's self-serve half is on.
+ *
+ * **Harder to hide than the stages before it**, and that is the point
+ * of saying so here. Stages 3 and 4 were new tabs and new routes, which
+ * are invisible by not existing. Stage 5 adds things to screens a
+ * person already opens — a reflection box on the Overview, a link on
+ * You, a settings page — and, uniquely, **a job that sends email**.
+ *
+ * `dom` has had a real `aos_member` workspace on live since 9 October,
+ * created by the backfill. Without this switch the reminder job would
+ * have found it and sent "time to fill in your report for October" on
+ * 1 November, to a live inbox, from a stage nobody has turned on.
+ * Caught by Dom before any of it was pushed.
+ *
+ * So every Stage 5 surface asks this: the planner, the reflection, the
+ * objectives for a self-serve workspace, the settings page and the way
+ * in from You.
+ */
+export const STAGE_5 = SHIPPED_STAGE >= 5;
 
 export const SHIPPED_CATEGORIES = CATEGORIES.filter((c) => c.stage <= SHIPPED_STAGE);
 

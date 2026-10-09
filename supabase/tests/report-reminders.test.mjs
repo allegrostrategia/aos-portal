@@ -64,12 +64,12 @@ const queued = async () =>
 const at = (iso) => new Date(`${iso}T08:00:00Z`);
 
 test("nothing on a day that is not the 1st or the 8th", async () => {
-  assert.equal(await planReportReminders(at("2026-10-05")), 0);
+  assert.equal(await planReportReminders(at("2026-10-05"), 5), 0);
   assert.equal((await queued()).length, 0);
 });
 
 test("on the 1st: the member, and nobody else", async () => {
-  const planned = await planReportReminders(at("2026-10-01"));
+  const planned = await planReportReminders(at("2026-10-01"), 5);
   assert.equal(planned, 1, "one queued");
 
   const rows = await queued();
@@ -94,7 +94,7 @@ test("on the 1st: the member, and nobody else", async () => {
 test("running again the same morning queues nothing more", async () => {
   // A catch-up run after a missed day must not send a second copy; the
   // dedupe key is per workspace, month and reminder.
-  assert.equal(await planReportReminders(at("2026-10-01")), 0);
+  assert.equal(await planReportReminders(at("2026-10-01"), 5), 0);
   assert.equal((await queued()).length, 1);
 });
 
@@ -102,7 +102,7 @@ test("on the 8th, a month already recorded as reminded is left alone", async () 
   await db.exec(`insert into public.report_reminders (workspace_id, month, reminder, sent_at)
                  values ('${WS.member}', '2026-09-01', 2, now());`);
 
-  const planned = await planReportReminders(at("2026-10-08"));
+  const planned = await planReportReminders(at("2026-10-08"), 5);
   const second = (await queued()).filter((r) => r.kind === "report_reminder_2");
   assert.equal(second.length, planned);
   assert.ok(
@@ -110,4 +110,42 @@ test("on the 8th, a month already recorded as reminded is left alone", async () 
     "the second one had already gone out for this member",
   );
   assert.equal(second.length, 0, "and there is nobody else left to get it");
+});
+
+test("nothing is planned at all below Stage 5, on the day it would fire", async () => {
+  // **The one piece of unfinished work that reaches outside the app.**
+  // `dom` has had a real `aos_member` workspace on live since the
+  // backfill of 9 October, so without this switch the 1st of November
+  // would have put "time to fill in your report for October" in a real
+  // inbox, from a stage nobody had turned on. Caught by Dom before any
+  // of it was pushed.
+  //
+  // Asked on the 1st, which is the day it WOULD fire, and with the
+  // reminders table cleared so nothing else could be the reason.
+  await db.exec(`delete from public.due_jobs where kind::text like 'report_reminder%';
+                 delete from public.report_reminders;`);
+
+  for (const stage of [2, 3, 4]) {
+    assert.equal(
+      await planReportReminders(at("2026-11-01"), stage),
+      0,
+      `stage ${stage} plans nothing`,
+    );
+    assert.equal((await queued()).length, 0, `and queues nothing at stage ${stage}`);
+  }
+
+  // And the same morning at Stage 5 does, so the test above is not
+  // passing because there was nobody to remind.
+  assert.equal(await planReportReminders(at("2026-11-01"), 5), 1);
+});
+
+test("the live default is below Stage 5, so the deployed job plans nothing", async () => {
+  // No stage argument: this is what the cron actually calls, reading
+  // `SHIPPED_STAGE`, which is pinned to PRODUCTION_STAGE outside a
+  // development server and cannot be talked out of it by an
+  // environment variable in Vercel.
+  await db.exec(`delete from public.due_jobs where kind::text like 'report_reminder%';
+                 delete from public.report_reminders;`);
+  assert.equal(await planReportReminders(at("2026-11-01")), 0);
+  assert.equal((await queued()).length, 0);
 });

@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ReportShell } from "@/components/reporting/report-shell";
 import { SavedBanner } from "@/components/reporting/saved-banner";
 import { BusinessForm, SectionsForm } from "@/components/reporting/settings-forms";
-import { ENTRY_CATEGORIES, STAGE_3 } from "@/lib/reporting/categories";
+import { ENTRY_CATEGORIES, STAGE_5 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 
 export const metadata: Metadata = { title: "Your report settings — aOS" };
@@ -28,7 +28,7 @@ export default async function ReportSettingsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (!STAGE_3) notFound();
+  if (!STAGE_5) notFound();
 
   const search = await searchParams;
   const ctx = await resolveReportContext({

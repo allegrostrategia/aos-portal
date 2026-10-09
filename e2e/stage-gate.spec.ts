@@ -134,3 +134,27 @@ test("Stage 3's own pages and tabs have no route at the production flag", async 
     await expect(page.getByRole("link", { name: tab, exact: true })).toHaveCount(0);
   }
 });
+
+test("Stage 5's additions are absent at the production flag", async ({ page }) => {
+  // **Harder to hide than the stages before it.** Stages 3 and 4 were
+  // new routes, invisible by not existing. Stage 5 adds things to
+  // screens a person already opens, so each one has to ask the switch —
+  // and `dom` has a real member workspace on live, so "it would not
+  // match anybody" is not a defence.
+  await signInAtStage2(page, "member");
+
+  await page.goto(`${STAGE_2}/reporting?month=${MONTHS.sep}`);
+  const report = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(report, "no reflection box").not.toMatch(/your reflection/i);
+  expect(report, "no settings link").not.toMatch(/your report settings/i);
+  expect(report, "no objectives card").not.toMatch(/focusing on next month/i);
+
+  // The settings page has no route either.
+  const settings = await page.goto(`${STAGE_2}/reporting/settings`);
+  expect(settings?.status(), "/reporting/settings should not exist at stage 2").toBe(404);
+
+  // And nothing on You offers it.
+  await page.goto(`${STAGE_2}/you`);
+  const you = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(you, "no way in from You").not.toMatch(/your monthly report/i);
+});

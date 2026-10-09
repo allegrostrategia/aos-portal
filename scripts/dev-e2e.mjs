@@ -57,7 +57,10 @@ spawn("npx", ["next", "dev", "--port", PORT], {
     // The highest stage being built, so the browser tests see the work in
     // progress — and so every earlier stage is exercised with the later
     // one switched on, which is where a regression would otherwise hide.
-    NEXT_PUBLIC_REPORTING_STAGE: process.env.REPORTING_STAGE_OFF ? "2" : "4",
+    // The build-stage server runs at the newest stage, so the specs for
+    // work in progress can see it. The other one runs at 2, which is
+    // what production has, and is what proves the switch holds.
+    NEXT_PUBLIC_REPORTING_STAGE: process.env.REPORTING_STAGE_OFF ? "2" : "5",
     // Its own build directory, or Next 16 refuses to start beside the dev
     // server already running on 3000.
     NEXT_DIST_DIR: process.env.REPORTING_STAGE_OFF ? ".next-e2e-stage2" : ".next-e2e",

@@ -20,7 +20,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
-import { ENTRY_CATEGORIES, STAGE_3, categoryByKey } from "@/lib/reporting/categories";
+import { ENTRY_CATEGORIES, STAGE_3, STAGE_5, categoryByKey } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
 import { monthLabel } from "@/lib/reporting/months";
@@ -84,6 +84,9 @@ export default async function ReportingOverviewPage({
   // A member reporting on themselves is not "this client" — there is
   // nobody else in the conversation (Dom, 9 Oct).
   const selfServe = ctx.workspace.kind !== "retainer";
+  // Stage 5's additions sit on a screen clients already open, so each
+  // one asks the switch rather than relying on having no route.
+  const stage5 = STAGE_5 && selfServe;
 
   // What taking this month back to draft would do to the months after it.
   // Only worth asking where somebody can actually do it; a client's page
@@ -379,7 +382,7 @@ export default async function ReportingOverviewPage({
           Only for somebody who is their own editor — a retainer client
           has neither, and Allegro reaches a client's settings from the
           admin screen instead. */}
-      {ctx.canEdit && selfServe ? (
+      {ctx.canEdit && stage5 ? (
         <p className="mt-6 text-small text-ink/60">
           <Link
             href={reportHref("/reporting/settings", ctx)}
@@ -420,7 +423,7 @@ export default async function ReportingOverviewPage({
           {/* §8's member half: their own reflection, where a retainer
               client reads Nina's note. Not locked, because a member's
               months never are — they are their own editor. */}
-          {selfServe && ctx.canEdit ? (
+          {stage5 && ctx.canEdit ? (
             <Reflection
               note={
                 figures.data.notes.find(
@@ -440,7 +443,7 @@ export default async function ReportingOverviewPage({
               is as much a member's question as a client's. Only the
               reply box is a conversation with Allegro, so only it stays
               retainer-only. */}
-          {selfServe ? (
+          {stage5 ? (
             <Objectives
               objectives={objectives}
               canWrite={ctx.canEdit}

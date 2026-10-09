@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { sendEmail, isEmailConfigured } from "@/lib/email/send";
 import { APP_TIME_ZONE, formatCalendarMonth } from "@/lib/time-zone";
 import { monthIsFinished } from "@/lib/reporting/completion-input";
+import { SHIPPED_STAGE } from "@/lib/reporting/categories";
 import {
   planReminders as planReportReminderRules,
   ukDayOfMonth,
@@ -892,7 +893,19 @@ export async function runRoadmapIdle(
  * **Everything here runs as the service role**, whose `auth.uid()` is
  * null. Nothing it touches may be guarded on `is_portal_admin()` alone.
  */
-export async function planReportReminders(instant = new Date()): Promise<number> {
+export async function planReportReminders(
+  instant = new Date(),
+  /** Injected so both sides of the switch can be tested without
+   *  pretending the process is a development server. */
+  stage: number = SHIPPED_STAGE,
+): Promise<number> {
+  // **Nothing is planned, and so nothing is sent, until Stage 5 is on.**
+  // This is the one piece of unfinished work that reaches outside the
+  // app: `dom` has had a real member workspace on live since the
+  // backfill, and without this the 1st of November would have put an
+  // email in a real inbox from a stage nobody had turned on.
+  if (stage < 5) return 0;
+
   const day = ukDayOfMonth(instant);
   if (day !== 1 && day !== 8) return 0;
 
