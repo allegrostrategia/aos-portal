@@ -961,6 +961,16 @@ export async function planReportReminders(
   const candidates: ReminderCandidate[] = [];
   for (const workspace of workspaces) {
     const status = statusOf.get(workspace.owner_user_id);
+
+    // **An `aos_member` workspace whose owner has no `members` row is
+    // skipped, not queued.** `create_report_workspace` does not require
+    // one, so the state is reachable — and `due_jobs.member_id` is a
+    // foreign key to `members`, so queuing it fails the key and throws,
+    // taking the planning of everybody else down with it. There is also
+    // nobody to email. Found by a mutation that showed the error check
+    // below could not fire.
+    if (status === undefined) continue;
+
     candidates.push({
       workspaceId: workspace.id,
       ownerUserId: workspace.owner_user_id,

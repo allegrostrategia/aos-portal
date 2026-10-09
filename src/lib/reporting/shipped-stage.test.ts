@@ -46,3 +46,25 @@ test("production ships stage 2 and nothing more", async () => {
   const source = await readFile(`${root}src/lib/reporting/categories.ts`, "utf8");
   assert.match(source, /const PRODUCTION_STAGE = 2;/);
 });
+
+test("production is below Stage 5, so the reminder job sends nothing from live", async () => {
+  // Stage 5 is the first stage that reaches outside the app: a job that
+  // puts email in a real inbox, and `dom` has had a real member
+  // workspace on live since 9 October. The job asks `SHIPPED_STAGE`,
+  // so what that constant is in production is the whole guarantee.
+  //
+  // A source check for the same reason as the one above — the harness
+  // runs the job at Stage 5 on purpose, so it cannot also be the thing
+  // that proves the default.
+  const source = await readFile(`${root}src/lib/reporting/categories.ts`, "utf8");
+
+  const production = /const PRODUCTION_STAGE = (\d+);/.exec(source);
+  assert.ok(production, "PRODUCTION_STAGE is gone");
+  assert.ok(
+    Number(production[1]) < 5,
+    `PRODUCTION_STAGE is ${production[1]} — Stage 5 is on in production, and the reminder job will send`,
+  );
+
+  const gate = source.slice(source.indexOf("export const STAGE_5"));
+  assert.match(gate, /SHIPPED_STAGE >= 5/, "STAGE_5 must read the shipped stage, nothing else");
+});

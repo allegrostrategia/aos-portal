@@ -443,3 +443,39 @@ test("Nina sees where each member is, and what they have turned off", async ({
   const retainerCard = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(retainerCard.match(/not finished yet/gi)?.length ?? 0).toBe(1);
 });
+
+test("a month counts as done when one of its sections has nothing to fill in", async ({
+  page,
+}) => {
+  // Offers is row-backed, and a member with no offers owes it nothing.
+  // The count above the list has to treat that as finished rather than
+  // skip it — counted the other way, the denominator still includes it
+  // and "2 of 2" is never reached however much is typed.
+  const { MONTHS, PEOPLE, sql } = await import("../scripts/seed-test-db.mjs");
+  const uid = sql(`select id from auth.users where email = '${PEOPLE.member.email}'`);
+  sql(`delete from public.report_entities
+        where workspace_id = (select id from public.report_workspaces where owner_user_id = '${uid}');`);
+
+  await signIn(page, "member");
+  await page.goto("/reporting/settings");
+  for (const section of ["Social Media", "Trial Reels", "Email", "Funnels",
+    "Leads & Conversions", "Ads", "Client Experience"]) {
+    await page.getByRole("checkbox", { name: section, exact: true }).uncheck();
+  }
+  await page.getByRole("button", { name: /save the sections/i }).click();
+  await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
+
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  for (const [label, value] of [
+    [/fixed costs/i, "300"], [/variable costs/i, "250"],
+    [/team costs/i, "500"], [/cash in bank/i, "9000"],
+  ] as const) {
+    await page.getByLabel(label).first().fill(value);
+  }
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await expect(page.locator("[data-completion='offers']")).toHaveAttribute("data-total", "0");
+  await expect(page.getByText(/2 of 2 done/i)).toBeVisible();
+});
