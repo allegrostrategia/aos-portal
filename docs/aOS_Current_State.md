@@ -1562,6 +1562,25 @@ last.
     reads as a problem — which is right for efficiency and wrong for a
     growing business. Her call, and it is one line.
 
+### From finishing Stage 4 (9 Oct — Dom approved for now)
+
+22. **A cover image sits above the figures on the launch report, at 3:1,
+    full width.** §6.1 asks for one and never says where it goes. Above
+    the KPI cards is where a magazine would put it and where the eye
+    starts; the alternative is small, beside the title. It is optional
+    (decision 12), so most launches will not have one at all.
+    *Recommended: leave it as built.*
+23. **A launch keeps one cover, overwritten in place.** Replacing a
+    picture does not keep the old one, and there is no gallery. Simpler
+    to explain and it cannot grow without limit. *Recommended: keep.*
+24. **The eight save confirmations are "Saved.", "Status saved.",
+    "Stages saved.", "Price options saved.", "Figures saved.", "Nothing
+    to save.", "Cover image saved." and "Cover image removed."** They
+    are now in one file (`src/lib/reporting/saved-notice.ts`) rather
+    than scattered through the forms, so she can reword all of them in
+    one place. *Recommended: she reads them once and changes any that
+    are not how she would say it.*
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
@@ -1710,13 +1729,63 @@ then **Stage 5** (aOS members), then **Stage 6** (Meta CSV import). Nobody
 joins until all three are done, and **Nina reviews once, at the end** —
 so the Stage 3 flag stays at 2 throughout, however finished Stage 3 looks.
 
-**Stage 4 is built**, behind `STAGE_4`, so none of it reaches a client:
-the list, the report, the planner, the setup screens, the entry screens,
-"Compare launches" and the monthly Launches tab. Plan in
-`docs/stage-4-plan.md`. Four migrations are live — the launch lock, the
-private cover bucket, the delete sweep, and `carried` on launches. 34
-browser tests across both widths, 23 harness tests through the real
-actions, and screenshots 01–17 in `e2e/screenshots/launches/`.
+**Stage 4 is COMPLETE** (9 October), behind `STAGE_4`, so none of it
+reaches a client: the list, the report, the planner, the setup screens,
+the cover image, the entry screens, "Compare launches" and the monthly
+Launches tab. Checked line by line against `docs/stage-4-plan.md` —
+every item in "What is left" is built, and the two gaps that audit found
+are closed:
+
+- **The cover image was not built at all.** The bucket was live and the
+  column had existed since 30 September, and nothing read or wrote
+  either. Now a plain multipart form to `/api/launch-cover`.
+- **The bucket's assertion in the schema test was missing**, which the
+  plan had asked for in the same breath as the migration.
+
+Five migrations live, plus one waiting on Dom — the launch lock, the
+private cover bucket, the delete sweep, `carried` on launches, and
+**`20261009100000_launch_covers_admin.sql`, which is NOT applied yet**.
+
+**Two bugs the finishing work turned up, both silent:**
+
+- **Every save put the launch's status back to "planning".** `status`
+  moved into a form of its own when a published launch needed to change
+  it (a disabled field does not submit), so the details form stopped
+  posting one — and `?? "planning"` filled the gap on every save.
+  Nothing refused it, because the lock exempts status on purpose
+  (decision 15), so the guard waved it through too.
+- **The cover bucket refused Nina outright.** All four storage policies
+  rest on `report_can_edit` / `report_can_read_launch`, and both ask one
+  question: is there a `report_access` row for this login. An admin has
+  none. Every table in the module grants the admin through a separate
+  permissive policy (`report_launches_all_admin :: is_portal_admin()`);
+  the bucket had no such arm, and the migration's comment said the
+  opposite — that an admin "carries the service key", which a browser
+  session does not.
+
+**Saves no longer answer through `useActionState`.** A successful save
+redirects to `?saved=<key>` and the page renders the sentence
+(`SavedBanner`), because the returned notice was caught disappearing
+under load: the POST succeeded and nothing appeared, the form having
+submitted natively before React attached. Proved by two browser tests
+that run with **JavaScript disabled** — a save says it saved, and an
+error still says what was wrong. Errors stay in the action's return
+value, so what was typed stays in the boxes.
+
+**And a 303 from a route handler uses a relative `Location`.**
+`request.nextUrl.origin` is Next's idea of the origin, not the host the
+browser used: in the test stack it resolves to `localhost` while the
+browser is on `127.0.0.1`, a different origin for cookies — so the
+redirected GET arrived with no session and bounced to `/login` with the
+upload already done. The same gap exists behind a proxy in production.
+
+**The test count is now guarded.** `npm run test:census` records how many
+tests each suite has in `test-counts.json` and refuses a drop; lowering
+the number by hand needs a `droppedBecause` line in the same commit. It
+exists because overwriting `months.test.ts` destroyed fourteen tests on
+8 October and the suite reported "463 passed, 0 failed" — a deleted test
+does not fail, it stops existing. Re-enacted against the guard, which
+says "20 disappeared".
 
 **Three things Stage 4 taught, each of which cost real time:**
 
@@ -1739,9 +1808,21 @@ actions, and screenshots 01–17 in `e2e/screenshots/launches/`.
   harness's hand-written spelling by a test, so a drift in either is
   caught where it happens rather than on screen.
 
-**The Stage 5 plan is dropped for now** rather than written and left to go
-stale. What a self-serve member would need is in the 7 Oct answer above;
-it gets a plan of its own when Stage 4 is done.
+**Stage 5 is planned and waiting on Dom**: `docs/stage-5-plan.md`. The
+shape is the mirror image of Stage 4's — Stage 4 had the arithmetic and
+no screens; Stage 5 has screens that already work for any workspace kind
+and **no way for a member to reach them**. The access rules, the
+`hidden_categories` column (honoured on read), `report_reminders`, the
+setup columns and the `reflection` note type all exist; what is missing
+is a route in, first-time setup, a screen to hide a category, the
+completion definition, the two Piazza reminders, the reflection screen,
+the admin members view, and Chiarezza's end-of-access behaviour.
+
+**One thing to settle before building it**: nothing in the code defines
+a "core field" today, and the orange markers, the completion count, the
+reminders and the admin view all rest on it. Either a flag on
+`report_metrics` (a migration and a regenerated seed) or derived from
+what is there already.
 
 **`docs/nina-review/` is Stage 3 only** and is regenerated at the end of
 Stage 6 to cover everything. The running list of what was decided for her
