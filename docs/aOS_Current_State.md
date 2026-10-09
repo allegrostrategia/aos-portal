@@ -1661,6 +1661,28 @@ last.
     not the rule — the expired-Chiarezza exclusion is already written
     and tested for that day (Dom, 9 Oct).
 
+33. **An `aos_member` workspace whose owner has no `members` row is
+    allowed by the database and then silently skipped by the
+    reminders.** `create_report_workspace` does not require a members
+    row, so the state is reachable; the reminder job now steps over it,
+    because `due_jobs.member_id` is a foreign key to `members` and
+    queuing one throws. Silently skipped is the wrong resting place:
+    somebody owns a report nobody will ever nudge them about. *Two ways
+    out — the database refuses the workspace, or the admin list flags
+    it. Recommended: flag it in `/admin/reporting`*, because refusing it
+    would also refuse a Chiarezza-shaped workspace somebody has a reason
+    for, and a flag is the thing Nina would actually act on. **Not built
+    (Dom, 9 Oct).**
+
+34. **CSV upload is team-only, on retainer workspaces.** A member fills
+    Social Media and Ads in by hand, although they are their own editor
+    everywhere else — the one place Stage 6 draws a line nothing else
+    draws. Dom's call, taken 9 Oct: every "my CSV didn't work" lands on
+    Nina, and standing rule 5 is that her time does not scale with
+    member count. The cost is that the people who would gain most from
+    the shortcut do not get it. **One condition in one place to
+    reverse**; the parser and screens are identical either way.
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.

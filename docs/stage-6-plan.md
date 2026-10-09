@@ -65,3 +65,39 @@ Added to her running list as they are taken, under the standing arrangement.
 **3. What happens when the file is for the wrong month.** *Recommend filling nothing and saying so*, with the months the file actually covers. Partially filling from a file that is mostly a different month is the quietest way to get a wrong report.
 
 **4. Whether a client sees the upload card at all.** *Recommend: only somebody who can edit*, which is Allegro for a retainer and the member themselves for self-serve — the same line everything else draws.
+
+---
+
+## Four answers, before building (Dom, 9 October)
+
+### The raw CSV is never stored
+
+**Parsed in memory, in the browser, and discarded.** What survives is the figures the person saves and a `report_csv_imports` row — file name, platform, month, who, and which fields were filled.
+
+The brief already says it ("The file itself is never stored, only the numbers taken from it"), and the reason is worth keeping in view: a Meta content export carries post descriptions and permalinks, and an ads export carries campaign names a client may not want sitting in somebody else's database. Nothing is stored, so nothing has to be protected, found later, or deleted. There is no bucket, no retention rule and no access question — which is the cheapest possible answer to all three.
+
+The file name is kept because "which export was this from" is the question somebody asks when a figure looks wrong, and a name is not content.
+
+### Re-uploading the same month replaces, never doubles
+
+The parser produces a **set of figures**, and the form writes them the way the entry screen writes anything typed: one value per workspace, month, metric and entity. A second upload fills the same boxes again and Save overwrites. There is no appending anywhere in the path, and `report_values` has no shape that would allow two.
+
+The danger is not the write, it is the **arithmetic**: a sum that started from what is already in the box would double. So the parser never reads the current value — it returns totals computed from the file alone, and the form replaces.
+
+Tested both ways: the same file twice gives the same figures, and a corrected file replaces rather than adds to them. A second `report_csv_imports` row is written, because two uploads did happen and that table is the record of what came from where.
+
+### Uploading into a published month is refused, in words
+
+A published month is locked: `guard_report_published_month` refuses every write to `report_values`, and would answer an upload with `new row violates...` or a raw check-violation message. That is not something to show anybody.
+
+So the upload card **is not rendered at all on a locked month**, and the save action refuses with `LOCKED_MESSAGE` — the same sentence the entry screens already use, which names unpublishing as the way through. The card's place is taken by the lock notice that is already there.
+
+Tested at both widths, because the card is a layout as well as a rule, and the thing being checked is that nobody is offered a button that cannot work.
+
+### Who can upload
+
+**Team only, on retainer workspaces. A member's Meta figures stay manual for now** — Dom's call, taken.
+
+The card asks `canEdit && kind === "retainer"`, so a retainer client never sees it (they do not enter figures at all) and a member does not either, although they are their own editor everywhere else. That is the one place Stage 6 draws a line that nothing else in the product draws, and it is deliberate: every "my CSV didn't work" lands on Nina, and standing rule 5 is that her time does not scale with member count.
+
+The cost is honest: a member fills in Social Media and Ads by hand, which is the most tedious part of their month, and they are the people who would gain most from the shortcut. Turning it on later is one condition in one place — the parser, the maps and the screens are identical. On Nina's list as decision 34, so she can weigh the tedium against the support.
