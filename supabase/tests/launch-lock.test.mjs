@@ -326,3 +326,45 @@ test("the cover's read and write rules are the workspace's own", async () => {
   await check(CLIENT, [true, false], "the client sees theirs and cannot replace it");
   await check(MEMBER, [false, false], "somebody else's workspace is not theirs at all");
 });
+
+test("and Nina can put a cover on at all, which she could not", async () => {
+  // The bug this test exists for: every policy on the bucket was built
+  // on `report_can_edit` / `report_can_read_launch`, and both of those
+  // ask one question — **is there a `report_access` row for this login
+  // on this workspace.** An admin has none. So the bucket refused Nina
+  // outright: she could neither upload a cover nor see one, and the only
+  // symptom was "new row violates row-level security policy" from a
+  // draft launch that was plainly hers.
+  //
+  // Every table in this module grants the admin through a separate
+  // permissive policy (`report_launches_all_admin :: is_portal_admin()`)
+  // rather than through those functions. The bucket now does the same.
+  await unpublish();
+  const draftPath = `${WS}/${LAUNCH}.png`;
+  await db.query(`delete from storage.objects where name = '${draftPath}'`);
+
+  await asMember(db, NINA, async () => {
+    const added = await db.query(`insert into storage.objects (bucket_id, name)
+                                  values ('launch-covers', '${draftPath}')`);
+    assert.equal(added.affectedRows ?? 0, 1, "Nina can upload one");
+
+    const seen = await db.query(`select count(*)::int c from storage.objects
+                                  where name = '${draftPath}'`);
+    assert.equal(seen.rows[0].c, 1, "and read it back");
+
+    const gone = await db.query(`delete from storage.objects where name = '${draftPath}'`);
+    assert.equal(gone.affectedRows ?? 0, 1, "and take it off again");
+  });
+
+  // Nothing about the admin arm reaches the client: it is `is_portal_admin()`,
+  // not "anybody signed in".
+  await db.query(`insert into storage.objects (bucket_id, name)
+                  values ('launch-covers', '${draftPath}')`);
+  await asMember(db, CLIENT, async () => {
+    const seen = await db.query(`select count(*)::int c from storage.objects
+                                  where name = '${draftPath}'`);
+    assert.equal(seen.rows[0].c, 0, "a draft's cover is still invisible to the client");
+  });
+  await db.query(`delete from storage.objects where name = '${draftPath}'`);
+  await publish();
+});

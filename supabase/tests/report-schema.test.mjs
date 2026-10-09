@@ -801,5 +801,38 @@ await check("every pulled pair matches what the metric list says is pulled", asy
   return problems.length === 0;
 });
 
+await check("the launch-covers bucket exists, private, images only", async () => {
+  // The plan said the bucket goes in a migration with an assertion here,
+  // because "anything that has to be done in a dashboard is a step that
+  // can silently not happen" — and a bucket that silently did not happen
+  // looks exactly like an upload that silently fails.
+  const bucket = await db.query(`
+    select public, file_size_limit, allowed_mime_types
+      from storage.buckets where id = 'launch-covers'`);
+  if (bucket.rows.length === 0) {
+    console.log("    no launch-covers bucket");
+    return false;
+  }
+  const [row] = bucket.rows;
+  const problems = [];
+  if (row.public) problems.push("the bucket is PUBLIC — a draft launch's cover would be readable by anyone with the URL");
+  if (Number(row.file_size_limit) !== 5242880) problems.push(`size limit is ${row.file_size_limit}, expected 5242880`);
+  const types = [...(row.allowed_mime_types ?? [])].sort().join(",");
+  if (types !== "image/jpeg,image/png,image/webp") problems.push(`mime types are ${types}`);
+
+  // And it is guarded by policies rather than left open.
+  const policies = await db.query(`
+    select policyname from pg_policies
+     where schemaname = 'storage' and tablename = 'objects'
+       and policyname like 'launch_covers_%'`);
+  const names = policies.rows.map((r) => r.policyname).sort();
+  for (const needed of ["launch_covers_delete", "launch_covers_read", "launch_covers_update", "launch_covers_write"]) {
+    if (!names.includes(needed)) problems.push(`no ${needed} policy`);
+  }
+
+  if (problems.length) console.log("   ", problems.join("\n    "));
+  return problems.length === 0;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

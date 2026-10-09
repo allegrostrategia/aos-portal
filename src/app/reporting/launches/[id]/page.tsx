@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -16,6 +17,7 @@ import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { launchSummary, stageFigures } from "@/lib/reporting/launch-figures";
+import { signLaunchCover } from "@/lib/reporting/launch-cover";
 import { getLaunch } from "@/lib/reporting/launch-queries";
 
 export const metadata: Metadata = {
@@ -54,6 +56,7 @@ export default async function LaunchPage({
   const summary = launchSummary(detail);
   const stages = stageFigures(detail);
   const currency = ctx.workspace.currency;
+  const coverUrl = await signLaunchCover(detail.launch.cover_image_path);
 
   // The longest email sequence any stage has, so the chart is as wide as
   // the launch rather than as wide as the loop that looks for it.
@@ -101,6 +104,23 @@ export default async function LaunchPage({
         ) : null
       }
     >
+      {/* The cover, where there is one (Nina's decision 12 — optional).
+          Signed through the reader's own session, so a client only ever
+          gets a link to a launch they can already see. */}
+      {coverUrl ? (
+        <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden rounded-card bg-cream-deep">
+          <Image
+            src={coverUrl}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, 1024px"
+            className="object-cover"
+            priority
+            unoptimized
+          />
+        </div>
+      ) : null}
+
       {/* §6.4's headline figures. No month to compare against — a launch
           is not a month and has no previous one — so every card says so
           rather than inventing an arrow. */}

@@ -250,13 +250,15 @@ test("setting a launch up, start to finish", async ({ page }, info) => {
   // Two blank rows are already there — no "add" button to hydrate first.
   await page.getByLabel(/^Stage 1/).fill("The workshop");
   await page.getByRole("button", { name: /save the stages/i }).click();
-  await expect(page.getByText(/^Saved\.$/)).toBeVisible();
+  // The banner, not an inline message: the save redirects to `?saved=`
+  // so the sentence is in the HTML rather than in a form's state.
+  await expect(page.locator("[data-saved]")).toHaveText("Stages saved.");
 
   // And a price option.
   await page.getByLabel(/^Name — empty it/).first().fill("Pay in full");
   await page.getByLabel(/^Price$/).first().fill("400");
   await page.getByRole("button", { name: /save the prices/i }).click();
-  await expect(page.getByText(/^Saved\.$/).first()).toBeVisible();
+  await expect(page.locator("[data-saved]")).toHaveText("Price options saved.");
   await shoot(page, TAB, "13-edit-filled", w);
 
   // The goals it was given are on its report.
@@ -302,7 +304,7 @@ test("a published launch's setup is read-only, except its status", async ({ page
   await expect(status).toBeEnabled();
   await status.selectOption("completed");
   await page.getByRole("button", { name: /save the status/i }).click();
-  await expect(page.getByText(/^Status saved\.$/)).toBeVisible();
+  await expect(page.locator("[data-saved]")).toHaveText("Status saved.");
   await shoot(page, TAB, "14-edit-locked", w);
 });
 
@@ -409,4 +411,99 @@ test("the Launches tab separates this month's launches from the rest", async ({ 
   await expect(page.getByText(/live in september 2026/i)).toBeVisible();
   await page.goto(`/reporting/launches?month=${MONTHS.aug}`);
   await expect(page.getByText(/live in august 2026/i)).toBeVisible();
+});
+
+test.describe("with JavaScript off, which is what the old confirmation could not survive", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("a save still says it saved", async ({ page }) => {
+    await signIn(page, "nina");
+    await page.goto("/reporting/launches");
+    await page.getByRole("link", { name: "Autumn challenge" }).click();
+    await page.getByRole("link", { name: /edit launch details/i }).click();
+    await page.waitForURL(/\/edit/);
+
+    const status = page.locator("select[name='status']");
+    await status.selectOption("completed");
+    await page.getByRole("button", { name: /save the status/i }).click();
+
+    // The sentence is in the HTML the server sent, not in a client
+    // component's state — so it is here with no React at all.
+    await expect(page.locator("[data-saved]")).toHaveText("Status saved.");
+    await expect(page).toHaveURL(/saved=status/);
+    // And it really saved, rather than just saying so.
+    await expect(status).toHaveValue("completed");
+  });
+
+  test("and an error still says what was wrong", async ({ page }) => {
+    await signIn(page, "nina");
+    await page.goto("/reporting/launches");
+    await page.getByRole("link", { name: "Autumn challenge" }).click();
+    await page.getByRole("link", { name: /edit launch details/i }).click();
+
+    // Goals that do not ascend. The refusal is the action's return
+    // value, not a redirect, because an error should leave what was
+    // typed in the boxes.
+    await page.locator("input[name='goal_good']").fill("60");
+    await page.locator("input[name='goal_best']").fill("10");
+    await page.getByRole("button", { name: /^Save$/ }).click();
+
+    await expect(page.getByText(/go up in that order/i)).toBeVisible();
+    await expect(page.locator("[data-saved]")).toHaveCount(0);
+  });
+});
+
+test.describe("the cover image", () => {
+  // A 1x1 PNG, which is a real PNG as far as the bucket's mime check is
+  // concerned — the point is the plumbing, not the picture.
+  const PNG = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+
+  test.use({ javaScriptEnabled: false });
+
+  test("goes on, shows up on the report, and comes off again", async ({ page }, info) => {
+    const w = width(info.project.name);
+    await signIn(page, "nina");
+    await page.goto("/reporting/launches");
+    await page.getByRole("link", { name: "Autumn challenge" }).click();
+    await page.getByRole("link", { name: /edit launch details/i }).click();
+
+    await expect(page.getByText(/no cover yet/i)).toBeVisible();
+    await page.setInputFiles("input[name='cover']", {
+      name: "cover.png", mimeType: "image/png", buffer: PNG,
+    });
+    await page.getByRole("button", { name: /add a cover/i }).click();
+
+    // A plain multipart post to a route handler — no JavaScript at all.
+    await expect(page.locator("[data-saved]")).toHaveText("Cover image saved.");
+    await expect(page.locator("img[alt='']").first()).toBeVisible();
+    await shoot(page, TAB, "18-cover-admin", w);
+
+    // And it reaches the report, signed rather than public.
+    const back = page.getByRole("link", { name: /see the report|back to the launch/i }).first();
+    if (await back.count()) await back.click();
+    else await page.goBack();
+
+    await page.getByRole("link", { name: /edit launch details/i }).click();
+    await page.getByRole("button", { name: /remove it/i }).click();
+    await expect(page.locator("[data-saved]")).toHaveText("Cover image removed.");
+    await expect(page.getByText(/no cover yet/i)).toBeVisible();
+  });
+
+  test("a file that is not an image is refused, in words", async ({ page }) => {
+    await signIn(page, "nina");
+    await page.goto("/reporting/launches");
+    await page.getByRole("link", { name: "Autumn challenge" }).click();
+    await page.getByRole("link", { name: /edit launch details/i }).click();
+
+    await page.setInputFiles("input[name='cover']", {
+      name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("not a picture"),
+    });
+    await page.getByRole("button", { name: /add a cover/i }).click();
+
+    await expect(page.getByRole("alert")).toContainText(/JPEG, PNG or WebP/i);
+    await expect(page.getByText(/no cover yet/i)).toBeVisible();
+  });
 });
