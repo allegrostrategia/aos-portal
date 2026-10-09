@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CATEGORIES, type CategoryKey } from "./categories.ts";
+import { CATEGORIES } from "./categories.ts";
 import {
   calculate,
   entityAwareLookup,
@@ -292,45 +292,4 @@ export function offerBreakdown(figures: MonthFigures) {
   );
 }
 
-/**
- * How much of a category's core is filled in, for "Still to fill in" (§8.1).
- *
- * Not simply `figure(key) !== null`. Offers stores its figures against each
- * offer, so a month-level lookup finds nothing and the category reads 0/3
- * however much has been entered — which is what it did for every client
- * until 2 October.
- *
- * For a category whose metrics hang off a row, a core metric counts as
- * filled when EVERY active row has it. Three offers with two of them priced
- * is not a finished section.
- */
-export function categoryCompletion(
-  figures: MonthFigures,
-  category: CategoryKey,
-): { filled: number; total: number } {
-  const core = figures.metrics.filter(
-    (m) => m.category === category && m.input_type === "core",
-  );
-  if (core.length === 0) return { filled: 0, total: 0 };
-
-  const entityType = core[0].entity_type;
-  // Offers is the only category that actually stores per row today. Social
-  // Media's metrics carry an entity type as well, but there is exactly one
-  // platform and `figure()` already resolves it.
-  const rows =
-    entityType === "offer"
-      ? figures.data.entities.filter((e) => e.entity_type === "offer" && e.active)
-      : null;
-
-  if (!rows) {
-    return { filled: core.filter((m) => figures.figure(m.key) !== null).length, total: core.length };
-  }
-
-  if (rows.length === 0) return { filled: 0, total: core.length };
-
-  const filled = core.filter((m) =>
-    rows.every((row) => figures.data.values.get(m.key, row.id) !== null),
-  ).length;
-
-  return { filled, total: core.length };
-}
+export { categoryCompletion } from "./completion.ts";

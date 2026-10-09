@@ -4,6 +4,7 @@ import { getCurrentMember } from "@/lib/auth/member";
 import { saveNotificationPreferences, signOut } from "@/lib/auth/actions";
 import { getHeadshotUrls } from "@/lib/directory/queries";
 import { getMyRecaps } from "@/lib/recap/queries";
+import { getMyReportingWorkspace } from "@/lib/reporting/my-workspace";
 import { RECAP_COPY } from "@/lib/recap/copy";
 import { formatCalendarDate, formatCalendarMonth } from "@/lib/time-zone";
 import { Avatar } from "@/components/avatar";
@@ -31,6 +32,7 @@ export const metadata: Metadata = { title: "You · aOS" };
  */
 export default async function YouPage() {
   const member = (await getCurrentMember())!;
+  const reporting = await getMyReportingWorkspace();
   const [headshots, recaps] = await Promise.all([
     getHeadshotUrls([member.id]),
     getMyRecaps(member.id),
@@ -157,6 +159,24 @@ export default async function YouPage() {
           <PushToggle />
         </div>
       </Card>
+
+      {/* §8.1's way in. **Not a seventh navigation item**: the six are
+          settled, and a seventh would be the most prominent thing on
+          every screen for the twenty-eight days a month nobody needs it.
+          Here, plus a card on Piazza while last month is unfinished,
+          which is the moment it matters (Nina's decision 25). */}
+      {reporting ? (
+        <Card padded={false} className="mb-6">
+          <Eyebrow className="px-6 pt-5">Your numbers</Eyebrow>
+          <ul className="divide-y divide-ink/6 p-2">
+            <NumberedRow
+              href="/reporting"
+              title="Your monthly report"
+              meta={reporting.business_name}
+            />
+          </ul>
+        </Card>
+      ) : null}
 
       {member.role === "admin" ? (
         <Card padded={false} className="mb-6">

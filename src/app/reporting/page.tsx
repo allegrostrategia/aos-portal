@@ -80,6 +80,9 @@ export default async function ReportingOverviewPage({
   // §13's rule — which is why the lock reuses it rather than greying out a
   // textarea the client's own view never had.
   const locked = monthIsLocked(ctx.workspace, period?.published_at);
+  // A member reporting on themselves is not "this client" — there is
+  // nobody else in the conversation (Dom, 9 Oct).
+  const selfServe = ctx.workspace.kind !== "retainer";
 
   // What taking this month back to draft would do to the months after it.
   // Only worth asking where somebody can actually do it; a client's page
@@ -364,7 +367,7 @@ export default async function ReportingOverviewPage({
               href={reportHref("/reporting/targets", ctx)}
               className="underline underline-offset-4"
             >
-              Set them for this client
+              {selfServe ? "Set yours" : "Set them for this client"}
             </Link>
             .
           </p>
@@ -379,15 +382,23 @@ export default async function ReportingOverviewPage({
         }`}
       >
         <div className="flex flex-col gap-6">
-          <StrategistNotes
-            notes={overviewNotes}
-            canWrite={ctx.canEdit && ctx.workspace.kind === "retainer" && !locked}
-            workspaceId={ctx.workspace.id}
-            month={ctx.month.month}
-            category=""
-            mine={mine}
-            emptyMessage="Your strategist hasn't written this month's note yet."
-          />
+          {/* **Not on a self-serve report at all** (Dom, 9 Oct). A
+              member has no strategist: the card said "Your strategist
+              hasn't written this month's note yet" to somebody who was
+              never going to get one, which reads as a thing that is
+              late rather than a thing that does not exist. Their own
+              reflection is the equivalent, and it is theirs to write. */}
+          {ctx.workspace.kind === "retainer" ? (
+            <StrategistNotes
+              notes={overviewNotes}
+              canWrite={ctx.canEdit && !locked}
+              workspaceId={ctx.workspace.id}
+              month={ctx.month.month}
+              category=""
+              mine={mine}
+              emptyMessage="Your strategist hasn't written this month's note yet."
+            />
+          ) : null}
 
           {ctx.workspace.kind === "retainer" ? (
             <>
@@ -452,7 +463,12 @@ function StillToFill({
     ...categoryCompletion(figures, category.key),
   }));
 
-  const done = rows.filter((r) => r.total > 0 && r.filled === r.total).length;
+  // A section with nothing to fill in is finished, not excluded. Counted
+  // the old way, a member with no funnels and no ads could never reach
+  // "9 of 9" however much they typed.
+  const isDone = (r: { filled: number; total: number }) =>
+    r.total === 0 || r.filled === r.total;
+  const done = rows.filter(isDone).length;
 
   return (
     <Card>
@@ -461,9 +477,14 @@ function StillToFill({
       </SectionTitle>
       <ul className="flex flex-col gap-1">
         {rows.map(({ category, filled, total }) => {
-          const complete = total > 0 && filled === total;
+          const complete = isDone({ filled, total });
           return (
-            <li key={category.key}>
+            <li
+              key={category.key}
+              data-completion={category.key}
+              data-filled={filled}
+              data-total={total}
+            >
               <Link
                 href={reportHref(`/reporting/enter/${category.slug}`, ctx)}
                 className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 transition hover:bg-cream-deep"

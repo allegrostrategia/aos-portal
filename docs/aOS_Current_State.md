@@ -1581,6 +1581,44 @@ last.
     one place. *Recommended: she reads them once and changes any that
     are not how she would say it.*
 
+### From Stage 5 (the plan, 9 Oct — Dom approved for now)
+
+25. **A member finds Reporting on You, plus a Piazza card while last
+    month is unfinished.** The six-item navigation is settled and this
+    is a once-a-month task; a seventh item would be the most prominent
+    thing on every screen for the twenty-eight days nobody needs it.
+    **The card is private to that member** — it is not a post in the
+    shared feed, and nothing about one member's report reaches another
+    (Dom, 9 Oct, in the same spirit as the Friday reflection).
+26. **"Core fields" are the ones already marked `core` in the metric
+    list**, seeded from §5 of the brief. Two consequences she should
+    know: a category she has no entities in (no funnels, no ad
+    campaigns) counts as done rather than permanently orange, and
+    **"Clients at the start, when you joined" is asked once, not every
+    month** — it is carried forward, so requiring it monthly would keep
+    Client Experience orange forever.
+27. **Hiding a category is display-only.** Nothing is deleted, un-hiding
+    brings everything back exactly as it was, and a figure pulled into
+    another section still works while its own section is hidden. Rule 7,
+    applied to a toggle (Dom, 9 Oct).
+28. **Reminders go to nobody who has left.** Not to a cancelled member,
+    not to a Chiarezza login past its end date, and the 1st and 8th are
+    **UK time** — a job that fires at midnight UTC sends on the 31st in
+    British Summer Time (Dom, 9 Oct).
+29. **The panels say "we", which reads oddly when a member is reporting
+    on themselves.** "We didn't hit the target we wanted" is Nina's
+    voice talking to a client; a member reading their own report is
+    being addressed by nobody. Does she want a second set of wording for
+    self-serve, or does "we" stand? *Recommended: ask her — it is her
+    voice and there is no right answer from here.* It is roughly a day
+    of writing for her and a key on each template for us.
+30. **A member's reporting workspace is created automatically** when the
+    member is created, so nobody can arrive at "no access". *Recommended:
+    automatic.* What it touches is in `docs/stage-5-plan.md`; the short
+    version is that `members` has no business name, so the workspace
+    starts named after the person and the first-time setup screen is
+    what corrects it.
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
