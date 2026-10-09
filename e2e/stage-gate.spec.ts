@@ -106,6 +106,28 @@ test("Stage 3's own pages and tabs have no route at the production flag", async 
     expect(response?.status(), `${path} should not exist at stage 2`).toBe(404);
   }
 
+  // The cover upload is a POST, so it is asked as one. It is the only
+  // route in the module that is not a page, and `/api` is public to the
+  // proxy by design — route handlers authenticate themselves — so its
+  // stage check is the only thing standing in front of it.
+  //
+  // **With a REAL launch id**, and signed in, which is the whole point:
+  // a made-up one answers 404 whether the gate is there or not, because
+  // the lookup fails either way. The first version of this test did
+  // exactly that and could not fail — the same trap as the per-launch
+  // page routes above, walked into twice.
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  const realLaunch = sql("select id from public.report_launches where name = 'Autumn challenge'");
+  // And `maxRedirects: 0`, because without it the 303 this route sends
+  // on a refusal is followed to the setup screen — which is gated too,
+  // so the final status was 404 whatever the route itself answered. The
+  // second way this same test managed not to be able to fail.
+  const posted = await page.request.post(`${STAGE_2}/api/launch-cover`, {
+    multipart: { launch_id: String(realLaunch) },
+    maxRedirects: 0,
+  });
+  expect(posted.status(), "the cover upload should not exist at stage 2").toBe(404);
+
   // And the tab bar does not offer them either.
   await page.goto(`${STAGE_2}/reporting?month=${MONTHS.sep}`);
   for (const tab of ["Ads", "Funnels", "Trial Reels", "Client Experience", "Launches"]) {
