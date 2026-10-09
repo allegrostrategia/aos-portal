@@ -17,6 +17,8 @@ import { formatHours, milestoneProgress } from "@/lib/hours/milestones";
 import { getMyAvailability, getMyPairing, getSharedSlots, pairingMonth } from "@/lib/pairing/queries";
 import { slotLabelShort } from "@/lib/pairing/slots";
 import { getUnreadRecap } from "@/lib/recap/queries";
+import { getUnfinishedReportMonth } from "@/lib/reporting/my-workspace";
+import { formatCalendarMonth } from "@/lib/time-zone";
 import { getDrawStanding } from "@/lib/draw/queries";
 import { resolveNames } from "@/lib/chat/queries";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
@@ -92,11 +94,12 @@ export default async function PiazzaPage() {
     member.status === "active" ? getMyAvailability(member.id, month) : Promise.resolve(null),
   ]);
 
-  const [mySubmission, partnerNames, sharedSlots, unreadRecap] = await Promise.all([
+  const [mySubmission, partnerNames, sharedSlots, unreadRecap, unfinishedReport] = await Promise.all([
     session ? getMySubmission(member.id, session.id) : Promise.resolve(null),
     pairing?.partnerId ? resolveNames([pairing.partnerId]) : Promise.resolve(new Map<string, string>()),
     pairing ? getSharedSlots(pairing.id) : Promise.resolve([] as string[]),
     getUnreadRecap(member.id),
+    getUnfinishedReportMonth(),
   ]);
   // Round 3, §B: a note from Nina the member hasn't opened yet.
   const myThread = mySubmission ? ((await getComments([mySubmission.id])).get(mySubmission.id) ?? []) : [];
@@ -258,6 +261,31 @@ export default async function PiazzaPage() {
           new today; it goes as soon as they read it, and lives on You after
           that. Every word of it comes from RECAP_COPY. */}
       {unreadRecap ? <RecapCard month={unreadRecap.month} stats={unreadRecap.stats} /> : null}
+
+      {/* §8.1's nudge, and Nina's decision 25: here rather than a
+          seventh navigation item, because it is a once-a-month job and
+          this is the moment it matters.
+
+          **Private by construction.** It is derived from this member's
+          own workspace on their own page render — there is no feed, no
+          row another member could read, and nothing to filter. Dom
+          asked for that explicitly, and having nothing to leak is a
+          better guarantee than remembering to filter a list. */}
+      {unfinishedReport ? (
+        <Card className="mt-6">
+          <SectionTitle>
+            Your {formatCalendarMonth(unfinishedReport.month)} report
+          </SectionTitle>
+          <p className="text-body text-ink/70">
+            It is not finished yet. There is no deadline and nobody is
+            waiting on it — it is yours, and it is only worth anything
+            filled in.
+          </p>
+          <ButtonLink href="/reporting" size="sm" className="mt-4">
+            Fill it in
+          </ButtonLink>
+        </Card>
+      ) : null}
 
       {/* 4. The task list. */}
       <SectionTitle className="mt-8" aside={tasks.length ? `${tasks.length} to do` : undefined}>

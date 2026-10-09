@@ -157,4 +157,10 @@ test("Stage 5's additions are absent at the production flag", async ({ page }) =
   await page.goto(`${STAGE_2}/you`);
   const you = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(you, "no way in from You").not.toMatch(/your monthly report/i);
+
+  // Nor the Piazza card, which is the one Stage 5 surface on a screen
+  // every member opens every day.
+  await page.goto(`${STAGE_2}/piazza`);
+  const piazza = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(piazza, "no report card on Piazza").not.toMatch(/it is not finished yet/i);
 });

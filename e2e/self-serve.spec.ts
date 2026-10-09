@@ -263,3 +263,28 @@ test("a retainer client gets the reply box, not a reflection", async ({ page }) 
   expect(body, "no reflection box").not.toMatch(/your reflection/i);
   expect(body, "their strategist's note is still theirs").toMatch(/strategist/i);
 });
+
+test("Piazza says last month is unfinished, and says it to nobody else", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "member");
+  await page.goto("/piazza");
+
+  // §8.1's nudge, where the six-item navigation deliberately has no
+  // seventh entry for a once-a-month job.
+  await expect(page.getByRole("heading", { name: /your .* report/i })).toBeVisible();
+  await shoot(page, TAB, "05-piazza-card", w);
+
+  await page.getByRole("link", { name: /fill it in/i }).click();
+  await page.waitForURL(/\/reporting/);
+
+  // **Private by construction** (Dom, 9 October): it is derived from
+  // this member's own workspace on their own page render, so there is
+  // nothing for anybody else to see. Nina, who has no member workspace
+  // and is not reporting on herself, gets no card about one.
+  await signIn(page, "nina");
+  await page.goto("/piazza");
+  const nina = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(nina, "nobody else is told about it").not.toMatch(/report.{0,20}not finished yet/i);
+});
