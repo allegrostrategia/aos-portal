@@ -16,7 +16,7 @@ import { publishWarning } from "@/lib/reporting/publish-warning";
 import { draftMonthsBefore } from "@/lib/reporting/carried-build";
 import { getPublishedMonths } from "@/lib/reporting/queries";
 import { PANELS, highlights } from "@/lib/reporting/highlights";
-import { buttonClasses } from "@/components/ui/button";
+import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
@@ -375,6 +375,35 @@ export default async function ReportingOverviewPage({
             </Link>
             .
           </p>
+        </Card>
+      ) : null}
+
+      {/* First-time setup (§10.3). **The signal is the benchmark
+          description**, because `/reporting/settings` is the only thing
+          that writes it — so null means they have never been through
+          setup, whereas a business name is filled in automatically with
+          their own name when the workspace is created and proves
+          nothing.
+
+          A prompt rather than a wall: §4's instinct is that a report
+          with nothing in it still shows you the shape of itself, and
+          being made to answer three questions before seeing anything
+          would be the opposite. */}
+      {stage5 && ctx.canEdit && ctx.workspace.benchmark_business_description === null ? (
+        <Card className="mt-8">
+          <SectionTitle>Set your report up</SectionTitle>
+          <p className="text-body text-ink/70">
+            Three short answers — what the business is called, what it
+            does, and roughly what your time is worth — and the sections
+            you actually use. It takes a minute and you only do it once.
+          </p>
+          <ButtonLink
+            href={reportHref("/reporting/settings", ctx)}
+            size="sm"
+            className="mt-4"
+          >
+            Set your report up
+          </ButtonLink>
         </Card>
       ) : null}
 

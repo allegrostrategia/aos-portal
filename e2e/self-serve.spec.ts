@@ -85,36 +85,118 @@ test("the figure she is only ever asked once does not hold a month open", async 
   await expect(ce, "the July answer still counts in September").toHaveAttribute("data-filled", "4");
 });
 
-/**
- * **The target for the rest of Stage 5, and deliberately not passing
- * yet.** `fixme` rather than left red, so the suite stays honest about
- * what works; the marker comes off a step at a time as each piece lands.
- *
- * Still to build for it:
- *   · first-time setup (business, offers, first targets)
- *   · hiding a category
- *   · her reflection and next month's objectives
- *   · the month reading as done
- *
- * Already in: the way in from You, and the completion markers it reads.
- */
-test.fixme("first login to a finished month, without help", async ({ page }, info) => {
+test("first login to a finished month, without help", async ({ page }, info) => {
+  // The brief's own definition of Stage 5 being done (§11.5): *"a test
+  // member can go from first login to a finished month without help."*
+  // It was written first and left `fixme` while the pieces landed.
   const w = width(info.project.name);
+  const { MONTHS, PEOPLE, sql } = await import("../scripts/seed-test-db.mjs");
+
+  // A member who has genuinely never been through setup: the seed's
+  // workspace is already named, so this puts it back to how
+  // `ensure_member_report_workspace` leaves one.
+  const uid = sql(`select id from auth.users where email = '${PEOPLE.member.email}'`);
+  sql(`update public.report_workspaces
+          set benchmark_business_description = null, hidden_categories = '{}'
+        where owner_user_id = '${uid}';`);
+
   await signIn(page, "member");
 
   // 1. She finds it from her own navigation, not by knowing the URL.
   await page.goto("/you");
-  await page.getByRole("link", { name: /report/i }).first().click();
+  await page.getByRole("link", { name: /your monthly report/i }).click();
   await page.waitForURL(/\/reporting/);
   await shoot(page, TAB, "01-arrives", w);
 
-  // 2. First-time setup asks what it needs, once.
-  await expect(page.getByText(/set .*(up|your report)/i).first()).toBeVisible();
+  // 2. It asks her to set it up, once.
+  await expect(page.getByRole("heading", { name: /set your report up/i })).toBeVisible();
+  await page.getByRole("link", { name: /set your report up/i }).click();
+  await page.waitForURL(/\/settings/);
 
-  // 3. She hides what she does not use, and it goes.
-  // 4. She fills in what she does, and the markers go green.
-  // 5. She writes her reflection and next month's objectives.
-  // 6. The month reads as done.
+  await page.getByLabel(/what the business is called/i).fill("Ruth Fairweather Coaching");
+  await page.getByLabel(/what the business does/i).fill("One-to-one coaching for founders");
+  await page.getByLabel(/^main offers$/i).fill("Six-month container");
+  await page.getByLabel(/^country$/i).fill("United Kingdom");
+  await page.getByLabel(/target hourly rate/i).fill("150");
+  await page.getByRole("button", { name: /^save$/i }).first().click();
+  await expect(page.locator("[data-saved]")).toHaveText("Saved.");
+
+  // 3. She turns off what she does not use.
+  for (const section of ["Ads", "Funnels", "Trial Reels", "Social Media", "Email", "Offers"]) {
+    await page.getByRole("checkbox", { name: section, exact: true }).uncheck();
+  }
+  await page.getByRole("button", { name: /save the sections/i }).click();
+  await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
+
+  // 4. She fills in what is left. Two sections, and the opening figure
+  //    she is only ever asked once.
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.sep}`);
+  for (const [label, value] of [
+    [/new leads from social/i, "20"], [/new leads from email/i, "8"],
+    [/new leads from referral/i, "2"], [/calls booked/i, "6"],
+    [/calls held/i, "5"], [/new clients/i, "3"],
+  ] as const) {
+    await page.getByLabel(label).first().fill(value);
+  }
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+
+  // The opening figure is asked once, on the month it applies to —
+  // their first. The screen says so ("The opening figure goes on July
+  // 2026"), and following it is the flow a member actually has.
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
+  await page.getByLabel(/when you joined/i).first().fill("12");
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+
+  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.sep}`);
+  for (const [label, value] of [
+    [/clients who left/i, "1"], [/renewals and upsells/i, "2"],
+    [/issues raised/i, "0"],
+  ] as const) {
+    await page.getByLabel(label).first().fill(value);
+  }
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  for (const [label, value] of [
+    [/fixed costs/i, "300"], [/variable costs/i, "250"],
+    [/team costs/i, "500"], [/cash in bank/i, "9000"],
+  ] as const) {
+    await page.getByLabel(label).first().fill(value);
+  }
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+
+  // 5. Her reflection, and next month's objectives.
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await page.getByRole("textbox", { name: /your reflection on/i })
+    .fill("Fewer calls than I wanted, but the ones I had converted.");
+  await page.getByRole("button", { name: /^save$/i }).first().click();
+  await expect(page.getByText(/^Saved\.$/).first()).toBeVisible();
+
+  // 6. The month reads as done — every visible section, and the setup
+  //    prompt is gone because she has been through it.
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await expect(page.getByRole("heading", { name: /set your report up/i })).toHaveCount(0);
+  const rows = page.locator("[data-completion]");
+  const total = await rows.count();
+  expect(total, "three sections left on").toBe(3);
+  for (let i = 0; i < total; i += 1) {
+    const row = rows.nth(i);
+    expect(
+      await row.getAttribute("data-filled"),
+      `${await row.getAttribute("data-completion")} is finished`,
+    ).toBe(await row.getAttribute("data-total"));
+  }
+  await shoot(page, TAB, "08-finished-month", w);
+
+  // And Piazza stops asking, because there is nothing left to ask for.
+  await page.goto("/piazza");
+  const piazza = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(piazza, "the nudge goes when the month is done")
+    .not.toMatch(/it is not finished yet/i);
 });
 
 test("Nina's client list is three lists, not one", async ({ page }, info) => {

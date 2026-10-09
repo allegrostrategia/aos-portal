@@ -227,6 +227,42 @@ function normaliseRows(result) {
   });
 }
 
+/**
+ * A value on its way into a parameter.
+ *
+ * Two shapes need help, and both were found by a save that worked
+ * against real PostgREST and failed here:
+ *
+ *   · **An array.** PGlite's driver stringifies `["a","b"]` as `a,b`,
+ *     which Postgres rejects as a malformed array literal. Real
+ *     PostgREST sends JSON and casts it. Written as an array literal
+ *     instead, so a `text[]` or an enum array lands.
+ *   · **A plain object**, which is destined for jsonb and has to go as
+ *     json rather than as a Postgres record.
+ *
+ * A shim that mangles a value silently is worse than one that cannot do
+ * it at all: the test goes green and the thing it was guarding is gone.
+ */
+function toParam(value) {
+  if (Array.isArray(value)) {
+    // An array of objects is jsonb — `roadmap.phases` is the one here —
+    // and goes as json. An array of strings or numbers is a Postgres
+    // array column (`hidden_categories`), and PGlite's driver would
+    // otherwise stringify it as `a,b`, which Postgres rejects as a
+    // malformed array literal. Real PostgREST sends JSON and casts, so
+    // this gap only ever showed up in tests.
+    //
+    // The one shape this cannot tell apart is a jsonb array of plain
+    // strings. None exists today; if one arrives it will fail loudly
+    // here rather than quietly, which is the point.
+    const objects = value.some((v) => v !== null && typeof v === "object");
+    if (objects) return JSON.stringify(value);
+    return `{${value.map((v) => `"${String(v).replace(/(["\\])/g, "\\$1")}"`).join(",")}}`;
+  }
+  if (value !== null && typeof value === "object") return JSON.stringify(value);
+  return value ?? null;
+}
+
 function quoteIdent(name) {
   if (!/^[a-z_][a-z0-9_]*$/i.test(name)) throw new Error(`Unsafe identifier: ${name}`);
   return `"${name}"`;
@@ -364,11 +400,7 @@ export function createShimClient(db, uid) {
               const value = row[column];
               // A plain object destined for jsonb has to be sent as json, not
               // as a Postgres record.
-              params.push(
-                value !== null && typeof value === "object" && !Array.isArray(value)
-                  ? JSON.stringify(value)
-                  : value ?? null,
-              );
+              params.push(toParam(value));
               return `$${params.length}`;
             });
             return `(${placeholders.join(", ")})`;
@@ -444,7 +476,7 @@ export function createShimClient(db, uid) {
 
         if (state.update) {
           const assignments = Object.keys(state.update).map((c) => {
-            params.push(state.update[c]);
+            params.push(toParam(state.update[c]));
             return `${quoteIdent(c)} = $${params.length}`;
           });
           // Filters were pushed first, so their placeholders still line up.
