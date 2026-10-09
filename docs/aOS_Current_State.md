@@ -1871,7 +1871,30 @@ says "20 disappeared".
   harness's hand-written spelling by a test, so a drift in either is
   caught where it happens rather than on screen.
 
-**Stage 5 is planned and waiting on Dom**: `docs/stage-5-plan.md`. The
+**Stage 5 is built**, behind `STAGE_5`, and the brief's own definition
+of done passes end to end: §11.5's *"a test member can go from first
+login to a finished month without help"*, written as a test on day one
+and left `fixme` until the pieces landed.
+
+**`STAGE_5` matters more than the switches before it.** Stages 3 and 4
+hid by having no route. Stage 5 adds things to screens people already
+open — a reflection box on the Overview, a link on You, a Piazza card —
+and **a job that sends email**. `dom` has had a real `aos_member`
+workspace on live since the 9 October backfill, so without the switch
+the reminder job would have put mail in a real inbox on 1 November from
+a stage nobody had turned on. Caught by Dom before anything was pushed.
+
+Two live-facing bugs came out of it, both found by tests:
+
+- **Nina was shown another member's unfinished report** on her own
+  Piazza. `getMyReportingWorkspace` asked for "an `aos_member`
+  workspace this login can see", and an admin can see all of them. It
+  asks for the one she *owns* now.
+- **A Chiarezza attendee whose access ended** was told their account
+  was not ready yet and invited to email — they have no `members` row,
+  so `/no-access` had only two cases and they fell into the wrong one.
+
+**Old plan, for reference**: `docs/stage-5-plan.md`. The
 shape is the mirror image of Stage 4's — Stage 4 had the arithmetic and
 no screens; Stage 5 has screens that already work for any workspace kind
 and **no way for a member to reach them**. The access rules, the
