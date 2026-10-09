@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { LaunchEntryForm } from "@/components/reporting/launch-entry-form";
 import { LaunchLock } from "@/components/reporting/launch-publish";
 import { ReportShell } from "@/components/reporting/report-shell";
+import { SavedBanner } from "@/components/reporting/saved-banner";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
@@ -43,6 +44,7 @@ export default async function EnterLaunchPage({
   if (!detail || detail.launch.workspace_id !== ctx.workspace.id) notFound();
 
   const locked = launchIsLocked(ctx.workspace, detail.launch.published_at);
+  const returnTo = reportHref(`/reporting/launches/${id}/enter`, ctx);
 
   return (
     <ReportShell
@@ -68,6 +70,8 @@ export default async function EnterLaunchPage({
         />
       ) : null}
 
+      <SavedBanner saved={search.saved} />
+
       {detail.stages.length === 0 ? (
         <Card className="mb-6">
           <SectionTitle>No stages yet</SectionTitle>
@@ -92,6 +96,7 @@ export default async function EnterLaunchPage({
         values={detail.values.fields()}
         locked={locked}
         currency={ctx.workspace.currency}
+        returnTo={returnTo}
       />
     </ReportShell>
   );

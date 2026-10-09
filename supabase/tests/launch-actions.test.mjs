@@ -52,6 +52,37 @@ const form = (fields) => {
 };
 const rows = async (sql) => (await asMember(db, NINA, () => db.query(sql))).rows;
 
+/**
+ * Run a save that is expected to work, and give back the `?saved=` key
+ * it redirected with.
+ *
+ * A successful save no longer returns `{ notice }` — it redirects to
+ * `?saved=<key>` so the page renders the sentence, because the returned
+ * one was observed disappearing when a form submitted before React had
+ * attached. The stub throws on `redirect()`, so a save that worked is a
+ * rejection carrying its destination, and a save that failed is a
+ * returned `{ error }`.
+ *
+ * This asserts MORE than the old `error === undefined` did: it proves
+ * the save landed, that it came back to the screen it was sent from, and
+ * which of the eight sentences the person will read.
+ */
+const saved = async (fn) => {
+  let result;
+  try {
+    result = await fn();
+  } catch (error) {
+    const raw = String(error?.digest ?? error?.message ?? "");
+    // The stub carries the destination as `NEXT_REDIRECT;<url>`; the
+    // test wants the url on its own, so a path can be compared to a path.
+    const url = raw.replace(/^(NEXT_REDIRECT;|REDIRECT:)/, "");
+    const match = url.match(/[?&]saved=([a-z-]+)/);
+    assert.ok(match, `expected a ?saved= redirect, got: ${raw}`);
+    return { key: match[1], url };
+  }
+  assert.fail(`expected a redirect, got: ${JSON.stringify(result)}`);
+};
+
 let LAUNCH;
 
 test("Elize creates a launch, and it redirects her to set it up", async () => {
@@ -97,7 +128,7 @@ test("the client cannot create one at all", async () => {
 });
 
 test("the stages save in one go, with one of them the selling stage", async () => {
-  const result = await as(ELIZE, () => saveStages(null, form({
+  const result = await saved(() => as(ELIZE, () => saveStages(null, form({
     launch_id: LAUNCH,
     main_stage: 2,
     "stage:1:name": "Five day challenge", "stage:1:type": "challenge",
@@ -105,8 +136,8 @@ test("the stages save in one go, with one of them the selling stage", async () =
     "stage:1:promo_start": "2026-09-01", "stage:1:promo_end": "2026-09-13",
     "stage:2:name": "The masterclass", "stage:2:type": "masterclass",
     "stage:2:live_days": 1,
-  })));
-  assert.equal(result?.error, undefined, result?.error);
+  }))));
+  assert.equal(result.key, "stages", "the save came back saying so");
 
   const stages = await rows(`select position, name, is_main_selling_stage m
                                from public.report_launch_stages
@@ -119,13 +150,13 @@ test("moving the selling stage does not trip the one-per-launch rule", async () 
   // The old one has to be cleared before the new one is set, or the
   // unique index refuses it. Worth a test precisely because the right
   // order looks like an implementation detail until it is wrong.
-  const result = await as(ELIZE, () => saveStages(null, form({
+  const result = await saved(() => as(ELIZE, () => saveStages(null, form({
     launch_id: LAUNCH,
     main_stage: 1,
     "stage:1:name": "Five day challenge", "stage:1:type": "challenge", "stage:1:live_days": 5,
     "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
-  })));
-  assert.equal(result?.error, undefined, result?.error);
+  }))));
+  assert.equal(result.key, "stages", "the save came back saying so");
 
   const stages = await rows(`select position, is_main_selling_stage m
                                from public.report_launch_stages
@@ -134,21 +165,21 @@ test("moving the selling stage does not trip the one-per-launch rule", async () 
 });
 
 test("a stage whose name is emptied is removed", async () => {
-  await as(ELIZE, () => saveStages(null, form({
+  await saved(() => as(ELIZE, () => saveStages(null, form({
     launch_id: LAUNCH, main_stage: 1,
     "stage:1:name": "Five day challenge", "stage:1:type": "challenge", "stage:1:live_days": 5,
     "stage:2:name": "", "stage:2:type": "masterclass",
-  })));
+  }))));
   const stages = await rows(
     `select count(*)::int c from public.report_launch_stages where launch_id = '${LAUNCH}'`);
   assert.equal(stages[0].c, 1);
 
   // Put it back for the figures below.
-  await as(ELIZE, () => saveStages(null, form({
+  await saved(() => as(ELIZE, () => saveStages(null, form({
     launch_id: LAUNCH, main_stage: 2,
     "stage:1:name": "Five day challenge", "stage:1:type": "challenge", "stage:1:live_days": 5,
     "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
-  })));
+  }))));
 });
 
 test("a stage that ends before it starts is refused, by name", async () => {
@@ -161,13 +192,13 @@ test("a stage that ends before it starts is refused, by name", async () => {
 });
 
 test("the price options save, and one is the main one", async () => {
-  const result = await as(ELIZE, () => savePrices(null, form({
+  const result = await saved(() => as(ELIZE, () => savePrices(null, form({
     launch_id: LAUNCH, main_price: 1,
     "price:1:name": "Pay in full early bird", "price:1:price": 500, "price:1:id": "",
     "price:2:name": "Payment plan", "price:2:price": 600,
     "price:2:instalments": 3, "price:2:instalment_amount": 200, "price:2:id": "",
-  })));
-  assert.equal(result?.error, undefined, result?.error);
+  }))));
+  assert.equal(result.key, "prices", "the save came back saying so");
 
   const prices = await rows(`select name, price::float p, is_main m
                                from public.report_launch_prices
@@ -192,7 +223,7 @@ test("figures land in the context they were typed into", async () => {
   const [price] = await rows(`select id from public.report_launch_prices
                                where launch_id = '${LAUNCH}' and is_main`);
 
-  const result = await as(ELIZE, () => saveLaunchFigures(null, form({
+  const result = await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
     [`launch:launches_sign_ups:${stage.id}:-:-:-`]: 1277,
     [`launch:launches_live_attendees:${stage.id}:-:1:-`]: 600,
@@ -200,8 +231,8 @@ test("figures land in the context they were typed into", async () => {
     [`launch:launches_email_open_rate:${stage.id}:-:-:1`]: 42,
     [`launch:launches_sales_per_price_option:-:${price.id}:-:-`]: 22,
     [`launch:launches_cash_collected_to_date:-:-:-:-`]: 12600,
-  })));
-  assert.equal(result?.error, undefined, result?.error);
+  }))));
+  assert.equal(result.key, "figures", "the save came back saying so");
 
   const stored = await rows(`select metric_key, coalesce(day_number, -1) d,
                                     coalesce(email_number, -1) e,
@@ -223,10 +254,10 @@ test("figures land in the context they were typed into", async () => {
 test("an emptied figure is removed, not stored as zero", async () => {
   const [stage] = await rows(`select id from public.report_launch_stages
                                where launch_id = '${LAUNCH}' and position = 1`);
-  await as(ELIZE, () => saveLaunchFigures(null, form({
+  await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
     [`launch:launches_live_attendees:${stage.id}:-:2:-`]: "",
-  })));
+  }))));
   const left = await rows(`select count(*)::int c from public.report_launch_values
                             where launch_id = '${LAUNCH}' and day_number = 2`);
   assert.equal(left[0].c, 0, "gone, so the chart shows a gap rather than a zero");
@@ -278,25 +309,25 @@ test("cleared of its figures, the same stage goes", async () => {
   for (const f of figures) {
     cleared[`launch:${f.metric_key}:${stage.id}:-:${f.d === -1 ? "-" : f.d}:${f.e === -1 ? "-" : f.e}`] = "";
   }
-  await as(ELIZE, () => saveLaunchFigures(null, form({ launch_id: LAUNCH, ...cleared })));
+  await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({ launch_id: LAUNCH, ...cleared }))));
 
-  const result = await as(ELIZE, () => saveStages(null, form({
+  const result = await saved(() => as(ELIZE, () => saveStages(null, form({
     launch_id: LAUNCH, main_stage: 2,
     "stage:1:name": "", "stage:1:type": "challenge",
     "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
-  })));
-  assert.equal(result?.error, undefined, result?.error);
+  }))));
+  assert.equal(result.key, "stages", "the save came back saying so");
 
   const stages = await rows(
     `select count(*)::int c from public.report_launch_stages where launch_id = '${LAUNCH}'`);
   assert.equal(stages[0].c, 1);
 
   // Put it back for the tests below.
-  await as(ELIZE, () => saveStages(null, form({
+  await saved(() => as(ELIZE, () => saveStages(null, form({
     launch_id: LAUNCH, main_stage: 2,
     "stage:1:name": "Five day challenge", "stage:1:type": "challenge", "stage:1:live_days": 5,
     "stage:2:name": "The masterclass", "stage:2:type": "masterclass", "stage:2:live_days": 1,
-  })));
+  }))));
 });
 
 test("a client cannot remove a launch's parts", async () => {
@@ -422,9 +453,9 @@ test("the status still moves on a published launch, and nothing else does", asyn
   // Nina's decision 15, and the reason it needs its own action: a
   // disabled field does not submit, so the main form on a published
   // launch would carry a status and no name at all.
-  const moved = await as(ELIZE, () =>
-    updateLaunchStatus(null, form({ launch_id: LAUNCH, status: "completed" })));
-  assert.equal(moved?.error, undefined, moved?.error);
+  const moved = await saved(() => as(ELIZE, () =>
+    updateLaunchStatus(null, form({ launch_id: LAUNCH, status: "completed" }))));
+  assert.equal(moved.key, "status", "and it says so on the way back");
 
   const [row] = await rows(`select status::text from public.report_launches where id = '${LAUNCH}'`);
   assert.equal(row.status, "completed");
@@ -462,13 +493,83 @@ test("the entry screen's box names are the names this parser reads", async () =>
   const [stage] = await rows(`select id from public.report_launch_stages
                                where launch_id = '${LAUNCH}' and position = 1`);
   const name = launchFieldName("launches_replay_watchers", { stageId: stage.id });
-  const result = await as(ELIZE, () => saveLaunchFigures(null, form({
+  const result = await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
     [name]: 310,
-  })));
-  assert.equal(result?.error, undefined, result?.error);
+  }))));
+  assert.equal(result.key, "figures", "the save came back saying so");
 
   const { getLaunch } = await import("../../src/lib/reporting/launch-queries.ts");
   const detail = await as(ELIZE, () => getLaunch(LAUNCH));
   assert.equal(detail.values.fields()[name], 310);
+});
+
+test("saving the launch's details leaves its status alone", async () => {
+  // `status` lives in a form of its own, so the details form never posts
+  // one — and the update was defaulting the missing field to 'planning'.
+  // Nina marks a launch Completed, edits its description, and finds it
+  // back in Planning. Nothing refuses it: the lock exempts status on
+  // purpose (decision 15), so the guard lets it through too.
+  await saved(() => as(ELIZE, () => updateLaunchStatus(null, form({
+    launch_id: LAUNCH, status: "completed",
+  }))));
+  assert.equal((await rows(`select status from public.report_launches
+                             where id = '${LAUNCH}'`))[0].status, "completed");
+
+  await saved(() => as(ELIZE, () => updateLaunch(null, form({
+    launch_id: LAUNCH, name: "Autumn challenge",
+    description: "Five days, then the masterclass, reworded",
+  }))));
+
+  const [after] = await rows(`select status, description from public.report_launches
+                               where id = '${LAUNCH}'`);
+  assert.match(after.description, /reworded/, "the edit did land");
+  assert.equal(after.status, "completed", "and it did not take the status with it");
+});
+
+test("a save comes back to the screen it was sent from, keeping the month", async () => {
+  const back = `/reporting/launches/${LAUNCH}/enter?workspace=${WS}&month=${AUG}`;
+  const { url } = await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
+    launch_id: LAUNCH, return_to: back,
+    [`launch:launches_cash_collected_to_date:-:-:-:-`]: 12600,
+  }))));
+
+  assert.match(url, /\/enter\?/, "the entry screen, not the setup one");
+  assert.match(url, new RegExp(`month=${AUG}`), "and the month it was looking at");
+  assert.match(url, /saved=figures/);
+});
+
+test("and a return_to pointing anywhere else is ignored", async () => {
+  // It arrives in the form, so it is checked rather than trusted. An
+  // open redirect out of a logged-in admin screen is the thing this
+  // stops; the fallback is always a real place to be.
+  for (const hostile of [
+    "https://evil.test/phish",
+    "//evil.test/phish",
+    "/piazza",
+    "/reporting/launches/not-a-uuid/edit",
+    `/reporting/launches/${LAUNCH}/edit/../../../piazza`,
+  ]) {
+    const { url } = await saved(() => as(ELIZE, () => updateLaunchStatus(null, form({
+      launch_id: LAUNCH, status: "live", return_to: hostile,
+    }))));
+    assert.equal(url.split("?")[0], `/reporting/launches/${LAUNCH}/edit`,
+      `refused: ${hostile}`);
+    assert.ok(!url.includes("evil.test"), `no host leaked from: ${hostile}`);
+  }
+});
+
+test("every ?saved= key the actions send has a sentence to show", async () => {
+  // The key is in the URL and the wording is in the app, so the two can
+  // drift apart without anything failing — the banner would simply not
+  // render. Checked here rather than hoped for.
+  const { SAVED_NOTICES, savedNotice } = await import("../../src/lib/reporting/saved-notice.ts");
+  for (const key of ["launch", "status", "stages", "prices", "figures", "nothing"]) {
+    assert.ok(SAVED_NOTICES[key], `no sentence for ?saved=${key}`);
+    assert.equal(savedNotice(key), SAVED_NOTICES[key]);
+  }
+  // And nothing a person types into the address bar puts words on screen.
+  assert.equal(savedNotice("<script>alert(1)</script>"), null);
+  assert.equal(savedNotice("constructor"), null, "not an inherited property either");
+  assert.equal(savedNotice(undefined), null);
 });

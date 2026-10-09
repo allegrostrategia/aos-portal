@@ -6,11 +6,14 @@ import { LaunchForm } from "@/components/reporting/launch-form";
 import { PricesForm, StagesForm } from "@/components/reporting/stages-form";
 import { LaunchLock } from "@/components/reporting/launch-publish";
 import { ReportShell } from "@/components/reporting/report-shell";
+import { SavedBanner } from "@/components/reporting/saved-banner";
+import { LaunchCoverField } from "@/components/reporting/launch-cover-field";
 import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getLaunch } from "@/lib/reporting/launch-queries";
 import { launchIsLocked } from "@/lib/reporting/locked";
+import { signLaunchCover } from "@/lib/reporting/launch-cover";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Set up a launch — aOS" };
@@ -48,6 +51,10 @@ export default async function EditLaunchPage({
   if (!detail || detail.launch.workspace_id !== ctx.workspace.id) notFound();
 
   const locked = launchIsLocked(ctx.workspace, detail.launch.published_at);
+  // Where a save comes back to — this screen, keeping the workspace and
+  // the month that are already on it.
+  const returnTo = reportHref(`/reporting/launches/${id}/edit`, ctx);
+  const coverUrl = await signLaunchCover(detail.launch.cover_image_path);
 
   const supabase = await createClient();
   const { data: offers } = await supabase
@@ -83,14 +90,24 @@ export default async function EditLaunchPage({
         />
       ) : null}
 
+      <SavedBanner saved={search.saved} />
+
       <LaunchForm
         workspaceId={ctx.workspace.id}
         launch={detail.launch}
         offers={offers ?? []}
         locked={locked}
+        returnTo={returnTo}
       />
-      <StagesForm launchId={id} stages={detail.stages} locked={locked} />
-      <PricesForm launchId={id} prices={detail.prices} locked={locked} />
+      <LaunchCoverField
+        launchId={id}
+        signedUrl={coverUrl}
+        returnTo={returnTo}
+        locked={locked}
+        error={typeof search.cover_error === "string" ? search.cover_error : undefined}
+      />
+      <StagesForm launchId={id} stages={detail.stages} locked={locked} returnTo={returnTo} />
+      <PricesForm launchId={id} prices={detail.prices} locked={locked} returnTo={returnTo} />
     </ReportShell>
   );
 }

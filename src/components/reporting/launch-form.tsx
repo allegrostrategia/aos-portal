@@ -27,12 +27,15 @@ export function LaunchForm({
   launch,
   offers,
   locked,
+  returnTo,
 }: {
   workspaceId: string;
   /** Null when creating. */
   launch: LaunchRow | null;
   offers: { id: string; name: string }[];
   locked: boolean;
+  /** The screen this form sits on, so a save can come back to it. */
+  returnTo: string;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(
     launch ? updateLaunch : createLaunch,
@@ -43,6 +46,10 @@ export function LaunchForm({
     <Card>
       <SectionTitle>{launch ? "This launch" : "A new launch"}</SectionTitle>
       <form action={action} className="flex flex-col gap-4">
+        {/* `createLaunch` has nowhere to come back to — it redirects to
+            the setup screen it just made — so this is only read on an
+            edit. Harmless either way, and one line rather than two. */}
+        <input type="hidden" name="return_to" value={returnTo} />
         {launch ? (
           <input type="hidden" name="launch_id" value={launch.id} />
         ) : (
@@ -150,12 +157,12 @@ export function LaunchForm({
             aria-live="polite"
             className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
           >
-            {state?.error ?? state?.notice ?? ""}
+            {state?.error ?? ""}
           </p>
         </div>
       </form>
 
-      {launch ? <StatusForm launch={launch} /> : null}
+      {launch ? <StatusForm launch={launch} returnTo={returnTo} /> : null}
     </Card>
   );
 }
@@ -171,11 +178,12 @@ export function LaunchForm({
  * main one, a published launch would post a status and nothing else, and
  * be refused for having no name — which is how the first build behaved.
  */
-function StatusForm({ launch }: { launch: LaunchRow }) {
+function StatusForm({ launch, returnTo }: { launch: LaunchRow; returnTo: string }) {
   const [state, action] = useActionState<LaunchState, FormData>(updateLaunchStatus, null);
 
   return (
     <form action={action} className="mt-5 flex flex-wrap items-end gap-3 border-t border-ink/8 pt-5">
+      <input type="hidden" name="return_to" value={returnTo} />
       <input type="hidden" name="launch_id" value={launch.id} />
       <label className="flex flex-col gap-1.5">
         <span className="text-small font-medium text-ink">Status</span>
@@ -194,7 +202,7 @@ function StatusForm({ launch }: { launch: LaunchRow }) {
         aria-live="polite"
         className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
       >
-        {state?.error ?? state?.notice ?? ""}
+        {state?.error ?? ""}
       </p>
     </form>
   );

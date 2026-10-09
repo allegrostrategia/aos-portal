@@ -58,6 +58,7 @@ export default async function NewLaunchPage({
         launch={null}
         offers={offers ?? []}
         locked={false}
+        returnTo=""
       />
     </ReportShell>
   );

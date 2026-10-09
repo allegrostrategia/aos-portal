@@ -42,10 +42,13 @@ export function StagesForm({
   launchId,
   stages,
   locked,
+  returnTo,
 }: {
   launchId: string;
   stages: LaunchStage[];
   locked: boolean;
+  /** The screen this form sits on, so a save can come back to it. */
+  returnTo: string;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(saveStages, null);
 
@@ -59,7 +62,8 @@ export function StagesForm({
     <Card className="mt-6">
       <SectionTitle aside={`${stages.length} so far`}>The stages, in order</SectionTitle>
       <form action={action} className="flex flex-col gap-4">
-        <input type="hidden" name="launch_id" value={launchId} />
+        <input type="hidden" name="return_to" value={returnTo} />
+      <input type="hidden" name="launch_id" value={launchId} />
 
         <fieldset disabled={locked} className="contents">
           {rows.map((stage, index) => {
@@ -178,7 +182,7 @@ export function StagesForm({
             aria-live="polite"
             className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
           >
-            {state?.error ?? state?.notice ?? ""}
+            {state?.error ?? ""}
           </p>
         </div>
       </form>
@@ -190,10 +194,13 @@ export function PricesForm({
   launchId,
   prices,
   locked,
+  returnTo,
 }: {
   launchId: string;
   prices: LaunchPrice[];
   locked: boolean;
+  /** The screen this form sits on, so a save can come back to it. */
+  returnTo: string;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(savePrices, null);
 
@@ -204,7 +211,8 @@ export function PricesForm({
     <Card className="mt-6">
       <SectionTitle aside={`${prices.length} so far`}>What it sold for</SectionTitle>
       <form action={action} className="flex flex-col gap-4">
-        <input type="hidden" name="launch_id" value={launchId} />
+        <input type="hidden" name="return_to" value={returnTo} />
+      <input type="hidden" name="launch_id" value={launchId} />
 
         <fieldset disabled={locked} className="contents">
           {rows.map((price, index) => {
@@ -278,7 +286,7 @@ export function PricesForm({
             aria-live="polite"
             className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
           >
-            {state?.error ?? state?.notice ?? ""}
+            {state?.error ?? ""}
           </p>
         </div>
         <p className="text-caption text-ink/50">

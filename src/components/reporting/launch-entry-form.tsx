@@ -75,6 +75,7 @@ export function LaunchEntryForm({
   values,
   locked,
   currency,
+  returnTo,
 }: {
   launch: LaunchRow;
   stages: LaunchStage[];
@@ -84,11 +85,14 @@ export function LaunchEntryForm({
   values: LaunchFigures;
   locked: boolean;
   currency: string;
+  /** The screen this form sits on, so a save can come back to it. */
+  returnTo: string;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(saveLaunchFigures, null);
 
   return (
     <form action={action} className="flex flex-col gap-6">
+      <input type="hidden" name="return_to" value={returnTo} />
       <input type="hidden" name="launch_id" value={launch.id} />
 
       <fieldset disabled={locked} className="contents">
@@ -267,7 +271,7 @@ export function LaunchEntryForm({
           aria-live="polite"
           className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
         >
-          {state?.error ?? state?.notice ?? ""}
+          {state?.error ?? ""}
         </p>
       </div>
     </form>

@@ -7,6 +7,7 @@ import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
 import { launchDeleteMessage } from "./launch-delete.ts";
 import { lockedError } from "./locked.ts";
+import { withSaved, type SavedKey } from "./saved-notice.ts";
 import { getWorkspace } from "./queries.ts";
 
 /**
@@ -32,6 +33,29 @@ export type LaunchState = { error?: string; notice?: string } | null;
 /** The refusal everything here shares, said once. */
 function refused(error: { message: string }, verb: string): string {
   return lockedError(error) ?? `Couldn't ${verb}: ${error.message}`;
+}
+
+/**
+ * Where a save goes when it worked: back to the screen it came from,
+ * with `?saved=` on it so the page can say so.
+ *
+ * **Not `{ notice }` any more.** A full-suite run under load caught the
+ * old way failing — the POST succeeded and the confirmation never
+ * appeared, because the form had submitted natively before React
+ * attached and the action's return value went with the navigation. The
+ * sentence is the page's job now, so it does not depend on hydration.
+ *
+ * `return_to` comes from the form, so it is checked rather than trusted:
+ * only this module's own screens, nothing absolute, no host. Anything
+ * else falls back to the launch's own edit screen, which is always a
+ * real place to be.
+ */
+const RETURN_TO = /^\/reporting\/launches\/[0-9a-fA-F-]{36}\/(edit|enter)(\?[^#]*)?$/;
+
+function savedRedirect(formData: FormData, launchId: string, key: SavedKey): never {
+  const asked = String(formData.get("return_to") ?? "");
+  const href = RETURN_TO.test(asked) ? asked : `/reporting/launches/${launchId}/edit`;
+  redirect(withSaved(href, key));
 }
 
 /** Null for a box left empty, a number for one filled in. */
@@ -116,7 +140,12 @@ export async function updateLaunch(
       name,
       description: String(formData.get("description") ?? "").trim() || null,
       offer_entity_id: String(formData.get("offer_entity_id") ?? "") || null,
-      status: String(formData.get("status") ?? "planning"),
+      // **`status` is deliberately not here.** It has a form and an
+      // action of its own (a disabled field does not submit, so it had
+      // to), which means this form never posts one — and defaulting a
+      // field that is never sent put every launch back to "planning" on
+      // every save. Nothing refused it: the lock exempts status by
+      // design, so the guard waved it through too.
       goal_good: numberOrNull(formData.get("goal_good")),
       goal_better: numberOrNull(formData.get("goal_better")),
       goal_best: numberOrNull(formData.get("goal_best")),
@@ -139,7 +168,7 @@ export async function updateLaunch(
   }
 
   revalidatePath("/reporting/launches", "layout");
-  return { notice: "Saved." };
+  savedRedirect(formData, id, "launch");
 }
 
 /**
@@ -252,7 +281,7 @@ export async function saveStages(
   }
 
   revalidatePath("/reporting/launches", "layout");
-  return { notice: "Saved." };
+  savedRedirect(formData, launchId, "stages");
 }
 
 /** The price options, in one save (§6.1). An emptied name removes one. */
@@ -347,7 +376,7 @@ export async function savePrices(
   }
 
   revalidatePath("/reporting/launches", "layout");
-  return { notice: "Saved." };
+  savedRedirect(formData, launchId, "prices");
 }
 
 /**
@@ -454,7 +483,7 @@ export async function saveLaunchFigures(
   }
 
   revalidatePath("/reporting/launches", "layout");
-  return { notice: saved === 0 ? "Nothing to save." : "Saved." };
+  savedRedirect(formData, launchId, saved === 0 ? "nothing" : "figures");
 }
 
 /**
@@ -572,5 +601,5 @@ export async function updateLaunchStatus(
   if (!data || data.length === 0) return { error: "That launch isn't yours to change." };
 
   revalidatePath("/reporting/launches", "layout");
-  return { notice: "Status saved." };
+  savedRedirect(formData, id, "status");
 }
