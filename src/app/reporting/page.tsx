@@ -374,6 +374,22 @@ export default async function ReportingOverviewPage({
         </Card>
       ) : null}
 
+      {/* §8.1's way to turn a section off, and §10.3's setup answers.
+          Only for somebody who is their own editor — a retainer client
+          has neither, and Allegro reaches a client's settings from the
+          admin screen instead. */}
+      {ctx.canEdit && selfServe ? (
+        <p className="mt-6 text-small text-ink/60">
+          <Link
+            href={reportHref("/reporting/settings", ctx)}
+            className="underline underline-offset-4"
+          >
+            Your report settings
+          </Link>{" "}
+          — the business, your hourly rate, and which sections you use.
+        </p>
+      ) : null}
+
       {ctx.canEdit && leadsCard ? <div className="mt-8">{leadsCard}</div> : null}
 
       <div

@@ -149,3 +149,76 @@ test("Nina's client list is three lists, not one", async ({ page }, info) => {
 
   await shoot(page, TAB, "02-admin-split", w);
 });
+
+test("hiding a section takes it off, and nothing is lost", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "member");
+
+  // Something to lose: a figure in the section about to be hidden.
+  await page.goto(`/reporting/enter/email?month=${MONTHS.sep}`);
+  await page.getByLabel(/list size at month end/i).fill("900");
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await page.getByRole("link", { name: /your report settings/i }).click();
+  await page.waitForURL(/\/settings/);
+  await shoot(page, TAB, "03-settings", w);
+
+  await page.getByRole("checkbox", { name: "Email", exact: true }).uncheck();
+  await page.getByRole("button", { name: /save the sections/i }).click();
+  await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
+
+  // Off the tab row, off the list of what is still to fill in.
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await expect(page.locator("[data-completion='email']")).toHaveCount(0);
+  await expect(page.locator("[data-tabs]").getByRole("link", { name: "Email", exact: true }))
+    .toHaveCount(0);
+
+  // **Display only.** Turning it back on brings the figure with it —
+  // nothing was deleted (Dom, 9 October).
+  await page.goto("/reporting/settings");
+  await page.getByRole("checkbox", { name: "Email", exact: true }).check();
+  await page.getByRole("button", { name: /save the sections/i }).click();
+  await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
+
+  await page.goto(`/reporting/enter/email?month=${MONTHS.sep}`);
+  await expect(page.getByLabel(/list size at month end/i)).toHaveValue("900");
+});
+
+test("a figure pulled into another section survives its own being hidden", async ({ page }) => {
+  // `PULLED_FROM` carries Offers' revenue into Financials, so Financials
+  // shows a figure whose source is a section that can be turned off.
+  // Hiding Offers must not blank it (Dom, 9 October).
+  //
+  // The offer is seeded rather than clicked through: the subject here is
+  // the pull, and driving the Offers screen would be testing that
+  // instead.
+  const { MONTHS, SELF_SERVE, sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${SELF_SERVE}'`);
+  sql(`insert into public.report_entities (workspace_id, entity_type, name)
+       values ('${ws}', 'offer', 'Coaching');`);
+  const offer = sql(`select id from public.report_entities
+                      where workspace_id = '${ws}' and name = 'Coaching'`);
+  sql(`insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
+       select '${ws}', '${MONTHS.sep}', 'offers_revenue_this_month', '${offer}', 4000,
+              (select id from public.members where role = 'admin' limit 1);`);
+
+  await signIn(page, "member");
+  await page.goto(`/reporting/financials?month=${MONTHS.sep}`);
+  const before = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(before, "Financials reads it through the pull to begin with").toMatch(/4,000|4000/);
+
+  await page.goto("/reporting/settings");
+  await page.getByRole("checkbox", { name: "Offers", exact: true }).uncheck();
+  await page.getByRole("button", { name: /save the sections/i }).click();
+  await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
+
+  // Offers is gone from the tabs, and Financials still has the figure.
+  await expect(page.locator("[data-tabs]").getByRole("link", { name: "Offers", exact: true }))
+    .toHaveCount(0);
+  await page.goto(`/reporting/financials?month=${MONTHS.sep}`);
+  const after = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(after, "and still does with Offers hidden").toMatch(/4,000|4000/);
+});

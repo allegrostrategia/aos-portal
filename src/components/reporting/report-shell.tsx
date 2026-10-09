@@ -32,7 +32,9 @@ export function ReportShell({
 }: {
   ctx: ReportContext;
   /** Which tab is lit. */
-  active: CategoryKey;
+  /** The section whose tab is lit, or null on a page that is not one —
+   *  the settings screen.  already falls back to "Report". */
+  active: CategoryKey | null;
   /**
    * The route this screen is on, so the month and business pickers keep you
    * where you are instead of bouncing you to the Overview. Passed in rather
@@ -111,7 +113,7 @@ function SignOut() {
  * one route in, so a tab for something unbuilt is not drawn at all rather than
  * drawn and disabled.
  */
-function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey }) {
+function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey | null }) {
   const visible = SHIPPED_CATEGORIES.filter(
     (c) => !ctx.workspace.hidden_categories.includes(c.key),
   );

@@ -33,6 +33,8 @@ export const SAVED_NOTICES = {
   nothing: "Nothing to save.",
   cover: "Cover image saved.",
   "cover-removed": "Cover image removed.",
+  settings: "Saved.",
+  sections: "Sections saved.",
 } as const;
 
 export type SavedKey = keyof typeof SAVED_NOTICES;
