@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
-import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui/card";
+import { Badge, Card, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
 import { getReportClientData, type ReportPeriodRow } from "@/lib/admin/report-clients";
@@ -11,6 +11,31 @@ import { NewClientForm, AssignTeamForm, EditWorkspaceForm } from "./forms";
 export const metadata: Metadata = {
   title: "Reporting clients · aOS admin",
 };
+
+/**
+ * The order the three kinds are shown in, and what each one is.
+ *
+ * Retainer first because it is the work Nina does; members second
+ * because there will be the most of them and she mostly only looks when
+ * one is behind; Chiarezza last because it is temporary by design.
+ */
+const KIND_SECTIONS = [
+  {
+    kind: "retainer" as const,
+    title: "Retainer clients",
+    blurb: "Allegro enters their figures and publishes their month to them.",
+  },
+  {
+    kind: "aos_member" as const,
+    title: "aOS members",
+    blurb: "They fill in their own, every category. Nothing here is yours to enter.",
+  },
+  {
+    kind: "chiarezza" as const,
+    title: "Chiarezza",
+    blurb: "Self-serve, with an end date on their access.",
+  },
+];
 
 const KIND_LABEL = {
   retainer: "Retainer",
@@ -72,7 +97,27 @@ export default async function AdminReportingPage() {
           </Card>
         ) : null}
 
-        {rows.map((workspace) => {
+        {/* **Three lists, not one** (Dom, 9 Oct). Once a member's
+            workspace is created with the member, this page stops being a
+            handful of clients Nina set up by hand and becomes every
+            member as well. Ungrouped it would be a long scroll with the
+            retainer clients she actually works on buried somewhere in
+            it. `fetchAllPages` returns the lot, so the counts are the
+            real ones rather than this page's. */}
+        {KIND_SECTIONS.map(({ kind, title, blurb }) => {
+          const group = rows.filter((w) => w.kind === kind);
+          if (group.length === 0) return null;
+
+          return (
+            <section key={kind} className="flex flex-col gap-6">
+              <div>
+                <Eyebrow>
+                  {title} · {group.length}
+                </Eyebrow>
+                <p className="mt-1 text-small text-ink/60">{blurb}</p>
+              </div>
+
+              {group.map((workspace) => {
           const people = byWorkspace.get(workspace.id);
           const months = monthsFor.get(workspace.id) ?? [];
           const published = months.filter((m) => m.published_at).length;
@@ -164,8 +209,10 @@ export default async function AdminReportingPage() {
               </details>
             </Card>
           );
+              })}
+            </section>
+          );
         })}
-
         <Card>
           <SectionTitle>Add a reporting client</SectionTitle>
           <p className="mb-4 text-body text-ink/70">

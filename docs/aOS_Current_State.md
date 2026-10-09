@@ -1619,6 +1619,21 @@ last.
     starts named after the person and the first-time setup screen is
     what corrects it.
 
+31. **The core list is 44 figures, and four of them may be too many.**
+    Every one must be filled before a category goes green, so the orange
+    marker is only worth trusting if each is a number she would chase.
+    *Recommended optional:* **hours spent on trial reels**, **hours spent
+    delivering** (per offer), **revenue from ads** (per campaign) and
+    **cash in bank at month end**. The hours are estimates a member
+    rarely tracks, revenue per campaign needs attribution most people do
+    not have, and cash in bank is a number some will not put in at all —
+    any of the four left core turns a finished month into a permanently
+    orange one. Moving them loses nothing: they stay on the screen under
+    "+ Add more detail", every calculation that uses them still works
+    when they are filled, and the figures that depend on them already
+    show a dash when they are not. **Her call** — it is her marker and
+    her definition of done (Dom, 9 Oct).
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.

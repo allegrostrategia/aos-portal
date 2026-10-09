@@ -116,3 +116,36 @@ test.fixme("first login to a finished month, without help", async ({ page }, inf
   // 5. She writes her reflection and next month's objectives.
   // 6. The month reads as done.
 });
+
+test("Nina's client list is three lists, not one", async ({ page }, info) => {
+  // Dom, 9 October. Once a member's workspace is created with the
+  // member, this page stops being the handful Nina set up by hand and
+  // becomes every member as well.
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/admin/reporting");
+
+  await expect(page.getByText(/retainer clients · 1/i)).toBeVisible();
+  await expect(page.getByText(/aOS members · 1/i)).toBeVisible();
+  // Nothing invents a section for a kind nobody is.
+  await expect(page.getByText(/chiarezza ·/i)).toHaveCount(0);
+
+  // And each business sits under its own heading, in that order.
+  //
+  // **Lowercased**, because the headings are uppercased in CSS and
+  // `innerText` gives back what is rendered. Comparing against the
+  // written casing found nothing, and `indexOf` returning -1 made the
+  // first of these pass for the wrong reason — -1 is less than any real
+  // position, so a missing heading reads as "it came first".
+  const body = (await page.locator("body").innerText()).replace(/\s+/g, " ").toLowerCase();
+  const at = (text: string) => {
+    const index = body.indexOf(text.toLowerCase());
+    expect(index, `"${text}" should be on the page`).toBeGreaterThan(-1);
+    return index;
+  };
+  expect(at("Retainer clients")).toBeLessThan(at("Northwind Studio"));
+  expect(at("Northwind Studio")).toBeLessThan(at("aOS members"));
+  expect(at("aOS members")).toBeLessThan(at("Ruth Test Coaching"));
+
+  await shoot(page, TAB, "02-admin-split", w);
+});
