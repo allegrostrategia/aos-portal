@@ -14,6 +14,7 @@
     "db:bundle": "node scripts/bundle-migrations.mjs",
     "test:unit": "node --test \"src/**/*.test.ts\"",
     "test": "npm run test:unit && npm run test:db",
+    "test:census": "node scripts/test-census.mjs",
     "dev:e2e": "node scripts/dev-e2e.mjs",
     "test:e2e": "playwright test",
     "e2e:setup": "npx supabase start && node scripts/seed-test-db.mjs",
