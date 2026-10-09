@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/member";
 import { Badge, Card, Eyebrow, PageHeader, SectionTitle } from "@/components/ui/card";
+import { getMemberReportStatuses } from "@/lib/admin/member-report-status";
+import { monthLabel as reportMonthLabel } from "@/lib/reporting/months";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
 import { getReportClientData, type ReportPeriodRow } from "@/lib/admin/report-clients";
@@ -63,6 +65,9 @@ export default async function AdminReportingPage() {
   const { workspaces, grants, periods } = await getReportClientData();
 
   const rows = workspaces;
+  // §8.1's admin view: where each member is with last month, and what
+  // they have turned off. Read-only — she still enters nothing.
+  const memberStatus = await getMemberReportStatuses(rows);
   const byWorkspace = new Map(rows.map((w) => [w.id, { client: "", team: [] as string[] }]));
   for (const grant of grants) {
     const entry = byWorkspace.get(grant.workspace_id);
@@ -170,6 +175,28 @@ export default async function AdminReportingPage() {
                       Failed for{" "}
                       {emailFailures.map((m) => monthLabel(m.month)).join(", ")} —
                       open the report to see why and send again
+                    </dd>
+                  </div>
+                ) : null}
+                {memberStatus.get(workspace.id) ? (
+                  <div className="min-w-60">
+                    <dt className="text-caption text-ink/55">
+                      {reportMonthLabel(memberStatus.get(workspace.id)!.month)}
+                    </dt>
+                    <dd
+                      data-member-status={workspace.id}
+                      className={`text-body ${
+                        memberStatus.get(workspace.id)!.done ? "text-ink" : "text-orange"
+                      }`}
+                    >
+                      {memberStatus.get(workspace.id)!.done
+                        ? "Finished"
+                        : "Not finished yet"}
+                      {memberStatus.get(workspace.id)!.hiddenLabels.length > 0 ? (
+                        <span className="block text-caption text-ink/55">
+                          Turned off: {memberStatus.get(workspace.id)!.hiddenLabels.join(", ")}
+                        </span>
+                      ) : null}
                     </dd>
                   </div>
                 ) : null}

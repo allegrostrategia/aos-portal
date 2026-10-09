@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { getCurrentMember } from "@/lib/auth/member";
 import { signOut } from "@/lib/auth/actions";
+import { reportAccessEnded } from "@/lib/reporting/access-ended";
+import { formatCalendarDate } from "@/lib/time-zone";
 
 export const metadata: Metadata = {
   title: "aOS",
@@ -19,6 +21,10 @@ export default async function NoAccessPage() {
   const member = await getCurrentMember();
 
   const cancelled = member?.status === "cancelled";
+  // A Chiarezza attendee has no `members` row at all, so without this
+  // they fell into "your account isn't ready yet" — an invitation to
+  // email about something that is working exactly as intended.
+  const accessEnded = member ? null : await reportAccessEnded();
 
   return (
     <main className="flex flex-1 items-center justify-center px-5 py-10 sm:py-16">
@@ -27,7 +33,11 @@ export default async function NoAccessPage() {
           Allegro Strategia
         </p>
         <h1 className="font-display mt-3 text-title font-medium text-ink">
-          {cancelled ? "Your membership has ended" : "Your account isn’t ready yet"}
+          {cancelled
+            ? "Your membership has ended"
+            : accessEnded
+              ? "Your access has ended"
+              : "Your account isn’t ready yet"}
         </h1>
 
         <p className="mt-4 text-small text-ink/70">
@@ -36,6 +46,13 @@ export default async function NoAccessPage() {
               Nothing has been deleted. Your logs, your roadmap and everything in
               your Archivio are exactly where you left them. Rejoin whenever
               you&rsquo;re ready and it will all still be there.
+            </>
+          ) : accessEnded ? (
+            <>
+              Your reporting access ran until{" "}
+              {formatCalendarDate(accessEnded.endedOn)}. Nothing has been
+              deleted — every figure you entered is still there, and it comes
+              back with you if you come back.
             </>
           ) : (
             <>

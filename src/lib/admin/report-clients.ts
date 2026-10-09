@@ -29,6 +29,7 @@ export interface ReportClientRow {
   first_month: string;
   access_end_date: string | null;
   target_hourly_rate: number | null;
+  hidden_categories: string[];
 }
 
 export interface ReportGrantRow {
@@ -67,7 +68,7 @@ export async function getReportClientData(
       (from, to) =>
         supabase
           .from("report_workspaces")
-          .select("id, kind, business_name, currency, first_month, access_end_date, target_hourly_rate")
+          .select("id, kind, business_name, currency, first_month, access_end_date, target_hourly_rate, hidden_categories")
           .order("business_name")
           .order("id")
           .range(from, to)

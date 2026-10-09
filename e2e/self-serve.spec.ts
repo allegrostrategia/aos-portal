@@ -288,3 +288,76 @@ test("Piazza says last month is unfinished, and says it to nobody else", async (
   const nina = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(nina, "nobody else is told about it").not.toMatch(/report.{0,20}not finished yet/i);
 });
+
+test("a Chiarezza attendee whose access has ended is told that, not that something is broken", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { PEOPLE, sql } = await import("../scripts/seed-test-db.mjs");
+
+  // Turn the member's own workspace into a Chiarezza one that finished
+  // last month. It is the same shape — self-serve with an end date —
+  // and it is the state nobody had ever walked through.
+  const uid = sql(`select id from auth.users where email = '${PEOPLE.member.email}'`);
+  sql(`update public.report_workspaces
+          set kind = 'chiarezza', access_end_date = (current_date - 30)
+        where owner_user_id = '${uid}';`);
+  // They are an attendee, not a member: no members row, which is the
+  // reason the page had nothing to say about them.
+  sql(`delete from public.members where id = '${uid}';`);
+
+  await signIn(page, "member");
+  await page.goto("/reporting");
+  await page.waitForURL(/\/no-access/);
+
+  const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(body, "their access ended").toMatch(/your access has ended/i);
+  expect(body, "not an account still being set up").not.toMatch(/isn.t ready yet/i);
+  expect(body, "and nothing has been deleted").toMatch(/nothing has been deleted/i);
+  await shoot(page, TAB, "06-access-ended", w);
+
+  // **And somebody who ALSO holds a grant that has not ended is not
+  // told their access ran out.** Attending Chiarezza and then joining
+  // aOS is the obvious way to hold both, and "your access has ended"
+  // would be the wrong half of the truth.
+  const other = sql(`select id from public.report_workspaces
+                      where owner_user_id <> '${uid}' limit 1`);
+  sql(`insert into public.report_access (workspace_id, user_id, role, display_name)
+       values ('${other}', '${uid}', 'client', 'Ruth Test')
+       on conflict (workspace_id, user_id) do nothing;`);
+
+  await page.goto("/no-access");
+  const both = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(both, "one open grant is enough").not.toMatch(/your access has ended/i);
+});
+
+test("Nina sees where each member is, and what they have turned off", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { PEOPLE, SELF_SERVE, sql } = await import("../scripts/seed-test-db.mjs");
+  const uid = sql(`select id from auth.users where email = '${PEOPLE.member.email}'`);
+  const ws = sql(`select id from public.report_workspaces where owner_user_id = '${uid}'`);
+  sql(`update public.report_workspaces
+          set hidden_categories = array['ads','funnels']::report_category[]
+        where id = '${ws}';`);
+
+  await signIn(page, "nina");
+  await page.goto("/admin/reporting");
+
+  const status = page.locator(`[data-member-status="${ws}"]`);
+  await expect(status).toContainText(/not finished yet/i);
+  await expect(status, "and what they have turned off").toContainText(/Ads/);
+  await expect(status).toContainText(/Funnels/);
+  await shoot(page, TAB, "07-admin-status", w);
+
+  // **Read-only.** §8.1 gives her the list so she can raise it, not so
+  // she can fill it in — a member enters everything themselves.
+  const card = page.locator("section", { hasText: SELF_SERVE });
+  await expect(card.getByRole("link", { name: /enter|fill/i })).toHaveCount(0);
+
+  // A retainer client has no such line: Allegro fills theirs in, so
+  // "not finished yet" would be about Nina, not about them.
+  const retainerCard = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(retainerCard.match(/not finished yet/gi)?.length ?? 0).toBe(1);
+});
