@@ -30,6 +30,16 @@ export type ColumnMapState = { error?: string; notice?: string } | null;
 
 const CHOICES = new Set(["leads", "purchases", "ignored"]);
 
+/**
+ * The fourth answer: forget what was said.
+ *
+ * Different from `ignored`, which is a decision — "this column is not a
+ * lead and not a purchase". Forgetting removes the row so the next
+ * upload asks again, which is what somebody wants when they answered
+ * the wrong way round or the column has changed meaning.
+ */
+const FORGET = "forget";
+
 export async function saveColumnMaps(
   _prev: ColumnMapState,
   formData: FormData,
@@ -53,11 +63,17 @@ export async function saveColumnMaps(
   // it, so it is never parsed out of the field — it is the value.
   const rows: { workspace_id: string; platform: string; column_name: string; maps_to: string }[] =
     [];
+  const forget: string[] = [];
   for (const [field, raw] of formData.entries()) {
     if (typeof raw !== "string") continue;
     if (!field.startsWith("column:")) continue;
     const columnName = field.slice("column:".length).trim();
-    if (columnName === "" || !CHOICES.has(raw)) continue;
+    if (columnName === "") continue;
+    if (raw === FORGET) {
+      forget.push(columnName);
+      continue;
+    }
+    if (!CHOICES.has(raw)) continue;
     rows.push({
       workspace_id: workspaceId,
       platform,
@@ -66,9 +82,30 @@ export async function saveColumnMaps(
     });
   }
 
-  if (rows.length === 0) return { error: "Nothing chosen yet." };
+  if (rows.length === 0 && forget.length === 0) return { error: "Nothing chosen yet." };
 
   const supabase = await createClient();
+
+  if (forget.length > 0) {
+    // **Only the answer is forgotten.** Months already saved keep their
+    // figures: this changes what a future upload counts, and nothing
+    // that has already been written (Dom, 12 October).
+    const { error } = await supabase
+      .from("report_column_maps")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("platform", platform)
+      .in("column_name", forget);
+    // A delete RLS refuses matches no rows rather than erroring, so this
+    // catches a genuine database failure only — the refusal itself is
+    // caught by the `canEdit` check above, which a client hits first.
+    if (error) return { error: `Couldn't forget those: ${error.message}` };
+  }
+
+  if (rows.length === 0) {
+    revalidatePath("/reporting", "layout");
+    return { notice: forget.length === 1 ? "Forgotten." : "Forgotten them." };
+  }
   const { data, error } = await supabase
     .from("report_column_maps")
     .upsert(rows, { onConflict: "workspace_id,platform,column_name" })

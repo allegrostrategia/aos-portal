@@ -71,7 +71,9 @@ export function CsvUploadAds({
   const [unknown, setUnknown] = useState<{ column: string; label: string; total: number }[]>([]);
   const [maps, setMaps] = useState(columnMaps);
   const [text, setText] = useState<string | null>(null);
-  const [choices, setChoices] = useState<Record<string, "leads" | "purchases" | "ignored">>({});
+  const [choices, setChoices] = useState<
+    Record<string, "leads" | "purchases" | "ignored" | "forget">
+  >({});
   const [mapState, mapAction] = useActionState<ColumnMapState, FormData>(saveColumnMaps, null);
 
   function clear() {
@@ -114,11 +116,18 @@ export function CsvUploadAds({
   // a fresh object each time, and rereading on anything else would
   // fight the person as they pick.
   const [remembered, setRemembered] = useState<ColumnMapState>(null);
-  if (mapState?.notice && mapState !== remembered && text) {
-    const next = { ...maps, ...choices };
+  if (mapState?.notice && mapState !== remembered) {
+    // "Ask me again" removes the answer rather than storing one, so the
+    // next upload asks — the merge has to delete, not overwrite.
+    const next = { ...maps };
+    for (const [column, choice] of Object.entries(choices)) {
+      if (choice === "forget") delete next[column];
+      else next[column] = choice;
+    }
     setRemembered(mapState);
     setMaps(next);
-    reread(text, next);
+    setChoices({});
+    if (text) reread(text, next);
   }
 
   function fill() {
@@ -190,6 +199,65 @@ export function CsvUploadAds({
         <p role="alert" data-csv-problem className="mt-4 text-small text-deep-red">
           {problem}
         </p>
+      ) : null}
+
+      {/* **What has already been said, and a way to change it**
+          (Dom, 12 October). Shown without a file, because somebody who
+          wants to correct an answer should not have to upload
+          something first. Changing one affects future uploads and
+          re-reads; months already saved keep their figures. */}
+      {Object.keys(maps).length > 0 ? (
+        <details data-csv-remembered className="mt-5 border-t border-ink/8 pt-4">
+          <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
+            {Object.keys(maps).length} column
+            {Object.keys(maps).length === 1 ? "" : "s"} you have already set up
+          </summary>
+          <p className="mt-2 text-caption text-ink/55">
+            Changing one of these changes what the next upload counts. A
+            month you have already saved keeps the figures it has.
+          </p>
+          <form action={mapAction} className="mt-3 flex flex-col gap-3">
+            <input type="hidden" name="workspace_id" value={workspaceId} />
+            <input type="hidden" name="platform" value="meta_ads" />
+            {Object.entries(maps).map(([column, choice]) => (
+              <fieldset key={column} className="flex flex-wrap items-center gap-3">
+                <legend className="text-small text-ink">{column}</legend>
+                {(["leads", "purchases", "ignored", "forget"] as const).map((option) => (
+                  <label key={option} className="flex items-center gap-1.5 text-small text-ink">
+                    <input
+                      type="radio"
+                      name={`column:${column}`}
+                      value={option}
+                      defaultChecked={option === choice}
+                      onChange={() =>
+                        setChoices((now) => ({ ...now, [column]: option }))
+                      }
+                      className="size-4 accent-orange"
+                    />
+                    {option === "ignored"
+                      ? "Neither"
+                      : option === "forget"
+                        ? "Ask me again"
+                        : option === "leads"
+                          ? "Leads"
+                          : "Purchases"}
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" size="sm" variant="secondary">
+                Save these
+              </Button>
+              <p
+                aria-live="polite"
+                className={`text-small ${mapState?.error ? "text-deep-red" : "text-ink/60"}`}
+              >
+                {mapState?.error ?? mapState?.notice ?? ""}
+              </p>
+            </div>
+          </form>
+        </details>
       ) : null}
 
       {preview ? (

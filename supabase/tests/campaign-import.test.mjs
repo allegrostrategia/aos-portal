@@ -170,3 +170,81 @@ test("a client cannot remember column maps", async () => {
   assert.match(result?.error ?? "", /isn't yours to change|don't have access/i);
   assert.deepEqual(await maps(), before);
 });
+
+test("a remembered answer can be changed later", async () => {
+  await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads", "column:spring opt in": "leads",
+  })));
+  assert.equal(
+    (await maps()).find((r) => r.column_name === "spring opt in").maps_to,
+    "leads",
+  );
+
+  const result = await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads", "column:spring opt in": "purchases",
+  })));
+  assert.equal(result?.error, undefined, result?.error);
+  assert.equal(
+    (await maps()).find((r) => r.column_name === "spring opt in").maps_to,
+    "purchases",
+    "changed, not added alongside",
+  );
+});
+
+test("and cleared, so the next upload asks again", async () => {
+  const result = await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads", "column:spring opt in": "forget",
+  })));
+  assert.equal(result?.error, undefined, result?.error);
+  assert.match(result?.notice ?? "", /forgotten/i);
+  assert.ok(
+    !(await maps()).some((r) => r.column_name === "spring opt in"),
+    "the answer is gone, so the column is unrecognised again",
+  );
+});
+
+test("clearing one answer leaves the others alone, including other platforms", async () => {
+  await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads",
+    "column:keep me": "leads", "column:drop me": "purchases",
+  })));
+  // The same column name on the other platform is a different answer —
+  // forgetting one must not take the other with it.
+  await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_content", "column:drop me": "leads",
+  })));
+  await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads", "column:drop me": "forget",
+  })));
+
+  const rows = await asMember(db, NINA, () => db.query(
+    `select column_name, platform::text, maps_to::text from public.report_column_maps
+      where workspace_id = '${WS}' order by platform, column_name`));
+  assert.ok(rows.rows.some((r) => r.column_name === "keep me" && r.maps_to === "leads"));
+  assert.ok(
+    !rows.rows.some((r) => r.column_name === "drop me" && r.platform === "meta_ads"),
+    "the ads one is gone",
+  );
+  assert.ok(
+    rows.rows.some((r) => r.column_name === "drop me" && r.platform === "meta_content"),
+    "and the content one is not",
+  );
+});
+
+test("changing an answer does not touch a month already saved", async () => {
+  // **The figures stay.** Changing what a column counts as changes what
+  // the NEXT upload counts; a month somebody has already saved keeps
+  // what it has until they upload and save again (Dom, 12 October).
+  const before = await asMember(db, NINA, () => db.query(
+    `select count(*)::int c, coalesce(sum(value::float), 0) total
+       from public.report_values where workspace_id = '${WS}' and month = '${MONTH}'`));
+
+  await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads", "column:keep me": "forget",
+  })));
+
+  const after = await asMember(db, NINA, () => db.query(
+    `select count(*)::int c, coalesce(sum(value::float), 0) total
+       from public.report_values where workspace_id = '${WS}' and month = '${MONTH}'`));
+  assert.deepEqual(after.rows, before.rows, "not one figure moved");
+});

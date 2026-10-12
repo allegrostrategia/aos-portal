@@ -381,6 +381,49 @@ test("an unrecognised conversion column is asked about, and remembered", async (
   await expect(page.locator("[data-csv-unknown]")).toHaveCount(0);
 });
 
+test("a remembered answer can be changed or cleared on the same card", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  sql(`insert into public.report_column_maps (workspace_id, platform, column_name, maps_to)
+       values ('${ws}', 'meta_ads', 'autumn workshop opt in', 'leads');`);
+
+  await signIn(page, "nina");
+  await ads(page);
+
+  // Reachable without uploading anything: somebody correcting an answer
+  // should not have to find a file first.
+  const remembered = page.locator("[data-csv-remembered]");
+  await expect(remembered).toContainText(/1 column you have already set up/i);
+  await remembered.click();
+  await expect(remembered).toContainText(/autumn workshop opt in/);
+  await shoot(page, TAB, "09-remembered", w);
+
+  // Change it.
+  await remembered.getByRole("radio", { name: /^Purchases$/ }).check();
+  await remembered.getByRole("button", { name: /save these/i }).click();
+  await expect
+    .poll(() =>
+      sql(`select coalesce(max(maps_to::text), '') from public.report_column_maps
+            where workspace_id = '${ws}' and column_name = 'autumn workshop opt in'`),
+    )
+    .toBe("purchases");
+
+  // Or clear it, so the next upload asks again.
+  await page.locator("[data-csv-remembered]").click();
+  await page.locator("[data-csv-remembered]").getByRole("radio", { name: /ask me again/i }).check();
+  await page.locator("[data-csv-remembered]").getByRole("button", { name: /save these/i }).click();
+  await expect
+    .poll(() =>
+      Number(sql(`select count(*)::text from public.report_column_maps
+                   where workspace_id = '${ws}'`)),
+    )
+    .toBe(0);
+  await expect(page.locator("[data-csv-remembered]")).toHaveCount(0);
+});
+
 test("the import is recorded by the save, not by the upload", async ({ page }) => {
   // §9's `report_csv_imports`: a person who reads a preview and walks
   // away has imported nothing, and a row saying otherwise would be the
