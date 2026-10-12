@@ -233,14 +233,18 @@ test("a row with no campaign is listed, and nothing is created unless ticked", a
   expect(campaignCount(), "nothing was created").toBe(before);
 });
 
-test("ticking a row adds that campaign, and only that one", async ({ page }) => {
+test("a ticked campaign is created by the save, not before it", async ({ page }) => {
+  // **All or nothing** (Dom, 12 Oct). It used to be created the moment
+  // somebody pressed "Fill these in", which left an empty campaign
+  // behind if they changed their mind — and an empty campaign is not
+  // harmless: it renders as a row on the client's published report,
+  // with dashes where its figures would be. Measured, not assumed.
   const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
   await renameFirstCampaignTo("Spring leads");
   const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
   const names = () =>
-    sql(`select coalesce(string_agg(name, ', ' order by name), '') from public.report_entities
+    sql(`select coalesce(string_agg(name, ' | ' order by name), '') from public.report_entities
           where workspace_id = '${ws}' and entity_type = 'ad_campaign'`);
-  expect(names()).not.toContain("Brand, reels");
 
   await signIn(page, "nina");
   await ads(page);
@@ -251,20 +255,43 @@ test("ticking a row adds that campaign, and only that one", async ({ page }) => 
   await page.getByRole("checkbox", { name: /Add Brand, reels as a new campaign/i }).check();
   await page.getByRole("button", { name: /fill these in/i }).click();
 
-  // **Waited for.** Creating the campaign is a server action, and
-  // reading the database the instant the click returns reads it before
-  // the action has run — which is what the first version of this test
-  // did, and it reported "nothing was created" about a campaign that
-  // was created a moment later.
-  await expect(page.locator("[data-csv-unmatched]")).toHaveCount(0);
-  await expect
-    .poll(() => names(), { message: "the ticked campaign was never created" })
-    .toContain("Brand, reels");
+  // Filling does not create it. It is waiting on the save.
+  await expect(page.locator("[data-pending-campaigns]")).toContainText(/Brand, reels/);
+  expect(names(), "nothing is created by filling").not.toContain("Brand, reels");
 
-  // And only one of it. Counted by matching rather than by splitting on
-  // ", " — the fixture's name has a comma in it on purpose, and the
-  // split turned one campaign into two.
+  // The month form's own save — this screen has several forms, and
+  // `.first()` was the campaign-name one.
+  await page.getByRole("button", { name: /save this month/i }).click();
+  await expect
+    .poll(() => names(), { message: "the save never created it" })
+    .toContain("Brand, reels");
   expect(names().match(/Brand, reels/g) ?? []).toHaveLength(1);
+});
+
+test("abandoning the preview leaves nothing behind", async ({ page }) => {
+  const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  await renameFirstCampaignTo("Spring leads");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  const count = () =>
+    Number(sql(`select count(*)::text from public.report_entities
+                 where workspace_id = '${ws}' and entity_type = 'ad_campaign'`));
+  const before = count();
+
+  await signIn(page, "nina");
+  await ads(page);
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(ADS_CSV),
+  });
+  await page.getByRole("checkbox", { name: /Add Brand, reels as a new campaign/i }).check();
+  await page.getByRole("button", { name: /fill these in/i }).click();
+  await expect(page.locator("[data-pending-campaigns]")).toBeVisible();
+
+  // Changed their mind, and left.
+  await page.getByRole("button", { name: /not this one/i }).click();
+  await expect(page.locator("[data-pending-campaigns]")).toHaveCount(0);
+  await ads(page);
+
+  expect(count(), "nothing was left behind").toBe(before);
 });
 
 test("a campaign the file is silent about keeps what is in it", async ({ page }) => {

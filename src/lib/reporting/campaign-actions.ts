@@ -30,6 +30,39 @@ export type CampaignState = { error?: string; notice?: string } | null;
 /** Monthly fields are named `v:<metric key>:<campaign id>`. */
 const FIELD = /^v:([a-z0-9_]+):([0-9a-f-]{36})$/;
 
+/**
+ * A figure typed against a campaign that does not exist yet.
+ *
+ * `nv:<index>:<metric>`, where the index pairs it with the name and
+ * goal in `new:<index>:name` / `new:<index>:goal`. An index rather than
+ * the name, because a campaign name can contain anything — including
+ * the colons this field is split on.
+ */
+const NEW_FIELD = /^nv:(\d+):([a-z0-9_]+)$/;
+const NEW_NAME = /^new:(\d+):name$/;
+
+/** The campaigns an import asked for, read off the form. */
+function pendingCampaigns(
+  formData: FormData,
+): { index: number; name: string; goal: CampaignGoal | null }[] {
+  const out: { index: number; name: string; goal: CampaignGoal | null }[] = [];
+  for (const [field, raw] of formData.entries()) {
+    if (typeof raw !== "string") continue;
+    const match = NEW_NAME.exec(field);
+    if (!match) continue;
+    const name = raw.trim();
+    if (name === "") continue;
+    const index = Number(match[1]);
+    const goalRaw = String(formData.get(`new:${index}:goal`) ?? "").trim();
+    out.push({
+      index,
+      name,
+      goal: GOALS.includes(goalRaw as CampaignGoal) ? (goalRaw as CampaignGoal) : null,
+    });
+  }
+  return out;
+}
+
 /** Everything typed against a campaign each month (§5.7). */
 const CAMPAIGN_METRICS = new Set([
   "ads_spend",
@@ -164,6 +197,69 @@ export async function saveCampaignMonth(
 
   const known = new Set((campaigns ?? []).map((c) => c.id));
 
+  // **Campaigns ticked on an import are created here, in the same save
+  // as their figures** (Dom, 12 October). They used to be made the
+  // moment somebody pressed "Fill these in", which left an empty
+  // campaign behind if they then changed their mind — and an empty
+  // campaign is not harmless: it renders as a row on the client's
+  // published report, with dashes where its figures would be.
+  //
+  // All or nothing, so abandoning a preview leaves nothing at all. A
+  // name that already exists is reused rather than duplicated.
+  const pending = pendingCampaigns(formData);
+  const madeIds = new Map<number, string>();
+  if (pending.length > 0) {
+    const names = pending.map((c) => c.name);
+    const { data: already } = await supabase
+      .from("report_entities")
+      .select("id, name")
+      .eq("workspace_id", workspaceId)
+      .eq("entity_type", "ad_campaign")
+      .in("name", names)
+      .returns<{ id: string; name: string }[]>();
+
+    const have = new Map((already ?? []).map((row) => [row.name, row.id]));
+    const toMake = pending.filter((c) => !have.has(c.name));
+
+    if (toMake.length > 0) {
+      const { data, error } = await supabase
+        .from("report_entities")
+        .insert(
+          toMake.map((c) => ({
+            workspace_id: workspaceId,
+            entity_type: "ad_campaign" as const,
+            name: c.name,
+            campaign_goal: c.goal,
+            active: true,
+          })),
+        )
+        .select("id, name")
+        .returns<{ id: string; name: string }[]>();
+
+      if (error) return { error: `Couldn't add those campaigns: ${error.message}` };
+      // Checked, not assumed: an insert RLS refuses is not an error.
+      //
+      // **Unreachable today, and kept anyway.** Anyone who gets past
+      // `editableWorkspace` above also passes `report_entities`' insert
+      // policy, because both ask `report_can_edit` — so a mutation that
+      // deletes this check fails nothing. It is here for the day the
+      // two stop agreeing, which is exactly when nobody would be
+      // looking.
+      if (!data || data.length !== toMake.length) {
+        return { error: "Those campaigns aren't yours to add." };
+      }
+      for (const row of data) have.set(row.name, row.id);
+    }
+
+    for (const c of pending) {
+      const id = have.get(c.name);
+      if (id) {
+        madeIds.set(c.index, id);
+        known.add(id);
+      }
+    }
+  }
+
   const submitted: { key: string; entityId: string; value: number | null }[] = [];
   for (const [field, raw] of formData.entries()) {
     if (typeof raw !== "string") continue;
@@ -173,6 +269,18 @@ export async function saveCampaignMonth(
     // A field naming a campaign on another workspace, or a metric that is
     // not a campaign's, is ignored rather than written somewhere odd.
     if (!CAMPAIGN_METRICS.has(key) || !known.has(entityId)) continue;
+    submitted.push({ key, entityId, value: fromInputValue(raw) });
+  }
+
+  // The figures typed against a campaign that did not exist when the
+  // form was rendered, now that it does.
+  for (const [field, raw] of formData.entries()) {
+    if (typeof raw !== "string") continue;
+    const match = NEW_FIELD.exec(field);
+    if (!match) continue;
+    const [, indexRaw, key] = match;
+    const entityId = madeIds.get(Number(indexRaw));
+    if (!entityId || !CAMPAIGN_METRICS.has(key)) continue;
     submitted.push({ key, entityId, value: fromInputValue(raw) });
   }
 
@@ -218,71 +326,4 @@ export async function saveCampaignMonth(
 
   revalidatePath("/reporting", "layout");
   return { notice: "Saved. Ads is up to date for this month." };
-}
-
-/**
- * Create the campaigns a person ticked on an import, and hand back
- * their ids.
- *
- * §10.2's export names campaigns the screen may not have yet. They are
- * **listed, never created on sight** — somebody ticks the ones they
- * want and this makes exactly those. A file that mentions a campaign is
- * not somebody asking for it to exist.
- *
- * Returns the ids because the card has figures waiting for them: it
- * fills the new campaigns' boxes straight after, and the form's own
- * save is still what writes any figure.
- *
- * Idempotent on name, so pressing it twice does not make two: a
- * campaign that already exists comes back with the id it already had.
- */
-export async function createCampaignsForImport(
-  workspaceId: string,
-  wanted: { name: string; goal: CampaignGoal | null }[],
-): Promise<{ created: { name: string; id: string }[] } | { error: string }> {
-  const access = await editableWorkspace(workspaceId);
-  if ("error" in access) return { error: access.error ?? "You don't have access to that client." };
-
-  const names = wanted.map((w) => w.name.trim()).filter((n) => n !== "");
-  if (names.length === 0) return { created: [] };
-
-  const supabase = await createClient();
-  const { data: already } = await supabase
-    .from("report_entities")
-    .select("id, name")
-    .eq("workspace_id", workspaceId)
-    .eq("entity_type", "ad_campaign")
-    .in("name", names)
-    .returns<{ id: string; name: string }[]>();
-
-  const have = new Map((already ?? []).map((row) => [row.name, row.id]));
-  const toMake = wanted.filter((w) => !have.has(w.name.trim()));
-
-  if (toMake.length > 0) {
-    const { data, error } = await supabase
-      .from("report_entities")
-      .insert(
-        toMake.map((w) => ({
-          workspace_id: workspaceId,
-          entity_type: "ad_campaign" as const,
-          name: w.name.trim(),
-          campaign_goal: w.goal,
-          active: true,
-        })),
-      )
-      .select("id, name")
-      .returns<{ id: string; name: string }[]>();
-
-    if (error) return { error: `Couldn't add those campaigns: ${error.message}` };
-    // Checked, not assumed: RLS refusing an insert is not an error.
-    if (!data || data.length !== toMake.length) {
-      return { error: "Those campaigns aren't yours to add." };
-    }
-    for (const row of data) have.set(row.name, row.id);
-  }
-
-  revalidatePath("/reporting", "layout");
-  return {
-    created: wanted.map((w) => ({ name: w.name, id: have.get(w.name.trim())! })),
-  };
 }

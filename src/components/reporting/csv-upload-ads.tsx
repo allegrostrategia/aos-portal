@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
-import { createCampaignsForImport } from "@/lib/reporting/campaign-actions";
 import { buildCampaignPreview, type CampaignPreview } from "@/lib/reporting/csv/campaign-preview";
 import { readMetaAds } from "@/lib/reporting/csv/meta-ads";
 
@@ -21,13 +20,15 @@ import { readMetaAds } from "@/lib/reporting/csv/meta-ads";
  * ones they want and only those are made. A file mentioning a campaign
  * is not somebody asking for it to exist.
  *
- * Creating a campaign is the one write this card does, and it is the
- * one the person has just asked for. Every figure still waits for the
- * form's own save.
+ * **This card writes nothing at all.** A ticked campaign is handed to
+ * the form as a pending one and created by the save, in the same action
+ * as its figures — so abandoning a preview, or closing the tab, leaves
+ * nothing behind. It used to create them on "Fill these in", and an
+ * empty campaign is not harmless: it renders as a row on the client's
+ * published report with dashes where its figures would be.
  */
 
 export function CsvUploadAds({
-  workspaceId,
   month,
   monthLabel,
   campaigns,
@@ -35,8 +36,8 @@ export function CsvUploadAds({
   labels,
   columnMaps,
   onFill,
+  onAddPending,
 }: {
-  workspaceId: string;
   month: string;
   monthLabel: string;
   campaigns: { id: string; name: string }[];
@@ -45,11 +46,14 @@ export function CsvUploadAds({
   labels: Record<string, string>;
   columnMaps: Record<string, "leads" | "purchases" | "ignored">;
   onFill: (figures: Record<string, number>) => void;
+  /** Campaigns to create when the form is saved, with their figures. */
+  onAddPending: (
+    pending: { name: string; goal: "leads" | null; figures: Record<string, number> }[],
+  ) => void;
 }) {
   const [preview, setPreview] = useState<CampaignPreview | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [adding, setAdding] = useState<Record<string, boolean>>({});
-  const [busy, setBusy] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
@@ -74,42 +78,26 @@ export function CsvUploadAds({
     setPreview(buildCampaignPreview(result.campaigns, campaigns, current, labels));
   }
 
-  async function fill() {
+  function fill() {
     if (!preview) return;
-    setBusy(true);
-    try {
-      const wanted = preview.unmatched.filter((u) => adding[u.name]);
-      const byName = new Map<string, string>();
 
-      if (wanted.length > 0) {
-        const made = await createCampaignsForImport(
-          workspaceId,
-          wanted.map((u) => ({ name: u.name, goal: u.goalIsLeads ? ("leads" as const) : null })),
-        );
-        if ("error" in made) {
-          setProblem(made.error);
-          return;
-        }
-        for (const row of made.created) byName.set(row.name, row.id);
-      }
-
-      const figures: Record<string, number> = {};
-      for (const matched of preview.matched) {
-        for (const row of matched.rows) figures[`${row.key}|${matched.entityId}`] = row.to;
-      }
-      for (const unmatched of wanted) {
-        const id = byName.get(unmatched.name);
-        if (!id) continue;
-        for (const [key, value] of Object.entries(unmatched.figures)) {
-          figures[`${key}|${id}`] = value;
-        }
-      }
-
-      onFill(figures);
-      clear();
-    } finally {
-      setBusy(false);
+    const figures: Record<string, number> = {};
+    for (const matched of preview.matched) {
+      for (const row of matched.rows) figures[`${row.key}|${matched.entityId}`] = row.to;
     }
+    onFill(figures);
+
+    onAddPending(
+      preview.unmatched
+        .filter((u) => adding[u.name])
+        .map((u) => ({
+          name: u.name,
+          goal: u.goalIsLeads ? ("leads" as const) : null,
+          figures: u.figures,
+        })),
+    );
+
+    clear();
   }
 
   const changedCount = (preview?.matched ?? []).reduce((n, m) => n + m.changed.length, 0);
@@ -239,8 +227,8 @@ export function CsvUploadAds({
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Button type="button" size="sm" onClick={() => void fill()} disabled={busy}>
-              {busy ? "Adding…" : "Fill these in"}
+            <Button type="button" size="sm" onClick={fill}>
+              Fill these in
             </Button>
             <p className="text-small text-ink/55">
               Still nothing saved — the boxes fill, and you press save.

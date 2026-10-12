@@ -58,23 +58,34 @@ test("an existing campaign is matched by exact name, and shows old → new", () 
   assert.equal(preview.unmatched.length, 4);
 });
 
-test("exact means exact — a renamed campaign is a new one", () => {
-  // No fuzzy matching and no remembered mapping (Dom, 12 Oct). Both are
-  // ways an import can quietly attach a month's spend to the wrong
-  // campaign, so they are deliberate later work.
-  for (const nearly of [
-    "leads — broad, uk",
-    "Leads - broad, UK",
-    "Leads — broad, UK ",
-    "Leads — broad UK",
-  ]) {
-    const preview = buildCampaignPreview(campaignsFrom(), [{ id: "a", name: nearly }], {}, labels);
-    assert.equal(
-      preview.matched.length,
-      nearly.trim() === "Leads — broad, UK" ? 1 : 0,
-      `"${nearly}" should ${nearly.trim() === "Leads — broad, UK" ? "" : "not "}match`,
-    );
-  }
+test("exact means exact, apart from whitespace at either end", () => {
+  // Trimmed both sides, because a space at the end is an artefact of an
+  // export and is invisible on screen — refusing on it would be
+  // refusing on something nobody can see. Everything else stays strict:
+  // a renamed campaign is a new one (Dom, 12 Oct).
+  const matches = (name: string) =>
+    buildCampaignPreview(campaignsFrom(), [{ id: "a", name }], {}, labels).matched.length === 1;
+
+  assert.ok(matches("Leads — broad, UK"), "the name itself");
+
+  // Trimmed on the FILE's side too — an export can carry a trailing
+  // space just as easily as a hand-typed name can.
+  const spacedInFile = [
+    { name: "  Leads — broad, UK ", figures: { ads_spend: 200 }, goalIsLeads: true },
+  ];
+  assert.equal(
+    buildCampaignPreview(spacedInFile, [{ id: "a", name: "Leads — broad, UK" }], {}, labels)
+      .matched.length,
+    1,
+    "a space in the file is not a different campaign",
+  );
+  assert.ok(matches("  Leads — broad, UK  "), "spaces at both ends");
+  assert.ok(matches("Leads — broad, UK\t"), "and a tab");
+
+  assert.ok(!matches("leads — broad, uk"), "case counts");
+  assert.ok(!matches("Leads - broad, UK"), "a hyphen is not an em dash");
+  assert.ok(!matches("Leads — broad UK"), "the comma counts");
+  assert.ok(!matches("Leads—broad, UK"), "the spaces inside count");
 });
 
 test("a campaign on screen the file is silent about is named, not emptied", () => {

@@ -9,11 +9,18 @@ import type { PreviewRow } from "./preview.ts";
  * is "match these rows to the campaigns that exist, and say what to do
  * about the ones that do not".
  *
- * **Matched by exact name** (Dom, 12 October). No fuzzy matching and no
- * remembered mapping: a campaign renamed in Meta reads as a new one and
- * is offered as new. Both conveniences are real and both are ways an
- * import can quietly attach a month's spend to the wrong campaign, so
- * they are on Nina's list to be built deliberately rather than early.
+ * **Matched by exact name, after trimming both sides** (Dom, 12
+ * October). Whitespace at either end is an artefact of the export or of
+ * somebody pasting a name in, and it is invisible on screen — refusing
+ * to match on it would be refusing on something nobody can see.
+ * Everything else stays strict: case, dashes and commas all count, so
+ * `leads — broad, uk` is a different campaign from `Leads — broad, UK`.
+ *
+ * No fuzzy matching and no remembered mapping: a campaign renamed in
+ * Meta reads as a new one and is offered as new. Both conveniences are
+ * real and both are ways an import can quietly attach a month's spend
+ * to the wrong campaign, so they are on Nina's list to be built
+ * deliberately rather than early.
  *
  * **Nothing is created unless it is ticked.** An unmatched row is
  * listed with what it would bring, and does nothing at all until
@@ -48,15 +55,16 @@ export function buildCampaignPreview(
   current: Record<string, number | null>,
   labels: Record<string, string>,
 ): CampaignPreview {
-  // Exact, on the trimmed name. Two campaigns sharing a name is not a
-  // state the screen allows, so the first is the match.
+  // Trimmed on both sides, exact on everything else. Two campaigns
+  // sharing a name is not a state the screen allows, so the first is
+  // the match.
   const byName = new Map(existing.map((e) => [e.name.trim(), e]));
   const matched: MatchedCampaign[] = [];
   const unmatched: UnmatchedCampaign[] = [];
   const seen = new Set<string>();
 
   for (const campaign of campaigns) {
-    const found = byName.get(campaign.name);
+    const found = byName.get(campaign.name.trim());
     if (!found) {
       unmatched.push({
         name: campaign.name,

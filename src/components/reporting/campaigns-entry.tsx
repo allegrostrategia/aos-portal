@@ -75,6 +75,17 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
   const active = props.campaigns.filter((c) => c.active);
   const retired = props.campaigns.filter((c) => !c.active);
 
+  /**
+   * Campaigns an import asked for that do not exist yet.
+   *
+   * They are form fields, not rows in the database: `saveCampaignMonth`
+   * creates them in the same action as the figures, so abandoning the
+   * preview or closing the tab leaves nothing behind.
+   */
+  const [pending, setPending] = useState<
+    { name: string; goal: "leads" | null; figures: Record<string, number> }[]
+  >([]);
+
   const [typed, setTyped] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       active.flatMap((campaign) =>
@@ -112,7 +123,6 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
     <>
       {props.upload ? (
         <CsvUploadAds
-          workspaceId={props.workspaceId}
           month={props.month}
           monthLabel={props.upload.monthLabel}
           campaigns={active.map((c) => ({ id: c.id, name: c.name }))}
@@ -130,7 +140,61 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
               return next;
             })
           }
+          onAddPending={setPending}
         />
+      ) : null}
+
+      {/* The campaigns the import asked for, waiting for the save that
+          creates them. Shown so nobody is surprised by what appears,
+          and removable — nothing has happened yet. */}
+      {pending.length > 0 ? (
+        <Card className="mb-6">
+          <SectionTitle aside={`${pending.length} waiting`}>
+            New campaigns, when you save
+          </SectionTitle>
+          <ul data-pending-campaigns className="mt-2 flex flex-col gap-2">
+            {pending.map((c, index) => (
+              <li key={c.name} className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-small text-ink">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-ink/55">
+                    {" — "}
+                    {Object.entries(c.figures)
+                      .map(([key, value]) => `${FIGURES.find((f) => f.key === key)?.label ?? key} ${value}`)
+                      .join(", ")}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPending((now) => now.filter((p) => p.name !== c.name))}
+                  className="text-small text-ink/60 underline underline-offset-4 transition hover:text-ink"
+                >
+                  Not this one
+                </button>
+
+                {/* The fields the save reads. An index rather than the
+                    name, because a campaign name can contain the colons
+                    these are split on. */}
+                <input type="hidden" form={MONTH_FORM} name={`new:${index}:name`} value={c.name} />
+                <input
+                  type="hidden"
+                  form={MONTH_FORM}
+                  name={`new:${index}:goal`}
+                  value={c.goal ?? ""}
+                />
+                {Object.entries(c.figures).map(([key, value]) => (
+                  <input
+                    key={key}
+                    type="hidden"
+                    form={MONTH_FORM}
+                    name={`nv:${index}:${key}`}
+                    value={String(value)}
+                  />
+                ))}
+              </li>
+            ))}
+          </ul>
+        </Card>
       ) : null}
     <div className="flex flex-col gap-6">
       {ungoaled.length > 0 ? (
