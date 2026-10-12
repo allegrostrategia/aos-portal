@@ -1707,6 +1707,18 @@ last.
     clicks and leaves immediately never sees "Saved." and has no reason
     to believe it was. *Recommended: after launch* (Dom, 12 Oct).
 
+38. **A campaign with no figures for the month shows on the published
+    report as a row of dashes.** Measured on 12 October while checking
+    whether an abandoned import could leave something behind — it can,
+    and so can manual entry: `campaignRowsFrom` lists every
+    `ad_campaign` entity and fills from whatever is there, so a
+    campaign set up in August and paused in September is a row of
+    dashes on September's report. **Not changed, because it is
+    client-visible** and because "hide it" and "show it" are both
+    defensible: a dash says the campaign exists and did nothing, which
+    is sometimes the point and sometimes noise. Her call (Dom,
+    12 Oct).
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
