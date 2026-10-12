@@ -1683,6 +1683,21 @@ last.
     the shortcut do not get it. **One condition in one place to
     reverse**; the parser and screens are identical either way.
 
+35. **A part-month export is refused, so there are no mid-month
+    uploads.** §10.2's file carries its own date range, and a file
+    covering 1 to 28 September is refused for September — the brief's
+    own sample is exactly that. A month's spend filled from
+    twenty-eight days of it is wrong by two days and says nothing about
+    being wrong. The consequence she should know: **nobody can upload
+    part-way through a month to see how it is going.** Re-exporting
+    after the month ends is the only route (Dom, 9 Oct).
+36. **Ads import matches campaigns by exact name only.** No fuzzy
+    matching, and no remembered name mapping — a campaign renamed in
+    Meta reads as a new one. *Recommended as later items rather than
+    never*: both are real conveniences, and both are ways an import can
+    quietly attach figures to the wrong campaign, which is worth
+    building deliberately rather than early (Dom, 12 Oct).
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
@@ -1797,7 +1812,19 @@ never by an exit code.
 - **Check every table for the column-ownership trap.** RLS is row-level: a policy letting somebody update "their own row" lets them update *every column* of it. Three tables have had this — `members`, `pairings`, `handover_pack` — and each time the giveaway was a comment above the policy describing a restriction the policy cannot express. **Treat that comment as a bug report, and add a trigger.** Worth checking on every new table with a member-facing update policy, not just when something looks wrong.
 - **An admin's RLS view is not their own view.** A policy of `using (is_portal_admin())` returns every row, so any code doing `rows.find(matching the thing I'm looking at)` and reading an identity off the result gets somebody else's — the client's, on a workspace with one client and one admin. Filter by `user_id` when the question is "mine", even where RLS already returned something plausible (state doc, 5 Oct; it signed Nina's notes with the client's name).
 - **A test for a race or a tie needs the condition to actually occur.** A tie test over rows that do not tie, or a paging test the engine happens to answer consistently, is a green light wired to nothing — mutate the code it guards and watch it fail before believing it. Where the engine is merely *permitted* to misbehave, make the harness misbehave on purpose (`unstableTieBreakers` in the shim).
-- **Default to plain HTML for anything interactive — forms, links, `<details>`/`<summary>` — and reach for JavaScript only when there is a real reason.** Three controls in this build worked only once hydrated, and all three were silently wrong before that: the publish confirm *published the month* on the first click, the phone tab bar never scrolled the current tab into view, and "+ Another stage" added no row at all. A browser clicks faster than a dev server hydrates and so does a person on a slow phone, so the broken state is the normal one. A `<details>` opens, a link navigates and a form submits with no script at all (Dom, 8 Oct).
+- **Plain HTML first by default, not mandatory** (Dom, 12 Oct, replacing the 8 October rule). A `<details>` opens, a link navigates and a form submits with no script at all, and a control built that way is better than one that needs JavaScript — so it is the default. It is no longer a prohibition: reach for JavaScript where there is a reason, which the CSV upload card is, because a file cannot be read without it.
+
+  **The old rule's reasoning was wrong, and the correction matters more than the rule.** It said three controls "worked only once hydrated, and all three were silently wrong before that". They were — but not because a browser clicks faster than a dev server hydrates. **Next's dev server was answering 403 to its own JavaScript chunks**, so nothing on any page ever hydrated at all: Playwright drives `127.0.0.1`, Next decided its origin was `localhost`, and every chunk request looked cross-origin. Fixed with `allowedDevOrigins` in `next.config.ts`, dev only.
+
+  **Where each of the four was actually observed** (checked 12 Oct, because "it happens on live too" would change the answer):
+  - **The publish confirm publishing on the first click** — in Playwright, local. But the commit's own reasoning names a second, real cause: *React runs a form `action` whatever an `onSubmit` handler does with the event*. That control was broken hydrated as well, so the server-side refusal that replaced it was the right fix on its own merits.
+  - **The phone tab bar never scrolling the current tab into view** — local, measured at 390px. A scroll-into-view needs JavaScript and none was running. The dropdown that replaced it is better at 390px anyway, and the `<select>` that "never navigated" was the same cause.
+  - **"+ Another stage" adding no row** — local. Needs JavaScript; none was running.
+  - **The cover upload logging people out (9 Oct)** — local, and **a different bug**: `request.nextUrl.origin` resolved to `localhost` while the browser was on `127.0.0.1`, so the 303 crossed origins and dropped the session cookie. Not the chunk 403, not fixed by `allowedDevOrigins`, and the relative-`Location` fix still matters — the same mismatch exists behind a proxy in production.
+
+  **None of the four was ever seen on live.** Every rewrite they prompted is kept; only the diagnosis changes.
+
+  **`e2e/hydration.spec.ts` is the guard**: it fails if any script or stylesheet answers 4xx or 5xx on a signed-in screen, and separately if a control that cannot work without JavaScript does not work. Proved by removing `allowedDevOrigins` and watching it name the 403s in a line. Its second check uses Financials' live card, not Client Experience's — Client Experience's figures hang off an opening number that is not set in September, so they are dashes either way and the probe could not have failed.
 - **Read the runner's own exit code, never a pipeline's.** `npx playwright test | tail -20` exits with `tail`'s status, so a run that failed 12 tests reported success on 7 Oct and was believed for a minute. Capture it on its own line — `cmd > log; echo "EXIT: $?"` — and read the summary line out of the log.
 - **Wait on the thing, not on a process name.** A loop watching `pgrep -f "playwright/cli.js test"` reported the suite finished while it was on test 88 of 92, because that is not the process Playwright runs. Wait for the output a finished run produces.
 - **Do not infer a deployment from content fingerprints.** A server-action id, a build id or a static file's `last-modified` will not tell you whether a push went out: ids are not comparable between a local build and Vercel's, and Vercel reuses an unchanged file's blob and mtime. Read the Vercel dashboard, or probe a behaviour only the new code has. Claude called a healthy deploy stalled for an hour this way on 5 Oct.
