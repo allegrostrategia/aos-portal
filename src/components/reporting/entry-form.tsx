@@ -9,6 +9,7 @@ import { saveCategoryValues, type SaveState } from "@/lib/reporting/actions";
 import { calculate } from "@/lib/reporting/calculate";
 import type { CategoryKey } from "@/lib/reporting/categories";
 import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/format";
+import { CsvUpload, type UploadPlatform } from "@/components/reporting/csv-upload";
 import type { OfferMonth } from "@/lib/reporting/formulas";
 import type { ReportMetric } from "@/lib/reporting/queries";
 
@@ -71,6 +72,18 @@ export interface EntryFormProps {
    * and the report answer differently on the same month.
    */
   elsewhere?: Record<string, number | null>;
+  /**
+   * §10's upload card, when this screen has one.
+   *
+   * Null everywhere else, and on a locked month — a published month's
+   * figures do not change, so offering a file that cannot be saved
+   * would be a button that only ever refuses (Dom, 9 October).
+   */
+  upload?: {
+    platform: UploadPlatform;
+    monthLabel: string;
+    columnMaps: Record<string, "leads" | "purchases" | "ignored">;
+  } | null;
   /** Where "Save and next" goes, or null on the last section. */
   nextHref: string | null;
   nextLabel: string | null;
@@ -134,6 +147,30 @@ export function EntryForm(props: EntryFormProps) {
       <input type="hidden" name="workspace_id" value={props.workspaceId} />
       <input type="hidden" name="month" value={props.month} />
       <input type="hidden" name="category" value={props.category} />
+
+      {props.upload ? (
+        <CsvUpload
+          platform={props.upload.platform}
+          month={props.month}
+          monthLabel={props.upload.monthLabel}
+          labels={Object.fromEntries(
+            [...props.core, ...props.optional].map((m) => [m.key, m.label]),
+          )}
+          current={Object.fromEntries(
+            [...props.core, ...props.optional].map((m) => [m.key, fromInputValue(values[m.key] ?? "")]),
+          )}
+          columnMaps={props.upload.columnMaps}
+          onFill={(figures) =>
+            setValues((now) => {
+              const next = { ...now };
+              for (const [key, value] of Object.entries(figures)) {
+                next[key] = toInputValue(value);
+              }
+              return next;
+            })
+          }
+        />
+      ) : null}
 
       {/* The grid holds the inputs and the panel and NOTHING ELSE.
           A sticky element is contained by its own containing block, and

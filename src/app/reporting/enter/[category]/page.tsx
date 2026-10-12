@@ -9,6 +9,8 @@ import { TopItemsEntry } from "@/components/reporting/top-items";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
+import { STAGE_6 } from "@/lib/reporting/categories";
+import { uploadFor } from "@/lib/reporting/csv/upload-for";
 import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
 import { getPublishedMonths } from "@/lib/reporting/queries";
 import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
@@ -374,6 +376,18 @@ export default async function EnterCategoryPage({
           half that means nobody is invited to make one. */}
       <fieldset disabled={locked} className="contents">
       <EntryForm
+        upload={
+          STAGE_6
+            ? await uploadFor({
+                category: category.key,
+                locked,
+                canEdit: ctx.canEdit,
+                kind: ctx.workspace.kind,
+                workspaceId: ctx.workspace.id,
+                monthLabel: ctx.month.label,
+              })
+            : null
+        }
         offerRows={offerRowsForEntry}
         elsewhere={elsewhere}
         clientsAtStart={clientsAtStart}

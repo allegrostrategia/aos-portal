@@ -1,10 +1,10 @@
-Campaign name,Campaign delivery,Amount spent (GBP),Impressions,Link clicks,Leads,Result indicator,Results,Autumn Workshop Opt In,Instagram profile visits
-"Leads — broad, UK",active,200.00,20000,1500,35,actions:onsite_conversion.lead_grouped,35,0,0
-"Leads — lookalike",active,150.00,15000,1200,25,actions:onsite_conversion.lead_grouped,25,0,0
-Workshop opt-in,active,100.00,10000,900,0,actions:offsite_conversion.custom,40,40,0
-"Profile visits, reels",active,90.00,9000,400,0,actions:profile_visit,400,0,320
-Profile visits brand,active,60.00,6000,200,0,actions:profile_visit,200,0,180
-Paused campaign A,inactive,0,0,0,0,,0,0,0
-Paused campaign B,inactive,0,0,0,0,,0,0,0
-Paused campaign C,inactive,0,0,0,0,,0,0,0
-Paused campaign D,inactive,0,0,0,0,,0,0,0
+Campaign name,Campaign delivery,Amount spent (GBP),Impressions,Link clicks,Leads,Result indicator,Results,Autumn Workshop Opt In,Instagram profile visits,Reporting starts,Reporting ends
+"Leads — broad, UK",active,200.00,20000,1500,35,actions:onsite_conversion.lead_grouped,35,0,0,2026-09-01,2026-09-30
+"Leads — lookalike",active,150.00,15000,1200,25,actions:onsite_conversion.lead_grouped,25,0,0,2026-09-01,2026-09-30
+Workshop opt-in,active,100.00,10000,900,0,actions:offsite_conversion.custom,40,40,0,2026-09-01,2026-09-30
+"Profile visits, reels",active,90.00,9000,400,0,actions:profile_visit,400,0,320,2026-09-01,2026-09-30
+Profile visits brand,active,60.00,6000,200,0,actions:profile_visit,200,0,180,2026-09-01,2026-09-30
+Paused campaign A,inactive,0,0,0,0,,0,0,0,2026-09-01,2026-09-30
+Paused campaign B,inactive,0,0,0,0,,0,0,0,2026-09-01,2026-09-30
+Paused campaign C,inactive,0,0,0,0,,0,0,0,2026-09-01,2026-09-30
+Paused campaign D,inactive,0,0,0,0,,0,0,0,2026-09-01,2026-09-30

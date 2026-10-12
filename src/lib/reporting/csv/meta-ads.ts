@@ -1,5 +1,6 @@
 import { cellNumber, readTable } from "./tokenise.ts";
 import type { ImportResult } from "./meta-content.ts";
+import { coversMonth, rangeFromRows } from "./month-range.ts";
 
 /**
  * §10.2: the Meta Ads Manager campaign export, one row per campaign.
@@ -35,6 +36,8 @@ const LEAD_INDICATORS = ["lead", "onsite_conversion", "offsite_conversion", "com
 
 export function readMetaAds(
   text: string,
+  /** The month on screen, so a file for another one is refused. */
+  month: string,
   /** The client's saved choices: column name to what it counts as. */
   columnMaps: Record<string, "leads" | "purchases" | "ignored"> = {},
 ): AdsImportResult {
@@ -59,7 +62,22 @@ export function readMetaAds(
       figures: {}, cannotFill: [], rowsUsed: 0, rowsOutsideMonth: 0,
       unknownConversions: [], leadCampaignSpend: 0,
       problem:
-        "That does not look like a Meta Ads export — it has no “Amount spent” column.",
+        // Naming the screen it belongs on, not just refusing: the two
+        // exports are a click apart in Meta and the obvious mistake is
+        // bringing the right file to the wrong card (Dom, 9 Oct).
+        "That looks like a Meta content export, not an ads one. Post figures go on the Social Media screen.",
+    };
+  }
+
+  // **The file says what range it covers, so a file for another month
+  // is refused rather than quietly added to this one** (Dom, 9 Oct).
+  const range = rangeFromRows(rows);
+  const covers = coversMonth(range.start, range.end, month);
+  if (!covers.ok) {
+    return {
+      figures: {}, cannotFill: [], rowsUsed: 0, rowsOutsideMonth: 0,
+      unknownConversions: [], leadCampaignSpend: 0,
+      problem: covers.reason,
     };
   }
 

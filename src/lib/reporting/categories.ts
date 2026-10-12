@@ -156,9 +156,9 @@ const PRODUCTION_STAGE = 2;
  * does nothing at all, which is the point — an unfinished tab in front of a
  * real client is exactly the failure this is meant to avoid.
  */
-export const SHIPPED_STAGE: 2 | 3 | 4 | 5 =
+export const SHIPPED_STAGE: 2 | 3 | 4 | 5 | 6 =
   process.env.NODE_ENV === "development"
-    ? (Number(process.env.NEXT_PUBLIC_REPORTING_STAGE) as 2 | 3 | 4 | 5) || PRODUCTION_STAGE
+    ? (Number(process.env.NEXT_PUBLIC_REPORTING_STAGE) as 2 | 3 | 4 | 5 | 6) || PRODUCTION_STAGE
     : PRODUCTION_STAGE;
 
 /**
@@ -208,6 +208,21 @@ export const STAGE_4 = SHIPPED_STAGE >= 4;
  * in from You.
  */
 export const STAGE_5 = SHIPPED_STAGE >= 5;
+
+/**
+ * Whether Stage 6's CSV uploads are on.
+ *
+ * Like Stage 5, this is an addition to screens somebody already opens —
+ * a card on the Social Media and Ads entry pages — rather than a new
+ * route that hides by not existing. So it asks the switch, and the
+ * production-flag spec checks it is absent.
+ *
+ * Unlike Stage 5, nothing here reaches outside the app: the file is
+ * read in the browser, nothing is stored, and no email is sent. The
+ * risk is a half-built card in front of somebody entering real
+ * figures, which is reason enough.
+ */
+export const STAGE_6 = SHIPPED_STAGE >= 6;
 
 export const SHIPPED_CATEGORIES = CATEGORIES.filter((c) => c.stage <= SHIPPED_STAGE);
 

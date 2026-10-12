@@ -96,13 +96,13 @@ test("the content export never fills reach, and says why", () => {
 test("the ads export never fills reach either", () => {
   // Campaigns overlap the same way posts do: one person reached by
   // three campaigns is one person, and summing says three.
-  const result = readMetaAds(fixture("meta-ads.csv"));
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER);
   assert.ok(!("ads_reach" in result.figures), "reach is not filled");
   assert.ok(result.cannotFill.some((line) => /reach/i.test(line) && /overlap/i.test(line)));
 });
 
 test("the ads export matches the brief's own worked check", () => {
-  const result = readMetaAds(fixture("meta-ads.csv"), { "autumn workshop opt in": "leads" });
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER, { "autumn workshop opt in": "leads" });
 
   assert.equal(result.problem, undefined);
   assert.equal(result.figures.ads_spend, 600);
@@ -114,7 +114,7 @@ test("the ads export matches the brief's own worked check", () => {
 test("campaigns that spent nothing are skipped", () => {
   // Four of the nine rows are inactive zeros. They change no total, but
   // counting them would make "nine campaigns" a lie.
-  const result = readMetaAds(fixture("meta-ads.csv"));
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER);
   assert.equal(result.rowsUsed, 5);
   assert.equal(result.rowsOutsideMonth, 4);
 });
@@ -123,7 +123,7 @@ test("cost per lead uses the lead campaigns' spend, not all of it", () => {
   // £150 went on two profile-visit campaigns that were never meant to
   // get leads. Blended, cost per lead is £6.00; over the three lead
   // campaigns it is £4.50.
-  const result = readMetaAds(fixture("meta-ads.csv"), { "autumn workshop opt in": "leads" });
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER, { "autumn workshop opt in": "leads" });
   assert.equal(result.leadCampaignSpend, 450);
   assert.equal(result.figures.ads_spend, 600, "and total spend is still total spend");
 });
@@ -132,13 +132,13 @@ test("the Results column is never summed", () => {
   // It means something different in every row: profile visits in one, a
   // custom opt-in in another, lead-form leads in a third. 700 is what
   // summing it would give.
-  const result = readMetaAds(fixture("meta-ads.csv"), { "autumn workshop opt in": "leads" });
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER, { "autumn workshop opt in": "leads" });
   assert.notEqual(result.figures.ads_leads, 700);
   assert.ok(!Object.values(result.figures).includes(700));
 });
 
 test("an unmapped conversion column is handed back to be ticked, not guessed", () => {
-  const result = readMetaAds(fixture("meta-ads.csv"));
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER);
   assert.deepEqual(
     result.unknownConversions.map((c) => c.column),
     ["autumn workshop opt in"],
@@ -148,29 +148,31 @@ test("an unmapped conversion column is handed back to be ticked, not guessed", (
 });
 
 test("a column mapped as ignored stays out and stops being asked about", () => {
-  const result = readMetaAds(fixture("meta-ads.csv"), { "autumn workshop opt in": "ignored" });
+  const result = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER, { "autumn workshop opt in": "ignored" });
   assert.equal(result.unknownConversions.length, 0);
   assert.equal(result.figures.ads_leads, 60);
 });
 
 test("the spend column is found whatever currency it is in", () => {
   const usd = fixture("meta-ads.csv").replace("Amount spent (GBP)", "Amount spent (USD)");
-  assert.equal(readMetaAds(usd).figures.ads_spend, 600);
+  assert.equal(readMetaAds(usd, SEPTEMBER).figures.ads_spend, 600);
 });
 
-test("a file from the wrong place is refused, in words", () => {
-  assert.match(
-    readMetaContent("Campaign name,Amount spent (GBP)\nx,1\n", SEPTEMBER).problem ?? "",
-    /does not look like a Meta content export/i,
-  );
-  assert.match(
-    readMetaAds("Post ID,Views\n1,100\n").problem ?? "",
-    /does not look like a Meta Ads export/i,
-  );
+test("the wrong file names the screen it belongs on", () => {
+  // The two exports are a click apart in Meta, so bringing the right
+  // file to the wrong card is the obvious mistake. "Invalid file" would
+  // leave somebody looking for a problem with the file (Dom, 9 Oct).
+  const onContent = readMetaContent("Campaign name,Amount spent (GBP)\nx,1\n", SEPTEMBER);
+  assert.match(onContent.problem ?? "", /ads figures go on the Ads screen/i);
+  assert.deepEqual(onContent.figures, {});
+
+  const onAds = readMetaAds("Post ID,Views\n1,100\n", SEPTEMBER);
+  assert.match(onAds.problem ?? "", /post figures go on the Social Media screen/i);
+  assert.deepEqual(onAds.figures, {});
 });
 
 test("an empty file is refused rather than filling everything with zero", () => {
-  for (const result of [readMetaContent("", SEPTEMBER), readMetaAds("")]) {
+  for (const result of [readMetaContent("", SEPTEMBER), readMetaAds("", SEPTEMBER)]) {
     assert.match(result.problem ?? "", /no rows/i);
     assert.deepEqual(result.figures, {});
   }
@@ -181,20 +183,63 @@ test("an empty file is refused rather than filling everything with zero", () => 
   );
 });
 
-test("a month with no posts in it fills zeros, which is a real answer", () => {
-  // Different from an empty file: they did post, just not that month —
-  // so "0 posts published" is true and worth saving.
+test("a file with nothing in this month is refused, not filled with zeros", () => {
+  // Zeros would be a true statement about the month and an untrue one
+  // about the upload: somebody watching the boxes fill in would
+  // reasonably think the file had been read, and save it. The likeliest
+  // cause is the wrong month on screen, so the message says what the
+  // file does cover (Dom, 9 October).
   const result = readMetaContent(fixture("meta-content.csv"), "2026-07-01");
-  assert.equal(result.problem, undefined);
-  assert.equal(result.figures.social_media_posts_published, 0);
-  assert.equal(result.rowsOutsideMonth, 5);
+  assert.match(result.problem ?? "", /no posts in that file were published in 2026-07/i);
+  assert.match(result.problem ?? "", /2026-08, 2026-09, 2026-10/, "and says what it covers");
+  assert.deepEqual(result.figures, {}, "nothing is filled");
+});
+
+test("and a file whose dates cannot be read says that instead", () => {
+  const unreadable = "Publish time,Views,Likes,Comments,Shares,Follows,Saves\nnot a date,100,1,1,1,1,1\n";
+  assert.match(
+    readMetaContent(unreadable, SEPTEMBER).problem ?? "",
+    /publish date this reader could read/i,
+  );
+});
+
+test("an ads export for another month is refused, partial months included", () => {
+  // The brief's own sample runs 1 to 28 September, and this refuses it
+  // for September — deliberately. A month's spend filled from
+  // twenty-eight days of it is wrong by two days and says nothing about
+  // being wrong, and cost per lead is wrong by the same invisible
+  // amount (Dom, 9 October).
+  const august = fixture("meta-ads.csv").replaceAll("2026-09-01,2026-09-30", "2026-08-01,2026-08-31");
+  assert.match(
+    readMetaAds(august, SEPTEMBER).problem ?? "",
+    /covers 2026-08-01 to 2026-08-31.*this report is for 2026-09-01 to 2026-09-30/i,
+  );
+
+  const partial = fixture("meta-ads.csv").replaceAll("2026-09-01,2026-09-30", "2026-09-01,2026-09-28");
+  const refused = readMetaAds(partial, SEPTEMBER);
+  assert.match(refused.problem ?? "", /export it again for the whole month/i);
+  assert.deepEqual(refused.figures, {}, "and nothing is filled from a part of a month");
+
+  // A range wider than the month is fine — it contains it.
+  const wide = fixture("meta-ads.csv").replaceAll("2026-09-01,2026-09-30", "2026-08-15,2026-10-15");
+  assert.equal(readMetaAds(wide, SEPTEMBER).problem, undefined);
+});
+
+test("a file with no range at all is not refused for not having one", () => {
+  // The content export has no such columns, and an older ads export may
+  // not either. Absent is not the same as wrong.
+  const noRange = fixture("meta-ads.csv")
+    .replace(",Reporting starts,Reporting ends", "")
+    .replaceAll(",2026-09-01,2026-09-30", "");
+  assert.equal(readMetaAds(noRange, SEPTEMBER).problem, undefined);
+  assert.equal(readMetaAds(noRange, SEPTEMBER).figures.ads_spend, 600);
 });
 
 test("reading the same file twice gives the same figures", () => {
   // Re-uploading replaces and never doubles. The parser is where that
   // is decided: it computes from the file alone and never reads what is
   // already in the box.
-  const once = readMetaAds(fixture("meta-ads.csv"));
-  const twice = readMetaAds(fixture("meta-ads.csv"));
+  const once = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER);
+  const twice = readMetaAds(fixture("meta-ads.csv"), SEPTEMBER);
   assert.deepEqual(once.figures, twice.figures);
 });

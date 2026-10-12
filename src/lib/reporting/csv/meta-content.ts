@@ -48,8 +48,11 @@ export function readMetaContent(text: string, month: string): ImportResult {
       cannotFill: [],
       rowsUsed: 0,
       rowsOutsideMonth: 0,
+      // **Naming the screen it belongs on**, not just refusing: the two
+      // exports are a click apart in Meta and the obvious mistake is
+      // bringing the right file to the wrong card (Dom, 9 Oct).
       problem:
-        "That does not look like a Meta content export — it has no Publish time or Views column.",
+        "That looks like a Meta Ads export, not a content one. Ads figures go on the Ads screen.",
     };
   }
 
@@ -58,6 +61,33 @@ export function readMetaContent(text: string, month: string): ImportResult {
   // and counted, so the card can say how many.
   const mine = rows.filter((row) => inMonth(parseExportDate(row["publish time"], "us"), month));
   const outside = rows.length - mine.length;
+
+  // **No posts in this month is a refusal, not a row of zeros** (Dom,
+  // 9 Oct). Filling zeros would be a true statement about the month and
+  // an untrue one about the upload: somebody watching boxes fill in
+  // would reasonably think the file had been read, and save it. The
+  // likeliest cause is the wrong month on screen, so the message says
+  // what the file does cover.
+  if (mine.length === 0) {
+    const months = [
+      ...new Set(
+        rows
+          .map((row) => parseExportDate(row["publish time"], "us"))
+          .filter((d): d is string => d !== null)
+          .map((d) => d.slice(0, 7)),
+      ),
+    ].sort();
+    return {
+      figures: {},
+      cannotFill: [],
+      rowsUsed: 0,
+      rowsOutsideMonth: outside,
+      problem:
+        months.length > 0
+          ? `No posts in that file were published in ${month.slice(0, 7)} — it covers ${months.join(", ")}.`
+          : "No posts in that file have a publish date this reader could read.",
+    };
+  }
 
   const sum = (column: string) =>
     mine.reduce((total, row) => total + (cellNumber(row[column]) ?? 0), 0);
