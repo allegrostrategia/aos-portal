@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { CsvUploadAds } from "@/components/reporting/csv-upload-ads";
 import { Badge, Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { calculate } from "@/lib/reporting/calculate";
 import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/format";
@@ -30,6 +31,11 @@ import type { ReportEntity } from "@/lib/reporting/queries";
  */
 
 export interface CampaignsEntryProps {
+  /** §10.2's upload card, when this screen has one. Null otherwise. */
+  upload?: {
+    monthLabel: string;
+    columnMaps: Record<string, "leads" | "purchases" | "ignored">;
+  } | null;
   workspaceId: string;
   month: string;
   previousLabel: string | null;
@@ -103,6 +109,29 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
   const ungoaled = useMemo(() => ads.withoutGoal(rows), [rows]);
 
   return (
+    <>
+      {props.upload ? (
+        <CsvUploadAds
+          workspaceId={props.workspaceId}
+          month={props.month}
+          monthLabel={props.upload.monthLabel}
+          campaigns={active.map((c) => ({ id: c.id, name: c.name }))}
+          labels={Object.fromEntries(FIGURES.map((f) => [f.key, f.label]))}
+          current={Object.fromEntries(
+            active.flatMap((c) => FIGURES.map((f) => [`${f.key}|${c.id}`, read(f.key, c.id)])),
+          )}
+          columnMaps={props.upload.columnMaps}
+          onFill={(figures: Record<string, number>) =>
+            setTyped((now) => {
+              const next = { ...now };
+              for (const [key, value] of Object.entries(figures)) {
+                next[key] = toInputValue(value);
+              }
+              return next;
+            })
+          }
+        />
+      ) : null}
     <div className="flex flex-col gap-6">
       {ungoaled.length > 0 ? (
         <Card>
@@ -225,6 +254,7 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
         </div>
       )}
     </div>
+    </>
   );
 }
 

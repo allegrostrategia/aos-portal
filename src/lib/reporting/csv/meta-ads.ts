@@ -16,7 +16,25 @@ export interface UnknownConversion {
   total: number;
 }
 
+/**
+ * One campaign's figures, from one row of the export.
+ *
+ * §10.2's file is one row per campaign and the Ads entry screen stores
+ * per campaign too (`ads_spend|<campaign id>`), so the account totals
+ * above are for the report, not for filling boxes. These are what fills
+ * them.
+ */
+export interface CampaignFigures {
+  /** Exactly as the file spells it, trimmed. Matching is exact. */
+  name: string;
+  figures: Record<string, number>;
+  /** Whether `Result indicator` says this campaign was after leads. */
+  goalIsLeads: boolean;
+}
+
 export interface AdsImportResult extends ImportResult {
+  /** One per campaign that spent, in the file's order. */
+  campaigns: CampaignFigures[];
   /** §10.2's custom conversions, for the client to tick. */
   unknownConversions: UnknownConversion[];
   /** Spend on campaigns whose goal is leads, which cost per lead uses. */
@@ -45,7 +63,7 @@ export function readMetaAds(
   if (rows.length === 0) {
     return {
       figures: {}, cannotFill: [], rowsUsed: 0, rowsOutsideMonth: 0,
-      unknownConversions: [], leadCampaignSpend: 0,
+      unknownConversions: [], leadCampaignSpend: 0, campaigns: [],
       problem: "That file has no rows in it.",
     };
   }
@@ -60,7 +78,7 @@ export function readMetaAds(
   if (!spendColumn) {
     return {
       figures: {}, cannotFill: [], rowsUsed: 0, rowsOutsideMonth: 0,
-      unknownConversions: [], leadCampaignSpend: 0,
+      unknownConversions: [], leadCampaignSpend: 0, campaigns: [],
       problem:
         // Naming the screen it belongs on, not just refusing: the two
         // exports are a click apart in Meta and the obvious mistake is
@@ -76,7 +94,7 @@ export function readMetaAds(
   if (!covers.ok) {
     return {
       figures: {}, cannotFill: [], rowsUsed: 0, rowsOutsideMonth: 0,
-      unknownConversions: [], leadCampaignSpend: 0,
+      unknownConversions: [], leadCampaignSpend: 0, campaigns: [],
       problem: covers.reason,
     };
   }
@@ -111,9 +129,45 @@ export function readMetaAds(
     return LEAD_INDICATORS.some((hint) => indicator.includes(hint));
   });
 
+
   const leadsFromColumns = sum("leads") + mappedAs("leads").reduce((t, c) => t + sum(c), 0);
 
+  const perCampaign = (row: Record<string, string>) => {
+    const at = (column: string) => cellNumber(row[column]);
+    const figures: Record<string, number> = {};
+    const put = (key: string, value: number | null) => {
+      // §4's rule per row as well: a column the file does not have is
+      // not a zero for every campaign in it.
+      if (value !== null) figures[key] = value;
+    };
+    put("ads_spend", at(spendColumn));
+    put("ads_impressions", at("impressions"));
+    put("ads_link_clicks", at("link clicks"));
+    put(
+      "ads_leads",
+      [at("leads"), ...mappedAs("leads").map((c) => at(c))]
+        .reduce<number | null>((total, v) => (v === null ? total : (total ?? 0) + v), null),
+    );
+    put(
+      "ads_purchases",
+      [at("purchases"), ...mappedAs("purchases").map((c) => at(c))]
+        .reduce<number | null>((total, v) => (v === null ? total : (total ?? 0) + v), null),
+    );
+    put("ads_revenue_from_ads", at("purchase conversion value"));
+    return figures;
+  };
+
+  const isLeadGoal = (row: Record<string, string>) => {
+    const indicator = (row["result indicator"] ?? "").toLowerCase();
+    return LEAD_INDICATORS.some((hint) => indicator.includes(hint));
+  };
+
   return {
+    campaigns: spent.map((row) => ({
+      name: (row["campaign name"] ?? "").trim(),
+      figures: perCampaign(row),
+      goalIsLeads: isLeadGoal(row),
+    })),
     figures: {
       ads_spend: sum(spendColumn),
       ads_impressions: sum("impressions"),

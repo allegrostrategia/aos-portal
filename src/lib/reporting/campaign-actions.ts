@@ -219,3 +219,70 @@ export async function saveCampaignMonth(
   revalidatePath("/reporting", "layout");
   return { notice: "Saved. Ads is up to date for this month." };
 }
+
+/**
+ * Create the campaigns a person ticked on an import, and hand back
+ * their ids.
+ *
+ * §10.2's export names campaigns the screen may not have yet. They are
+ * **listed, never created on sight** — somebody ticks the ones they
+ * want and this makes exactly those. A file that mentions a campaign is
+ * not somebody asking for it to exist.
+ *
+ * Returns the ids because the card has figures waiting for them: it
+ * fills the new campaigns' boxes straight after, and the form's own
+ * save is still what writes any figure.
+ *
+ * Idempotent on name, so pressing it twice does not make two: a
+ * campaign that already exists comes back with the id it already had.
+ */
+export async function createCampaignsForImport(
+  workspaceId: string,
+  wanted: { name: string; goal: CampaignGoal | null }[],
+): Promise<{ created: { name: string; id: string }[] } | { error: string }> {
+  const access = await editableWorkspace(workspaceId);
+  if ("error" in access) return { error: access.error ?? "You don't have access to that client." };
+
+  const names = wanted.map((w) => w.name.trim()).filter((n) => n !== "");
+  if (names.length === 0) return { created: [] };
+
+  const supabase = await createClient();
+  const { data: already } = await supabase
+    .from("report_entities")
+    .select("id, name")
+    .eq("workspace_id", workspaceId)
+    .eq("entity_type", "ad_campaign")
+    .in("name", names)
+    .returns<{ id: string; name: string }[]>();
+
+  const have = new Map((already ?? []).map((row) => [row.name, row.id]));
+  const toMake = wanted.filter((w) => !have.has(w.name.trim()));
+
+  if (toMake.length > 0) {
+    const { data, error } = await supabase
+      .from("report_entities")
+      .insert(
+        toMake.map((w) => ({
+          workspace_id: workspaceId,
+          entity_type: "ad_campaign" as const,
+          name: w.name.trim(),
+          campaign_goal: w.goal,
+          active: true,
+        })),
+      )
+      .select("id, name")
+      .returns<{ id: string; name: string }[]>();
+
+    if (error) return { error: `Couldn't add those campaigns: ${error.message}` };
+    // Checked, not assumed: RLS refusing an insert is not an error.
+    if (!data || data.length !== toMake.length) {
+      return { error: "Those campaigns aren't yours to add." };
+    }
+    for (const row of data) have.set(row.name, row.id);
+  }
+
+  revalidatePath("/reporting", "layout");
+  return {
+    created: wanted.map((w) => ({ name: w.name, id: have.get(w.name.trim())! })),
+  };
+}

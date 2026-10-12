@@ -76,6 +76,10 @@ export default async function EnterCategoryPage({
     ? monthLabel(ctx.month.previous).split(" ")[0]
     : null;
 
+  // Hoisted above the three screens that return early. Offers, Funnels
+  // and Ads each have their own, and the upload card asks this.
+  const locked = monthIsLocked(ctx.workspace, data.period?.published_at);
+
   // Offers is the one Stage 2 category whose figures hang off a row rather
   // than off the month (§5.9), so it has its own screen. The generic form
   // below would write one figure per metric per month and quietly merge
@@ -237,6 +241,18 @@ export default async function EnterCategoryPage({
         }
       >
         <CampaignsEntry
+          upload={
+            STAGE_6
+              ? await uploadFor({
+                  category: category.key,
+                  locked,
+                  canEdit: ctx.canEdit,
+                  kind: ctx.workspace.kind,
+                  workspaceId: ctx.workspace.id,
+                  monthLabel: ctx.month.label,
+                })
+              : null
+          }
           workspaceId={ctx.workspace.id}
           month={ctx.month.month}
           previousLabel={previousLabel}
@@ -326,7 +342,6 @@ export default async function EnterCategoryPage({
   );
   // Published and retainer: the same two conditions the database guard
   // applies, from the same helper, so a form never submits into a refusal.
-  const locked = monthIsLocked(ctx.workspace, data.period?.published_at);
 
   // Only when the card is going to be drawn, and only for the person who
   // can press the button it sits under.

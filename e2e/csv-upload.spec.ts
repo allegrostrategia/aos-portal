@@ -9,11 +9,11 @@ import { requireLocalStack, shoot, signIn } from "./helpers.ts";
  * cannot — that nobody is offered a button that will not work, and that
  * a figure somebody typed is never replaced without being shown.
  *
- * **Social Media only, for now.** The Ads entry screen stores per
- * campaign and the ads export is one row per campaign, so filling it
- * means matching rows to campaigns by name rather than handing over
- * account totals. That is a different shape of import, and it is a
- * decision rather than wiring — see the `fixme` at the bottom.
+ * Both screens, and they import differently. Social Media takes account
+ * totals straight into boxes. Ads cannot: the export is one row per
+ * campaign and the screen stores per campaign, so every row has to find
+ * the campaign it belongs to, matched by **exact name**, and a row with
+ * no campaign is listed rather than created.
  */
 
 requireLocalStack();
@@ -153,16 +153,127 @@ test("a client is never offered one, and nor is a member", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /fill from a file/i })).toHaveCount(0);
 });
 
+
+
 /**
- * **Ads is not wired, and it is a decision rather than wiring.**
- *
- * §10.2's export is one row per campaign, and the Ads entry screen
- * stores per campaign too — `ads_spend|<campaign id>`, not one account
- * total. So an import has to match each row to a campaign by name and
- * say what to do about rows for campaigns that do not exist yet, which
- * is a different shape from "fill these boxes".
- *
- * The parser already reads the rows; what is missing is the decision.
- * Left failing-by-name rather than quietly absent.
+ * §10.2's import, which is not "fill these boxes": the export is one
+ * row per campaign and this screen stores per campaign, so every row
+ * has to find the campaign it belongs to.
  */
-test.fixme("the ads export fills each campaign, matched by name", async () => {});
+const ADS_CSV = `Campaign name,Campaign delivery,Amount spent (GBP),Impressions,Link clicks,Leads,Result indicator,Results,Reporting starts,Reporting ends
+Spring leads,active,400.00,40000,2700,60,actions:onsite_conversion.lead_grouped,60,2026-09-01,2026-09-30
+"Brand, reels",active,200.00,20000,1500,0,actions:profile_visit,1500,2026-09-01,2026-09-30
+Paused,inactive,0,0,0,0,,0,2026-09-01,2026-09-30
+`;
+
+const ads = async (page: import("@playwright/test").Page) => {
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await page.goto(`/reporting/enter/ads?month=${MONTHS.sep}`);
+};
+
+/** The seed's campaigns, so a row can be made to match one. */
+const renameFirstCampaignTo = async (name: string) => {
+  const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  const id = sql(`select id from public.report_entities
+                   where workspace_id = '${ws}' and entity_type = 'ad_campaign'
+                   order by name limit 1`);
+  sql(`update public.report_entities set name = '${name}' where id = '${id}';`);
+  return id;
+};
+
+test("a row matching a campaign by name fills that campaign, old → new", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const id = await renameFirstCampaignTo("Spring leads");
+
+  await signIn(page, "nina");
+  await ads(page);
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(ADS_CSV),
+  });
+
+  await expect(page.getByText(/1 matched, 1 not recognised/i)).toBeVisible();
+  await expect(page.locator("[data-csv-matched]")).toContainText(/Spring leads/);
+  await shoot(page, TAB, "06-ads-preview", w);
+
+  await page.getByRole("button", { name: /fill these in/i }).click();
+  // Scoped to that campaign's own box: the seed has several and the
+  // first on screen is somebody else's.
+  await expect(page.locator(`input[name="v:ads_spend:${id}"]`)).toHaveValue("400");
+});
+
+test("a row with no campaign is listed, and nothing is created unless ticked", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  const id = await renameFirstCampaignTo("Spring leads");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  const campaignCount = () =>
+    Number(sql(`select count(*)::text from public.report_entities
+                 where workspace_id = '${ws}' and entity_type = 'ad_campaign'`));
+  const before = campaignCount();
+
+  await signIn(page, "nina");
+  await ads(page);
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(ADS_CSV),
+  });
+
+  const unmatched = page.locator("[data-csv-unmatched]");
+  await expect(unmatched).toContainText(/Brand, reels/);
+  await expect(unmatched).toContainText(/nothing is added unless you tick it/i);
+  await shoot(page, TAB, "07-ads-unmatched", w);
+
+  // Left unticked: filling makes nothing.
+  await page.getByRole("button", { name: /fill these in/i }).click();
+  await expect(page.locator(`input[name="v:ads_spend:${id}"]`)).toHaveValue("400");
+  expect(campaignCount(), "nothing was created").toBe(before);
+});
+
+test("ticking a row adds that campaign, and only that one", async ({ page }) => {
+  const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  await renameFirstCampaignTo("Spring leads");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  const names = () =>
+    sql(`select coalesce(string_agg(name, ', ' order by name), '') from public.report_entities
+          where workspace_id = '${ws}' and entity_type = 'ad_campaign'`);
+  expect(names()).not.toContain("Brand, reels");
+
+  await signIn(page, "nina");
+  await ads(page);
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(ADS_CSV),
+  });
+
+  await page.getByRole("checkbox", { name: /Add Brand, reels as a new campaign/i }).check();
+  await page.getByRole("button", { name: /fill these in/i }).click();
+
+  // **Waited for.** Creating the campaign is a server action, and
+  // reading the database the instant the click returns reads it before
+  // the action has run — which is what the first version of this test
+  // did, and it reported "nothing was created" about a campaign that
+  // was created a moment later.
+  await expect(page.locator("[data-csv-unmatched]")).toHaveCount(0);
+  await expect
+    .poll(() => names(), { message: "the ticked campaign was never created" })
+    .toContain("Brand, reels");
+
+  // And only one of it. Counted by matching rather than by splitting on
+  // ", " — the fixture's name has a comma in it on purpose, and the
+  // split turned one campaign into two.
+  expect(names().match(/Brand, reels/g) ?? []).toHaveLength(1);
+});
+
+test("a campaign the file is silent about keeps what is in it", async ({ page }) => {
+  await renameFirstCampaignTo("Spring leads");
+  await signIn(page, "nina");
+  await ads(page);
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(ADS_CSV),
+  });
+  // The seed has more than one campaign, and the file names one of them.
+  await expect(page.locator("[data-csv-untouched]")).toContainText(/says nothing about/i);
+});
