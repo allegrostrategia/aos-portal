@@ -91,6 +91,7 @@ export interface EntryFormProps {
 
 export function EntryForm(props: EntryFormProps) {
   const [state, action] = useActionState<SaveState, FormData>(saveCategoryValues, null);
+  const [imported, setImported] = useState<{ fileName: string; fields: string[] } | null>(null);
 
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -169,7 +170,18 @@ export function EntryForm(props: EntryFormProps) {
               return next;
             })
           }
+          onImported={setImported}
         />
+      ) : null}
+
+      {/* §9's record, written by the save rather than by the upload —
+          nothing happened until the figures did. */}
+      {imported ? (
+        <>
+          <input type="hidden" name="import:file_name" value={imported.fileName} />
+          <input type="hidden" name="import:platform" value={props.upload?.platform ?? ""} />
+          <input type="hidden" name="import:fields" value={imported.fields.join(",")} />
+        </>
       ) : null}
 
       {/* The grid holds the inputs and the panel and NOTHING ELSE.

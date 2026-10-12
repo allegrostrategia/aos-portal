@@ -82,6 +82,8 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
    * creates them in the same action as the figures, so abandoning the
    * preview or closing the tab leaves nothing behind.
    */
+  const [imported, setImported] = useState<{ fileName: string; fields: string[] } | null>(null);
+
   const [pending, setPending] = useState<
     { name: string; goal: "leads" | null; figures: Record<string, number> }[]
   >([]);
@@ -123,6 +125,7 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
     <>
       {props.upload ? (
         <CsvUploadAds
+          workspaceId={props.workspaceId}
           month={props.month}
           monthLabel={props.upload.monthLabel}
           campaigns={active.map((c) => ({ id: c.id, name: c.name }))}
@@ -141,7 +144,22 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
             })
           }
           onAddPending={setPending}
+          onImported={setImported}
         />
+      ) : null}
+
+      {/* §9's record, written by the save rather than by the upload. */}
+      {imported ? (
+        <>
+          <input type="hidden" form={MONTH_FORM} name="import:file_name" value={imported.fileName} />
+          <input type="hidden" form={MONTH_FORM} name="import:platform" value="meta_ads" />
+          <input
+            type="hidden"
+            form={MONTH_FORM}
+            name="import:fields"
+            value={imported.fields.join(",")}
+          />
+        </>
       ) : null}
 
       {/* The campaigns the import asked for, waiting for the save that

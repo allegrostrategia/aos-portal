@@ -11,7 +11,16 @@ import { coversMonth, rangeFromRows } from "./month-range.ts";
 
 /** A column the client has not yet said what to do with. */
 export interface UnknownConversion {
+  /** Lowercased, which is how a column is looked up and remembered. */
   column: string;
+  /**
+   * As the file spells it, for the screen.
+   *
+   * Without this the person was shown "autumn workshop opt in" — their
+   * own column name, flattened by the lookup — and asked to identify
+   * it. A lookup key is not a label.
+   */
+  label: string;
   /** What it adds up to across the campaigns that spent, for context. */
   total: number;
 }
@@ -117,9 +126,10 @@ export function readMetaAds(
   const mappedAs = (what: "leads" | "purchases") =>
     candidates.filter((column) => columnMaps[column] === what);
 
+  const originalOf = new Map(headers.map((h) => [h.toLowerCase(), h]));
   const unknownConversions = candidates
     .filter((column) => columnMaps[column] === undefined)
-    .map((column) => ({ column, total: sum(column) }));
+    .map((column) => ({ column, label: originalOf.get(column) ?? column, total: sum(column) }));
 
   // **A campaign is a lead campaign by its Result indicator**, not by
   // the Results column — which means something different in every row

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { recordCsvImportFromForm } from "./csv/column-map-actions.ts";
+
 import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
 import { firstOfMonth } from "./months.ts";
@@ -323,6 +325,8 @@ export async function saveCampaignMonth(
 
     if (error) return { error: `Couldn't save the figures: ${error.message}` };
   }
+
+  await recordCsvImportFromForm(formData, workspaceId, month);
 
   revalidatePath("/reporting", "layout");
   return { notice: "Saved. Ads is up to date for this month." };

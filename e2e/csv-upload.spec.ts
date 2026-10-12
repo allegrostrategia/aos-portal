@@ -140,6 +140,26 @@ test("a published month is not offered a file at all", async ({ page }, info) =>
   await shoot(page, TAB, "05-locked", w);
 });
 
+test("only the two screens with a file to upload have a card", async ({ page }) => {
+  // Email stays manual — the only sample is a PDF of charts — and
+  // Financials is manual for good, because payment exports carry names
+  // and card details.
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+  for (const slug of ["financials", "email", "leads-conversions"]) {
+    await page.goto(`/reporting/enter/${slug}?month=${MONTHS.sep}`);
+    await expect(
+      page.getByRole("heading", { name: /fill from a file/i }),
+      `${slug} has no file to upload`,
+    ).toHaveCount(0);
+  }
+  // And the two that do, do.
+  for (const slug of ["social-media", "ads"]) {
+    await page.goto(`/reporting/enter/${slug}?month=${MONTHS.sep}`);
+    await expect(page.getByRole("heading", { name: /fill from a file/i })).toBeVisible();
+  }
+});
+
 test("a client is never offered one, and nor is a member", async ({ page }) => {
   const { MONTHS } = await import("../scripts/seed-test-db.mjs");
   // A retainer client does not enter figures at all.
@@ -303,4 +323,101 @@ test("a campaign the file is silent about keeps what is in it", async ({ page })
   });
   // The seed has more than one campaign, and the file names one of them.
   await expect(page.locator("[data-csv-untouched]")).toContainText(/says nothing about/i);
+});
+
+test("an unrecognised conversion column is asked about, and remembered", async ({
+  page,
+}, info) => {
+  // §10.2: clients name their own conversion events, and only they know
+  // whether a column is a lead, a purchase or neither. It is never
+  // guessed — until somebody says, it counts as nothing.
+  const w = width(info.project.name);
+  await renameFirstCampaignTo("Spring leads");
+
+  const withConversion = ADS_CSV.replace(
+    "Result indicator,Results,",
+    "Result indicator,Results,Autumn Workshop Opt In,",
+  )
+    .replace("lead_grouped,60,", "lead_grouped,60,0,")
+    .replace("profile_visit,1500,", "profile_visit,1500,25,")
+    .replace(",,0,2026-09-01", ",,0,0,2026-09-01");
+
+  await signIn(page, "nina");
+  await ads(page);
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(withConversion),
+  });
+
+  const unknown = page.locator("[data-csv-unknown]");
+  await expect(unknown).toContainText(/Autumn Workshop Opt In/);
+  await expect(unknown).toContainText(/count as nothing/i);
+  await shoot(page, TAB, "08-conversions", w);
+
+  // Say it is leads, and the same file is worth more straight away.
+  await unknown.getByRole("radio", { name: /^Leads$/ }).check();
+  await page.getByRole("button", { name: /remember these/i }).click();
+
+  // The question goes, because it has been answered.
+  await expect(page.locator("[data-csv-unknown]")).toHaveCount(0);
+
+  // And it is remembered for next time — stored against the workspace
+  // and the platform, lowercased, which is how a column is looked up.
+  const { RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  await expect
+    .poll(
+      () =>
+        sql(`select coalesce(string_agg(column_name || '=' || maps_to::text, ', '), '')
+               from public.report_column_maps where workspace_id = '${ws}'`),
+      { message: "the choice was never remembered" },
+    )
+    .toBe("autumn workshop opt in=leads");
+
+  // A fresh upload does not ask again.
+  await page.setInputFiles("input[type=file]", {
+    name: "ads.csv", mimeType: "text/csv", buffer: Buffer.from(withConversion),
+  });
+  await expect(page.locator("[data-csv-unmatched]")).toBeVisible();
+  await expect(page.locator("[data-csv-unknown]")).toHaveCount(0);
+});
+
+test("the import is recorded by the save, not by the upload", async ({ page }) => {
+  // §9's `report_csv_imports`: a person who reads a preview and walks
+  // away has imported nothing, and a row saying otherwise would be the
+  // only evidence of something that never happened.
+  const { MONTHS, RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  const records = () =>
+    sql(`select coalesce(string_agg(file_name || ' / ' || platform::text, ' | '), '')
+           from public.report_csv_imports where workspace_id = '${ws}'`);
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+  await page.setInputFiles("input[type=file]", {
+    name: "september-posts.csv", mimeType: "text/csv", buffer: Buffer.from(CONTENT_CSV),
+  });
+  await page.getByRole("button", { name: /fill these in/i }).click();
+  await expect(page.getByLabel(/^Views/i).first()).toHaveValue("9000");
+
+  expect(records(), "filling records nothing").toBe("");
+
+  await page.getByRole("button", { name: /^save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect
+    .poll(() => records(), { message: "the save recorded no import" })
+    .toContain("september-posts.csv / meta_content");
+});
+
+test("a month saved without a file records no import", async ({ page }) => {
+  const { MONTHS, RETAINER, sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
+  const count = () =>
+    Number(sql(`select count(*)::text from public.report_csv_imports where workspace_id = '${ws}'`));
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+  await page.getByLabel(/^Views/i).first().fill("1234");
+  await page.getByRole("button", { name: /^save/i }).first().click();
+  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  expect(count()).toBe(0);
 });

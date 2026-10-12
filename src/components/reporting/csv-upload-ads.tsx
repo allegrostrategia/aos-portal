@@ -1,11 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { buildCampaignPreview, type CampaignPreview } from "@/lib/reporting/csv/campaign-preview";
 import { readMetaAds } from "@/lib/reporting/csv/meta-ads";
+import {
+  saveColumnMaps,
+  type ColumnMapState,
+} from "@/lib/reporting/csv/column-map-actions";
 
 /**
  * §10.2's import, which is not "fill these boxes".
@@ -29,6 +33,7 @@ import { readMetaAds } from "@/lib/reporting/csv/meta-ads";
  */
 
 export function CsvUploadAds({
+  workspaceId,
   month,
   monthLabel,
   campaigns,
@@ -37,7 +42,9 @@ export function CsvUploadAds({
   columnMaps,
   onFill,
   onAddPending,
+  onImported,
 }: {
+  workspaceId: string;
   month: string;
   monthLabel: string;
   campaigns: { id: string; name: string }[];
@@ -50,32 +57,68 @@ export function CsvUploadAds({
   onAddPending: (
     pending: { name: string; goal: "leads" | null; figures: Record<string, number> }[],
   ) => void;
+  /** What to record once the figures are saved (§9). */
+  onImported: (what: { fileName: string; fields: string[] }) => void;
 }) {
   const [preview, setPreview] = useState<CampaignPreview | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [adding, setAdding] = useState<Record<string, boolean>>({});
   const [fileName, setFileName] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  // §10.2's unrecognised conversion columns, and the choices made for
+  // them here. Kept locally so the preview can be re-read the moment
+  // they are remembered, without a reload.
+  const [unknown, setUnknown] = useState<{ column: string; label: string; total: number }[]>([]);
+  const [maps, setMaps] = useState(columnMaps);
+  const [text, setText] = useState<string | null>(null);
+  const [choices, setChoices] = useState<Record<string, "leads" | "purchases" | "ignored">>({});
+  const [mapState, mapAction] = useActionState<ColumnMapState, FormData>(saveColumnMaps, null);
 
   function clear() {
     setPreview(null);
     setProblem(null);
     setAdding({});
+    setUnknown([]);
+    setText(null);
     setFileName(null);
     if (input.current) input.current.value = "";
   }
 
-  async function read(file: File) {
-    const result = readMetaAds(await file.text(), month, columnMaps);
-    setFileName(file.name);
+  /** Read the file we already have, against the choices we now have. */
+  function reread(csv: string, withMaps: typeof maps) {
+    const result = readMetaAds(csv, month, withMaps);
     if (result.problem) {
       setPreview(null);
+      setUnknown([]);
       setProblem(result.problem);
       return;
     }
     setProblem(null);
     setAdding({});
+    setUnknown(result.unknownConversions);
     setPreview(buildCampaignPreview(result.campaigns, campaigns, current, labels));
+  }
+
+  async function read(file: File) {
+    const csv = await file.text();
+    setFileName(file.name);
+    setText(csv);
+    reread(csv, maps);
+  }
+
+  // Once the choices are remembered, read the same file again against
+  // them, so the preview shows what they are worth straight away rather
+  // than on the next upload.
+  //
+  // Keyed on the notice rather than on every render: the action returns
+  // a fresh object each time, and rereading on anything else would
+  // fight the person as they pick.
+  const [remembered, setRemembered] = useState<ColumnMapState>(null);
+  if (mapState?.notice && mapState !== remembered && text) {
+    const next = { ...maps, ...choices };
+    setRemembered(mapState);
+    setMaps(next);
+    reread(text, next);
   }
 
   function fill() {
@@ -96,6 +139,18 @@ export function CsvUploadAds({
           figures: u.figures,
         })),
     );
+
+    onImported({
+      fileName: fileName ?? "",
+      fields: [
+        ...new Set([
+          ...preview.matched.flatMap((m) => m.rows.map((r) => r.key)),
+          ...preview.unmatched
+            .filter((u) => adding[u.name])
+            .flatMap((u) => Object.keys(u.figures)),
+        ]),
+      ],
+    });
 
     clear();
   }
@@ -211,6 +266,60 @@ export function CsvUploadAds({
                   </li>
                 ))}
               </ul>
+            </div>
+          ) : null}
+
+          {/* §10.2's custom conversions. Clients name their own
+              conversion events, and only they know whether a column is
+              a lead, a purchase or neither — so it is never guessed.
+              Remembered per workspace, so the next upload counts it. */}
+          {unknown.length > 0 ? (
+            <div data-csv-unknown className="mt-5 rounded-xl bg-cream-deep p-4">
+              <p className="text-small font-medium text-ink">
+                {unknown.length} column{unknown.length === 1 ? "" : "s"} in that file
+                {unknown.length === 1 ? " is" : " are"} not set up yet
+              </p>
+              <p className="mt-1 text-caption text-ink/60">
+                Until you say what they are, they count as nothing.
+              </p>
+              <form action={mapAction} className="mt-3 flex flex-col gap-3">
+                <input type="hidden" name="workspace_id" value={workspaceId} />
+                <input type="hidden" name="platform" value="meta_ads" />
+                {unknown.map((column) => (
+                  <fieldset key={column.column} className="flex flex-wrap items-center gap-3">
+                    <legend className="text-small text-ink">
+                      {column.label}{" "}
+                      <span className="font-mono text-ink/55">{column.total}</span>
+                    </legend>
+                    {(["leads", "purchases", "ignored"] as const).map((choice) => (
+                      <label key={choice} className="flex items-center gap-1.5 text-small text-ink">
+                        <input
+                          type="radio"
+                          name={`column:${column.column}`}
+                          value={choice}
+                          defaultChecked={choice === "ignored"}
+                          onChange={() =>
+                            setChoices((now) => ({ ...now, [column.column]: choice }))
+                          }
+                          className="size-4 accent-orange"
+                        />
+                        {choice === "ignored" ? "Neither" : choice === "leads" ? "Leads" : "Purchases"}
+                      </label>
+                    ))}
+                  </fieldset>
+                ))}
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="submit" size="sm" variant="secondary">
+                    Remember these
+                  </Button>
+                  <p
+                    aria-live="polite"
+                    className={`text-small ${mapState?.error ? "text-deep-red" : "text-ink/60"}`}
+                  >
+                    {mapState?.error ?? mapState?.notice ?? ""}
+                  </p>
+                </div>
+              </form>
             </div>
           ) : null}
 

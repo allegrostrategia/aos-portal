@@ -35,6 +35,7 @@ export function CsvUpload({
   labels,
   columnMaps,
   onFill,
+  onImported,
 }: {
   platform: UploadPlatform;
   month: string;
@@ -44,6 +45,8 @@ export function CsvUpload({
   labels: Record<string, string>;
   columnMaps: Record<string, "leads" | "purchases" | "ignored">;
   onFill: (figures: Record<string, number>) => void;
+  /** What to record once the figures are saved (§9). */
+  onImported: (what: { fileName: string; fields: string[] }) => void;
 }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [unknown, setUnknown] = useState<{ column: string; total: number }[]>([]);
@@ -178,6 +181,10 @@ export function CsvUpload({
               size="sm"
               onClick={() => {
                 onFill(Object.fromEntries(preview.rows.map((row) => [row.key, row.to])));
+                onImported({
+                  fileName: fileName ?? "",
+                  fields: preview.rows.map((row) => row.key),
+                });
                 clear();
               }}
             >

@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { recordCsvImportFromForm } from "./csv/column-map-actions.ts";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -189,6 +191,10 @@ export async function saveCategoryValues(
       .upsert(updates, { onConflict: "id" });
     if (error) return { error: lockedError(error) ?? `Couldn't save: ${error.message}` };
   }
+
+  // §9's record that a file became figures, written here rather than on
+  // upload: nothing happened until the figures did.
+  await recordCsvImportFromForm(formData, workspaceId, month);
 
   revalidatePath("/reporting", "layout");
 

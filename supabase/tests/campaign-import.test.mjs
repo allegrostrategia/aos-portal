@@ -109,3 +109,64 @@ test("a pending campaign with no name is ignored, not created blank", async () =
   })));
   assert.equal((await campaigns()).length, before);
 });
+
+/**
+ * §10.2's custom conversions, remembered per workspace.
+ *
+ * Driven through the action because the two things that matter cannot
+ * be reached from a screen: a radio cannot send a value that is not one
+ * of its three, and a client cannot reach the card at all.
+ */
+const { saveColumnMaps } = await import("../../src/lib/reporting/csv/column-map-actions.ts");
+
+const maps = async () =>
+  (await asMember(db, NINA, () => db.query(
+    `select column_name, maps_to::text from public.report_column_maps
+      where workspace_id = '${WS}' order by column_name`,
+  ))).rows;
+
+test("a conversion column is remembered against the workspace and platform", async () => {
+  const result = await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads",
+    "column:autumn workshop opt in": "leads",
+    "column:black friday": "purchases",
+  })));
+  assert.equal(result?.error, undefined, result?.error);
+  assert.deepEqual(await maps(), [
+    { column_name: "autumn workshop opt in", maps_to: "leads" },
+    { column_name: "black friday", maps_to: "purchases" },
+  ]);
+});
+
+test("saying it again corrects rather than duplicating", async () => {
+  await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads",
+    "column:autumn workshop opt in": "ignored",
+  })));
+  const rows = await maps();
+  assert.equal(rows.filter((r) => r.column_name === "autumn workshop opt in").length, 1);
+  assert.equal(rows.find((r) => r.column_name === "autumn workshop opt in").maps_to, "ignored");
+});
+
+test("a choice that is not one of the three is dropped, not stored", async () => {
+  // A radio cannot send one, but a form post is not a radio.
+  const before = await maps();
+  const result = await as(ELIZE, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads",
+    "column:something else": "revenue",
+  })));
+  assert.match(result?.error ?? "", /nothing chosen/i);
+  assert.deepEqual(await maps(), before);
+});
+
+test("a client cannot remember column maps", async () => {
+  // §2: they view and comment. `report_can_edit` is false for them, and
+  // the action refuses before the write.
+  const before = await maps();
+  const result = await as(CLIENT, () => saveColumnMaps(null, form({
+    workspace_id: WS, platform: "meta_ads",
+    "column:smuggled": "leads",
+  })));
+  assert.match(result?.error ?? "", /isn't yours to change|don't have access/i);
+  assert.deepEqual(await maps(), before);
+});

@@ -135,6 +135,20 @@ test("Stage 3's own pages and tabs have no route at the production flag", async 
   }
 });
 
+test("Stage 6's upload card is absent at the production flag", async ({ page }) => {
+  // **As Nina, not as a member.** The card asks for a retainer
+  // workspace and somebody who can edit it, so checking as a member
+  // proves nothing: they would never see it whatever the switch said,
+  // and the first version of this assertion passed with `STAGE_6`
+  // forced on.
+  await signInAtStage2(page, "nina");
+
+  await page.goto(`${STAGE_2}/reporting/enter/social-media?month=${MONTHS.sep}`);
+  const screen = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  expect(screen, "no upload card").not.toMatch(/fill from a file/i);
+  await expect(page.locator("input[type=file]")).toHaveCount(0);
+});
+
 test("Stage 5's additions are absent at the production flag", async ({ page }) => {
   // **Harder to hide than the stages before it.** Stages 3 and 4 were
   // new routes, invisible by not existing. Stage 5 adds things to

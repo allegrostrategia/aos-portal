@@ -143,6 +143,12 @@ test("an unmapped conversion column is handed back to be ticked, not guessed", (
     result.unknownConversions.map((c) => c.column),
     ["autumn workshop opt in"],
   );
+  // And it is shown to somebody the way their file spells it: a lookup
+  // key is not a label.
+  assert.deepEqual(
+    result.unknownConversions.map((c) => c.label),
+    ["Autumn Workshop Opt In"],
+  );
   assert.equal(result.unknownConversions[0].total, 40, "with what it comes to, for context");
   assert.equal(result.figures.ads_leads, 60, "and it is not counted until they say so");
 });
