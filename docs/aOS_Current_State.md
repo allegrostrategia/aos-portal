@@ -1698,6 +1698,15 @@ last.
     quietly attach figures to the wrong campaign, which is worth
     building deliberately rather than early (Dom, 12 Oct).
 
+37. **A "Saving…" pending state on the save buttons.** A **UX nicety,
+    not a data-safety fix** — the write is never lost. Tested on
+    12 October at 0, 20, 100 and 500 milliseconds between the click and
+    navigating away: the figure landed every time, because the POST is
+    dispatched on click and aborting the fetch client-side does not
+    un-send it. What is lost is only the confirmation, so somebody who
+    clicks and leaves immediately never sees "Saved." and has no reason
+    to believe it was. *Recommended: after launch* (Dom, 12 Oct).
+
 ## Decisions, not gaps — do not "fix" these
 - **Notification cadence stays daily.** The cron runs 08:00; a notification queued at 14:00 lands next morning. The one-hour gate still decides *whether* something is worth notifying about, so nothing queues mid-conversation. `due_jobs.due_at` exists and the runner honours it, so a finer cadence is a `vercel.json` change if ever wanted.
 - **The community goal has no target** — §2 asks for the collective number but never says what it counts towards. Inventing one is worse than waiting.
