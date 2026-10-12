@@ -194,12 +194,22 @@ test.describe("what the client sees", () => {
     // it quietly empties the later months the client already has.
     await page.goto(`/reporting?month=${MONTHS.jul}`);
     await page.getByRole("button", { name: /publish this month/i }).click();
-    await expect(page.getByText(/published/i).first()).toBeVisible();
+    // **Anchored.** `/published/i` also matches "Not published yet",
+  // which is on the page before the click — so the wait finished
+  // instantly and the client signed in before the month was published.
+  // It only ever passed because an unhydrated click posted natively and
+  // navigated, making it synchronous by accident.
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
 
     // Then publishes September.
     await page.goto(`/reporting?month=${MONTHS.sep}`);
     await page.getByRole("button", { name: /publish this month/i }).click();
-    await expect(page.getByText(/published/i).first()).toBeVisible();
+    // **Anchored.** `/published/i` also matches "Not published yet",
+  // which is on the page before the click — so the wait finished
+  // instantly and the client signed in before the month was published.
+  // It only ever passed because an unhydrated click posted natively and
+  // navigated, making it synchronous by accident.
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
 
     await page.goto(`/reporting/client-experience?month=${MONTHS.sep}`);
     const adminText = (await page.locator("main").innerText()).replace(/\s+/g, " ");

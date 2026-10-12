@@ -92,7 +92,12 @@ test("the client reads the lists once the month is published", async ({ page }, 
   await signIn(page, "nina");
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   await page.getByRole("button", { name: /publish this month/i }).click();
-  await expect(page.getByText(/published/i).first()).toBeVisible();
+  // **Anchored.** `/published/i` also matches "Not published yet",
+  // which is on the page before the click — so the wait finished
+  // instantly and the client signed in before the month was published.
+  // It only ever passed because an unhydrated click posted natively and
+  // navigated, making it synchronous by accident.
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
 
   await signIn(page, "client");
   await page.goto(`/reporting/trial-reels?month=${MONTHS.sep}`);

@@ -173,6 +173,11 @@ test("the planner reads §6.6's own worked example back", async ({ page }, info)
   await signIn(page, "nina");
   await page.goto("/reporting/launches");
   await page.getByRole("link", { name: "Autumn challenge" }).click();
+  // Waited for. A client-side navigation is not finished when the click
+  // returns, and reading the page straight after read the list — which
+  // only ever worked because nothing was hydrated and the click was a
+  // full page load.
+  await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]{36}/);
 
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   // 30 sales at 5% is 600 live attendees; at 47% show-up that is 1,277
@@ -197,6 +202,11 @@ test("the client sees a published launch's report and none of the planner", asyn
   await signIn(page, "client");
   await page.goto("/reporting/launches");
   await page.getByRole("link", { name: "Autumn challenge" }).click();
+  // Waited for. A client-side navigation is not finished when the click
+  // returns, and reading the page straight after read the list — which
+  // only ever worked because nothing was hydrated and the click was a
+  // full page load.
+  await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]{36}/);
 
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   expect(text).toMatch(/TOTAL REVENUE £15,800/);
