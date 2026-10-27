@@ -1,5 +1,5 @@
 -- =============================================================================
--- A published month keeps the figures it was published with. NOT APPROVED.
+-- A published month keeps the figures it was published with. APPLIED TO LIVE, 7 October 2026.
 -- =============================================================================
 --
 -- `docs/freeze-plan.md`, decisions 1, 2 and 3, approved by Dom on

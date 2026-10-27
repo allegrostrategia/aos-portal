@@ -1,6 +1,6 @@
 -- aOS Reporting Stage 3 — the benchmark setup answers.
 --
--- NOT APPLIED TO LIVE. Applied locally only; approved in the Stage 3
+-- APPLIED TO LIVE (see the state doc). Applied locally only; approved in the Stage 3
 -- plan and waiting on Dom to apply it to live alongside
 -- 20261006100000_opening_clients_wording.
 --

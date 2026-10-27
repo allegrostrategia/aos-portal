@@ -1,5 +1,5 @@
 -- =============================================================================
--- An editor can take a stage back out. NOT APPROVED — do not apply.
+-- An editor can take a stage back out. APPLIED TO LIVE, 8 October 2026.
 -- =============================================================================
 --
 -- Found building Stage 4's setup screens, 8 October: **no launch table has

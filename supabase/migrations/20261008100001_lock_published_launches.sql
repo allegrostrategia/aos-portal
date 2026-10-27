@@ -1,5 +1,5 @@
 -- =============================================================================
--- A published launch stops changing too. NOT APPROVED — do not apply.
+-- A published launch stops changing too. APPLIED TO LIVE, 8 October 2026.
 -- =============================================================================
 --
 -- Dom, 8 October: the published-month lock and the carried-figure snapshot

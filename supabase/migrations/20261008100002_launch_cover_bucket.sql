@@ -1,5 +1,5 @@
 -- =============================================================================
--- Somewhere for a launch's cover image to live. NOT APPROVED — do not apply.
+-- Somewhere for a launch's cover image to live. APPLIED TO LIVE, 8 October 2026.
 -- =============================================================================
 --
 -- `report_launches.cover_image_path` has existed since 30 September with

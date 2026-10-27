@@ -1,5 +1,5 @@
 -- =============================================================================
--- A member's reporting workspace arrives with the member. NOT APPROVED.
+-- A member's reporting workspace arrives with the member. APPLIED TO LIVE, 9 October 2026.
 -- =============================================================================
 --
 -- Nina's decision 30: nobody should be able to reach Reporting and find

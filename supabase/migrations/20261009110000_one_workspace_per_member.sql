@@ -1,5 +1,5 @@
 -- =============================================================================
--- One reporting workspace per member. NOT APPROVED — do not apply.
+-- One reporting workspace per member. APPLIED TO LIVE, 9 October 2026.
 -- =============================================================================
 --
 -- Nina's decision 30: a member's reporting workspace is created with the

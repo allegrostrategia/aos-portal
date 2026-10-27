@@ -1,5 +1,5 @@
 -- =============================================================================
--- An offer is retired, never deleted. NOT APPROVED — do not apply.
+-- An offer is retired, never deleted. APPLIED TO LIVE, 7 October 2026.
 -- =============================================================================
 --
 -- Decision 4 of the freeze plan, approved by Dom on 7 October.

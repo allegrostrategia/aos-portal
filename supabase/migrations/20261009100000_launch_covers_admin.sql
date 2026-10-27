@@ -1,5 +1,5 @@
 -- =============================================================================
--- Nina can actually put a cover on. NOT APPROVED — do not apply.
+-- Nina can actually put a cover on. APPLIED TO LIVE, 9 October 2026.
 -- =============================================================================
 --
 -- `20261008100002_launch_cover_bucket.sql` gave the bucket four policies,

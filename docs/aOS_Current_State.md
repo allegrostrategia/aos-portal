@@ -1,11 +1,61 @@
-# aOS — current state (5 October 2026)
+# aOS — current state (27 October 2026)
 *If this chat ever needs to hand off to a fresh one: drop in this file plus `CLAUDE.md`, the Build Brief, the Training Library doc, and whatever the latest Dom Build Plan looks like (that file is now owned by Claude Code directly, not maintained here). This document is the "where we actually left off," not the full spec.*
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
-## WHERE WE ARE — 7 October 2026
+## WHERE WE ARE — 27 October 2026
 
-**Seventy-eight migrations on disk, all seventy-eight applied to live and verified by reading each result back.** Test suite as of 7 Oct: **476 unit / 289 + 86 schema / 342 action / 98 browser**, build, typecheck and lint clean. **Everything is pushed**: `main` is at `5348d66` and Production shows it Ready. **Stage 3 is built and switched off** — all four remaining tabs, targets, benchmarks, traffic lights and the two panels, behind `SHIPPED_STAGE = 2`, proved by a browser test that runs the same app at the production flag and watches the Overview not change. **A published month is locked, and now keeps the figures it was published with** — the lock and the carried-figure snapshot are the whole of 7 October. **The Stage 3 switch stays off until Nina's final review, which happens once, at the end of Stage 6** (Dom, 8 Oct) — so what is left is Stages 4, 5 and 6, then that review, then the launch checklist.
+**The reporting tool is finished and switched off.** Stages 1 and 2 are
+live and in use. **Stages 3, 4, 5 and 6 are all built, tested and
+behind `SHIPPED_STAGE`**, which is pinned to `PRODUCTION_STAGE = 2` —
+so none of it is in front of a client, and no environment variable in
+Vercel can change that. What is left is **Nina's review, then the
+launch checklist, then moving the flag**.
+
+**Eighty-five migrations on disk.** Everything through
+`20261009130000` has been applied to live and verified by reading the
+result back. **Every migration header now says so** — eleven of them
+still read "NOT APPROVED — do not apply" on 27 October, having been
+written before approval and never corrected, including one the state
+doc itself recorded as live. A header that lies about whether it has
+run is exactly the trap this document exists to prevent.
+
+**Test counts, recorded in `test-counts.json` and guarded by
+`npm run test:census`: 540 unit, 415 database, 216 browser.** The
+census refuses a drop, because a deleted test does not fail — it stops
+existing, and a green count says nothing about what is no longer in it.
+
+**`main` is at `24a142c` and pushed.** Nothing is held locally.
+
+**The review pack is written: `docs/nina-review/`.** The thirty-eight
+decisions taken on Nina's behalf come first, in plain English, each
+with what changes if she disagrees; then twenty-eight Stage 4–6 screens
+at both widths, with the fifteen Stage 3 ones beside them; then the
+launch checklist.
+
+### What a fresh session should know before touching anything
+
+- **The browser suite was green for weeks partly because nothing was
+  hydrating.** Next answered 403 to its own JavaScript chunks, because
+  Playwright drives `127.0.0.1` and Next decided its origin was
+  `localhost`. Fixed with `allowedDevOrigins`; guarded by
+  `e2e/hydration.spec.ts`, which fails if a script 4xxs or if a control
+  that needs JavaScript does not work. **Ten tests failed the moment it
+  started working**, every one an assertion that had never really
+  waited for anything.
+- **The plain-HTML rule is now a default, not a prohibition.** Its old
+  justification — "hydration-dependent controls have failed every time
+  in this build" — was the 403s, not React. The rewrites it prompted
+  are all kept.
+- **The live sign-in checks were skipped on 9 October** and are on the
+  launch checklist, said plainly as not done. Nothing about the deploy
+  was unsafe; it is simply unverified on the live site.
+- **The Supabase access token stopped working** between 12 and
+  27 October — `/v1/projects/.../database/query` answers "your account
+  does not have the necessary privileges". **Live state could not be
+  verified this session**; everything above about live is from the
+  record, not from a read-back. That needs a new token before the next
+  migration.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -182,7 +232,7 @@ Brief: `docs/reporting/reporting-tool-brief.md`, mockups beside it. A second pro
 Dom against Test Client: two months entered, one published then both, the
 client view verified signed in as the client, the strategist note, objectives
 and the client's replies all written and read back, and the publish email
-received in the inbox. Stage 3 onwards is not started.
+received in the inbox. (Written 5 Oct. Stages 3 to 6 are all built and switched off since — see the top of this file.)
 
 **One part of §11.2 is deferred rather than met: a *real* retainer client.**
 There are none yet — aOS has not launched — so Test Client is as real as it
@@ -1734,9 +1784,9 @@ last.
 - **Quote-of-the-day lines for Piazza** (added 14 Sep) — seven or more, in her voice. Placeholders in `src/lib/piazza/quotes.ts` until then; one array.
 - **The two-week time-tracking explainer video** (from the redesign brief).
 - **Per-lesson notes, resources and key takeaways** — deferred 14 Sep as a content gap; the lesson page's tabs and checklist get built when there is something to put in them.
-- **A decision on `client_experience_active_clients_at_start`** (added 2 Oct) — §5.8 of the reporting brief specifies it two incompatible ways: "last month's active at end" *and* "the very first month asks for active clients at start as a one-off input". A field that is pulled in most months and typed in one, which the schema refuses outright. Blocks Stage 3's Client Experience page.
-- **Four questions on the §8 plan** (added 2 Oct, amended 3 Oct) — who gets the publish email, whether a client may reply more than once, whether objectives are hers alone or Elize's too, and whether republishing a corrected month emails again. The plan is a document, not in this repo.
-- **Four questions on the Stage 3 plan** (added 3 Oct) — charts first or Stage 3 in order; which of three ways out of the §5.8 contradiction; the two-column benchmark migration; and six sentence templates for "Look at these first" in her voice.
+- ~~**A decision on `client_experience_active_clients_at_start`**~~ — **answered and built.** The opening figure is typed once, on the workspace's first month, and carried forward; the entry screen says which month it belongs on. It is decision 27 on her list. Original note: §5.8 of the reporting brief specifies it two incompatible ways: "last month's active at end" *and* "the very first month asks for active clients at start as a one-off input". A field that is pulled in most months and typed in one, which the schema refuses outright. Blocks Stage 3's Client Experience page.
+- ~~**Four questions on the §8 plan**~~ — **all four answered and built**: the client gets the publish email, a reply stays once sent, objectives are the team's on a retainer and the member's own on a self-serve report, and a republished month emails again worded as an update. Original note (2 Oct, amended 3 Oct): who gets the publish email, whether a client may reply more than once, whether objectives are hers alone or Elize's too, and whether republishing a corrected month emails again. The plan is a document, not in this repo.
+- ~~**Four questions on the Stage 3 plan**~~ — **answered at the time; Stage 3 is built and switched off.** Original note (3 Oct): charts first or Stage 3 in order; which of three ways out of the §5.8 contradiction; the two-column benchmark migration; and six sentence templates for "Look at these first" in her voice.
 - **The two mockup arithmetic errors** (added 2 Oct) — the launch planner card shows **600 sign-ups where §6.6's formula gives 1,277**, and the Social Media entry mockup shows a **6.9% engagement rate where §5.2's formula gives 9.34%** (6.9% leaves out the saves and shares the formula includes). Both are built to the brief and pinned by tests. The mockups are client-approved, so correcting them may mean going back to whoever approved them.
 - **The September draw's prize** — the `draws` row for September still has the literal prize `"test"`, so the Piazza card reads "test.". Set the real prize in `/admin/draw`, or delete the row and let the fallback copy show.
 
@@ -1753,9 +1803,12 @@ last.
 - **`author_name` is still free text for its rightful owner** — closed for
   everyone by `20261007120000`, so this is now only a note that the name on
   a note is derived, not chosen. Nothing outstanding.
-- **Nina's review of the Stage 3 screens**, and then the launch checklist.
-  These are the only two things between here and moving `SHIPPED_STAGE` to
-  3. Screenshots at both widths are in `e2e/screenshots/`.
+- **Nina's review, and then the launch checklist.** These are the only two
+  things between here and moving `SHIPPED_STAGE`, which now means Stages 3
+  to 6 together rather than Stage 3 alone. **The pack is written:**
+  `docs/nina-review/` — the thirty-eight decisions first, then
+  twenty-eight Stage 4–6 screens at both widths with the fifteen Stage 3
+  ones beside them, then the launch checklist.
 - **The same walkthrough on a REAL retainer client**, which is the last piece of §11.2 and the only part that emails somebody. Create them from `/admin/reporting` **on the live site** — invitations refuse to send from a dev server, because the link they build would only work on the machine that sent it.
 
 ## Real bugs found and fixed (running list, worth knowing the shape of each)
@@ -1793,8 +1846,19 @@ last.
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Seventy-eight on disk, all seventy-eight applied to live (7 Oct).** No
-gap: `20261006180000_top_items_delete` was deleted rather than applied —
+**Eighty-five on disk, all eighty-five applied to live** — seventy-eight
+by 7 October, then seven more between the 8th and the 9th: the launch
+lock, the private cover bucket, the launch delete sweep, the cover
+bucket's admin arm, one workspace per member, a member's workspace
+arriving with the member, and the two reminder job kinds.
+
+**Every header now says whether it has run.** On 27 October eleven of
+them still read "NOT APPROVED — do not apply", written before approval
+and never corrected once applied — including `20261006190000`, which
+this very file recorded as live. A migration that lies about whether it
+has run is worse than one with no comment at all.
+
+No gap: `20261006180000_top_items_delete` was deleted rather than applied —
 its policy moved into the lock migration, because a delete policy without
 the guard is the hole the lock exists to close.
 
@@ -1866,18 +1930,16 @@ never by an exit code.
 
 **Steps 1–13 are done but for one piece.** The membership product is feature-complete for the current scope: onboarding, Piazza, The Map, La Strada, the log and timer, the hours ledger, the hot seat, chat and the directory, peer pairing, the monthly recap, the draw, Archivio, the reveal, milestones. The exception is **Step 13's Vespa intro video**, which has no asset — the only item left in the open list.
 
-**The live work is the reporting tool.** Stages 1 and 2 are built, pushed,
-applied and **Stage 2 is closed** (5 Oct, on Test Client). **Stage 3 is
-built and pushed, and switched off** — `SHIPPED_STAGE` is 2, so none of it
-reaches a client, and a browser test runs the same app at the production
-flag to prove the Overview is unchanged. Re-checked on live as Test Client
-after the push: six tabs, two months, both widths, nothing of Stage 3
-anywhere.
+**The reporting tool is finished.** Stages 1 and 2 are live and in use;
+Stage 2 was closed on 5 October on Test Client. **Stages 3, 4, 5 and 6
+are all built, tested and switched off** — `SHIPPED_STAGE` is pinned to
+`PRODUCTION_STAGE = 2`, a browser test runs the same app at the
+production flag and watches each stage not appear, and no Vercel
+variable can move it.
 
-**The order from here is settled** (Dom, 8 Oct): **Stage 4** (Launches),
-then **Stage 5** (aOS members), then **Stage 6** (Meta CSV import). Nobody
-joins until all three are done, and **Nina reviews once, at the end** —
-so the Stage 3 flag stays at 2 throughout, however finished Stage 3 looks.
+**What is left, in order:** Nina's review (the pack is written —
+`docs/nina-review/`), then the launch checklist, then moving the flag.
+Nobody joins until she has looked.
 
 **Stage 4 is COMPLETE** (9 October), behind `STAGE_4`, so none of it
 reaches a client: the list, the report, the planner, the setup screens,
@@ -1892,9 +1954,11 @@ are closed:
 - **The bucket's assertion in the schema test was missing**, which the
   plan had asked for in the same breath as the migration.
 
-Five migrations live, plus one waiting on Dom — the launch lock, the
-private cover bucket, the delete sweep, `carried` on launches, and
-**`20261009100000_launch_covers_admin.sql`, which is NOT applied yet**.
+Five migrations live — the launch lock, the private cover bucket, the
+delete sweep, `carried` on launches, and
+`20261009100000_launch_covers_admin.sql`, **applied 9 October** after
+Dom approved it. (This paragraph said "NOT applied yet" until 27 Oct,
+three weeks after it went on.)
 
 **Two bugs the finishing work turned up, both silent:**
 

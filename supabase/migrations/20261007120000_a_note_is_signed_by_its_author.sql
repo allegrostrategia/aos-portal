@@ -1,5 +1,5 @@
 -- =============================================================================
--- A note is signed by whoever wrote it. NOT APPROVED — do not apply.
+-- A note is signed by whoever wrote it. APPLIED TO LIVE, 7 October 2026.
 -- =============================================================================
 --
 -- Dom, 7 October: "fix author_name: show the name from the author's grant or

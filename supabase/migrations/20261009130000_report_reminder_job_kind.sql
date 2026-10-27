@@ -1,5 +1,5 @@
 -- =============================================================================
--- The two report reminders are a job kind. NOT APPLIED TO LIVE.
+-- The two report reminders are a job kind. APPLIED TO LIVE, 9 October 2026.
 -- =============================================================================
 --
 -- §8.1: a member gets two nudges about last month's report and no more —
