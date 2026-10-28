@@ -152,9 +152,18 @@ test("the launch report, end to end", async ({ page }, info) => {
   expect(text).toMatch(/STILL TO COLLECT £3,200/);
   // 15,800 ÷ 30.
   expect(text).toMatch(/AVERAGE ORDER VALUE £526\.67/);
-  // 30 sales against the MAIN SELLING STAGE's 600 attendees, not the
-  // challenge's 2,450 across five days — the thing that would read as 1%.
-  expect(text).toMatch(/CONVERSION RATE 5\.0%/);
+  // **30 sales against the masterclass's 900 SIGN-UPS** — Nina's decision
+  // 20, 28 October. Not its 600 attendees, which read 5.0% and flattered
+  // the show-up rate; not the challenge's 2,450 across five days, which
+  // would read 1%. The seed's three numbers are deliberately all
+  // different, so each wrong reading shows as its own figure.
+  expect(text).toMatch(/CONVERSION RATE 3\.3%/);
+
+  // Decision 19: the count still in the room, and that against the room
+  // at the START of the session — 430 of 600, not 430 of the 520 who were
+  // there when the pitch began, which would read 83%.
+  expect(text).toMatch(/430 still live at the end of the pitch/);
+  expect(text).toMatch(/72% of the 600 who started/);
 
   // The three goals, and which stage the selling happened on.
   expect(text).toMatch(/Good 30 of 30\s*100%/);

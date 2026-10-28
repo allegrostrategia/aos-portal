@@ -215,7 +215,9 @@ export default async function LaunchPage({
       {/* §6.2's attendance, one chart per stage with live days. Horizontal
           bars, because the thing being read is the drop from day one. */}
       {stages
-        .filter((s) => s.attendeesByDay.some((d) => d !== null))
+        .filter(
+          (s) => s.attendeesByDay.some((d) => d !== null) || s.liveAtEndOfPitch !== null,
+        )
         .map((s) => (
           <Card key={s.stage.id} className="mt-6">
             <SectionTitle
@@ -223,19 +225,54 @@ export default async function LaunchPage({
             >
               {s.stage.name}: who turned up
             </SectionTitle>
-            <BarChart
-              data={s.attendeesByDay.map((value, i) => ({
-                label: `Day ${i + 1}`,
-                value,
-                display: value === null ? "—" : value.toLocaleString("en-GB"),
-                missingNote: "Not entered",
-              }))}
-              caption={
-                s.signUps === null
-                  ? "Live attendees each day."
-                  : `Live attendees each day, from ${s.signUps.toLocaleString("en-GB")} sign-ups.`
-              }
-            />
+            {s.attendeesByDay.some((d) => d !== null) ? (
+              <BarChart
+                data={s.attendeesByDay.map((value, i) => ({
+                  label: `Day ${i + 1}`,
+                  value,
+                  display: value === null ? "—" : value.toLocaleString("en-GB"),
+                  missingNote: "Not entered",
+                }))}
+                caption={
+                  s.signUps === null
+                    ? "Live attendees each day."
+                    : `Live attendees each day, from ${s.signUps.toLocaleString("en-GB")} sign-ups.`
+                }
+              />
+            ) : null}
+
+            {/* Decision 19, as Nina asked for it on 28 October: the count
+                that is still in the room, and that as a share of the room
+                at the start of the session. The count comes first because
+                it is the one somebody can picture. */}
+            {s.liveAtEndOfPitch !== null ? (
+              <p className="mt-4 rounded-xl bg-cream-deep px-4 py-3 text-body text-ink/80">
+                <span className="font-mono text-ink">
+                  {s.liveAtEndOfPitch.toLocaleString("en-GB")}
+                </span>{" "}
+                still live at the end of the pitch
+                {s.pitchRetention !== null && s.liveAtStart !== null ? (
+                  <>
+                    {" — "}
+                    <span className="font-mono text-ink">
+                      {Math.round(s.pitchRetention)}%
+                    </span>{" "}
+                    of the{" "}
+                    <span className="font-mono text-ink">
+                      {s.liveAtStart.toLocaleString("en-GB")}
+                    </span>{" "}
+                    who started.
+                  </>
+                ) : (
+                  <>
+                    {". "}
+                    <span className="text-ink/55">
+                      Enter &ldquo;live at start&rdquo; to see that as a share.
+                    </span>
+                  </>
+                )}
+              </p>
+            ) : null}
           </Card>
         ))}
 
@@ -328,6 +365,7 @@ export default async function LaunchPage({
           launchId={id}
           name={detail.launch.name}
           publishedAt={detail.launch.published_at}
+          canEmailClient={ctx.workspace.kind === "retainer"}
         />
       ) : null}
 

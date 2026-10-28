@@ -37,6 +37,16 @@ export interface StageFigures {
   attendeesByDay: (number | null)[];
   showUpRate: number | null;
   dayDropOff: (number | null)[];
+  /**
+   * How many were still there when the pitch finished, and that as a
+   * share of the room at the start of the session.
+   *
+   * Both, because Nina asked for both on 28 October: a percentage on its
+   * own is a figure nobody can sanity-check, and "41 of the 68 who
+   * started were still there" is the sentence she would say out loud.
+   */
+  liveAtEndOfPitch: number | null;
+  liveAtStart: number | null;
   pitchRetention: number | null;
   percentOfSignUpGoal: number | null;
   averageOpenRate: number | null;
@@ -68,13 +78,22 @@ export function launchSummary(detail: LaunchDetail): LaunchSummary {
   const totalRevenue = launchFormulas.totalRevenue(options);
   const cashCollected = detail.values.get("launches_cash_collected_to_date");
 
-  // §6.4's conversion rate is against the MAIN SELLING STAGE's live
-  // attendees, not every attendee of every stage. A launch with a waitlist
-  // and a challenge before the masterclass would otherwise read as
-  // converting a fraction of a far larger number.
+  // **Conversion is sales ÷ sign-ups to the main selling stage** — Nina,
+  // 28 October, overruling §6.4's "live attendees of the main selling
+  // stage". Her reason is the one that decides which number a launch is
+  // judged by: everybody who signed up is somebody the launch persuaded
+  // to commit, and measuring against only those who then turned up
+  // flatters a launch with a bad show-up rate. The show-up rate is its
+  // own figure and says that part.
+  //
+  // Which stage needs no picking. A launch can have several live stages,
+  // but exactly one main selling stage: `report_launch_stages_one_main`
+  // is a partial unique index on it, and saving the stages clears the old
+  // flag before setting the new one. No flag means no conversion rate,
+  // which is a dash rather than a guess.
   const mainStage = detail.stages.find((s) => s.is_main_selling_stage) ?? null;
-  const mainAttendees = mainStage
-    ? totalAttendees(detail, mainStage)
+  const mainSignUps = mainStage
+    ? detail.values.get("launches_sign_ups", { stageId: mainStage.id })
     : null;
 
   const salesBySource = SOURCES.map(([label, key]) => ({
@@ -91,7 +110,7 @@ export function launchSummary(detail: LaunchDetail): LaunchSummary {
     percentOfGood: launchFormulas.percentOfGoal(totalSales, detail.launch.goal_good),
     percentOfBetter: launchFormulas.percentOfGoal(totalSales, detail.launch.goal_better),
     percentOfBest: launchFormulas.percentOfGoal(totalSales, detail.launch.goal_best),
-    conversionRate: launchFormulas.conversionRate(totalSales, mainAttendees),
+    conversionRate: launchFormulas.conversionRate(totalSales, mainSignUps),
     sourcesAddUp: launchFormulas.sourcesReconcile(
       salesBySource.map((s) => s.value),
       totalSales,
@@ -103,13 +122,6 @@ export function launchSummary(detail: LaunchDetail): LaunchSummary {
 /** Day one's attendees, which is what every attendance figure keys off. */
 function dayOneAttendees(detail: LaunchDetail, stage: LaunchStage): number | null {
   return detail.values.get("launches_live_attendees", { stageId: stage.id, day: 1 });
-}
-
-/** Everyone who turned up across the stage's live days. */
-function totalAttendees(detail: LaunchDetail, stage: LaunchStage): number | null {
-  const days = attendeesByDay(detail, stage);
-  const present = days.filter((d): d is number => d !== null);
-  return present.length === 0 ? null : present.reduce((a, b) => a + b, 0);
 }
 
 function attendeesByDay(detail: LaunchDetail, stage: LaunchStage): (number | null)[] {
@@ -146,6 +158,10 @@ export function stageFigures(detail: LaunchDetail): StageFigures[] {
     const signUps = detail.values.get("launches_sign_ups", { stageId: stage.id });
     const byDay = attendeesByDay(detail, stage);
     const dayOne = dayOneAttendees(detail, stage);
+    const liveAtEndOfPitch = detail.values.get("launches_live_at_end_of_pitch", {
+      stageId: stage.id,
+    });
+    const liveAtStart = detail.values.get("launches_live_at_start", { stageId: stage.id });
 
     return {
       stage,
@@ -153,16 +169,17 @@ export function stageFigures(detail: LaunchDetail): StageFigures[] {
       attendeesByDay: byDay,
       showUpRate: launchFormulas.showUpRate(dayOne, signUps),
       dayDropOff: byDay.map((d) => launchFormulas.dayDropOff(d, dayOne)),
-      // **Against the audience when the pitch began**, not the audience
-      // when the session began. §6.2's table says "live at start", which
-      // would leave `launches_live_at_pitch` feeding nothing at all — and
-      // a figure the brief asks to be collected and then never uses is
-      // better read as the one it meant. Dom's call, 8 October; on Nina's
-      // list to confirm, since it changes a number she will quote.
-      pitchRetention: launchFormulas.pitchRetention(
-        detail.values.get("launches_live_at_end_of_pitch", { stageId: stage.id }),
-        detail.values.get("launches_live_at_pitch", { stageId: stage.id }),
-      ),
+      // **Against the room at the start of the session**, which is what
+      // §6.2's table said all along and what Nina confirmed on
+      // 28 October. It had been measured against the audience when the
+      // pitch began — Dom's call on 8 October, made because
+      // `launches_live_at_pitch` otherwise fed nothing at all. It still
+      // feeds nothing; a figure collected and unused is the smaller
+      // problem, and the bigger one was that the two readings give very
+      // different numbers and she is the one who quotes them.
+      liveAtEndOfPitch,
+      liveAtStart,
+      pitchRetention: launchFormulas.pitchRetention(liveAtEndOfPitch, liveAtStart),
       percentOfSignUpGoal: launchFormulas.percentOfSignUpGoal(signUps, stage.sign_up_goal),
       averageOpenRate: launchFormulas.averageRatePerStage(
         emailRates(detail, stage, "launches_email_open_rate"),
