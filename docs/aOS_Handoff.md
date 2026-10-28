@@ -35,7 +35,7 @@ Stages 3–6 sit behind `SHIPPED_STAGE`, pinned to `PRODUCTION_STAGE = 2` in `sr
 
 ## Three things to know before touching anything
 
-1. **The Supabase CLI token on this machine points at the wrong account.** It's valid, but it can only see `allegro-captures-portal` — not the aOS project (`kawlebzqfgcdlvewqqgh`). One token file, two Supabase accounts, and logging into one evicts the other. **No migrations until that's sorted and live state is re-verified against the record.**
+1. **aOS now has its own Supabase token, in `.env.local` as `SUPABASE_ACCESS_TOKEN`** (gitignored; `npm run db:projects` checks it). It needed one: `~/.supabase/access-token` holds a single token per machine, so a CLI login for `allegro-captures-portal` on 18 October evicted the aOS one and every Management API call answered "your account does not have the necessary privileges". Nothing leaked — no token or key has ever been committed, across all 336 commits. **No migrations until the new token is in and live state has been re-verified against the record.**
 2. **The browser suite was green for weeks while nothing hydrated.** Next answered 403 to its own JS chunks because Playwright drives `127.0.0.1` and Next thought it was `localhost`. Fixed; guarded by `e2e/hydration.spec.ts`. Ten tests failed the moment it started working — every one an assertion that had never really waited.
 3. **The live sign-in checks were skipped** on 9 October and are on the launch checklist, marked not done.
 

@@ -50,12 +50,22 @@ launch checklist.
 - **The live sign-in checks were skipped on 9 October** and are on the
   launch checklist, said plainly as not done. Nothing about the deploy
   was unsafe; it is simply unverified on the live site.
-- **The Supabase access token stopped working** between 12 and
-  27 October — `/v1/projects/.../database/query` answers "your account
-  does not have the necessary privileges". **Live state could not be
-  verified this session**; everything above about live is from the
-  record, not from a read-back. That needs a new token before the next
-  migration.
+- **The Supabase access token points at the wrong account** — found
+  27 October. `/v1/projects/.../database/query` answers "your account
+  does not have the necessary privileges", and `projects list` returns
+  only `allegro-captures-portal`, never the aOS project. The token is
+  valid; it belongs to the other Supabase account. `~/.supabase/access-token`
+  holds one token for the whole machine, so signing the CLI in for
+  Captures on 18 October evicted this one. Nothing was leaked: a scan of
+  all 336 commits found no token, service-role key or anon key ever
+  committed. **Fixed by giving aOS its own token:** `SUPABASE_ACCESS_TOKEN`
+  in `.env.local` (gitignored), read by `scripts/supabase-token.mjs` and
+  used by `npm run db:push | db:link | db:diff | db:projects` and
+  `scripts/supabase-api.mjs`. Nothing reads `~/.supabase/access-token`
+  any more, so the two accounts can no longer evict each other.
+  **Live state could not be verified on 27 October**; everything above
+  about live is from the record, not from a read-back. The read-back has
+  to happen before the next migration.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -72,7 +82,7 @@ Since the last big handoff, five things landed: **peer pairing on real dates** (
 - **Milestone rewards** are deferred, not dropped — see the section below.
 - The **audit questions** are still placeholders waiting on Nina, as are her content lists (quotes, videos).
 
-**Live data is all test accounts.** Two member test accounts (`yungsl5dom@`, `dominicchentrens@`), Nina's own member account, and two admin accounts. No real members yet.
+**Live data is all test accounts.** Two member test accounts, both Dom's, Nina's own member account, and two admin accounts. No real members yet.
 
 **On the reporting side there is one test workspace**, "Test Client", owned by `contact+test2@allegrobusinessservices.co.uk` — a working retainer-client login Dom controls, kept deliberately because it is the only way to see the product as a client sees it. It has a password set by Claude Code and not recorded anywhere; use `/forgot-password` to take it over. A second, `nina+test@`, was created by mistake and deleted on 30 Sep along with its workspace.
 
@@ -1121,7 +1131,7 @@ Dom, 20 Sep: a test account's password was lost mid-testing, and "this is exactl
 - **Refused for admin accounts** (setting another admin's password is taking their account; the two admins use `/forgot-password`) **and for cancelled members** (nothing to restore). The card isn't shown for either, and the actions refuse regardless of the page.
 - **"Change your password" row on You** → `/set-password`, which already takes any signed-in session; it's where a temporary password gets replaced. Nothing forces the change — Supabase has no must-change flag; noted, not built.
 - Harness: the shim now records `auth.resetPasswordForEmail` and `auth.admin.updateUserById` (`authCalls()`), and `next/headers` is stubbed. The one-off `scripts/dev-set-password.mjs` used for the unblock is deleted now the feature exists.
-- **Found on first use (Dom, 20 Sep): the password set but sign-in said "hasn't been activated yet".** That is our wording for Supabase's `Email not confirmed`: the two Gmail test accounts (`yungsl5dom@`, `nina.ellen.oliver@`) were invited on 3 Sep and the link was never opened, so `email_confirmed_at` is null, and Supabase refuses password sign-in for an unconfirmed email whatever password is set. The temporary-password action now passes `email_confirm: true` — this route exists for exactly the member whose email doesn't work. The reset-link route is unchanged; the link confirms as part of verifying. `yungsl5dom@` was confirmed by hand the same day to unblock testing.
+- **Found on first use (Dom, 20 Sep): the password set but sign-in said "hasn't been activated yet".** That is our wording for Supabase's `Email not confirmed`: the two Gmail test accounts (Dom's and Nina's) were invited on 3 Sep and the link was never opened, so `email_confirmed_at` is null, and Supabase refuses password sign-in for an unconfirmed email whatever password is set. The temporary-password action now passes `email_confirm: true` — this route exists for exactly the member whose email doesn't work. The reset-link route is unchanged; the link confirms as part of verifying. Dom's was confirmed by hand the same day to unblock testing.
 
 ## PEER PAIRING — real dates and times, overlap told on the second pick — BUILT and PUSHED 20 Sep; both migrations applied live
 
