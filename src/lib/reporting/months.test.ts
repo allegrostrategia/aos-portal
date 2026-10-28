@@ -134,7 +134,7 @@ test("the arrows walk the published list, not the calendar", () => {
 });
 
 test("an unpublished month asked for by URL stays on screen as itself", () => {
-  // So the page can say it is not ready yet. Quietly swapping it for
+  // So the page can say it is being prepared. Quietly swapping it for
   // August would answer a question nobody asked and leave the URL
   // disagreeing with the heading. RLS still returns nothing for it.
   // 2 October, so September is a completed month and in range — which is
@@ -142,9 +142,34 @@ test("an unpublished month asked for by URL stays on screen as itself", () => {
   // would not be, and would correctly fall back instead.
   const view = resolveMonth("2026-09", "2026-10-02", FIRST, ["2026-08-01"]);
   assert.equal(view.month, "2026-09-01");
-  assert.deepEqual(view.options.map((o) => o.month), ["2026-08-01"], "still only offered August");
   assert.equal(view.previous, "2026-08-01", "the arrow points back to a published month");
   assert.equal(view.next, null);
+});
+
+test("the newest finished month is offered even unpublished, decision 10", () => {
+  // Nina, 28 October: a client should see that a month is coming rather
+  // than nothing. September is finished and unpublished, so it is on the
+  // list — but August is still where they land, because that is the one
+  // they can read.
+  const view = resolveMonth(undefined, "2026-10-02", FIRST, ["2026-08-01"]);
+  assert.deepEqual(
+    view.options.map((o) => o.month),
+    ["2026-09-01", "2026-08-01"],
+    "September offered as the one being prepared",
+  );
+  assert.equal(view.month, "2026-08-01", "landing on the newest they can read");
+  assert.equal(view.next, "2026-09-01", "and the arrow can step into it");
+  assert.equal(view.previous, null);
+});
+
+test("offering it does not offer a month that has not finished", () => {
+  // October is still being lived in, so it is nobody's report yet — not
+  // the client's, and not the team's either.
+  const view = resolveMonth(undefined, "2026-10-02", FIRST, ["2026-08-01"]);
+  assert.ok(
+    view.options.every((o) => o.month <= "2026-09-01"),
+    "nothing later than the last finished month",
+  );
 });
 
 test("a month outside the workspace's range still falls back", () => {
@@ -158,7 +183,10 @@ test("a month outside the workspace's range still falls back", () => {
 
 test("nothing published yet is a real state, not a crash", () => {
   const view = resolveMonth(undefined, TODAY, FIRST, []);
-  assert.deepEqual(view.options, []);
+  // One option, and it is the month being prepared. Before decision 10
+  // this was an empty picker beside a card explaining itself, which read
+  // as something broken rather than something coming.
+  assert.deepEqual(view.options.map((o) => o.month), ["2026-08-01"]);
   assert.equal(view.previous, null);
   assert.equal(view.next, null);
   assert.ok(view.month, "still names a month, so the screen has something to say");

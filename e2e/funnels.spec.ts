@@ -138,6 +138,6 @@ test("the client sees funnels once published, and nothing of the team's", async 
 
   // September is a draft.
   await page.goto(`/reporting/funnels?month=${MONTHS.sep}`);
-  await expect(page.getByText(/isn.t ready yet/i)).toBeVisible();
+  await expect(page.getByText(/is being prepared/i)).toBeVisible();
   await expect(page.getByText("Webinar funnel")).toHaveCount(0);
 });

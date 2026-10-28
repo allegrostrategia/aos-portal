@@ -96,12 +96,15 @@ export function resolveMonth(
   /**
    * When given, the ONLY months this person may be offered.
    *
-   * A retainer client is shown their published months and nothing else:
-   * §8 says a draft is the team's, and offering August and September in a
-   * dropdown when only August exists for them advertises a month they
-   * cannot read and then explains itself wrongly. An empty array means
-   * nothing has been published yet, which is a real state — the picker is
-   * empty and the screen says so.
+   * A retainer client is shown their published months, plus the newest
+   * finished month whether it is published or not (Nina's decision 10,
+   * 28 October): that one is on the list so they can see a month is
+   * coming, and the page draws a holding card for it rather than a
+   * report. §8's rule that a draft is the team's is untouched — no figure
+   * from it is readable, by this list or by RLS.
+   *
+   * An empty array means nothing has been published yet, which is a real
+   * state: the picker holds the one month being prepared.
    *
    * Undefined means no restriction, which is what editors get.
    */
@@ -119,6 +122,24 @@ export function resolveMonth(
       .sort()
       .reverse();
 
+    // **The newest finished month is offered whether or not it is
+    // published** — Nina's decision 10, changed on 28 October. A client
+    // whose October is still being written used to see no October at all:
+    // the picker held September, the arrows stopped there, and the fact
+    // that another month was coming was invisible. Now it is on the list
+    // and the screen says it is being prepared.
+    //
+    // This offers a month, never its figures. `monthPublished` is still
+    // computed from the published list alone, the page draws a holding
+    // card instead of the report, and RLS returns nothing for it either
+    // way. Three independent answers to the same question, which is what
+    // §13 asks for.
+    const offered = [
+      ...new Set(months.includes(latest) ? months : [latest, ...months]),
+    ]
+      .sort()
+      .reverse();
+
     const asked = firstOfMonth(requested);
 
     // An in-range month that simply is not published stays on screen as
@@ -127,8 +148,10 @@ export function resolveMonth(
     // asked and leave the URL disagreeing with the heading. Anything
     // outside the workspace's range, or unparseable, still falls back.
     const inRange = asked !== null && asked >= first && asked <= latest;
+    // Landing still prefers the newest month they can actually read, so
+    // arriving at /reporting shows a report rather than a holding card.
     const month = inRange ? asked : (months[0] ?? latest);
-    const index = months.indexOf(month);
+    const index = offered.indexOf(month);
 
     return {
       month,
@@ -143,13 +166,13 @@ export function resolveMonth(
       // the arrows point at the nearest published months either side.
       previous:
         index >= 0
-          ? (index < months.length - 1 ? months[index + 1] : null)
-          : (months.find((m) => m < month) ?? null),
+          ? (index < offered.length - 1 ? offered[index + 1] : null)
+          : (offered.find((m) => m < month) ?? null),
       next:
         index >= 0
-          ? (index > 0 ? months[index - 1] : null)
-          : ([...months].reverse().find((m) => m > month) ?? null),
-      options: months.map((m) => ({ month: m, label: monthLabel(m) })),
+          ? (index > 0 ? offered[index - 1] : null)
+          : ([...offered].reverse().find((m) => m > month) ?? null),
+      options: offered.map((m) => ({ month: m, label: monthLabel(m) })),
     };
   }
 

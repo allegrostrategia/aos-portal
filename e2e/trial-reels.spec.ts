@@ -113,7 +113,7 @@ test("a draft month shows the client none of it", async ({ page }) => {
   await signIn(page, "client");
   await page.goto(`/reporting/trial-reels?month=${MONTHS.sep}`);
 
-  await expect(page.getByText(/isn.t ready yet/i)).toBeVisible();
+  await expect(page.getByText(/is being prepared/i)).toBeVisible();
   await expect(page.getByText("The one thing nobody tells you")).toHaveCount(0);
 });
 

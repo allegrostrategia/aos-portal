@@ -142,7 +142,7 @@ test("a draft month shows the client nothing of it", async ({ page }, info) => {
 
   // September is a draft in the seed until somebody publishes it.
   await page.goto(`/reporting/ads?month=${MONTHS.sep}`);
-  await expect(page.getByText(/isn.t ready yet/i)).toBeVisible();
+  await expect(page.getByText(/is being prepared/i)).toBeVisible();
   await expect(page.getByText("Lead form")).toHaveCount(0);
   await expect(page.getByText(/£600/)).toHaveCount(0);
   await shoot(page, TAB, "06-client-draft", w);

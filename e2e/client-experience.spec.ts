@@ -169,7 +169,7 @@ test.describe("what the client sees", () => {
     // The seed publishes July and August and leaves September a draft.
     // September is not theirs to read at all.
     await page.goto(`/reporting/client-experience?month=${MONTHS.sep}`);
-    await expect(page.getByText(/isn.t ready yet/i)).toBeVisible();
+    await expect(page.getByText(/is being prepared/i)).toBeVisible();
     await expectNothingAdminish(page);
     await shoot(page, TAB, "06-client-draft-month", w);
   });
@@ -218,7 +218,7 @@ test.describe("what the client sees", () => {
     // The same month, as the client.
     await signIn(page, "client");
     await page.goto(`/reporting/client-experience?month=${MONTHS.sep}`);
-    await expect(page.getByText(/isn.t ready yet/i)).toHaveCount(0);
+    await expect(page.getByText(/is being prepared/i)).toHaveCount(0);
     const clientText = (await page.locator("main").innerText()).replace(/\s+/g, " ");
     await expectNothingAdminish(page);
     await shoot(page, TAB, "08-client-report", w);

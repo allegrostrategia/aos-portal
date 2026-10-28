@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { KpiCard } from "@/components/reporting/kpi-card";
+import { MonthBeingPrepared } from "@/components/reporting/month-holding";
 import { StrategistNotes } from "@/components/reporting/notes";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { buttonClasses } from "@/components/ui/button";
@@ -134,16 +135,12 @@ export default async function CategoryReportPage({
       }
     >
       {!ctx.monthPublished ? (
-        // A client who reached an unpublished month by URL. Saying the
-        // section "wasn't part of this month's report" would be a lie —
-        // it may be full of figures that are simply not theirs yet.
-        <Card>
-          <SectionTitle>{ctx.month.label} isn&rsquo;t ready yet</SectionTitle>
-          <p className="text-body text-ink/70">
-            Your strategist is still putting this month together. You&rsquo;ll be
-            told when it&rsquo;s ready to read.
-          </p>
-        </Card>
+        // A month that is not out yet, reached by URL or by the picker's
+        // own arrow since decision 10 put it there. Saying the section
+        // "wasn't part of this month's report" would be a lie — it may be
+        // full of figures that are simply not theirs yet. Same wording as
+        // the Overview's, from the same component.
+        <MonthBeingPrepared monthLabel={ctx.month.label} />
       ) : empty ? (
         <Card>
           <SectionTitle>Nothing for {ctx.month.label}</SectionTitle>
