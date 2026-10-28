@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import {
   publishLaunch,
+  sendLaunchUpdate,
   unpublishLaunch,
   type LaunchState,
 } from "@/lib/reporting/launch-actions";
@@ -16,9 +17,14 @@ import {
  *
  * The same shape as a month's control and the same route through —
  * unpublish, fix, republish — because a published launch is as read-only
- * as a published month. What differs is that publishing a launch sends no
- * email: the next monthly report is where it gets mentioned, which is one
- * email a month rather than two (Nina's decision 10).
+ * as a published month. Publishing still sends nothing: the next monthly
+ * report is where it gets mentioned, which is one email a month rather
+ * than two (Nina's decision 10, unchanged).
+ *
+ * **What is new is "Send update to client"** (her decision 12,
+ * 28 October). A launch's figures carry on arriving for weeks after the
+ * cart shuts, and there was no way to say so without waiting for the
+ * month. Pressed by hand, never by a save.
  *
  * Drawn for Nina alone. A team member never sees a button they cannot
  * press, and the database refuses it independently if they find one.
@@ -27,10 +33,13 @@ export function LaunchPublishControl({
   launchId,
   name,
   publishedAt,
+  /** Only a retainer client has somebody to email about it. */
+  canEmailClient,
 }: {
   launchId: string;
   name: string;
   publishedAt: string | null;
+  canEmailClient: boolean;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(
     publishedAt ? unpublishLaunch : publishLaunch,
@@ -59,7 +68,48 @@ export function LaunchPublishControl({
         Publishing a launch sends no email. The next monthly report is where
         the client hears about it.
       </p>
+
+      {publishedAt && canEmailClient ? <SendUpdate launchId={launchId} /> : null}
     </Card>
+  );
+}
+
+/**
+ * The one email a launch can send, and only when somebody asks for it.
+ *
+ * Its own form inside the card rather than a second button in the first
+ * one: two submits in one form means the wrong one fires on Enter, and
+ * the wrong one here emails a client.
+ */
+function SendUpdate({ launchId }: { launchId: string }) {
+  const [state, action] = useActionState<LaunchState, FormData>(sendLaunchUpdate, null);
+
+  return (
+    <form action={action} className="mt-5 border-t border-ink/8 pt-5">
+      <input type="hidden" name="launch_id" value={launchId} />
+      <p className="text-body text-ink/70">
+        Figures still arriving? Tell the client the tracker has moved. The
+        email carries no numbers, just a link.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <SendButton />
+        <p
+          aria-live="polite"
+          className={`text-small ${state?.error ? "text-deep-red" : "text-ink/60"}`}
+        >
+          {state?.error ?? state?.notice ?? ""}
+        </p>
+      </div>
+    </form>
+  );
+}
+
+function SendButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant="secondary" disabled={pending}>
+      {pending ? "Sending…" : "Send update to client"}
+    </Button>
   );
 }
 

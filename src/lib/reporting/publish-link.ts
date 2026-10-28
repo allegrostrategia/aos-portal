@@ -35,13 +35,53 @@ export function reportLinkFor(
   siteUrl: string | null | undefined,
   { workspaceId, month }: { workspaceId: string; month: string },
 ): LinkResult {
+  const base = baseFor(siteUrl, "The month is published");
+  if (!base.ok) return base;
+
+  // The month as the report's own URLs carry it: 2026-08, not 2026-08-01.
+  const params = new URLSearchParams({
+    workspace: workspaceId,
+    month: month.slice(0, 7),
+  });
+
+  return { ok: true, url: `${base.base}/reporting?${params.toString()}` };
+}
+
+/**
+ * The link to one launch's tracker (Nina's decision 12, 28 October).
+ *
+ * The same refusals as a month's, from the same place, because the way
+ * this breaks is identical: a link built on a developer's machine works
+ * for the person who sent it and is dead for the client.
+ */
+export function launchLinkFor(
+  siteUrl: string | null | undefined,
+  { workspaceId, launchId }: { workspaceId: string; launchId: string },
+): LinkResult {
+  const base = baseFor(siteUrl, "The launch is published");
+  if (!base.ok) return base;
+
+  const params = new URLSearchParams({ workspace: workspaceId });
+  return { ok: true, url: `${base.base}/reporting/launches/${launchId}?${params.toString()}` };
+}
+
+/**
+ * The site address, or the refusal that names what would have gone out.
+ *
+ * `stillTrue` is what remains true whatever happens here — the month is
+ * published, or the launch is — so a refusal never reads as though the
+ * work were undone.
+ */
+function baseFor(
+  siteUrl: string | null | undefined,
+  stillTrue: string,
+): { ok: true; base: string } | { ok: false; error: string } {
   const base = (siteUrl ?? "").trim().replace(/\/+$/, "");
 
   if (!base) {
     return {
       ok: false,
-      error:
-        "NEXT_PUBLIC_SITE_URL isn't set on this deployment, so the email's link would point nowhere. The month is published; nothing was sent.",
+      error: `NEXT_PUBLIC_SITE_URL isn't set on this deployment, so the email's link would point nowhere. ${stillTrue}; nothing was sent.`,
     };
   }
 
@@ -50,15 +90,9 @@ export function reportLinkFor(
       ok: false,
       error:
         `NEXT_PUBLIC_SITE_URL is ${base}, which only works on this machine. ` +
-        "The month is published; no email was sent, because the client could not have opened the link.",
+        `${stillTrue}; no email was sent, because the client could not have opened the link.`,
     };
   }
 
-  // The month as the report's own URLs carry it: 2026-08, not 2026-08-01.
-  const params = new URLSearchParams({
-    workspace: workspaceId,
-    month: month.slice(0, 7),
-  });
-
-  return { ok: true, url: `${base}/reporting?${params.toString()}` };
+  return { ok: true, base };
 }

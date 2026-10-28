@@ -9,6 +9,7 @@ import { launchDeleteMessage } from "./launch-delete.ts";
 import { lockedError } from "./locked.ts";
 import { withSaved, type SavedKey } from "./saved-notice.ts";
 import { getWorkspace } from "./queries.ts";
+import { sendLaunchUpdateEmail } from "./launch-send.ts";
 
 /**
  * Setting a launch up, and typing its figures in (§6.1 to §6.5).
@@ -568,6 +569,49 @@ export async function unpublishLaunch(
 
   revalidatePath("/reporting/launches", "layout");
   return { notice: "Back to draft. The client can no longer see this launch." };
+}
+
+/**
+ * Telling the client the tracker has moved (Nina's decision 12).
+ *
+ * A launch's figures carry on arriving for weeks after the cart shuts —
+ * cash collected, late sales, the replay's numbers — and until this
+ * existed there was no way to say so without waiting for the monthly
+ * report. So it is a button, pressed deliberately.
+ *
+ * **Nothing automatic.** No save sends it, publishing does not send it,
+ * and the cron does not know about it. That was the other half of her
+ * answer and it is the half worth protecting: a client emailed every time
+ * a figure is typed stops reading the emails.
+ *
+ * Awaited, unlike publishing a month: the button does only this, so the
+ * person who pressed it is told what happened rather than finding out
+ * from a column later.
+ */
+export async function sendLaunchUpdate(
+  _prev: LaunchState,
+  formData: FormData,
+): Promise<LaunchState> {
+  const reportUser = await requireReportUser();
+  if (!reportUser.isAdmin) return { error: "Only Nina can email a client about a launch." };
+
+  const id = String(formData.get("launch_id") ?? "");
+  if (!id) return { error: "That was missing something. Reload and try again." };
+
+  // Read as this login first, so a launch they cannot see is refused here
+  // rather than by the service role that does the sending. Not found and
+  // not theirs are the same answer — §13.
+  const supabase = await createClient();
+  const { data: mine } = await supabase
+    .from("report_launches")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle<{ id: string }>();
+  if (!mine) return { error: "That launch isn't yours to send." };
+
+  const result = await sendLaunchUpdateEmail(id);
+  if (!result.ok) return { error: result.error ?? "It didn't go, and gave no reason." };
+  return { notice: "Sent. The client has been told the tracker has newer figures in it." };
 }
 
 /**
