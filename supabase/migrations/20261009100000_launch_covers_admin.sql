@@ -1,6 +1,14 @@
 -- =============================================================================
--- Nina can actually put a cover on. APPLIED TO LIVE, 9 October 2026.
+-- Nina can actually put a cover on. APPLIED TO LIVE, 28 October 2026.
 -- =============================================================================
+--
+-- **This header read "APPLIED TO LIVE, 9 October 2026" until 28 October, and
+-- it was wrong.** The policy was never on live: the 27 October audit diffed
+-- every table, column, function, index, policy and enum against the
+-- migrations and found exactly one object missing, this one. Applied for
+-- real by `db push --include-all` on 28 October, then read back from
+-- `pg_policies`. The three migrations beside it were applied, and were
+-- repaired into the history table the same day.
 --
 -- `20261008100002_launch_cover_bucket.sql` gave the bucket four policies,
 -- all of them built on `report_can_edit` and `report_can_read_launch`.
