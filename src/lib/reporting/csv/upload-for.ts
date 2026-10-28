@@ -19,9 +19,17 @@ import type { UploadPlatform } from "@/components/reporting/csv-upload";
  *     (Dom, 9 October).
  *   · **Only somebody who can edit**, which is the line every entry
  *     screen already draws.
- *   · **Retainer workspaces only** — Nina's decision 34. A member fills
- *     these in by hand for now, because every "my CSV didn't work"
- *     lands on Nina.
+ *   · **Not a Chiarezza login.** Nina reversed decision 36 on
+ *     28 October — a member uploads their own Meta exports, under the
+ *     same rules as a retainer client, because they are already their
+ *     own editor everywhere else and typing twelve figures off a
+ *     spreadsheet is the thing the card exists to prevent.
+ *
+ *     Chiarezza is still out, and deliberately: she reversed it for
+ *     members and said nothing about a one-off attendee, and the
+ *     original reason — every "my CSV didn't work" lands on Nina —
+ *     weighs most on the people with the shortest relationship. One
+ *     line to change if she wants them in.
  */
 
 const PLATFORM: Record<string, UploadPlatform> = {
@@ -50,7 +58,7 @@ export async function uploadFor({
 } | null> {
   const platform = PLATFORM[category];
   if (!platform) return null;
-  if (locked || !canEdit || kind !== "retainer") return null;
+  if (locked || !canEdit || kind === "chiarezza") return null;
 
   const supabase = await createClient();
   const { data } = await supabase

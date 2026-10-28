@@ -248,3 +248,70 @@ test("changing an answer does not touch a month already saved", async () => {
        from public.report_values where workspace_id = '${WS}' and month = '${MONTH}'`));
   assert.deepEqual(after.rows, before.rows, "not one figure moved");
 });
+
+// ------------------------------------------------------- who gets the card
+
+const { uploadFor } = await import("../../src/lib/reporting/csv/upload-for.ts");
+
+const cardFor = (kind, over = {}) =>
+  as(NINA, () =>
+    uploadFor({
+      category: "ads",
+      locked: false,
+      canEdit: true,
+      kind,
+      workspaceId: WS,
+      monthLabel: "September 2026",
+      ...over,
+    }),
+  );
+
+/**
+ * **Decision 36, reversed by Nina on 28 October.** A member uploads their
+ * own Meta exports now, under the same rules as a retainer client.
+ *
+ * Tested on `uploadFor` rather than on a screen because `uploadFor` is the
+ * only thing that decides, and the two screens that draw the card both
+ * ask it. The three kinds and the three other gates are all one
+ * expression, so they are all asserted here or none of them are.
+ */
+test("a member gets the upload card; Chiarezza does not", async () => {
+  assert.ok(await cardFor("retainer"), "a retainer client's screen, unchanged");
+  assert.ok(await cardFor("aos_member"), "a member's own screen, decision 36 reversed");
+  assert.equal(
+    await cardFor("chiarezza"),
+    null,
+    "a one-off attendee stays manual until Nina says otherwise",
+  );
+});
+
+test("and nobody gets it on a locked month, a read-only screen, or Email", async () => {
+  assert.equal(await cardFor("aos_member", { locked: true }), null, "a published month");
+  assert.equal(await cardFor("aos_member", { canEdit: false }), null, "cannot edit");
+  assert.equal(
+    await cardFor("aos_member", { category: "email" }),
+    null,
+    "Email has no file to upload",
+  );
+  assert.equal(
+    await cardFor("retainer", { category: "financials" }),
+    null,
+    "Financials is manual for good — payment exports carry names and card details",
+  );
+});
+
+test("the card carries the remembered column maps, whoever it is drawn for", async () => {
+  await as(NINA, () =>
+    db.query(
+      `insert into public.report_column_maps (workspace_id, platform, column_name, maps_to)
+         values ($1, 'meta_ads', 'Autumn Workshop Opt In', 'leads')`,
+      [WS],
+    ),
+  );
+
+  const card = await cardFor("aos_member");
+  assert.equal(card?.platform, "meta_ads");
+  // Lower-cased on the way out, because a file's own spelling is matched
+  // against it and the two never agree on capitals.
+  assert.equal(card?.columnMaps["autumn workshop opt in"], "leads");
+});

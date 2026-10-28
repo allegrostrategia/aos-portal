@@ -160,17 +160,20 @@ test("only the two screens with a file to upload have a card", async ({ page }) 
   }
 });
 
-test("a client is never offered one, and nor is a member", async ({ page }) => {
+test("a client is never offered one; a member now is", async ({ page }) => {
   const { MONTHS } = await import("../scripts/seed-test-db.mjs");
-  // A retainer client does not enter figures at all.
+  // A retainer client does not enter figures at all, so there is nothing
+  // for a file to fill.
   await signIn(page, "client");
   await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
   await expect(page.locator("input[type=file]")).toHaveCount(0);
 
-  // And a member fills Meta in by hand for now — Nina's decision 34.
+  // **A member does get it** — Nina reversed decision 36 on 28 October.
+  // They are already their own editor everywhere else, and typing twelve
+  // figures off a spreadsheet is the thing this card exists to prevent.
   await signIn(page, "member");
   await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
-  await expect(page.getByRole("heading", { name: /fill from a file/i })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /fill from a file/i })).toBeVisible();
 });
 
 
