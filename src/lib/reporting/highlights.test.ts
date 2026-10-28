@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { DERIVED_FROM, PULLED_FROM, TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
+import { DERIVED_FROM, FOCUS_TAG, PULLED_FROM, TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
 
 /**
  * "Look at these first 👀" and "What went WELL this month".
@@ -24,16 +24,16 @@ const base = {
 test("the eight sentences are Nina's, to the character", () => {
   // If these ever need changing they change in one file, which is the
   // point of the file. They do not get reworded by a screen.
-  assert.equal(TEMPLATES.countDown, "{n} fewer {metric} than last month - worth a proper look 👀");
+  assert.equal(TEMPLATES.countDown, "{n} fewer {metric} than last month");
   assert.equal(TEMPLATES.countUp, "{n} MORE {metric} than last month - stunning");
-  assert.equal(TEMPLATES.rateDown, "{Metric} dropped from {from} to {to}... let's work out WHY");
+  assert.equal(TEMPLATES.rateDown, "{Metric} dropped from {from} to {to}");
   assert.equal(TEMPLATES.rateUp, "{Metric} up from {from} to {to} & that's no accident");
-  assert.equal(TEMPLATES.belowTarget, "{Metric} is at {pct} of your target - not there YET");
+  assert.equal(TEMPLATES.belowTarget, "{Metric} is at {pct} of your target");
   assert.equal(TEMPLATES.beatTarget, "{Metric} beat your target by {pct} WOOOO");
   assert.equal(TEMPLATES.goodFall, "{Metric} down {n} - exactly the direction we want");
   assert.equal(
     TEMPLATES.badRise,
-    "{Metric} up {n} - not the direction we want, let's dig into WHY",
+    "{Metric} up {n}",
   );
 });
 
@@ -48,7 +48,7 @@ test("one more new client, not one more new clients", () => {
   );
   assert.equal(
     highlightFor({ ...base, label: "New clients", value: 3, previous: 4 })?.text,
-    "1 fewer new client than last month - worth a proper look 👀",
+    "1 fewer new client than last month",
   );
 });
 
@@ -67,7 +67,7 @@ test("a rate moves from one figure to another", () => {
     value: 28,
     previous: 35,
   });
-  assert.equal(down?.text, "Opt-in rate dropped from 35.0% to 28.0%... let's work out WHY");
+  assert.equal(down?.text, "Opt-in rate dropped from 35.0% to 28.0%");
   assert.equal(down?.panel, "attention");
 
   const up = highlightFor({
@@ -103,7 +103,7 @@ test("a churn rate falling is exactly the direction we want", () => {
   });
   assert.equal(
     rose?.text,
-    "Churn rate up 5.0% - not the direction we want, let's dig into WHY",
+    "Churn rate up 5.0%",
   );
   assert.equal(rose?.panel, "attention");
 });
@@ -132,7 +132,7 @@ test("cost per lead keeps its pennies in the sentence", () => {
   });
   assert.equal(
     rose?.text,
-    "Cost per lead up £1.50 - not the direction we want, let's dig into WHY",
+    "Cost per lead up £1.50",
   );
   assert.equal(rose?.panel, "attention");
 });
@@ -161,7 +161,7 @@ test("the sentence that started this: clients who left", () => {
   });
   assert.equal(
     rose?.text,
-    "Clients who left up 2 - not the direction we want, let's dig into WHY",
+    "Clients who left up 2",
   );
   assert.equal(rose?.panel, "attention");
 });
@@ -198,7 +198,7 @@ test("a target beats a comparison with last month", () => {
     target: 10,
   });
   assert.equal(h?.key, "belowTarget");
-  assert.equal(h?.text, "New clients is at 60% of your target - not there YET");
+  assert.equal(h?.text, "New clients is at 60% of your target");
 });
 
 test("beating a target says by how much, not how much of it", () => {
@@ -438,4 +438,67 @@ test("a pulled figure stands alone when its source says nothing", () => {
 
   assert.equal(wins.length, 1);
   assert.match(wins[0].text, /^Revenue from offers/);
+});
+
+/**
+ * Nina, 28 October: the tails come off the lines going the wrong way and a
+ * "Focus area" tag carries the signal instead.
+ *
+ * Asserted as the absence of a tail rather than as four exact strings,
+ * because the four exact strings are asserted above and this is the rule
+ * they have to keep: nothing in the attention panel tells the reader how
+ * to feel about it. The celebration lines are checked for the opposite —
+ * they are hers and they stay.
+ */
+test("no attention line carries a tail, and the wins keep theirs", () => {
+  assert.equal(FOCUS_TAG, "Focus area");
+
+  const attention = [
+    TEMPLATES.countDown,
+    TEMPLATES.rateDown,
+    TEMPLATES.belowTarget,
+    TEMPLATES.badRise,
+  ];
+
+  for (const template of attention) {
+    assert.doesNotMatch(template, /WHY|YET|worth a proper look|direction we want|👀/, template);
+    // A plain statement: no trailing dash or ellipsis left behind by the cut.
+    assert.doesNotMatch(template, /[-–—.…]\s*$/, template);
+  }
+
+  // Untouched, and deliberately: she asked about the repeated tail, not
+  // about her own celebrations.
+  assert.match(TEMPLATES.countUp, /stunning$/);
+  assert.match(TEMPLATES.rateUp, /no accident$/);
+  assert.match(TEMPLATES.beatTarget, /WOOOO$/);
+  assert.match(TEMPLATES.goodFall, /exactly the direction we want$/);
+});
+
+/** Every sentence that reaches the attention panel is one of the four. */
+test("the attention panel only ever draws a stripped template", () => {
+  const { attention } = highlights([
+    {
+      key: "leads_conversions_new_clients",
+      label: "New clients",
+      unit: "count",
+      goodDirection: "up",
+      value: 4,
+      previous: 9,
+      currency: "GBP",
+    },
+    {
+      key: "client_experience_churn_rate",
+      label: "Churn rate",
+      unit: "percent",
+      goodDirection: "down",
+      value: 9,
+      previous: 4,
+      currency: "GBP",
+    },
+  ]);
+
+  assert.equal(attention.length, 2);
+  for (const item of attention) {
+    assert.doesNotMatch(item.text, /WHY|YET|worth a proper look|direction we want|👀/, item.text);
+  }
 });

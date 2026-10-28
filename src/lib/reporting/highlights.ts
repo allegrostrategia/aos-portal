@@ -4,11 +4,14 @@ import { formatValue, type Unit } from "./format.ts";
 /**
  * "Look at these first 👀" and "What went WELL this month" (§7).
  *
- * **Every word a client reads here is Nina's**, given verbatim on
- * 5 October and reproduced below unchanged — the capitals, the ellipsis,
- * the ampersand and the emoji included. They are in one file so the
- * wording can be changed without touching a screen, the same
- * arrangement as the publish email and the monthly recap.
+ * **Every word a client reads here is Nina's.** The four celebration
+ * lines are as she gave them on 5 October, verbatim — the capitals, the
+ * ampersand and the emoji included. The four attention lines were hers
+ * too until 28 October, when she asked for their tails to come off and a
+ * "Focus area" tag to carry the signal instead; what is left of each is
+ * her sentence with nothing added. They are in one file so the wording
+ * can be changed without touching a screen, the same arrangement as the
+ * publish email and the monthly recap.
  *
  * Nothing here is generated. A template is picked and filled; no
  * sentence is composed, and no figure is described in words the
@@ -20,12 +23,27 @@ export const PANELS = {
   wins: "What went WELL this month",
 } as const;
 
+/**
+ * The tag that replaces the tails, on the lines going the wrong way.
+ *
+ * Nina, 28 October, reviewing the pack: three sentences in a row ending
+ * "…not the direction we want, let's dig into WHY" read as templated
+ * rather than written, because they were. So the four attention
+ * templates below are plain statements now and the signal moved into
+ * this one tag, which the panel draws beside each line.
+ *
+ * One tag rather than four tails is also the only version that stays
+ * right as the panel fills: a tag repeated three times reads as a label,
+ * where a sentence repeated three times reads as a machine.
+ */
+export const FOCUS_TAG = "Focus area";
+
 export const TEMPLATES = {
-  countDown: "{n} fewer {metric} than last month - worth a proper look 👀",
+  countDown: "{n} fewer {metric} than last month",
   countUp: "{n} MORE {metric} than last month - stunning",
-  rateDown: "{Metric} dropped from {from} to {to}... let's work out WHY",
+  rateDown: "{Metric} dropped from {from} to {to}",
   rateUp: "{Metric} up from {from} to {to} & that's no accident",
-  belowTarget: "{Metric} is at {pct} of your target - not there YET",
+  belowTarget: "{Metric} is at {pct} of your target",
   beatTarget: "{Metric} beat your target by {pct} WOOOO",
   // The two for a figure where falling is the good news — churn, cost
   // per lead, clients who left. Given by Nina on 6 October, after the
@@ -35,7 +53,7 @@ export const TEMPLATES = {
   // here because in her sentence the label starts it, and that is what
   // the capital in the name means in this file. Her words are unchanged.
   goodFall: "{Metric} down {n} - exactly the direction we want",
-  badRise: "{Metric} up {n} - not the direction we want, let's dig into WHY",
+  badRise: "{Metric} up {n}",
 } as const;
 
 /**

@@ -77,7 +77,9 @@ test("setting a target puts a bar on the Overview and changes the sentence", asy
   // Four of a target of ten: the bar, and the sentence that goes with a
   // target rather than the one that goes with last month.
   expect(text).toMatch(/4 of 10\s*40%/);
-  expect(text).toMatch(/New clients is at 40% of your target - not there YET/);
+  // The tail came off on 28 October (Nina's decision 3) and the "Focus
+  // area" tag carries the signal instead.
+  expect(text).toMatch(/FOCUS AREA New clients is at 40% of your target/);
   // And nothing contradicts itself: no sentence calls a fall "stunning".
   expect(text).not.toMatch(/MORE clients who left/);
   await shoot(page, TAB, "05-target-bar", w);
@@ -168,7 +170,8 @@ test("a figure where falling is good reads both ways in Nina's words", async ({ 
 
   // One of each, on one screen, to the character.
   expect(text).toMatch(/Clients who left down 2 - exactly the direction we want/);
-  expect(text).toMatch(/Issues raised up 3 - not the direction we want, let's dig into WHY/);
+  // Hers, with the tail off and the tag above it — decision 3.
+  expect(text).toMatch(/FOCUS AREA Issues raised up 3/);
 
   // And not a word of the old contradiction: the four sentences that
   // assume higher is better stay off these figures.

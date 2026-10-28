@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { KpiCard } from "@/components/reporting/kpi-card";
 import { PublishControl, StrategistNotes } from "@/components/reporting/notes";
+import { MonthBeingPrepared } from "@/components/reporting/month-holding";
 import { Objectives } from "@/components/reporting/objectives";
 import { Reflection } from "@/components/reporting/reflection";
 import { ClientReplies } from "@/components/reporting/replies";
@@ -15,7 +16,7 @@ import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
 import { publishWarning } from "@/lib/reporting/publish-warning";
 import { draftMonthsBefore } from "@/lib/reporting/carried-build";
 import { getPublishedMonths } from "@/lib/reporting/queries";
-import { PANELS, highlights } from "@/lib/reporting/highlights";
+import { FOCUS_TAG, PANELS, highlights } from "@/lib/reporting/highlights";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { formatValue } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
@@ -47,6 +48,23 @@ export default async function ReportingOverviewPage({
     workspace: typeof search.workspace === "string" ? search.workspace : undefined,
     month: typeof search.month === "string" ? search.month : undefined,
   });
+
+  // **Decision 10: a month that is not out yet is a holding screen, and
+  // only that.** Before the figures are fetched, so a draft is not even
+  // read on the way to not being shown.
+  if (!ctx.monthPublished) {
+    return (
+      <ReportShell
+        ctx={ctx}
+        active="overview"
+        path="/reporting"
+        title="Monthly Report"
+        tagline={ctx.month.label}
+      >
+        <MonthBeingPrepared monthLabel={ctx.month.label} />
+      </ReportShell>
+    );
+  }
 
   const figures = await getMonthFigures(ctx);
   // On a published month, the month it was compared against comes from
@@ -223,15 +241,7 @@ export default async function ReportingOverviewPage({
         />
       }
     >
-      {!ctx.monthPublished ? (
-        <Card className="mb-6">
-          <SectionTitle>{ctx.month.label} isn&rsquo;t ready yet</SectionTitle>
-          <p className="text-body text-ink/70">
-            Your strategist is still putting this month together. You&rsquo;ll be
-            told when it&rsquo;s ready to read.
-          </p>
-        </Card>
-      ) : !anyFigures ? (
+      {!anyFigures ? (
         <Card className="mb-6">
           <SectionTitle>Nothing in yet for {ctx.month.label}</SectionTitle>
           <p className="text-body text-ink/70">
@@ -284,9 +294,17 @@ export default async function ReportingOverviewPage({
           {panels.attention.length > 0 ? (
             <Card>
               <SectionTitle>{PANELS.attention}</SectionTitle>
-              <ul className="flex flex-col gap-2.5">
+              {/* The tag, not a tail on every sentence (Nina, 28 October).
+                  Its own line above the sentence rather than beside it:
+                  inline, it pushed the first words of a two-line item into
+                  a ragged second column on a phone. */}
+              <ul className="flex flex-col gap-3">
                 {panels.attention.map((item) => (
                   <li key={item.text} className="text-body text-ink/80">
+                    <span className="mb-1 inline-block rounded-full bg-cream-deep px-2.5 py-0.5 text-caption font-medium uppercase tracking-wide text-ink/60">
+                      {FOCUS_TAG}
+                    </span>
+                    <br />
                     {item.text}
                   </li>
                 ))}
