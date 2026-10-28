@@ -29,15 +29,17 @@ Stages 3–6 sit behind `SHIPPED_STAGE`, pinned to `PRODUCTION_STAGE = 2` in `sr
 
 ## The numbers
 
-- **85 migrations**, all applied to live.
+- **85 migrations**, all applied to live and all in live's history table — verified 28 October by diffing the whole schema (tables, columns, functions, indexes, policies, enums, storage policies) against the migrations. Every category identical.
 - **540 unit / 415 database / 216 browser** tests, all run 27 October, all exit 0. Guarded by `npm run test:census`, which refuses a silent drop.
-- `main` at `d368b7b`, pushed, nothing held.
+- `main` at `28a74df`, pushed, nothing held. `24a142c` is the last commit confirmed Ready on Production (12 October); everything since is docs and tooling.
 
 ## Three things to know before touching anything
 
-1. **aOS now has its own Supabase token, in `.env.local` as `SUPABASE_ACCESS_TOKEN`** (gitignored; `npm run db:projects` checks it). It needed one: `~/.supabase/access-token` holds a single token per machine, so a CLI login for `allegro-captures-portal` on 18 October evicted the aOS one and every Management API call answered "your account does not have the necessary privileges". Nothing leaked — no token or key has ever been committed, across all 336 commits. **No migrations until the new token is in and live state has been re-verified against the record.**
+1. **aOS now has its own Supabase token, in `.env.local` as `SUPABASE_ACCESS_TOKEN`** (gitignored; `npm run db:projects` checks it). It needed one: `~/.supabase/access-token` holds a single token per machine, so a CLI login for `allegro-captures-portal` on 18 October evicted the aOS one and every Management API call answered "your account does not have the necessary privileges". Nothing leaked — no token or key has ever been committed, across all 336 commits. The token went in on 28 October and the live read-back was done the same day.
 2. **The browser suite was green for weeks while nothing hydrated.** Next answered 403 to its own JS chunks because Playwright drives `127.0.0.1` and Next thought it was `localhost`. Fixed; guarded by `e2e/hydration.spec.ts`. Ten tests failed the moment it started working — every one an assertion that had never really waited.
 3. **The live sign-in checks were skipped** on 9 October and are on the launch checklist, marked not done.
+
+**And one thing the audit caught:** `launch_covers_admin`'s migration header claimed "APPLIED TO LIVE, 9 October" for nineteen days and the policy was never there — which would have left Nina unable to put a cover on a launch, silently. Applied for real on 28 October. **Trust the read-back, not the header.**
 
 ## Standing rules that bite
 

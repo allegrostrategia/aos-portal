@@ -1,9 +1,9 @@
-# aOS — current state (27 October 2026)
+# aOS — current state (28 October 2026)
 *If this chat ever needs to hand off to a fresh one: drop in this file plus `CLAUDE.md`, the Build Brief, the Training Library doc, and whatever the latest Dom Build Plan looks like (that file is now owned by Claude Code directly, not maintained here). This document is the "where we actually left off," not the full spec.*
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
-## WHERE WE ARE — 27 October 2026
+## WHERE WE ARE — 28 October 2026
 
 **The reporting tool is finished and switched off.** Stages 1 and 2 are
 live and in use. **Stages 3, 4, 5 and 6 are all built, tested and
@@ -12,20 +12,36 @@ so none of it is in front of a client, and no environment variable in
 Vercel can change that. What is left is **Nina's review, then the
 launch checklist, then moving the flag**.
 
-**Eighty-five migrations on disk.** Everything through
-`20261009130000` has been applied to live and verified by reading the
-result back. **Every migration header now says so** — eleven of them
-still read "NOT APPROVED — do not apply" on 27 October, having been
-written before approval and never corrected, including one the state
-doc itself recorded as live. A header that lies about whether it has
-run is exactly the trap this document exists to prevent.
+**Eighty-five migrations on disk, eighty-five in live's history, and
+the live schema matches them object for object** — checked on
+28 October by running every migration into the PGlite harness and
+diffing its tables, columns, functions, indexes, policies and enum
+values against live through the Management API. All seven categories
+identical, storage policies included.
+
+**That check was worth running.** It found one object missing on live:
+the `launch_covers_admin` storage policy, whose migration header had
+claimed "APPLIED TO LIVE, 9 October" for nineteen days. It wasn't —
+which meant Nina could not have put a cover on a launch, and nothing
+would have said why. Applied for real on 28 October and read back.
+Three further migrations (`20261009110000`, `120000`, `130000`) *were*
+applied but had been run by API rather than `db push`, so live's
+history table had never heard of them; repaired the same day, and
+`db push --dry-run` is clean. **Eleven headers also still read "NOT
+APPROVED — do not apply" on 27 October**, having been written before
+approval and never corrected. A header that lies about whether it has
+run is exactly the trap this document exists to prevent — and this
+time one of them cost a working feature.
 
 **Test counts, recorded in `test-counts.json` and guarded by
 `npm run test:census`: 540 unit, 415 database, 216 browser.** The
 census refuses a drop, because a deleted test does not fail — it stops
 existing, and a green count says nothing about what is no longer in it.
 
-**`main` is at `24a142c` and pushed.** Nothing is held locally.
+**`main` is at `28a74df` and pushed.** Nothing is held locally.
+**`24a142c` is the last commit confirmed Ready on Production** — Dom
+checked the Vercel dashboard on 12 October. Everything pushed since is
+documentation and local tooling; nothing under `src/`.
 
 **The review pack is written: `docs/nina-review/`.** The thirty-eight
 decisions taken on Nina's behalf come first, in plain English, each
@@ -50,8 +66,8 @@ launch checklist.
 - **The live sign-in checks were skipped on 9 October** and are on the
   launch checklist, said plainly as not done. Nothing about the deploy
   was unsafe; it is simply unverified on the live site.
-- **The Supabase access token points at the wrong account** — found
-  27 October. `/v1/projects/.../database/query` answers "your account
+- **The Supabase access token pointed at the wrong account** — found
+  27 October, fixed 28 October. `/v1/projects/.../database/query` answers "your account
   does not have the necessary privileges", and `projects list` returns
   only `allegro-captures-portal`, never the aOS project. The token is
   valid; it belongs to the other Supabase account. `~/.supabase/access-token`
@@ -63,9 +79,12 @@ launch checklist.
   used by `npm run db:push | db:link | db:diff | db:projects` and
   `scripts/supabase-api.mjs`. Nothing reads `~/.supabase/access-token`
   any more, so the two accounts can no longer evict each other.
-  **Live state could not be verified on 27 October**; everything above
-  about live is from the record, not from a read-back. The read-back has
-  to happen before the next migration.
+  **The read-back was done on 28 October once the new token was in**,
+  and is the migration audit described above. Live's reporting data is
+  what the record says: two workspaces (Test Client, and `dom`'s member
+  workspace from the 9 October backfill), two periods, both published,
+  and every Stage 4–6 table empty. No `report_reminder_*` job is
+  planned, for `dom` or anybody — the stage gate is holding.
 
 **The work since 30 September is the reporting tool** — a second product inside aOS, for clients who are not aOS members. Stage 1 (schema, RLS, the metric list, the formula module) and Stage 2 (entry screens, the Overview, draft/publish, strategist notes) are both built and live. **Its own section below is the one to read**; it is large enough that it no longer fits in this summary.
 
@@ -207,6 +226,19 @@ a real month, and none of them can be finished before launch.
       form. Test Client's contact still reads "Nina" in the live data until
       somebody changes it, which is now a thirty-second job rather than a
       database edit.
+
+## POST-LAUNCH TIDY — safe to leave, worth doing eventually
+
+Not bugs and not blockers. Nothing here is in front of anybody; each one
+is a small untidiness that would cost more to fix now than to fix later.
+
+- [ ] **An empty `voice-message` bucket on live, beside the real
+      `voice-messages`.** Found by the 28 October schema audit. Singular,
+      zero objects, no policies, created in no migration — a dashboard
+      typo from early on. The real bucket (`voice-messages`, plural) has
+      its objects and its six policies and is what the app uses. Deleting
+      the stray needs a look at the dashboard first, and there is no
+      reason to do it while anything else is in flight.
 
 ## What's genuinely built and live
 - **Infrastructure:** Supabase, GitHub, Vercel, all connected, `aos.allegrostrategia.com` live.
