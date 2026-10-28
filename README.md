@@ -85,11 +85,19 @@ The normal route:
 ```bash
 npm run test:db                              # always, before pushing
 npm run db:link -- --project-ref <ref>
-npx supabase migration list --linked         # read-only: local vs remote history
+node scripts/supabase.mjs migration list --linked    # read-only: local vs remote history
 npm run db:push -- --dry-run
 ```
 
 Drop `--dry-run` once the migration list looks right.
+
+**Every remote command needs aOS's own token**, `SUPABASE_ACCESS_TOKEN` in
+`.env.local` (gitignored; `.env.example` says where to make one). The `db:*`
+scripts and `scripts/supabase.mjs` supply it; plain `npx supabase` does not, and
+falls back to `~/.supabase/access-token` — one token for the whole machine, so a
+CLI login for another Supabase account evicts this project's and every call then
+answers "your account does not have the necessary privileges". `npm run
+db:projects` is the check: if the aOS project isn't in the list, it's the token.
 
 **Run `migration list` before `db push`, not after.** It is read-only, and the
 gap between its two columns is the exact repair list — which matters because a
@@ -171,7 +179,7 @@ unpicked.
 
 ```bash
 pbcopy < supabase/migrations/<version>_<name>.sql
-npx supabase migration repair --status applied <version>   # one version, not all of them
+node scripts/supabase.mjs migration repair --status applied <version>   # one version, not all
 ```
 
 Either route bypasses the CLI's migration history table, which is what `repair`
