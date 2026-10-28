@@ -5,6 +5,7 @@ import { LaunchForm } from "@/components/reporting/launch-form";
 import { ReportShell } from "@/components/reporting/report-shell";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
+import { suggestedConversionRate } from "@/lib/reporting/launch-queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "New launch — aOS" };
@@ -45,6 +46,9 @@ export default async function NewLaunchPage({
     .order("name")
     .returns<{ id: string; name: string }[]>();
 
+  // Decision 16: the conversion their last finished launch actually got.
+  const suggested = await suggestedConversionRate(ctx.workspace.id);
+
   return (
     <ReportShell
       ctx={ctx}
@@ -59,6 +63,7 @@ export default async function NewLaunchPage({
         offers={offers ?? []}
         locked={false}
         returnTo=""
+        suggestedConversion={suggested}
       />
     </ReportShell>
   );

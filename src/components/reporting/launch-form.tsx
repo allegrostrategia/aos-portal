@@ -28,6 +28,7 @@ export function LaunchForm({
   offers,
   locked,
   returnTo,
+  suggestedConversion = null,
 }: {
   workspaceId: string;
   /** Null when creating. */
@@ -36,6 +37,16 @@ export function LaunchForm({
   locked: boolean;
   /** The screen this form sits on, so a save can come back to it. */
   returnTo: string;
+  /**
+   * The conversion this client got on their last finished launch, on a
+   * new launch only (Nina's decision 16).
+   *
+   * Carried with the launch's name, because a number that appeared on
+   * its own would be a number nobody could check. Never applied to an
+   * existing launch: that one has a saved answer, and replacing it with
+   * a suggestion would overwrite a figure somebody typed.
+   */
+  suggestedConversion?: { rate: number; from: string } | null;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(
     launch ? updateLaunch : createLaunch,
@@ -124,6 +135,19 @@ export function LaunchForm({
                 what you expect, until the launch tells you otherwise
               </span>
             </legend>
+            {/* Decision 16: the one figure worth offering, and where it
+                came from. Show-up stays empty on purpose. */}
+            {!launch && suggestedConversion ? (
+              <p className="text-caption text-ink/55">
+                Conversion is filled in from{" "}
+                <span className="text-ink/75">{suggestedConversion.from}</span>, the
+                last launch that finished — it got{" "}
+                <span className="font-mono text-ink/75">
+                  {suggestedConversion.rate}%
+                </span>
+                . Change it if this one is different.
+              </p>
+            ) : null}
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
                 <span className="text-caption uppercase tracking-wide text-ink/55">
@@ -143,7 +167,11 @@ export function LaunchForm({
                 <input
                   name="planner_conversion_rate"
                   inputMode="decimal"
-                  defaultValue={launch?.planner_conversion_rate ?? ""}
+                  defaultValue={
+                    launch
+                      ? (launch.planner_conversion_rate ?? "")
+                      : (suggestedConversion?.rate ?? "")
+                  }
                   className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                 />
               </label>

@@ -11,6 +11,11 @@ import assert from "node:assert/strict";
 import "./hooks.mjs";
 import { createTestDatabase, asMember } from "./pglite.mjs";
 import { configure } from "./stubs/supabase-server.mjs";
+import { sent, reset as resetEmail } from "./stubs/email-send.mjs";
+
+// Needed before the actions load: the link builder reads it, and refuses a
+// local address outright.
+process.env.NEXT_PUBLIC_SITE_URL = "https://aos.allegrostrategia.com";
 
 const {
   createLaunch,
@@ -21,6 +26,7 @@ const {
   saveLaunchFigures,
   publishLaunch,
   unpublishLaunch,
+  sendLaunchUpdate,
 } = await import("../../src/lib/reporting/launch-actions.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -572,4 +578,163 @@ test("every ?saved= key the actions send has a sentence to show", async () => {
   assert.equal(savedNotice("<script>alert(1)</script>"), null);
   assert.equal(savedNotice("constructor"), null, "not an inherited property either");
   assert.equal(savedNotice(undefined), null);
+});
+
+// --------------------------------------- decision 12: the one launch email
+
+/**
+ * **"Send update to client"**, Nina's decision 12 of 28 October.
+ *
+ * Four things have to be true and only one of them is about sending:
+ * nothing goes automatically, an unpublished launch cannot be emailed
+ * about, only Nina may press it, and the email carries no figures. The
+ * first is the one worth the most — a client emailed every time a number
+ * is typed stops reading the emails — and it is asserted by counting
+ * sends across a save and a publish, not by reading the code.
+ */
+async function freshLaunch(name) {
+  let id;
+  await as(NINA, async () => {
+    try {
+      await createLaunch(null, form({ workspace_id: WS, name }));
+    } catch {
+      // createLaunch redirects on success; the stub throws.
+    }
+  });
+  id = (await rows(
+    `select id from public.report_launches where workspace_id = '${WS}'
+       and name = '${name}' limit 1`,
+  ))[0]?.id;
+  return id;
+}
+
+test("saving and publishing a launch send nothing at all", async () => {
+  const id = await freshLaunch("Silent Launch");
+  assert.ok(id, "the launch exists");
+
+  resetEmail();
+  await as(NINA, () => saveStages(null, form({
+    launch_id: id, main_stage: 1,
+    "stage:1:name": "The masterclass", "stage:1:type": "masterclass",
+  })).catch(() => {}));
+  await as(NINA, () => publishLaunch(null, form({ launch_id: id })));
+
+  assert.equal(sent().length, 0, "no save and no publish ever emails a client");
+});
+
+test("an unpublished launch cannot be emailed about", async () => {
+  const id = await freshLaunch("Draft Launch");
+
+  resetEmail();
+  const result = await as(NINA, () => sendLaunchUpdate(null, form({ launch_id: id })));
+  assert.match(result.error, /isn't published/i);
+  assert.equal(sent().length, 0);
+});
+
+test("Nina presses it; the client is told, and told no figures", async () => {
+  const id = await freshLaunch("Autumn Masterclass");
+  await as(NINA, () => publishLaunch(null, form({ launch_id: id })));
+
+  resetEmail();
+  const result = await as(NINA, () => sendLaunchUpdate(null, form({ launch_id: id })));
+  assert.equal(result.error, undefined, result.error);
+  assert.match(result.notice, /sent/i);
+
+  const [email] = sent();
+  assert.equal(email.to, "bella@client.test", "the client contact, not the team");
+  assert.match(email.subject, /Autumn Masterclass/);
+  assert.match(email.subject, /updated/i);
+  // No figures, the same rule as the monthly email: a number in an inbox
+  // outlives its correction.
+  assert.doesNotMatch(email.text, /\d+%|£\d/);
+  assert.match(email.text, /https:\/\/aos\.allegrostrategia\.com\/reporting\/launches\//);
+});
+
+test("neither Elize nor the client can email a client about a launch", async () => {
+  const id = (await rows(
+    `select id from public.report_launches where workspace_id = '${WS}'
+       and name = 'Autumn Masterclass' limit 1`,
+  ))[0].id;
+
+  for (const [who, uid] of [["Elize", ELIZE], ["the client", CLIENT]]) {
+    resetEmail();
+    const result = await as(uid, () => sendLaunchUpdate(null, form({ launch_id: id })));
+    assert.match(result.error, /Only Nina/i, `${who} is refused`);
+    assert.equal(sent().length, 0, `${who} sent nothing`);
+  }
+});
+
+// ------------------------- decision 16: what the planner offers to start
+
+const { suggestedConversionRate } = await import(
+  "../../src/lib/reporting/launch-queries.ts"
+);
+
+/**
+ * **Decision 16, changed on 28 October.** Show-up starts empty; conversion
+ * starts at what this client actually got on their last finished launch,
+ * or empty if there isn't one.
+ *
+ * Driven through the real save path so the figure under test is one the
+ * app computed, not one the test asserted into place — which matters
+ * because the conversion it reads is itself decision 20's new definition
+ * (sales ÷ sign-ups to the selling stage).
+ */
+test("nothing to suggest before any launch has finished", async () => {
+  const empty = await as(NINA, () => suggestedConversionRate(WS));
+  // Everything built above is 'planning' or published-but-not-completed.
+  assert.equal(empty, null, "no finished launch, so the box starts empty");
+});
+
+test("the last finished launch's real conversion, named", async () => {
+  const id = await freshLaunch("Spring Challenge");
+
+  await as(NINA, () => saveStages(null, form({
+    launch_id: id, main_stage: 1,
+    "stage:1:name": "The masterclass", "stage:1:type": "masterclass",
+    "stage:1:live_days": 1,
+  })).catch(() => {}));
+
+  const stageId = (await rows(
+    `select id from public.report_launch_stages where launch_id = '${id}'`,
+  ))[0].id;
+
+  await as(NINA, () => savePrices(null, form({
+    launch_id: id, main_price: 1,
+    "price:1:name": "Pay in full", "price:1:price": 500, "price:1:id": "",
+  })).catch(() => {}));
+
+  const priceId = (await rows(
+    `select id from public.report_launch_prices where launch_id = '${id}'`,
+  ))[0].id;
+
+  // 24 sales from 600 sign-ups = 4%. Attendees are deliberately different,
+  // so a reading against them would give 12% and be visible here.
+  await as(NINA, () => saveLaunchFigures(null, form({
+    launch_id: id,
+    [`launch:launches_sign_ups:${stageId}:-:-:-`]: 600,
+    [`launch:launches_live_attendees:${stageId}:-:1:-`]: 200,
+    [`launch:launches_sales_per_price_option:-:${priceId}:-:-`]: 24,
+  })).catch(() => {}));
+
+  await as(NINA, () => updateLaunchStatus(null, form({
+    launch_id: id, status: "completed",
+  })).catch(() => {}));
+
+  const suggestion = await as(NINA, () => suggestedConversionRate(WS));
+  assert.equal(suggestion?.rate, 4, "4%, from sign-ups — not 12% from attendees");
+  assert.equal(suggestion?.from, "Spring Challenge", "named, so it can be checked");
+});
+
+test("a finished launch with no conversion suggests nothing", async () => {
+  const id = await freshLaunch("Quiet Finish");
+  await as(NINA, () => updateLaunchStatus(null, form({
+    launch_id: id, status: "completed",
+  })).catch(() => {}));
+
+  // The newest finished launch now has no selling stage and no sales, so
+  // there is nothing to offer — and it does NOT reach back to Spring
+  // Challenge, because "what happened last time" is the whole claim.
+  const suggestion = await as(NINA, () => suggestedConversionRate(WS));
+  assert.equal(suggestion, null);
 });

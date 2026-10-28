@@ -215,3 +215,60 @@ export async function getLaunch(launchId: string): Promise<LaunchDetail | null> 
     values: new LaunchValues(valueRes.data ?? []),
   };
 }
+
+/**
+ * What the planner should offer as a conversion rate on a new launch.
+ *
+ * **Nina's decision 16, changed on 28 October.** The planner used to
+ * start both boxes empty, and she asked for one of them to carry
+ * something real: the conversion this client actually got last time.
+ * Show-up stays empty, deliberately — it swings far more with the
+ * audience and the channel than conversion does, and a guessed show-up
+ * rate moves the sign-ups figure most.
+ *
+ * **The most recent finished launch, and only that one.** Not the best,
+ * not an average: "what happened last time" is a sentence Nina can
+ * finish out loud, and an average across launches of different shapes is
+ * not. If that launch has no conversion rate — no selling stage, no
+ * sign-ups, no sales — the box starts empty rather than reaching back
+ * further for a number nobody asked about.
+ *
+ * Nothing else is pre-filled, which was the other half of her answer.
+ */
+export async function suggestedConversionRate(
+  workspaceId: string,
+): Promise<{ rate: number; from: string } | null> {
+  // **Newest by when it was set up.** A launch has no date of its own —
+  // the live dates belong to its stages — so `created_at` is the only
+  // ordering available without a join, and for launches it is the order
+  // they ran in: Nina builds one when she is about to run it. A launch
+  // typed up late for a campaign that ran months ago would read as the
+  // most recent, which is why the suggestion is named on screen and
+  // editable rather than silent.
+  const supabase = await createClient();
+  const { data: recent } = await supabase
+    .from("report_launches")
+    .select("id, name")
+    .eq("workspace_id", workspaceId)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; name: string }>();
+
+  if (!recent) return null;
+
+  const detail = await getLaunch(recent.id);
+  if (!detail) return null;
+
+  // Imported here rather than at the top: `launch-figures.ts` takes only
+  // types from this module, so the pair has no runtime cycle, and keeping
+  // the import beside its one use says which direction the dependency
+  // actually runs.
+  const { launchSummary } = await import("./launch-figures.ts");
+  const rate = launchSummary(detail).conversionRate;
+  if (rate === null || !Number.isFinite(rate)) return null;
+
+  // One decimal, the same as every rate this product prints. A planner
+  // offering 4.7368421% is offering false precision about a guess.
+  return { rate: Math.round(rate * 10) / 10, from: recent.name };
+}
