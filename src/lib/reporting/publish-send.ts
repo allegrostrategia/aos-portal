@@ -67,12 +67,30 @@ export async function sendPublishEmail(
 
   const { data: workspace } = await admin
     .from("report_workspaces")
-    .select("business_name")
+    .select("business_name, kind")
     .eq("id", workspaceId)
-    .maybeSingle<{ business_name: string }>();
+    .maybeSingle<{ business_name: string; kind: string }>();
 
   if (!workspace) {
     return fail("Couldn't read the client this report belongs to, so nothing was sent.");
+  }
+
+  // **Retainer clients only** — Nina's decision 11, asked as a question on
+  // 28 October and answered by this line, because until it existed the
+  // answer was no.
+  //
+  // Nothing stopped it. The recipient is found by looking for a
+  // `report_access` row with role `client`, and a member's own workspace
+  // has exactly one of those: `ensure_member_report_workspace` grants the
+  // member `client` on their own business so they can read it. So
+  // publishing a member's month would have emailed the member a link to
+  // their own figures, in Nina's voice, about a report they filled in
+  // themselves. A self-serve workspace has no publish step on screen,
+  // which is why it had never happened — not a reason to leave it.
+  if (workspace.kind !== "retainer") {
+    return fail(
+      "This is a self-serve workspace, so no email was sent. They fill their own report in and read it whenever they like.",
+    );
   }
 
   // The client contact, and only them: Nina's decision of 5 October — "the

@@ -432,6 +432,52 @@ test("with no client login there is nobody to email, and the team is not it", as
   assert.equal(rows[0].email_to, null);
 });
 
+test("a member's own workspace is never emailed about, decision 11", async () => {
+  // **Nothing stopped this before 28 October.** A member's workspace
+  // carries a `report_access` row with role `client` — their own, so they
+  // can read their own figures — and the recipient lookup asks for exactly
+  // that. So publishing a member's month would have emailed the member, in
+  // Nina's voice, about a report they typed in themselves.
+  //
+  // Asserted on the send path rather than on the screen, because the
+  // screen already hides the publish card on a self-serve workspace and
+  // that is not what makes it safe.
+  const MEMBER = "44444444-4444-4444-4444-444444444444";
+  // Outside asMember: a member role cannot write to the auth schema.
+  await db.exec(`
+    insert into auth.users (id, email) values ('${MEMBER}','rosa@member.test')
+      on conflict (id) do nothing;
+    insert into public.members (id, email, full_name, role, status)
+      values ('${MEMBER}','rosa@member.test','Rosa Conti','member','active')
+      on conflict (id) do nothing;
+  `);
+
+  let selfServe;
+  await asMember(db, NINA, async () => {
+    const { rows } = await db.query(`
+      select (public.create_report_workspace(
+        '${MEMBER}', 'aos_member', 'Rosa Conti', 'Rosa Conti', '${AUG}')).id as id`);
+    selfServe = rows[0].id;
+  });
+
+  reset();
+  as(NINA);
+  await publishMonth(null, form({ workspace_id: selfServe, month: AUG }));
+  await flushAfter();
+
+  assert.equal(sent().length, 0, "a member hears nothing about their own report");
+
+  const { rows } = await db.query(
+    `select published_at, email_sent_at, email_error, email_to
+       from public.report_periods where workspace_id = $1 and month = $2`,
+    [selfServe, AUG],
+  );
+  assert.ok(rows[0].published_at, "the month still published; only the email is refused");
+  assert.equal(rows[0].email_sent_at, null);
+  assert.match(rows[0].email_error, /self-serve/i);
+  assert.equal(rows[0].email_to, null);
+});
+
 test("a development site address refuses to send, and says so", () => {
   // The invitation bug, which cost an evening: a link built from a dev
   // machine works perfectly for whoever sent it and is dead for the client.
