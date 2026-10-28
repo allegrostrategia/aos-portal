@@ -22,7 +22,10 @@ import { requireLocalStack, signIn } from "./helpers.ts";
 
 requireLocalStack();
 
-const OUT = "docs/nina-review";
+// Into the subfolder the pack actually references, not the top level.
+// Writing to `docs/nina-review` left thirty loose PNGs beside the README,
+// duplicating `screens-stage-3/` and disagreeing with it — Dom, 28 October.
+const OUT = "docs/nina-review/screens-stage-3";
 const width = (name: string) => (name === "phone" ? "phone" : "desktop") as "phone" | "desktop";
 
 async function shot(page: Page, name: string, w: "phone" | "desktop") {

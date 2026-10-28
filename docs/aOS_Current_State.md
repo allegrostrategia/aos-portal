@@ -9,8 +9,41 @@
 live and in use. **Stages 3, 4, 5 and 6 are all built, tested and
 behind `SHIPPED_STAGE`**, which is pinned to `PRODUCTION_STAGE = 2` —
 so none of it is in front of a client, and no environment variable in
-Vercel can change that. What is left is **Nina's review, then the
-launch checklist, then moving the flag**.
+Vercel can change that.
+
+**Nina's review is done — 28 October.** Of the thirty-eight decisions
+taken on her behalf she agreed twenty-eight and changed ten, and all ten
+are built behind the same switches, with tests at both widths. The
+changed ones are 2 (hours delivering is neutral), 3 (a "Focus area" tag
+instead of the repeated tail), 10 (a client sees a holding screen for a
+month being prepared), 11 (the publish email is retainer-only — asked as
+a confirmation, and the honest answer was no until it was fixed), 12 (a
+"Send update to client" button on a published launch), 16 (the planner
+offers the last finished launch's real conversion), 19 (pitch retention
+against the room at the start of the session), 20 (conversion against
+sign-ups, not attendees), 28 (four core fields become optional) and 36
+(members upload Meta CSVs too, reversing it).
+
+**One migration is written and NOT applied:**
+`20261028100000_nina_review_metric_list.sql`, which is decisions 2, 20
+and 28 — three `report_metrics` updates. Dom has the SQL.
+
+**Two consequences of the review worth knowing before the next change:**
+
+- **An optional field lives inside `<details>`** on the entry screen
+  ("Add more detail (optional)"), so decision 28 moved four fields one
+  click away rather than only changing what holds a section orange.
+  Found by two self-serve browser tests failing on `fill()` against a
+  hidden input, not by reading the code. Named on Nina's list.
+- **Nine browser tests asserted the old behaviour** and failed the first
+  time the suite ran after the changes — the holding screen's wording
+  (five), the stripped panel tails (two), the member upload gate (one),
+  and the optional-field disclosure (two, counted once). Every one was a
+  test that was right before and is right again; none was a bug in the
+  change. Worth recording because the first run looked like nine
+  regressions.
+
+What is left is **the launch checklist, then moving the flag**.
 
 **Eighty-five migrations on disk, eighty-five in live's history, and
 the live schema matches them object for object** — checked on
