@@ -489,6 +489,31 @@ export const offers = {
 
   totalRevenue: (all: OfferMonth[]): Result => sum(...all.map((o) => o.revenue)),
 
+  /**
+   * The hours entered against each offer, added up (§5.9's summary card).
+   *
+   * **Exactly what it sums**, written down because Nina asked on
+   * 28 October and because "total hours" is the kind of label people
+   * assume covers more than it does:
+   *
+   *   · `offers_hours_spent_delivering`, per offer, for this month only.
+   *     Never cumulative.
+   *   · Across every offer that has *any* figure that month — units sold,
+   *     revenue, or hours (`offerRowsFrom`'s filter). An offer set up and
+   *     untouched that month is left out rather than counted as nought,
+   *     so it cannot drag the weighted margin beside it.
+   *   · An offer in that set with no hours entered contributes nothing,
+   *     not zero, because `sum` skips what is missing.
+   *   · No offer with hours at all gives a dash, not 0 — `sum` of nothing
+   *     is null.
+   *   · Nothing outside the Offers section. Launch hours and trial-reel
+   *     hours are their own figures and never reach this.
+   *
+   * Its `good_direction` is `none` (decision 2), so the card shows the
+   * figure and its change and says nothing about whether the change is
+   * good news. Hours going up can be a worse month or a bigger one, and
+   * nothing here can tell which.
+   */
   totalHours: (all: OfferMonth[]): Result => sum(...all.map((o) => o.hoursSpent)),
 
   /**

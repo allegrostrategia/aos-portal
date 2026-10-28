@@ -176,7 +176,13 @@ const PROSE_METRICS = [
     entity_type: null,
   },
   {
-    category: "offers", label: "Total hours spent delivering", type: "calc", unit: "hours", good: "down",
+    // **Neutral, never judged** — Nina's decision 2, 28 October. Hours
+    // delivering going up can be a worse month or a bigger one, and the
+    // report has no way to tell which, so it reports the figure and its
+    // change and says nothing about whether that is good. "none" is what
+    // switches off the colour, the traffic light and the panel sentence,
+    // all three in one place.
+    category: "offers", label: "Total hours spent delivering", type: "calc", unit: "hours", good: "none",
     formula: "Sum of all offers' hours", entity_type: null,
   },
   {
@@ -225,7 +231,10 @@ const LAUNCH_METRICS = [
   { label: "Revenue still to collect", type: "calc", unit: "currency", good: "down", formula: "Total revenue − cash collected" },
   { label: "Average order value", type: "calc", unit: "currency", good: "up", formula: "Total revenue ÷ total sales" },
   { label: "Percent of sales goal", type: "calc", unit: "percent", good: "up", formula: "Total sales ÷ the Good, Better and Best targets" },
-  { label: "Conversion rate", type: "calc", unit: "percent", good: "up", formula: "Total sales ÷ live attendees of the main selling stage" },
+  // Decision 20, 28 October: sign-ups, not attendees. Everybody who
+  // signed up is somebody the launch persuaded; measuring against only
+  // those who turned up flatters a launch with a bad show-up rate.
+  { label: "Conversion rate", type: "calc", unit: "percent", good: "up", formula: "Total sales ÷ sign-ups to the main selling stage" },
   // 6.5 Pipeline and ads
   { label: "DMs sent", type: "optional", unit: "count", good: "up" },
   { label: "DM replies", type: "optional", unit: "count", good: "up" },

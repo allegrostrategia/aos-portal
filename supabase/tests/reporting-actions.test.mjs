@@ -471,8 +471,11 @@ test("Offers counts as done once its figures are saved, not 0/3 forever", async 
   const figures = await figuresFor(AUG, "2026-07-01");
   const offers = categoryCompletion(figures, "offers");
 
-  assert.equal(offers.total, 3, "three core offer fields");
-  assert.equal(offers.filled, 3, "all three entered for the one offer");
+  // Two, not three, since Nina's decision 28 made "Hours spent
+  // delivering" optional on 28 October. An optional field keeps its box
+  // and still stores; it stops holding the section orange.
+  assert.equal(offers.total, 2, "two core offer fields");
+  assert.equal(offers.filled, 2, "both entered for the one offer");
 });
 
 test("a half-filled offer does not count as done", async () => {
@@ -487,7 +490,7 @@ test("a half-filled offer does not count as done", async () => {
   configure(db, NINA);
   const figures = await figuresFor(AUG, "2026-07-01");
   const offers = categoryCompletion(figures, "offers");
-  assert.ok(offers.filled < 3, `expected fewer than 3 filled, got ${offers.filled}`);
+  assert.ok(offers.filled < 2, `expected fewer than 2 filled, got ${offers.filled}`);
 
   // Put it back, so later assertions see the month as it was.
   await rows(NINA, `delete from public.report_entities where id <> '${offer.id}' and entity_type = 'offer'`);
@@ -505,18 +508,22 @@ test("last month's offers are worked out, so Revenue has something to compare", 
   assert.equal(figures.previousResults.financials_revenue_from_offers, 12500);
 });
 
-test("a retainer client is offered published months only", async () => {
-  // Bug 2. August is published by now; September is not.
+test("a retainer client lands on the newest month they can read", async () => {
+  // Bug 2, and then Nina's decision 10 on top of it. August is published
+  // by now; September is not. September IS offered — as a month being
+  // prepared, so a client can see one is coming — but August is still
+  // where they land, because that is the one they can read.
   configure(db, CLIENT);
   const ctx = await resolveReportContext({}, "2026-10-02");
 
+  assert.equal(ctx.month.month, AUG, "landing on the published one");
+  assert.equal(ctx.monthPublished, true);
   assert.deepEqual(
     ctx.month.options.map((o) => o.month),
-    [AUG],
-    "September is not offered at all",
+    [SEP, AUG],
+    "September offered as the one being prepared",
   );
-  assert.equal(ctx.month.next, null, "and there is nowhere to step to");
-  assert.equal(ctx.monthPublished, true);
+  assert.equal(ctx.month.next, SEP, "and the arrow can step into it");
   assert.equal(ctx.showDraftState, false, "no DRAFT label for a client");
 });
 
@@ -527,7 +534,11 @@ test("a client asking for an unpublished month is told it is not ready", async (
   assert.equal(ctx.month.month, SEP, "stays on the month they asked for");
   assert.equal(ctx.monthPublished, false, "which is what makes the page say so");
   assert.equal(ctx.showDraftState, false, "and still no DRAFT label");
-  assert.deepEqual(ctx.month.options.map((o) => o.month), [AUG], "only August is offered");
+  assert.deepEqual(
+    ctx.month.options.map((o) => o.month),
+    [SEP, AUG],
+    "offered, but as a month being prepared",
+  );
 
   // And nothing of September reaches them, which is RLS's job, not the
   // page's.

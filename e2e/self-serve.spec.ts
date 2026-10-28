@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
@@ -17,6 +17,21 @@ import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
 requireLocalStack();
 
+/**
+ * Open "Add more detail (optional)" if the screen has one.
+ *
+ * Needed since Nina's decision 28 (28 October) moved four fields from
+ * core to optional — including "Cash in bank at month end", which these
+ * two tests fill. An optional field keeps its box, but the box lives
+ * inside a collapsed `<details>`, and `fill()` on a hidden input fails
+ * rather than scrolling to it.
+ */
+async function openOptional(page: Page) {
+  const more = page.getByText(/add more detail \(optional\)/i).first();
+  if (await more.count()) await more.click();
+}
+
+
 const TAB = "self-serve";
 const width = (name: string) => (name === "phone" ? "phone" : "desktop") as "phone" | "desktop";
 
@@ -30,7 +45,7 @@ test("none of the parts that assume somebody at Allegro is on the other side", a
 }) => {
   // Dom, 9 October. A member's report has no other side: no strategist
   // writing a note, nobody to publish it to them, nobody to reply to,
-  // and no month that "isn't ready yet" — they are the person who would
+  // and no month "being prepared" — they are the person who would
   // be getting it ready.
   await signIn(page, "member");
   await page.goto("/reporting");
@@ -39,7 +54,7 @@ test("none of the parts that assume somebody at Allegro is on the other side", a
   expect(body, "no strategist note").not.toMatch(/strategist/i);
   expect(body, "nothing to publish").not.toMatch(/publish/i);
   expect(body, "nobody to reply to").not.toMatch(/reply/i);
-  expect(body, "no month withheld from them").not.toMatch(/isn.t ready yet/i);
+  expect(body, "no month withheld from them").not.toMatch(/is being prepared/i);
   // And nothing calls them "this client", which is Allegro's word for
   // somebody else.
   expect(body, "not spoken about in the third person").not.toMatch(/this client/i);
@@ -160,6 +175,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  await openOptional(page);
   for (const [label, value] of [
     [/fixed costs/i, "300"], [/variable costs/i, "250"],
     [/team costs/i, "500"], [/cash in bank/i, "9000"],
@@ -394,7 +410,7 @@ test("a Chiarezza attendee whose access has ended is told that, not that somethi
 
   const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(body, "their access ended").toMatch(/your access has ended/i);
-  expect(body, "not an account still being set up").not.toMatch(/isn.t ready yet/i);
+  expect(body, "not an account still being set up").not.toMatch(/is being prepared/i);
   expect(body, "and nothing has been deleted").toMatch(/nothing has been deleted/i);
   await shoot(page, TAB, "06-access-ended", w);
 
@@ -466,6 +482,7 @@ test("a month counts as done when one of its sections has nothing to fill in", a
   await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  await openOptional(page);
   for (const [label, value] of [
     [/fixed costs/i, "300"], [/variable costs/i, "250"],
     [/team costs/i, "500"], [/cash in bank/i, "9000"],

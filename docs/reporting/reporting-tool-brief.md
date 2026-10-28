@@ -137,7 +137,7 @@ A top-level monthly summary only. No per-reel logging: that level of detail belo
 | New followers from trial reels | Core |  | Up |
 | Total views | Core |  | Up |
 | Profile visits | Core |  | Up |
-| Hours spent on trial reels | Core | Filming, editing and posting | Down |
+| Hours spent on trial reels | Optional | Filming, editing and posting | Down |
 | Buyers from trial reels | Optional | Anyone who bought and came from a trial reel | Up |
 | Top 3 hooks | Core | Hook text, plus views for each | n/a |
 | Top 3 b-roll | Optional | Short description, plus views for each | n/a |
@@ -223,7 +223,7 @@ Charts: leads by source bars, leads trend line (12 months).
 | Link clicks | Core |  | Up |
 | Leads | Core |  | Up |
 | Purchases | Core |  | Up |
-| Revenue from ads | Core |  | Up |
+| Revenue from ads | Optional |  | Up |
 | Reach | Optional |  | Up |
 | CPM | Calc | Spend ÷ impressions × 1,000 | Down |
 | CTR | Calc | Clicks ÷ impressions | Up |
@@ -265,7 +265,7 @@ Set up once per offer: name, price, type (one-off or recurring), hourly cost of 
 | --- | --- | --- | --- |
 | Units sold | Core |  | Up |
 | Revenue this month | Core | Cash actually received, so discounts and payment plans are right | Up |
-| Hours spent delivering | Core |  | Down |
+| Hours spent delivering | Optional |  | Down |
 | Other direct costs | Optional | Tools, contractors, materials for this offer | Down |
 | Delivery cost | Calc | Hours × hourly cost + other direct costs | Down |
 | Margin | Calc | (Revenue − delivery cost) ÷ revenue | Up |
@@ -281,7 +281,7 @@ Any offer under the margin benchmark (default 45%, editable per client) gets an 
 | --- | --- | --- |
 | Total revenue from offers | Sum of all offers' revenue | Up |
 | Overall margin | (Total revenue − total delivery cost) ÷ total revenue, so bigger offers count for more. Not a simple average of the offer margins | Up |
-| Hours spent delivering | Sum of all offers' hours | Down |
+| Hours spent delivering | Sum of all offers' hours | n/a |
 | Effective hourly rate | (Total revenue − total other direct costs) ÷ total hours | Up |
 
 **Target hourly rate:** an optional per-client setting in Offers setup. It shows as the dashed line on the "Effective hourly rate by offer" chart. For recurring offers, "Units sold" is labelled "Members" on the offer card.
@@ -296,7 +296,7 @@ Any offer under the margin benchmark (default 45%, editable per client) gets an 
 | Variable costs | Core | Ads, contractors, fees | Down |
 | Team costs | Core | Salaries, VAs, freelancers | Down |
 | Investment spend | Optional | Courses, coaching, events | n/a |
-| Cash in bank at month end | Core |  | Up |
+| Cash in bank at month end | Optional |  | Up |
 | Total revenue | Calc | Offers + other income | Up |
 | Total costs | Calc | Fixed + variable + team + investment | Down |
 | Profit | Calc | Total revenue − total costs | Up |
@@ -349,7 +349,7 @@ Per email: list size sent to, open rate, click rate, unique clicks. Calculated: 
 | Revenue still to collect | Calc | Total revenue − cash collected |
 | Average order value | Calc | Total revenue ÷ total sales |
 | % of each goal | Calc | Total sales ÷ Good, Better and Best targets |
-| Conversion rate | Calc | Total sales ÷ live attendees of the main selling stage |
+| Conversion rate | Calc | Total sales ÷ sign-ups to the main selling stage |
 
 ### 6.5 Pipeline and ads
 
