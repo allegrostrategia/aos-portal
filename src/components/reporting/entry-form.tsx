@@ -141,7 +141,12 @@ export function EntryForm(props: EntryFormProps) {
     setValues((current) => ({ ...current, [key]: raw }));
 
   // Any core field still empty keeps the section unfinished (§8.1).
-  const coreLeft = props.core.filter((m) => (values[m.key] ?? "").trim() === "").length;
+  // **Core only**, although `props.core` also carries decision 28's four
+  // visible optional fields. They are on screen; they do not hold the
+  // section back, and a count that included them would say so.
+  const coreLeft = props.core.filter(
+    (m) => m.input_type === "core" && (values[m.key] ?? "").trim() === "",
+  ).length;
 
   return (
     <form action={action} className="flex flex-col gap-6">
@@ -298,6 +303,14 @@ function NumberField({
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-small font-medium text-ink">
         {metric.label}
+        {/* Decision 28's four sit in the main list although they are
+            optional, so the word has to be on them — otherwise they read
+            as core fields that the "still to fill in" count has
+            forgotten. Everything else optional is behind the disclosure,
+            where the heading says it. */}
+        {metric.input_type === "optional" ? (
+          <span className="ml-1.5 font-normal text-ink/45">optional</span>
+        ) : null}
       </label>
       <input
         id={id}

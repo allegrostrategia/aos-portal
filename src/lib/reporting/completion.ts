@@ -104,3 +104,31 @@ export function categoryCompletion(
 
   return { filled: core.filter(isFilled).length, total: core.length };
 }
+
+/**
+ * The four fields decision 28 moved out of core, which stay on screen.
+ *
+ * Nina's decision 28 (28 October) made these optional so they stop
+ * holding a section orange: every core field has to be filled before a
+ * section counts as finished, and these four are not numbers somebody
+ * would chase.
+ *
+ * **Optional normally means "behind + Add more detail", and these four
+ * are the exception** (Dom, 29 October). Making them optional moved
+ * them behind the disclosure as a side effect of what "optional" has
+ * always meant here, and that is a bigger change than she asked for —
+ * cash in bank in particular is a figure that would simply stop being
+ * entered. They sit in the main list with the word "optional" beside
+ * them instead.
+ *
+ * Named by key rather than inferred, because there is no property that
+ * distinguishes them: they are optional in exactly the same way as
+ * every other optional field. What is different is their history, and
+ * history is not a column.
+ */
+export const VISIBLE_OPTIONAL = new Set([
+  "trial_reels_hours_spent_on_trial_reels",
+  "offers_hours_spent_delivering",
+  "ads_revenue_from_ads",
+  "financials_cash_in_bank_at_month_end",
+]);

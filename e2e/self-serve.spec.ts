@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
@@ -17,19 +17,6 @@ import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
 requireLocalStack();
 
-/**
- * Open "Add more detail (optional)" if the screen has one.
- *
- * Needed since Nina's decision 28 (28 October) moved four fields from
- * core to optional — including "Cash in bank at month end", which these
- * two tests fill. An optional field keeps its box, but the box lives
- * inside a collapsed `<details>`, and `fill()` on a hidden input fails
- * rather than scrolling to it.
- */
-async function openOptional(page: Page) {
-  const more = page.getByText(/add more detail \(optional\)/i).first();
-  if (await more.count()) await more.click();
-}
 
 
 const TAB = "self-serve";
@@ -175,7 +162,6 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
-  await openOptional(page);
   for (const [label, value] of [
     [/fixed costs/i, "300"], [/variable costs/i, "250"],
     [/team costs/i, "500"], [/cash in bank/i, "9000"],
@@ -482,7 +468,6 @@ test("a month counts as done when one of its sections has nothing to fill in", a
   await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
-  await openOptional(page);
   for (const [label, value] of [
     [/fixed costs/i, "300"], [/variable costs/i, "250"],
     [/team costs/i, "500"], [/cash in bank/i, "9000"],

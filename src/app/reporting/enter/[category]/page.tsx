@@ -24,6 +24,7 @@ import {
   getTopItems,
 } from "@/lib/reporting/queries";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
+import { VISIBLE_OPTIONAL } from "@/lib/reporting/completion";
 import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
 import { Card, SectionTitle } from "@/components/ui/card";
 
@@ -269,10 +270,14 @@ export default async function EnterCategoryPage({
     );
   }
 
+  // The main list is the core fields plus decision 28's four, which are
+  // optional but stay on screen — see VISIBLE_OPTIONAL for why.
   const core = metrics
-    .filter((m) => m.input_type === "core")
+    .filter((m) => m.input_type === "core" || VISIBLE_OPTIONAL.has(m.key))
     .filter((m) => m.key !== OPENING_KEY || (note?.field ?? false));
-  const optional = metrics.filter((m) => m.input_type === "optional");
+  const optional = metrics.filter(
+    (m) => m.input_type === "optional" && !VISIBLE_OPTIONAL.has(m.key),
+  );
   // Pulled metrics belong on the card too. "Revenue from offers" is the
   // figure the whole Financials page is built on, and leaving it off meant
   // whoever was entering could not see what the totals were working from.
