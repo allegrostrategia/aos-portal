@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { formatSessionTime } from "@/lib/time-zone";
 import {
   publishLaunch,
   sendLaunchUpdate,
@@ -35,11 +36,14 @@ export function LaunchPublishControl({
   publishedAt,
   /** Only a retainer client has somebody to email about it. */
   canEmailClient,
+  updateEmailSentAt,
 }: {
   launchId: string;
   name: string;
   publishedAt: string | null;
   canEmailClient: boolean;
+  /** When the update last went. Null means never. */
+  updateEmailSentAt: string | null;
 }) {
   const [state, action] = useActionState<LaunchState, FormData>(
     publishedAt ? unpublishLaunch : publishLaunch,
@@ -69,7 +73,9 @@ export function LaunchPublishControl({
         the client hears about it.
       </p>
 
-      {publishedAt && canEmailClient ? <SendUpdate launchId={launchId} /> : null}
+      {publishedAt && canEmailClient ? (
+        <SendUpdate launchId={launchId} sentAt={updateEmailSentAt} />
+      ) : null}
     </Card>
   );
 }
@@ -81,7 +87,7 @@ export function LaunchPublishControl({
  * one: two submits in one form means the wrong one fires on Enter, and
  * the wrong one here emails a client.
  */
-function SendUpdate({ launchId }: { launchId: string }) {
+function SendUpdate({ launchId, sentAt }: { launchId: string; sentAt: string | null }) {
   const [state, action] = useActionState<LaunchState, FormData>(sendLaunchUpdate, null);
 
   return (
@@ -100,6 +106,15 @@ function SendUpdate({ launchId }: { launchId: string }) {
           {state?.error ?? state?.notice ?? ""}
         </p>
       </div>
+      {/* When it last went, under the button, so nobody sends twice in an
+          afternoon (Dom, 29 October). Read from the launch rather than
+          from this form's state, so it survives a reload and is still
+          right for whoever opens the page next. */}
+      <p className="mt-3 text-caption text-ink/55">
+        {sentAt
+          ? `Last sent ${formatSessionTime(sentAt)}.`
+          : "Not sent yet."}
+      </p>
     </form>
   );
 }

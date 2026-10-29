@@ -17,11 +17,13 @@ import { launchLinkFor } from "./publish-link.ts";
  *
  * Two differences, both because of how it is triggered. It is **awaited**,
  * not fired from `after()`: somebody pressed a button that does only this,
- * so they are told whether it worked. And there is nowhere to record the
- * outcome, because a launch has no equivalent of `report_periods`'
- * email columns — which is fine while the result goes straight back to
- * the person who asked, and is the first thing to add if this ever moves
- * out of band.
+ * so they are told whether it worked — which is why only the success is
+ * recorded, where a month records its failures too. A failure here has
+ * somebody looking at it.
+ *
+ * The success goes onto `report_launches.update_email_sent_at`, so the
+ * button can say when it last went and nobody sends twice in an
+ * afternoon (Dom, 29 October).
  */
 
 export type LaunchSendResult = { ok: boolean; error?: string };
@@ -122,6 +124,25 @@ export async function sendLaunchUpdateEmail(
   if (!result.ok) {
     console.error("[reporting] launch update email failed", launchId, result.error);
     return { ok: false, error: result.error ?? "It didn't go, and gave no reason." };
+  }
+
+  // Recorded after the send, so a failure never reads as a send. The
+  // service-role write checks its own error: a guard trigger that
+  // refused this role would otherwise leave the button saying "never
+  // sent" after every send, and nothing would say why. Both guards on
+  // this table admit a null auth.uid(), and this is the check that would
+  // notice if one stopped.
+  const { error: recordError } = await admin
+    .from("report_launches")
+    .update({ update_email_sent_at: new Date().toISOString() })
+    .eq("id", launchId);
+
+  if (recordError) {
+    console.error(
+      "[reporting] the launch update went but was not recorded",
+      launchId,
+      recordError.message,
+    );
   }
 
   return { ok: true };

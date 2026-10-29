@@ -43,6 +43,8 @@ export interface LaunchRow {
   planner_show_up_rate: number | null;
   planner_conversion_rate: number | null;
   published_at: string | null;
+  /** When "Send update to client" last went. Null means never. */
+  update_email_sent_at: string | null;
   carried: unknown;
 }
 
