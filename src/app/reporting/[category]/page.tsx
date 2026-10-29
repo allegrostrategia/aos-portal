@@ -10,13 +10,18 @@ import { buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
-import { formatValue } from "@/lib/reporting/format";
+import {
+  CHANGE_TONE_CLASS,
+  changeTone,
+  formatChange,
+  formatValue,
+} from "@/lib/reporting/format";
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { calculateFunnel } from "@/lib/reporting/calculate";
 import { TopItemsReport } from "@/components/reporting/top-items";
 import { getTopItems } from "@/lib/reporting/queries";
 import { monthLabel } from "@/lib/reporting/months";
-import { ads as adsFormulas } from "@/lib/reporting/formulas";
+import { ads as adsFormulas, monthOnMonthChange } from "@/lib/reporting/formulas";
 import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
@@ -245,23 +250,54 @@ export default async function CategoryReportPage({
 
           {rest.length > 0 ? (
             <Card className="mt-6">
-              <SectionTitle>Everything else this month</SectionTitle>
+              {/* **Nina, 29 October: these carry their direction too.** It
+                  was the one gap of the four where a previous figure
+                  existed and simply was not drawn, so it was a choice
+                  rather than a fact.
+
+                  The month compared against is said once, in the aside,
+                  rather than "vs. August" on each of a dozen rows. */}
+              <SectionTitle aside={previousLabel ? `vs. ${previousLabel}` : undefined}>
+                Everything else this month
+              </SectionTitle>
               <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                {rest.map((metric) => (
-                  <div
-                    key={metric.key}
-                    className="flex items-baseline justify-between gap-4 border-b border-ink/8 pb-3"
-                  >
-                    <dt className="text-small text-ink/70">{metric.label}</dt>
-                    <dd className="font-mono text-body text-ink">
-                      {formatValue(
-                        figures.figure(metric.key),
-                        metric.unit,
-                        ctx.workspace.currency,
-                      )}
-                    </dd>
-                  </div>
-                ))}
+                {rest.map((metric) => {
+                  const change = monthOnMonthChange(
+                    figures.figure(metric.key),
+                    figures.previousFigure(metric.key),
+                  );
+                  const changeText = formatChange(change);
+                  // The same tone map the cards use, from the same place,
+                  // so a figure cannot be green here and red there.
+                  const tone = changeTone(change, metric.good_direction);
+
+                  return (
+                    <div
+                      key={metric.key}
+                      className="flex items-baseline justify-between gap-4 border-b border-ink/8 pb-3"
+                    >
+                      <dt className="text-small text-ink/70">{metric.label}</dt>
+                      <dd className="text-right">
+                        <span className="block font-mono text-body text-ink">
+                          {formatValue(
+                            figures.figure(metric.key),
+                            metric.unit,
+                            ctx.workspace.currency,
+                          )}
+                        </span>
+                        {changeText && previousLabel ? (
+                          <span
+                            className={`block text-caption font-medium ${
+                              CHANGE_TONE_CLASS[tone ?? "neutral"]
+                            }`}
+                          >
+                            {changeText}
+                          </span>
+                        ) : null}
+                      </dd>
+                    </div>
+                  );
+                })}
               </dl>
             </Card>
           ) : null}

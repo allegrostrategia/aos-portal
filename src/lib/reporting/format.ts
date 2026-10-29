@@ -135,6 +135,24 @@ export function changeTone(
   return (goodDirection === "up") === rose ? "good" : "bad";
 }
 
+/**
+ * The ink a change wears, by what the change means.
+ *
+ * Here rather than in a component because two screens draw it now — the
+ * KPI cards and the "Everything else this month" list (Nina's answer of
+ * 29 October) — and the one thing worse than no arrow is two screens
+ * colouring the same figure differently.
+ *
+ * Grey covers both neutral cases, and they are different: a figure with
+ * no good direction (hours delivering, ad spend) and a figure that did
+ * not move. Neither is news, and neither should be read as either.
+ */
+export const CHANGE_TONE_CLASS: Record<"good" | "bad" | "neutral", string> = {
+  good: "text-[#1f7a4d]",
+  bad: "text-deep-red",
+  neutral: "text-ink/55",
+};
+
 /** "↑ 18%" / "↓ 22%". The sign is the movement; the colour is the meaning. */
 export function formatChange(changePercent: number | null): string | null {
   if (changePercent === null || !Number.isFinite(changePercent)) return null;

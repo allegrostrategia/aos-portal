@@ -2,7 +2,13 @@
 
 Ten things that can only be done with a real client, a real month, or your eyes on them. None can be finished before launch, and none should be skipped at it.
 
-**Nothing on this list is done yet.** Your review of 29 October closed one of them — the dashes question at number 8 — and added two more, numbers 9 and 10, both of them wording you haven't read.
+**Two are being done now** and the rest wait for a real client, a real month, or your eyes. Your review of 29 October closed the dashes question at number 8 and added two, numbers 9 and 10, both of them wording you haven't read — and number 3's wording is now written out in full in [04-wording.md](04-wording.md) for you to mark up.
+
+**All three questions that were open for you are now decided:**
+
+- **The celebration lines stay as they are.** "Stunning", "& that's no accident", "WOOOO" and "exactly the direction we want" are untouched. Only the lines going the wrong way lost their tails.
+- **A Chiarezza login gets no upload card.** Members upload their own Meta exports; a one-off attendee still fills those two sections in by hand.
+- **Up-and-down arrows: yes.** "Everything else this month" carries them now, in the same style as the cards above it, with neutral figures in grey. Built and photographed at both widths.
 
 They're in the order they'd naturally happen.
 
@@ -26,7 +32,7 @@ Then: enter a month, publish it, read it as them, reply as them, and read the re
 
 ## 3. The email wording
 
-Five emails exist and none has been read by you in the form a client receives:
+Five emails exist and none has been read by you in the form a client receives. **Their full text is in [04-wording.md](04-wording.md)**, set out for you to mark up:
 
 - the invitation to a reporting client
 - "your report for August is ready"
@@ -36,11 +42,13 @@ Five emails exist and none has been read by you in the form a client receives:
 
 The reminder wording is taken **verbatim from your brief**. The other four were written for you and need your eye.
 
-## 4. The draw prize still says "test"
+One of them, the invitation, is **Supabase's own template and lives in their dashboard rather than in our code** — so it is the only one that can be changed without a deploy, and the only one nobody has ever seen arrive.
+
+## 4. The draw prize still says "test" — **Dom doing now**
 
 The prize text on Piazza reads as a placeholder. One line, and it's in front of every member every day.
 
-## 5. Test Client's contact is called "Nina"
+## 5. Test Client's contact is called "Nina" — **Dom doing now**
 
 The grant on the test reporting workspace carries the display name "Nina", which is wrong and would appear on anything that names the client contact. Correct it or delete the grant before a real client is added beside it.
 

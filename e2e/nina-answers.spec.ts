@@ -399,3 +399,153 @@ test("decision 28: and they do not hold the section back", async ({ page }) => {
   // Empty, and the section is finished anyway.
   await expect(page.getByLabel(/cash in bank at month end/i)).toHaveValue("");
 });
+
+// ------- "Everything else this month", answered 29 October
+
+/**
+ * Enough leads figures, two months running, that the section overflows.
+ *
+ * Six core/calc figures fill the headline cards; everything past that
+ * falls into "Everything else this month", which is the list Nina asked
+ * to carry arrows. Without this the seed fills too few and the list does
+ * not exist — which is how this test was wrong first.
+ */
+async function seedLeadsBothMonths() {
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = `(select id from public.report_workspaces where business_name = 'Northwind Studio')`;
+  const admin = `(select id from public.members where role = 'admin' limit 1)`;
+
+  for (const [month, factor] of [[MONTHS.aug, 1], [MONTHS.sep, 2]] as const) {
+    for (const [key, base] of [
+      ["leads_conversions_new_leads_from_social", 20],
+      ["leads_conversions_new_leads_from_email", 8],
+      ["leads_conversions_new_leads_from_referral", 5],
+      ["leads_conversions_calls_booked", 12],
+      ["leads_conversions_calls_held", 9],
+      ["leads_conversions_new_clients", 3],
+    ] as const) {
+      sql(`delete from public.report_values where workspace_id = ${ws}
+             and month = '${month}-01' and metric_key = '${key}' and entity_id is null;
+           insert into public.report_values
+             (workspace_id, month, metric_key, value, entered_by)
+           values (${ws}, '${month}-01', '${key}', ${base * factor}, ${admin});`);
+    }
+  }
+}
+
+test("the overflow list carries its direction too", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await seedLeadsBothMonths();
+  await publishSeptember(page);
+  await signIn(page, "client");
+  await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
+
+  // `.rounded-card` without a tag: Card renders as a <section> by
+  // default, so `div.rounded-card` finds nothing and times out rather
+  // than failing — which is how this was wrong first.
+  const list = page
+    .locator(".rounded-card")
+    .filter({ hasText: "Everything else this month" })
+    .first();
+  await expect(list).toBeVisible();
+
+  // The month compared against is said once, in the heading, rather
+  // than on every one of a dozen rows.
+  await expect(list.getByText(/vs\. August/)).toHaveCount(1);
+
+  // Every row with a previous figure wears an arrow.
+  const html = await list.innerHTML();
+  expect(html).toMatch(/[↑↓→]/);
+
+  // And the tones come from the same map the KPI cards use, so a figure
+  // cannot read green here and red on a card. Grey is in it too: a
+  // figure with no good direction, or one that did not move, is not
+  // news either way.
+  expect(html).toMatch(/text-\[#1f7a4d\]|text-deep-red/);
+  expect(html).toContain("text-ink/55");
+
+  await shot(page, "11-overflow-arrows-client", w);
+});
+
+test("and every arrow wears one of the three tones, not a fourth", async ({ page }) => {
+  // The invariant that matters: the list draws from the same map as the
+  // cards. Not "no red anywhere" — doubling every input does not double
+  // every derived rate, and lead-to-client falls when leads rise faster
+  // than clients, which is correctly red.
+  await seedLeadsBothMonths();
+  await publishSeptember(page);
+  await signIn(page, "client");
+  await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
+
+  const list = page
+    .locator(".rounded-card")
+    .filter({ hasText: "Everything else this month" })
+    .first();
+  const html = await list.innerHTML();
+
+  const known = new Set(["text-[#1f7a4d]", "text-deep-red", "text-ink/55"]);
+  const tones = [...html.matchAll(/block text-caption font-medium ([^"]+)"/g)].map(
+    (m) => m[1].trim(),
+  );
+
+  assertSome(tones.length > 0, "at least one row carries a change");
+  for (const tone of tones) {
+    assertSome(known.has(tone), `unknown tone class ${tone}`);
+  }
+});
+
+test("a figure with no good direction is grey in the list, not green", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = `(select id from public.report_workspaces where business_name = 'Northwind Studio')`;
+  const admin = `(select id from public.members where role = 'admin' limit 1)`;
+
+  // Investment spend is optional and has no good direction — courses and
+  // coaching going up is neither good news nor bad. It rises here, which
+  // under any "up is good" reading would come out green.
+  for (const [month, value] of [[MONTHS.aug, 400], [MONTHS.sep, 900]] as const) {
+    sql(`delete from public.report_values where workspace_id = ${ws}
+           and month = '${month}-01' and metric_key = 'financials_investment_spend'
+           and entity_id is null;
+         insert into public.report_values
+           (workspace_id, month, metric_key, value, entered_by)
+         values (${ws}, '${month}-01', 'financials_investment_spend', ${value}, ${admin});`);
+    for (const [key, base] of [
+      ["financials_fixed_costs", 300],
+      ["financials_variable_costs", 250],
+      ["financials_team_costs", 500],
+    ] as const) {
+      sql(`delete from public.report_values where workspace_id = ${ws}
+             and month = '${month}-01' and metric_key = '${key}' and entity_id is null;
+           insert into public.report_values
+             (workspace_id, month, metric_key, value, entered_by)
+           values (${ws}, '${month}-01', '${key}', ${base}, ${admin});`);
+    }
+  }
+
+  await publishSeptember(page);
+  await signIn(page, "client");
+  await page.goto(`/reporting/financials?month=${MONTHS.sep}`);
+
+  // Wherever it lands — a card or the list — it must not be coloured.
+  const row = page
+    .locator("div")
+    .filter({ hasText: /^Investment spend/ })
+    .last();
+  const html = await row.innerHTML();
+  // It still shows the change; it just says nothing about whether the
+  // change is good news.
+  expect(html).toMatch(/[↑↓→]/);
+  expect(html).not.toContain("text-deep-red");
+  expect(html).not.toContain("#1f7a4d");
+  expect(html).toContain("text-ink/55");
+
+  await shot(page, "12-overflow-neutral-client", w);
+});
+
+/** A plain assertion, so a failure names the class rather than a boolean. */
+function assertSome(condition: boolean, message: string) {
+  expect(condition, message).toBe(true);
+}

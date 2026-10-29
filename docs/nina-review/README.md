@@ -20,7 +20,11 @@ The screens from the earlier work — the monthly report itself, targets, benchm
 
 **The changes from your review are in `screens-review/`**, nine of them at both widths: the Focus area tag, the hours figure with no colour on it, the month-being-prepared screen, the launch figures that moved, the Send update button, the planner's first guess, and a member's own upload card.
 
-### 3. [Before any of this goes on](03-launch-checklist.md)
+### 3. [Every word a client reads](04-wording.md)
+
+The full text of all five emails and the screen a client sees between months, each with when it goes out and who gets it. Nothing in it has been changed — it's set out for you to mark up.
+
+### 4. [Before any of this goes on](03-launch-checklist.md)
 
 Ten things that can only be done with a real client, a real month, or your eyes. Including one that was skipped and shouldn't have been, and two your review added.
 

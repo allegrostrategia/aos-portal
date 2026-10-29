@@ -1,7 +1,13 @@
 import Link from "next/link";
 
 import { Eyebrow } from "@/components/ui/card";
-import { changeTone, formatChange, formatValue, type Unit } from "@/lib/reporting/format";
+import {
+  CHANGE_TONE_CLASS,
+  changeTone,
+  formatChange,
+  formatValue,
+  type Unit,
+} from "@/lib/reporting/format";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
 
 /**
@@ -52,12 +58,7 @@ export function KpiCard({
   const tone = changeTone(change, goodDirection);
   const changeText = formatChange(change);
 
-  const toneClass =
-    tone === "good"
-      ? "text-[#1f7a4d]"
-      : tone === "bad"
-        ? "text-deep-red"
-        : "text-ink/55";
+  const toneClass = CHANGE_TONE_CLASS[tone ?? "neutral"];
 
   // Colour plus a word, always. The dot alone would be the one pair a
   // colourblind reader cannot separate, and it would not say what the

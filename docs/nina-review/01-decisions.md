@@ -29,7 +29,7 @@ It's marked good-when-falling, so a month where you delivered more reads as a pr
 
 **3. Every panel line ends with the same tail.** Three sentences in a row finishing "…not the direction we want, let's dig into WHY" read as templated rather than written.
 *Recommended:* the tail on the first line only, the rest plain. Two other options are written up: two or three rotating versions you write, or the tail once under the heading. **Nothing is built either way** — this one is waiting on you.
-**→ Changed, and built.** The tails are gone. A line going the wrong way now wears a small **FOCUS AREA** tag above it and says the rest plainly — "New clients dropped from 6 to 4". Your four celebration lines are untouched: "stunning", "& that's no accident", "WOOOO" and "exactly the direction we want" all stay as you wrote them. Say the word if you'd like those plain too; it's two lines.
+**→ Changed, and built.** The tails are gone. A line going the wrong way now wears a small **FOCUS AREA** tag above it and says the rest plainly — "New clients dropped from 6 to 4". Your four celebration lines are untouched: "stunning", "& that's no accident", "WOOOO" and "exactly the direction we want" all stay as you wrote them — **you confirmed on 29 October that they stay.**
 
 **4. A figure pulled from another section isn't said twice.**
 "Revenue from offers" appears in Financials and comes from Offers. The panel used to mention both.
@@ -175,7 +175,7 @@ This is a standing rule of the whole product, not a reporting decision.
 
 **36. CSV upload is yours only, on retainer clients.** A member fills Social Media and Ads in by hand for now, although they're their own editor everywhere else. Every "my CSV didn't work" lands on you, and your time shouldn't scale with member count.
 *The cost is honest:* the people who'd gain most from the shortcut don't get it. **One condition in one place to reverse.**
-**→ Reversed, and built.** A member uploads their own Meta exports now, on the same two screens and under the same rules — preview before saving, month mismatch refused, wrong platform named. Email stays manual for everyone. **One thing decided for you:** a Chiarezza login still doesn't get the card. You reversed it for members and said nothing about a one-off attendee, and the original reason — every "my CSV didn't work" lands on you — weighs most on the people with the shortest relationship. One line to change if you'd rather they had it.
+**→ Reversed, and built.** A member uploads their own Meta exports now, on the same two screens and under the same rules — preview before saving, month mismatch refused, wrong platform named. Email stays manual for everyone. **And a Chiarezza login doesn't get the card**, which you confirmed on 29 October. A one-off attendee still fills those two sections in by hand.
 
 **37. A part-month file is refused.** A file covering the 1st to the 28th of September is refused for September — your own sample is exactly that. A month's spend filled from twenty-eight days of it is wrong by two days and says nothing about being wrong.
 *The consequence:* **nobody can upload part-way through a month to see how it's going.** Re-exporting after the month ends is the only route.
@@ -208,4 +208,6 @@ You asked for this, and the answer is **mostly yes — here is exactly where not
 3. **A launch** — a launch has no "last month". It is compared against *another launch*, on the Compare screen, which is yours only.
 4. **The top three hooks and b-roll** — text and a view count, not a figure with a previous value.
 
-**Recommended:** add the arrow to "Everything else this month" and leave the other three. That is one component, and it would put a direction on every month-level figure in the product. It's client-visible, so it waits for Dom's look — say the word and it's in the next pass.
+**→ You said yes on 29 October, and it is built.** "Everything else this month" carries the arrows now, in the same style as the cards above it, drawn from the same map so a figure cannot be green in one place and red in the other. Neutral figures — the ones with no good direction, and the ones that didn't move — are grey. The month compared against is said once in the heading rather than on every row, because a dozen rows each saying "vs. August" is noise. There is a picture at `screens-review/11-overflow-arrows-client`.
+
+The other three stay as they are: the per-row tables, a launch (which has no "last month"), and the top three hooks.
