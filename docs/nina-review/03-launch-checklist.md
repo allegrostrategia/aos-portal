@@ -1,6 +1,8 @@
 # Before any of this goes on
 
-Eight things that can only be done with a real client, a real month, or your eyes on them. None can be finished before launch, and none should be skipped at it.
+Ten things that can only be done with a real client, a real month, or your eyes on them. None can be finished before launch, and none should be skipped at it.
+
+**Nothing on this list is done yet.** Your review of 29 October closed one of them — the dashes question at number 8 — and added two more, numbers 9 and 10, both of them wording you haven't read.
 
 They're in the order they'd naturally happen.
 
@@ -24,14 +26,15 @@ Then: enter a month, publish it, read it as them, reply as them, and read the re
 
 ## 3. The email wording
 
-Four emails exist and none has been read by you in the form a client receives:
+Five emails exist and none has been read by you in the form a client receives:
 
 - the invitation to a reporting client
 - "your report for August is ready"
 - the same again after a correction, worded as an update
+- **"Your [launch] tracker has been updated"** — new, from your decision 12
 - the two monthly reminders to members, on the 1st and the 8th
 
-The reminder wording is taken **verbatim from your brief**. The other three were written for you and need your eye.
+The reminder wording is taken **verbatim from your brief**. The other four were written for you and need your eye.
 
 ## 4. The draw prize still says "test"
 
@@ -51,7 +54,21 @@ Every chart with more than one month in it has only ever been drawn from seeded 
 
 ## 8. The dashes
 
-Two related things, both needing a real month to judge:
+**Half of this is now settled.** You decided on 28 October that a campaign with no figures stays on the published report as a row of dashes, so there is nothing to judge there.
 
-- **A campaign with no figures shows as a row of dashes** on a published report, whether it came from a file or was typed. Both answers are defensible, and it's the one thing on your decisions list a client can already see.
-- **A figure nobody entered shows a dash, not a zero** — decision 1. It's right, and it means a half-finished month looks sparse to a client in a way that only a real month will tell you about.
+What is left needs a real month: **a figure nobody entered shows a dash, not a zero** — decision 1. It's right, and it means a half-finished month looks sparse to a client in a way only a real month will tell you about.
+
+## 9. The holding screen's wording
+
+New, from your decision 10. A client whose month isn't out yet now reads:
+
+> **Your October report is being prepared**
+> Your strategist is still putting this month together. You'll be emailed as soon as it's ready to read, and your earlier months are all still here in the month picker.
+
+That's the first thing a client sees in the gap between months, and it was written for you rather than by you. It's in the review pack at `screens-review/03-being-prepared-client`.
+
+## 10. The Focus area tag, read on a full month
+
+New, from your decision 3. The tag works on the test data, where the panel holds one or two lines. What nobody has seen is a month where all three attention lines fire at once, which is when the old repeated tail looked worst and is the only real test of whether a repeated tag reads better.
+
+It needs a real month with three things going the wrong way. Worth looking at before you decide whether the celebration lines should go plain too — which is one of the three questions still open for you.

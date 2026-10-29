@@ -22,7 +22,7 @@ The screens from the earlier work — the monthly report itself, targets, benchm
 
 ### 3. [Before any of this goes on](03-launch-checklist.md)
 
-Eight things that can only be done with a real client, a real month, or your eyes. Including one that was skipped and shouldn't have been.
+Ten things that can only be done with a real client, a real month, or your eyes. Including one that was skipped and shouldn't have been, and two your review added.
 
 ---
 

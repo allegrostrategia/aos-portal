@@ -24,9 +24,39 @@ against the room at the start of the session), 20 (conversion against
 sign-ups, not attendees), 28 (four core fields become optional) and 36
 (members upload Meta CSVs too, reversing it).
 
-**One migration is written and NOT applied:**
-`20261028100000_nina_review_metric_list.sql`, which is decisions 2, 20
-and 28 — three `report_metrics` updates. Dom has the SQL.
+**Dom read the screenshots on 29 October and found four things**, one
+of them the worst bug of the batch: **the launch planner still divided
+the sales goal by conversion to get ATTENDEES**, which was right until
+decision 20 turned conversion round. Left alone, the planner and the
+launch report would have printed two different conversion rates for the
+same launch, each internally consistent — and no test could see it,
+because each half was correct on its own terms. It now reads sign-ups =
+goal ÷ conversion, room = sign-ups × show-up, and the test that would
+have caught it plans a launch at a real launch's rate and measures the
+plan back. **When one definition changes, look for every formula that
+assumed the old one.**
+
+The other three: the pitch line says "there at the start of the
+session" rather than leaving the reader to guess which start; the Send
+update button says when it last went; and decision 28's four fields
+stay in the main list marked "optional" rather than disappearing behind
+"+ Add more detail" — with the "still to fill in" count corrected,
+which had been about to make them hold a section back after all.
+
+**Two migrations applied to live, 29 October**, both verified by
+reading the result back rather than taken from the CLI's word:
+
+- `20261028100000_nina_review_metric_list.sql` — decisions 2, 20 and
+  28, three `report_metrics` updates. All six rows read back correct.
+- `20261029100000_launch_update_email_sent.sql` — one nullable column
+  on `report_launches` plus `guard_report_launch_publish` restated to
+  make it admin-only. **The live definition was pulled with
+  `pg_get_functiondef` and diffed against the restatement before
+  applying**, which is the way to replace a function nobody wants to
+  change by accident: the only difference was the two new clauses, and
+  `security definer` and `search_path` survived.
+
+History is 87 and matches disk; `db push --dry-run` is clean.
 
 **Two consequences of the review worth knowing before the next change:**
 
