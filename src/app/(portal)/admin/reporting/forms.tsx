@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/form";
 import {
   assignReportTeamMember,
+  endReportClientAccess,
   inviteReportClient,
   saveWorkspaceSettings,
+  type EndAccessState,
   type ReportInviteState,
 } from "@/lib/admin/report-users";
 
@@ -179,5 +181,76 @@ export function EditWorkspaceForm({
       )}
       <Footer state={state} label="Save details" />
     </form>
+  );
+}
+
+/**
+ * Ending a retainer client's access.
+ *
+ * Two presses: the server refuses the first and says what will happen, the
+ * second carries `confirm`. The step is server state, the same as publishing a
+ * month out of order — a `useState` version works only once the page has
+ * hydrated, and the first click would end a real client's access.
+ *
+ * Its own button tone, because this is the one control on the screen that
+ * takes something away. Everything else here adds a client, a name or an
+ * assignment.
+ */
+export function EndAccessForm({
+  workspaceId,
+  userId,
+  businessName,
+  contactName,
+}: {
+  workspaceId: string;
+  userId: string;
+  businessName: string;
+  /** How the client contact is named on their grant, for the warning. */
+  contactName: string;
+}) {
+  const [state, action] = useActionState<EndAccessState, FormData>(
+    endReportClientAccess,
+    null,
+  );
+
+  const confirming = Boolean(state?.needsConfirm);
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="workspace_id" value={workspaceId} />
+      <input type="hidden" name="user_id" value={userId} />
+      <input type="hidden" name="business_name" value={businessName} />
+      <input type="hidden" name="contact_name" value={contactName} />
+      <input type="hidden" name="confirm" value={confirming ? "1" : ""} />
+      <p className="text-caption text-ink/55">
+        Their login stops opening this report. Nothing is deleted — every month,
+        figure, note and reply stays, and stays readable to you. Use this when a
+        retainer ends, not to correct a mistake.
+      </p>
+      <EndFooter state={state} confirming={confirming} />
+    </form>
+  );
+}
+
+function EndFooter({
+  state,
+  confirming,
+}: {
+  state: EndAccessState;
+  confirming: boolean;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p
+        aria-live="polite"
+        className={`text-small ${state?.error ? "text-deep-red" : "text-ink/65"}`}
+      >
+        {pending ? "Working\u2026" : (state?.error ?? state?.notice ?? "")}
+      </p>
+      <Button type="submit" variant="secondary" disabled={pending}>
+        {confirming ? "Yes, end their access" : "End their access"}
+      </Button>
+    </div>
   );
 }

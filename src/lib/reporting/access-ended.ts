@@ -29,24 +29,35 @@ export async function reportAccessEnded(): Promise<{ endedOn: string } | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("report_access")
-    .select("workspace_id, report_workspaces!inner(access_end_date)")
+    .select("workspace_id, revoked_at, report_workspaces!inner(access_end_date)")
     .eq("user_id", userId)
     .eq("role", "client");
 
   const rows = (data ?? []) as unknown as {
+    revoked_at: string | null;
     report_workspaces: { access_end_date: string | null } | null;
   }[];
   if (rows.length === 0) return null;
 
   const today = new Date().toISOString().slice(0, 10);
-  const ends = rows
-    .map((r) => r.report_workspaces?.access_end_date ?? null)
-    .filter((d): d is string => d !== null);
 
-  // Any grant with no end date means access did not run out — something
-  // else is going on, and saying "your access ended" would be wrong.
-  if (ends.length !== rows.length) return null;
+  // **Two ways a reporting login stops, and this page is the only thing a
+  // person sees for either.** A Chiarezza window runs out on its own; a
+  // retainer client's grant is ended by Nina (`end_report_client_access`,
+  // 29 October). The second was added after the first and reached this
+  // function with nothing to say about it, so an ended retainer client would
+  // have read "your account isn't ready yet" — an invitation to email about
+  // something that is working as intended, which is the exact failure this
+  // function was written for.
+  const stopped = rows.map((row) => {
+    if (row.revoked_at) return row.revoked_at.slice(0, 10);
+    const end = row.report_workspaces?.access_end_date ?? null;
+    return end !== null && end < today ? end : null;
+  });
 
-  const latest = ends.sort().at(-1)!;
-  return latest < today ? { endedOn: latest } : null;
+  // Any grant still live means access did not end — something else is going
+  // on, and saying "your access has ended" would be wrong.
+  if (stopped.some((d) => d === null)) return null;
+
+  return { endedOn: (stopped as string[]).sort().at(-1)! };
 }

@@ -330,6 +330,9 @@ export async function saveWorkspaceSettings(
       .update({ display_name: contactName })
       .eq("workspace_id", workspaceId)
       .eq("role", "client")
+      // Not an ended grant: that row is the record of who held access and
+      // when it stopped, and renaming it would rewrite the record.
+      .is("revoked_at", null)
       .select("id");
 
     if (grantError) {
@@ -349,4 +352,85 @@ export async function saveWorkspaceSettings(
   revalidatePath("/admin/reporting");
   revalidatePath("/reporting", "layout");
   return { notice: `${businessName} updated.` };
+}
+
+/**
+ * Ending a retainer client's access to their workspace.
+ *
+ * The gap this fills, found in the pre-launch account audit on 29 October:
+ * there was no way to stop a reporting login at all. `cancel_member()` needs
+ * a `members` row and a retainer client deliberately has none;
+ * `access_end_date` is constrained to Chiarezza; `unassign_report_team_member`
+ * only touches `role = 'team'`. The alternatives were deleting the grant by
+ * hand or disabling the auth user in the Supabase dashboard — one destroys
+ * the record, the other is invisible from inside aOS.
+ *
+ * **Nothing is deleted.** The grant row stays, marked with when it ended and
+ * who ended it, and every month, figure, note and reply stays exactly where
+ * it is and stays readable to Nina. What changes is that `report_can_view()`
+ * stops admitting that login.
+ *
+ * **Two presses**, the same shape as publishing a month out of order: the
+ * first returns `needsConfirm` and the sentence about what will happen, the
+ * second carries `confirm` and does it. Server state rather than `useState`,
+ * so the step exists before hydration too — there is no undo on this screen,
+ * and a stray click on a real client is not a thing to find out about from
+ * their email.
+ */
+export type EndAccessState = {
+  error?: string;
+  notice?: string;
+  needsConfirm?: boolean;
+} | null;
+
+export async function endReportClientAccess(
+  _prev: EndAccessState,
+  formData: FormData,
+): Promise<EndAccessState> {
+  // A Server Action is a public endpoint; this cannot rely on the page.
+  await requireAdmin();
+
+  const workspaceId = String(formData.get("workspace_id") ?? "").trim();
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const businessName = String(formData.get("business_name") ?? "").trim();
+  const contactName = String(formData.get("contact_name") ?? "").trim();
+
+  if (!workspaceId || !userId) {
+    return { error: "No client given." };
+  }
+
+  if (String(formData.get("confirm") ?? "") !== "1") {
+    return {
+      needsConfirm: true,
+      error:
+        `This signs ${contactName || "their contact"} out of ${businessName || "this client"} ` +
+        `for good and there is no undo on this screen. Every month, figure and reply is kept ` +
+        `and stays readable to you. Press again to end it.`,
+    };
+  }
+
+  // The admin's own session, not the service role: the function checks
+  // `is_portal_admin()`, which reads auth.uid(), and the service role has
+  // none — it would be refused as "only an admin can end a client's access".
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("end_report_client_access", {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/reporting");
+  revalidatePath("/reporting", "layout");
+
+  // **Nobody reads this notice on the admin screen**, and that is correct
+  // rather than a bug to route around: the disclosure is rendered from the
+  // live client grant, so the revalidate above unmounts the form and takes
+  // its message with it. What the admin sees instead is the card itself,
+  // now carrying "Access ended — <name> on <date>", which is the same way a
+  // saved figure reports itself everywhere else here. The notice stays
+  // because it is the action's honest answer to its caller.
+  return {
+    notice: `Access ended. ${businessName || "The client"}'s reports are all still here.`,
+  };
 }

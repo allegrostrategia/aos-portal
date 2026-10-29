@@ -834,5 +834,139 @@ await check("the launch-covers bucket exists, private, images only", async () =>
   return problems.length === 0;
 });
 
+// ---------------------------------------------------------------------------
+console.log("\n— ending a retainer client's access (29 October) —");
+//
+// There was no way to stop a reporting login at all: cancel_member() needs a
+// members row a retainer client deliberately lacks, access_end_date is
+// constrained to Chiarezza, and unassign_report_team_member only deletes team
+// grants. The grant row is now the record — marked revoked, never deleted.
+// ---------------------------------------------------------------------------
+
+// Rival Ltd is the one used here, so ending its access cannot disturb Bella
+// Ltd, which the rest of this file leans on.
+await as(NINA, () => db.query(`
+  insert into public.report_periods (workspace_id, month, published_at, published_by)
+  values ('${WS_RIVAL}', '${MONTH}', now(), '${NINA}')`));
+await as(NINA, () => db.query(`
+  insert into public.report_values (workspace_id, month, metric_key, value, entered_by)
+  values ('${WS_RIVAL}', '${MONTH}', 'email_new_subscribers', 404, '${NINA}')`));
+
+await check("before it ends, the client reads their published month", async () =>
+  (await count(RIVAL,
+    `select count(*)::int c from public.report_values where workspace_id = '${WS_RIVAL}'`)) === 1);
+
+await rejects("a non-admin cannot end anybody's access", () =>
+  as(ELIZE, () => db.query(
+    `select public.end_report_client_access('${WS_RIVAL}', '${RIVAL}')`)),
+  "Only an admin");
+
+await rejects("the client cannot end their own, either", () =>
+  as(RIVAL, () => db.query(
+    `select public.end_report_client_access('${WS_RIVAL}', '${RIVAL}')`)),
+  "Only an admin");
+
+await rejects("an aos_member workspace points at cancelling the membership", () =>
+  as(NINA, () => db.query(
+    `select public.end_report_client_access('${WS_M}', '${MEMBER}')`)),
+  "cancel the membership");
+
+await rejects("a Chiarezza workspace points at the access end date", () =>
+  as(NINA, () => db.query(
+    `select public.end_report_client_access('${WS_C}', '${CHIARA}')`)),
+  "set the access end date");
+
+await rejects("a team assignment is removed, not ended", () =>
+  as(NINA, () => db.query(
+    `select public.end_report_client_access('${WS_R}', '${ELIZE}')`)),
+  "team assignment");
+
+await rejects("a login with no grant on the workspace", () =>
+  as(NINA, () => db.query(
+    `select public.end_report_client_access('${WS_RIVAL}', '${CHIARA}')`)),
+  "no grant on this workspace");
+
+await check("Nina ends it, and the row records who and when", async () => {
+  await one(NINA, `select public.end_report_client_access('${WS_RIVAL}', '${RIVAL}')`);
+  const row = await one(NINA, `
+    select revoked_at is not null as ended, revoked_by::text as by, display_name
+      from public.report_access
+     where workspace_id = '${WS_RIVAL}' and user_id = '${RIVAL}'`);
+  return row.ended === true && row.by === NINA && row.display_name === "Rival";
+});
+
+await check("the client now reaches nothing", async () =>
+  (await count(RIVAL,
+    `select count(*)::int c from public.report_values where workspace_id = '${WS_RIVAL}'`)) === 0);
+
+await check("…not their workspace either", async () =>
+  (await count(RIVAL,
+    `select count(*)::int c from public.report_workspaces where id = '${WS_RIVAL}'`)) === 0);
+
+await check("report_can_view and report_can_edit both say no", async () => {
+  const r = await one(RIVAL, `
+    select public.report_can_view('${WS_RIVAL}') v,
+           public.report_can_edit('${WS_RIVAL}') e`);
+  return r.v === false && r.e === false;
+});
+
+await check("every figure and every month is still there", async () => {
+  // The whole point of revoking rather than deleting. Read as Nina, because
+  // these are hers to keep.
+  const values = await count(NINA,
+    `select count(*)::int c from public.report_values where workspace_id = '${WS_RIVAL}'`);
+  const periods = await count(NINA,
+    `select count(*)::int c from public.report_periods where workspace_id = '${WS_RIVAL}'`);
+  return values === 1 && periods === 1;
+});
+
+await check("the grant is kept, so the event is on the record", async () =>
+  (await count(NINA,
+    `select count(*)::int c from public.report_access
+      where workspace_id = '${WS_RIVAL}' and user_id = '${RIVAL}'`)) === 1);
+
+await rejects("it cannot be ended twice", () =>
+  as(NINA, () => db.query(
+    `select public.end_report_client_access('${WS_RIVAL}', '${RIVAL}')`)),
+  "already ended");
+
+await check("a team assignment on the same workspace is untouched", async () => {
+  // Allegro keeps working on the data after the client has gone, the same
+  // way a team grant outlives a Chiarezza window.
+  await one(NINA, `select public.assign_report_team_member('${WS_RIVAL}', '${ELIZE}', 'Elize Barbieri')`);
+  return (await one(ELIZE, `select public.report_can_edit('${WS_RIVAL}') e`)).e === true;
+});
+
+await check("a revoked grant is never permission, whatever its role", async () => {
+  // `report_can_edit` carries the same `revoked_at is null` line as
+  // `report_can_view`, and for a RETAINER client it is unreachable: that
+  // helper is already false for them, by §2's design. So a mutation deleting
+  // it broke nothing, and the line looked tested when it was not.
+  //
+  // The invariant is "a revoked row is not access", not "a revoked client row
+  // is not access". `end_report_client_access()` refuses a team assignment,
+  // so this state is reached by hand — which an admin can do, because
+  // `report_access_all_admin` is `for all`. The day revoking is extended to
+  // team grants or to Chiarezza, the helper is already right.
+  await as(NINA, () => db.query(`
+    update public.report_access set revoked_at = now(), revoked_by = '${NINA}'
+     where workspace_id = '${WS_RIVAL}' and user_id = '${ELIZE}'`));
+
+  const r = await one(ELIZE, `
+    select public.report_can_view('${WS_RIVAL}') v,
+           public.report_can_edit('${WS_RIVAL}') e`);
+
+  // Put it back: the check above about Elize outliving the client must not
+  // depend on which order these two ran in.
+  await as(NINA, () => db.query(`
+    update public.report_access set revoked_at = null, revoked_by = null
+     where workspace_id = '${WS_RIVAL}' and user_id = '${ELIZE}'`));
+
+  return r.v === false && r.e === false;
+});
+
+await check("Bella Ltd is unaffected — one client's end is not everyone's", async () =>
+  (await one(RETAINER, `select public.report_can_view('${WS_R}') v`)).v === true);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

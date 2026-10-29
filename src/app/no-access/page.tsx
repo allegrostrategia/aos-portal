@@ -51,8 +51,8 @@ export default async function NoAccessPage() {
             <>
               Your reporting access ran until{" "}
               {formatCalendarDate(accessEnded.endedOn)}. Nothing has been
-              deleted — every figure you entered is still there, and it comes
-              back with you if you come back.
+              deleted — every figure in your reports is still there, and it
+              comes back with you if you come back.
             </>
           ) : (
             <>

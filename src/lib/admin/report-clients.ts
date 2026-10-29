@@ -37,6 +37,13 @@ export interface ReportGrantRow {
   user_id: string;
   role: "client" | "team";
   display_name: string;
+  /**
+   * When this login's access was ended, or null while it still has it.
+   *
+   * The row stays either way — it is the record that it happened — so the
+   * admin screen has to read this rather than counting rows.
+   */
+  revoked_at: string | null;
 }
 
 export interface ReportPeriodRow {
@@ -79,7 +86,7 @@ export async function getReportClientData(
       (from, to) =>
         supabase
           .from("report_access")
-          .select("workspace_id, user_id, role, display_name, id")
+          .select("workspace_id, user_id, role, display_name, revoked_at, id")
           .order("workspace_id")
           .order("id")
           .range(from, to)

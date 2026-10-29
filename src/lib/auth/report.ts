@@ -84,6 +84,12 @@ export const getReportUser = cache(async (): Promise<ReportUser | null> => {
     .from("report_access")
     .select("workspace_id, role, display_name, report_workspaces!inner(business_name, kind)")
     .eq("user_id", user.id)
+    // An ended grant is kept as the record of a client who used to be here
+    // (`end_report_client_access`). `report_access_select_own` still returns
+    // it to them, because it is their own row — so without this an ended
+    // client would open on a workspace picker listing a business whose every
+    // figure then refused to load.
+    .is("revoked_at", null)
     .returns<
       {
         workspace_id: string;

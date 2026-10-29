@@ -8,7 +8,12 @@ import { monthLabel as reportMonthLabel } from "@/lib/reporting/months";
 import { buttonClasses } from "@/components/ui/button";
 import { monthLabel } from "@/lib/reporting/months";
 import { getReportClientData, type ReportPeriodRow } from "@/lib/admin/report-clients";
-import { NewClientForm, AssignTeamForm, EditWorkspaceForm } from "./forms";
+import {
+  NewClientForm,
+  AssignTeamForm,
+  EditWorkspaceForm,
+  EndAccessForm,
+} from "./forms";
 
 export const metadata: Metadata = {
   title: "Reporting clients · aOS admin",
@@ -68,12 +73,27 @@ export default async function AdminReportingPage() {
   // §8.1's admin view: where each member is with last month, and what
   // they have turned off. Read-only — she still enters nothing.
   const memberStatus = await getMemberReportStatuses(rows);
-  const byWorkspace = new Map(rows.map((w) => [w.id, { client: "", team: [] as string[] }]));
+  // A grant whose access has been ended is kept as the record of it, so these
+  // are three groups and not two: who can reach this client's report now, who
+  // used to, and who on the team is assigned. Counting rows would read an
+  // ended client as a current one.
+  type People = {
+    client: { userId: string; name: string } | null;
+    ended: { name: string; on: string }[];
+    team: string[];
+  };
+  const byWorkspace = new Map<string, People>(
+    rows.map((w) => [w.id, { client: null, ended: [], team: [] }]),
+  );
   for (const grant of grants) {
     const entry = byWorkspace.get(grant.workspace_id);
     if (!entry) continue;
-    if (grant.role === "client") entry.client = grant.display_name;
-    else entry.team.push(grant.display_name);
+    if (grant.role === "client") {
+      if (grant.revoked_at) entry.ended.push({ name: grant.display_name, on: grant.revoked_at });
+      else entry.client = { userId: grant.user_id, name: grant.display_name };
+    } else if (!grant.revoked_at) {
+      entry.team.push(grant.display_name);
+    }
   }
 
   const monthsFor = new Map<string, ReportPeriodRow[]>();
@@ -139,7 +159,7 @@ export default async function AdminReportingPage() {
                     {workspace.business_name}
                   </h2>
                   <p className="mt-1 text-small text-ink/60">
-                    {people?.client ? `${people.client} · ` : null}
+                    {people?.client ? `${people.client.name} · ` : null}
                     from {monthLabel(workspace.first_month)}
                     {workspace.access_end_date
                       ? ` · access ends ${workspace.access_end_date}`
@@ -200,6 +220,19 @@ export default async function AdminReportingPage() {
                     </dd>
                   </div>
                 ) : null}
+                {people && people.ended.length > 0 ? (
+                  // Said on the card rather than only inside a disclosure:
+                  // "why can't they open their report" is the question this
+                  // answers, and it is asked from this list.
+                  <div className="min-w-60">
+                    <dt className="text-caption text-ink/55">Access ended</dt>
+                    <dd className="text-body text-ink">
+                      {people.ended
+                        .map((e) => `${e.name} on ${e.on.slice(0, 10)}`)
+                        .join(", ")}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="min-w-40">
                   <dt className="text-caption text-ink/55">Team</dt>
                   <dd className="text-body text-ink">
@@ -220,7 +253,7 @@ export default async function AdminReportingPage() {
                     businessName={workspace.business_name}
                     currency={workspace.currency}
                     firstMonth={workspace.first_month}
-                    contactName={people?.client ? people.client : null}
+                    contactName={people?.client?.name ?? null}
                     targetHourlyRate={workspace.target_hourly_rate}
                   />
                 </div>
@@ -234,6 +267,28 @@ export default async function AdminReportingPage() {
                   <AssignTeamForm workspaceId={workspace.id} />
                 </div>
               </details>
+
+              {/* Retainer only, because the other two kinds already have a
+                  route and a third would behave differently: an aOS member's
+                  reporting goes when the membership does (rule 7), and a
+                  Chiarezza login runs to the end date set when they were
+                  invited. `end_report_client_access` refuses them both and
+                  names the right route, so this is not the only guard. */}
+              {workspace.kind === "retainer" && people?.client ? (
+                <details className="group mt-3 border-t border-ink/8 pt-3">
+                  <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
+                    End this client&rsquo;s access
+                  </summary>
+                  <div className="mt-3">
+                    <EndAccessForm
+                      workspaceId={workspace.id}
+                      userId={people.client.userId}
+                      businessName={workspace.business_name}
+                      contactName={people.client.name}
+                    />
+                  </div>
+                </details>
+              ) : null}
             </Card>
           );
               })}

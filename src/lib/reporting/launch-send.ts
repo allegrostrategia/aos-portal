@@ -80,6 +80,9 @@ export async function sendLaunchUpdateEmail(
   const { data: grants } = await admin
     .from("report_access")
     .select("user_id, display_name")
+    // Never an ended grant. The row stays as the record, and emailing the
+    // client whose access was just revoked is the one thing it must not do.
+    .is("revoked_at", null)
     .eq("workspace_id", launch.workspace_id)
     .eq("role", "client")
     .order("created_at")
