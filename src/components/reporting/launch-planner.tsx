@@ -4,17 +4,22 @@ import { launch as launchFormulas } from "@/lib/reporting/formulas";
 /**
  * §6.6's planner: working backwards from a sales goal.
  *
- * Sales goal ÷ conversion rate gives the live attendees needed; that ÷
- * the show-up rate gives the sign-ups. **Rounded up at both steps**,
- * because half a person does not attend anything.
+ * Sales goal ÷ conversion rate gives the SIGN-UPS needed; those × the
+ * show-up rate give the people expected in the room. **Rounded up at
+ * both steps**, because half a person does not attend anything.
  *
- * §6.6's own worked check: 30 sales at 5% needs 600 live attendees, and
- * at 47% show-up that is 1,277 sign-ups. The brief notes that the
- * approved mockup says 600 sign-ups and is wrong — the formula is right,
- * and this reads it rather than repeating it.
+ * **It ran the other way round until 29 October**, and that was the bug
+ * worth the most: decision 20 made conversion sales ÷ sign-ups, so
+ * dividing the goal by it gives sign-ups directly. Left alone, the
+ * planner and the launch report would have printed two different
+ * conversion rates for the same launch, each internally consistent.
+ * Caught by Dom reading the screenshots.
+ *
+ * Sign-ups lead now, because they are what the plan asks somebody to go
+ * and get. The room is what follows from them.
  *
  * The team's panel, not the client's. It is a planning tool for the
- * conversation, and a client looking at "you need 1,277 sign-ups" without
+ * conversation, and a client looking at "you need 600 sign-ups" without
  * that conversation is being handed a number, not a plan.
  */
 export function LaunchPlanner({
@@ -60,23 +65,25 @@ export function LaunchPlanner({
           <dl className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-cream-deep px-4 py-3">
               <dt className="text-caption uppercase tracking-wide text-ink/55">
-                Live attendees needed
-              </dt>
-              <dd className="font-mono text-h3 text-ink">
-                {liveAttendeesNeeded?.toLocaleString("en-GB") ?? "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl bg-cream-deep px-4 py-3">
-              <dt className="text-caption uppercase tracking-wide text-ink/55">
                 Sign-ups needed
               </dt>
               <dd className="font-mono text-h3 text-ink">
                 {signUpsNeeded?.toLocaleString("en-GB") ?? "—"}
               </dd>
             </div>
+            <div className="rounded-xl bg-cream-deep px-4 py-3">
+              <dt className="text-caption uppercase tracking-wide text-ink/55">
+                Expected in the room
+              </dt>
+              <dd className="font-mono text-h3 text-ink">
+                {liveAttendeesNeeded?.toLocaleString("en-GB") ?? "—"}
+              </dd>
+            </div>
           </dl>
           <p className="mt-3 text-caption text-ink/50">
-            Rounded up at both steps — half a person does not attend anything.
+            Conversion is measured against sign-ups, so that is what the goal
+            divides into. Rounded up at both steps — half a person does not
+            attend anything.
           </p>
         </>
       )}

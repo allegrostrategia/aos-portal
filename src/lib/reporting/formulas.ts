@@ -663,29 +663,53 @@ export const launch = {
   /**
    * §6.6, the launch planner. Works backwards from a sales goal.
    *
-   *   live attendees needed = sales goal ÷ conversion rate
-   *   sign-ups needed       = live attendees needed ÷ show-up rate
+   *   sign-ups needed     = sales goal ÷ conversion rate
+   *   attendees expected  = sign-ups needed × show-up rate
    *
-   * Always rounded up: you cannot half-fill a seat, and rounding down plans
-   * for a launch that misses.
+   * **Turned around on 29 October**, because decision 20 turned the
+   * conversion rate around. §6.6 divided the sales goal by conversion to
+   * get ATTENDEES and then divided again by show-up to get sign-ups —
+   * correct while conversion meant sales ÷ attendees. It no longer does:
+   * conversion is sales ÷ sign-ups to the selling stage, so dividing the
+   * goal by it gives sign-ups directly, and show-up is what turns that
+   * into the room.
    *
-   * Rates go in as percentages, like everywhere else here. The brief's worked
-   * check: 30 sales at 5% needs 600 live attendees; at 47% show-up that is
-   * 1,277 sign-ups. The approved mockup says 600 sign-ups, which is wrong —
-   * §12 records it and says to build to the formula.
+   * Leaving it would have been the worst kind of wrong: the planner and
+   * the launch report would have printed two different conversion rates
+   * for the same launch, each internally consistent. Found by Dom
+   * reading the screenshots, not by any test — which is why there is now
+   * one that plans a launch and checks the plan against that launch's
+   * own figures.
+   *
+   * Always rounded up: you cannot half-fill a seat, and rounding down
+   * plans for a launch that misses. Attendees are rounded up too, so the
+   * two figures cannot read as a show-up rate better than the one typed.
+   *
+   * Rates go in as percentages, like everywhere else here. §6.6's worked
+   * check was 30 sales at 5% and 47% show-up; under the old reading that
+   * was 600 attendees and 1,277 sign-ups, and under this one it is 600
+   * sign-ups and 282 expected in the room. The approved mockup said 600
+   * sign-ups, which §12 recorded as wrong — it is right now, by
+   * coincidence rather than by agreement.
    */
   planner: (input: {
     salesGoal: Figure;
     conversionRatePercent: Figure;
     showUpRatePercent: Figure;
   }): { liveAttendeesNeeded: Result; signUpsNeeded: Result } => {
-    const attendees = divide(input.salesGoal, divide(input.conversionRatePercent, 100));
-    const liveAttendeesNeeded = attendees === null ? null : Math.ceil(attendees);
+    const signUps = divide(input.salesGoal, divide(input.conversionRatePercent, 100));
+    const signUpsNeeded = signUps === null ? null : Math.ceil(signUps);
 
-    const signUps = divide(liveAttendeesNeeded, divide(input.showUpRatePercent, 100));
+    const showUp = divide(input.showUpRatePercent, 100);
+    const attendees =
+      signUpsNeeded === null || showUp === null ? null : signUpsNeeded * showUp;
+
     return {
-      liveAttendeesNeeded,
-      signUpsNeeded: signUps === null ? null : Math.ceil(signUps),
+      signUpsNeeded,
+      // Named for what it still is on screen: how many of those sign-ups
+      // are expected in the room. It is no longer an input to the
+      // sign-ups figure, so it cannot be wrong in a way that moves it.
+      liveAttendeesNeeded: attendees === null ? null : Math.ceil(attendees),
     };
   },
 };

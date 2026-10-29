@@ -392,26 +392,69 @@ test("6.5 pipeline and ads", () => {
   near(launch.roas(22700, 2500), 9.08);
 });
 
-test("6.6 the launch planner — the brief's worked check, not the mockup's", () => {
-  // §6.6: "30 sales at 5% conversion needs 600 live attendees; at 47%
-  // show-up that's 1,277 sign-ups (always round up)." §12: "the approved
-  // mockup shows 600 sign-ups, which is wrong. Build to this formula, not
-  // the mockup." This is the test that stops 600 coming back.
+test("6.6 the launch planner works back through sign-ups, not attendees", () => {
+  // **§6.6's own worked check is out of date and deliberately not used
+  // here.** It read "30 sales at 5% conversion needs 600 live attendees;
+  // at 47% show-up that's 1,277 sign-ups", which was right while
+  // conversion meant sales ÷ attendees. Nina's decision 20 made it sales
+  // ÷ sign-ups, so the same three numbers now mean 600 SIGN-UPS, and
+  // 47% of those is 282 expected in the room.
   const plan = launch.planner({
     salesGoal: 30, conversionRatePercent: 5, showUpRatePercent: 47,
   });
-  assert.equal(plan.liveAttendeesNeeded, 600);
-  assert.equal(plan.signUpsNeeded, 1277);
-  assert.notEqual(plan.signUpsNeeded, 600);
+  assert.equal(plan.signUpsNeeded, 600);
+  assert.equal(plan.liveAttendeesNeeded, 282);
+  // The old reading, kept as the thing that must not come back.
+  assert.notEqual(plan.signUpsNeeded, 1277);
 });
 
-test("6.6 the planner always rounds up", () => {
-  // 10 ÷ 3% = 333.33 attendees, and you cannot plan for a third of a person.
+test("6.6 the planner always rounds up, at both steps", () => {
+  // 10 ÷ 3% = 333.33 sign-ups, and you cannot plan for a third of a
+  // person. 334 × 50% = 167 in the room.
   const plan = launch.planner({
     salesGoal: 10, conversionRatePercent: 3, showUpRatePercent: 50,
   });
-  assert.equal(plan.liveAttendeesNeeded, 334);
-  assert.equal(plan.signUpsNeeded, 668);
+  assert.equal(plan.signUpsNeeded, 334);
+  assert.equal(plan.liveAttendeesNeeded, 167);
+
+  // Rounded up on the attendees too, so the two figures can never read
+  // as a better show-up rate than the one typed: 334 × 47% is 156.98,
+  // and 156 ÷ 334 would read 46.7%.
+  const odd = launch.planner({
+    salesGoal: 10, conversionRatePercent: 3, showUpRatePercent: 47,
+  });
+  assert.equal(odd.liveAttendeesNeeded, 157);
+});
+
+test("6.6 the planner agrees with a launch's own conversion figure", () => {
+  // **The check that would have caught the bug.** Plan a launch, then
+  // measure the launch you planned: the conversion rate the report would
+  // print for it has to be the rate the planner was given. Before
+  // 29 October the planner still divided by attendees, so the same
+  // launch read 5% in the planner and 2.35% on the report.
+  //
+  // The Autumn challenge's real figures: 30 sales, 900 sign-ups to the
+  // masterclass, which is 3.3% conversion.
+  const sales = 30;
+  const conversion = launch.conversionRate(sales, 900);
+  assert.equal(conversion, 3.3333333333333335, "sales ÷ sign-ups");
+
+  const plan = launch.planner({
+    salesGoal: sales,
+    conversionRatePercent: conversion,
+    showUpRatePercent: 66.7,
+  });
+
+  // Planning for 30 sales at the rate that launch achieved asks for the
+  // sign-ups that launch had. Rounded up, so 900 exactly.
+  assert.equal(plan.signUpsNeeded, 900);
+  // And measuring the plan gives the rate back.
+  const planned = plan.signUpsNeeded;
+  assert.ok(planned !== null);
+  assert.equal(
+    Math.round((launch.conversionRate(sales, planned) ?? 0) * 10) / 10,
+    Math.round((conversion ?? 0) * 10) / 10,
+  );
 });
 
 test("6.6 the planner with no rates yet is a dash, not a plan", () => {

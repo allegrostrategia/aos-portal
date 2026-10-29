@@ -163,7 +163,7 @@ test("the launch report, end to end", async ({ page }, info) => {
   // at the START of the session — 430 of 600, not 430 of the 520 who were
   // there when the pitch began, which would read 83%.
   expect(text).toMatch(/430 still live at the end of the pitch/);
-  expect(text).toMatch(/72% of the 600 who started/);
+  expect(text).toMatch(/72% of the 600 there at the start of the session/);
 
   // The three goals, and which stage the selling happened on.
   expect(text).toMatch(/Good 30 of 30\s*100%/);
@@ -189,11 +189,15 @@ test("the planner reads §6.6's own worked example back", async ({ page }, info)
   await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]{36}/);
 
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
-  // 30 sales at 5% is 600 live attendees; at 47% show-up that is 1,277
-  // sign-ups. The brief says the approved mockup's 600 is wrong, and this
-  // is the assertion that keeps us on the formula rather than the mockup.
-  expect(text).toMatch(/LIVE ATTENDEES NEEDED 600/);
-  expect(text).toMatch(/SIGN-UPS NEEDED 1,277/);
+  // **30 sales at 5% is 600 SIGN-UPS**, and 47% of those is 282 expected
+  // in the room — the planner turned round on 29 October to match
+  // decision 20. §6.6's worked check said 600 attendees and 1,277
+  // sign-ups, which was right while conversion meant sales ÷ attendees.
+  expect(text).toMatch(/SIGN-UPS NEEDED 600/);
+  expect(text).toMatch(/EXPECTED IN THE ROOM 282/);
+  // Narrowly: 1,277 is still on the page as the challenge's real
+  // sign-ups. What must not come back is the planner asking for them.
+  expect(text).not.toMatch(/SIGN-UPS NEEDED 1,277/);
   await shoot(page, TAB, "09-planner", w);
 });
 
