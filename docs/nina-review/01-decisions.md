@@ -9,7 +9,7 @@ Every decision ends with a line beginning **→**:
 
 Each decision keeps its original reasoning and its *"if you'd rather"* line above that, so a change of mind later still has something to read.
 
-**Three of the changes are rows in the database rather than code** (decisions 2, 20 and 28). That change is written and waiting for Dom to apply it; everything else is done.
+**Everything here is built.** Nothing in it is switched on, and nothing will be until the launch checklist is done.
 
 **One answer back to you** is at the end, under *"Does the report show whether each figure went up or down?"*
 
@@ -73,7 +73,7 @@ This is a standing rule of the whole product, not a reporting decision.
 
 **12. Publishing a launch does *not* email them.** The launch page becomes visible and the next monthly report mentions it. One email a month rather than two.
 *If you'd rather it did:* one line.
-**→ Changed, and built.** A published launch has a **Send update to client** button. Pressing it emails them that the tracker has newer figures in it — no numbers, just a link, the same style as the monthly email. Publishing still sends nothing, and no save, no publish and nothing in the nightly job ever sends it. Somebody presses it. Yours only, and only on a retainer client.
+**→ Changed, and built.** A published launch has a **Send update to client** button. Pressing it emails them that the tracker has newer figures in it — no numbers, just a link, the same style as the monthly email. Underneath it says when it last went, so nobody sends twice in an afternoon. Publishing still sends nothing, and no save, no publish and nothing in the nightly job ever sends it. Somebody presses it. Yours only, and only on a retainer client.
 
 **13. "Compare launches" is yours only.** A client never sees this launch against their better one — that's a conversation you choose to have.
 *If you'd rather clients had it:* one line.
@@ -104,11 +104,13 @@ This is a standing rule of the whole product, not a reporting decision.
 
 **19. Pitch retention is measured against who was there when the pitch began**, not when the session began. The brief asks for both figures and only spends one, so the unused one is probably what it meant.
 *This changes a number you'd quote out loud, so it needs your word.*
-**→ Changed, and built. No field was missing** — "live at start" already existed and already had a box on the entry screen; it simply wasn't being used. The launch report now says *"430 still live at the end of the pitch — 72% of the 600 who started"*: the count first, then the share of the room at the start of the whole session. If nobody entered the starting figure, the count still shows and the screen asks for the other.
+**→ Changed, and built. No field was missing** — "live at start" already existed and already had a box on the entry screen; it simply wasn't being used. The launch report now says *"430 still live at the end of the pitch — 72% of the 600 there at the start of the session"*: the count first, then the share of the room at the start of the whole session. If nobody entered the starting figure, the count still shows and the screen asks for the other.
 
 **20. Conversion is measured against the main selling stage's attendees**, not everyone who attended anything. A launch with a waitlist and a challenge before the masterclass would otherwise read as converting a fraction of a far larger number.
 *Listed because it looks wrong at a glance and is right.*
 **→ Changed, and built.** Conversion is total sales ÷ sign-ups to the main selling stage. **No picking needed:** a launch can have several live stages but only one main selling stage — the database enforces it with a unique index, and saving the stages clears the old flag before setting the new one. It is the stage you tick. No stage ticked means a dash, not a guess. On the test launch this moved the figure from 5.0% to 3.3%, which is the size of the difference you were asking about.
+
+**And it turned the planner round.** "Working backwards" divided the sales goal by conversion to get *attendees* and divided again to get sign-ups, which was right while conversion meant sales ÷ attendees. It now divides the goal by conversion to get the **sign-ups** needed, and multiplies those by show-up to get who is expected in the room. Left alone, the planner and the launch report would have printed two different conversion rates for the same launch, each looking perfectly consistent on its own. Caught by Dom reading the screenshots on 29 October.
 
 **21. A stage with one email shows its open rate on the dot**, so it reads as a figure rather than a stray mark.
 *Alternative:* leave single-email stages off the chart and show them as a number beside it.
@@ -141,7 +143,7 @@ This is a standing rule of the whole product, not a reporting decision.
 
 **28. The core list is 44 figures, and four may be too many.** Every one must be filled before a section goes green, so the orange marker is only worth trusting if each is a number somebody would chase. *Recommended optional:* hours spent on trial reels, hours spent delivering per offer, revenue per ad campaign, and cash in bank.
 *If you move them:* they stay on screen under "+ Add more detail", every calculation still works when they're filled, and the figures that depend on them already show a dash when they're not.
-**→ Changed, and built.** All four are optional now: hours on trial reels, hours delivering per offer, revenue per ad campaign, and cash in bank. They keep their boxes, still store, and still show on the report — they just stop holding a section orange. **One thing you will notice:** an optional field lives inside **"Add more detail (optional)"** on the entry screen, so those four are now one click away rather than in the main list. Cash in bank is the one most likely to be missed that way. Say so if you'd rather any of them stayed in the main list but still didn't hold the section orange — that is a different change and a slightly larger one. It also needs a small database change, which is written and waiting for Dom to apply.
+**→ Changed, and built.** All four are optional now: hours on trial reels, hours delivering per offer, revenue per ad campaign, and cash in bank. They keep their boxes, still store, and still show on the report — they just stop holding a section orange. **They stay where they were on the entry screen**, in the main list with the word *optional* beside them. Making them optional had moved them behind "Add more detail", which is what optional has always meant here — Dom caught it and asked for these four to be the exception, because cash in bank one click away is cash in bank that stops being entered. It also needed a small database change, which Dom has applied.
 
 **29. Hiding a section is display-only.** Nothing is deleted, turning it back on brings everything back, and a figure pulled into another section keeps working while its own section is hidden.
 **→ Agreed on 28 October. No change.**
