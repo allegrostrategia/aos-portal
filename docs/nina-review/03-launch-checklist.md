@@ -1,8 +1,8 @@
 # Before any of this goes on
 
-Ten things that can only be done with a real client, a real month, or your eyes on them. None can be finished before launch, and none should be skipped at it.
+Twelve things that can only be done with a real client, a real month, or your eyes on them. None can be finished before launch, and none should be skipped at it.
 
-**Two are being done now** and the rest wait for a real client, a real month, or your eyes. Your review of 29 October closed the dashes question at number 8 and added two, numbers 9 and 10, both of them wording you haven't read — and number 3's wording is now written out in full in [04-wording.md](04-wording.md) for you to mark up.
+**One is being done now** and the rest wait for a real client, a real month, or your eyes. Your review of 29 October closed the dashes question at number 8 and added two, numbers 9 and 10, both of them wording you haven't read — and number 3's wording is now written out in full in [04-wording.md](04-wording.md) for you to mark up.
 
 **All three questions that were open for you are now decided:**
 
@@ -49,13 +49,17 @@ One of them, the invitation, **lives in the Supabase dashboard rather than in ou
 
 **Custom SMTP is already set up**, so invitations are not going through Supabase's default sender and its three-an-hour limit. They go via Resend from `noreply@allegrostrategia.com`, the same provider and domain as the product emails. The auth rate limit is **30 emails an hour**, which is a real ceiling only on a day somebody invites a lot of people at once.
 
-## 4. The draw prize still says "test" — **Dom doing now**
+## 4. The draw prizes still say "test" — **Dom doing now**
 
-The prize text on Piazza reads as a placeholder. One line, and it's in front of every member every day.
+Both months that exist carry a placeholder: August reads **"testy"** and September reads **"test"**. Neither has been drawn. The prize is in front of every member every day on Piazza, so **both want real text before the first member joins** — not before launch day, but before anybody who isn't us can read them.
 
-## 5. Test Client's contact is called "Nina" — **Dom doing now**
+## 5. Test Client's contact was called "Nina" — **done, 29 October**
 
-The grant on the test reporting workspace carries the display name "Nina", which is wrong and would appear on anything that names the client contact. Correct it or delete the grant before a real client is added beside it.
+The grant on the test reporting workspace carried the display name "Nina", which would have appeared on anything naming the client contact. It now reads **"Test Client"**, changed on the live database and read back.
+
+It could also have been done from the screen: **Reporting → the client's card → Edit details → "Client contact's name"**, which has existed since 5 October for exactly this.
+
+**And there is now a way to stop a reporting login.** Until 29 October there was none at all — cancelling a member needs a membership, and a retainer client deliberately has none, so the only ways out were deleting their grant by hand or disabling the account in Supabase. The card now carries **"End this client's access"**: two presses, nothing deleted, and the card afterwards says who lost access and when. Every month, figure, note and reply stays, and stays readable to you.
 
 ## 6. Unpublish → fix → republish, done once for real
 
@@ -84,4 +88,20 @@ That's the first thing a client sees in the gap between months, and it was writt
 
 New, from your decision 3. The tag works on the test data, where the panel holds one or two lines. What nobody has seen is a month where all three attention lines fire at once, which is when the old repeated tail looked worst and is the only real test of whether a repeated tag reads better.
 
-It needs a real month with three things going the wrong way. Worth looking at before you decide whether the celebration lines should go plain too — which is one of the three questions still open for you.
+It needs a real month with three things going the wrong way. You've already said the celebration lines stay as they are, so this is a look rather than a decision — unless seeing three at once changes your mind.
+
+## 11. A Chiarezza login for testing the self-serve side
+
+There isn't one, and it is the cleanest way to keep testing the member-facing report after the test accounts are cancelled.
+
+A Chiarezza login is an account with **no membership behind it** — so it touches nothing in the members' half of aOS: no draw, no pairing, no hot seat, no directory, no chat, no reminder emails. It can still fill in its own figures, which is the half that needs checking. And it expires on a date set when it is created, so it cleans itself up.
+
+Two things it won't test, for the same reason it is safe: the monthly reminder emails (those go to members, and it isn't one) and the Meta CSV upload card (hidden for Chiarezza by your decision).
+
+## 12. Cancelling the test accounts
+
+Five accounts on the live site are ours, and the three that are members take up room in the draw, in pairing, on the hot seat sheet and in the reminder emails that go out every Wednesday and Friday.
+
+The plan, in order: the directory fix goes out first — until 29 October a cancelled member kept their card in the directory, which would have left ghosts behind — then `dominicchentrens@`, `nina.ellen.oliver@` and `contact+test3@` are cancelled, and `yungsl5dom@` last, once the switches are on and the walkthrough is done.
+
+Cancelling revokes access and keeps every record, as it always has. Nothing is deleted.

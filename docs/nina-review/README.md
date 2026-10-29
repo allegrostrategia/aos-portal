@@ -20,6 +20,8 @@ The screens from the earlier work — the monthly report itself, targets, benchm
 
 **The changes from your review are in `screens-review/`**, nine of them at both widths: the Focus area tag, the hours figure with no colour on it, the month-being-prepared screen, the launch figures that moved, the Send update button, the planner's first guess, and a member's own upload card.
 
+`screens-end-access/` is five more, also at both widths, and the only ones that are not about a report: **ending a retainer client's access**, which there was no way to do until 29 October. Your screen, not theirs — the card, the warning it asks you to read, what the card says afterwards, and the page the client lands on if they try to open their report. It is number 5 on the checklist.
+
 ### 3. [Every word a client reads](04-wording.md)
 
 The full text of all five emails and the screen a client sees between months, each with when it goes out and who gets it. Nothing in it has been changed — it's set out for you to mark up.

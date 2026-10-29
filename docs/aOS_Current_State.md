@@ -1947,15 +1947,29 @@ last.
 
 26. **Live chat was dead for everyone from 13 to 14 Sep, and nothing said so.** The Sociale redesign added a reactions listener on the same Realtime channel as the messages listener, with a note to add `message_reactions` to the publication in the dashboard. That step was recorded as done and had not happened. Realtime refuses a whole channel when any one binding on it can't be served, so messages stopped arriving too; and the refusal comes as a `system` message *after* the client has reported `SUBSCRIBED`, on an event type nothing listened to — so the console stayed silent. Found by elimination: service-worker ruled out (can't touch WebSockets), the phone shown to open the socket (edge logs), the row shown visible under exactly the RLS check Realtime performs, the change stream shown to deliver the row to a service-role listener, and only then a probe that waited for the `system` message instead of stopping at `SUBSCRIBED`. My own first probe had made the same mistake as the code. Three fixes: the publication entry is a migration (guarded like `chat_messages`, asserted by the schema test, which the harness can now run because it creates the publication); messages and reactions are on separate channels; both channels log a `system` error. **`SUBSCRIBED` means the join was acknowledged, not that Postgres changes are flowing.** And a dashboard step is a step that can silently not happen: make it a migration
 
+
+27. **A cancelled member would have stayed in the directory for ever** (29 Oct, found auditing live accounts before launch). `member_profiles_select_directory` is `has_portal_access() and completed_at is not null`, and `has_portal_access()` reads `auth.uid()` — so the policy has always gated on the person *looking*, never the person *listed*. The migration that wrote it said so in a comment and said the listing query had to do the other half: "Filter the listing query by the subject's status as well, or a cancelled member stays in the directory indefinitely." `searchDirectory()` never did, and no test covered it — the one test there is, "a cancelled member sees no directory at all", is the reader's side. So a cancelled member kept their card in everyone else's directory, and kept their row in the "new message" list in Piazza Sociale, where clicking them then failed because `open_direct_channel` refuses them. Nothing had gone wrong in front of anybody only because nobody has been cancelled yet. **The shape worth keeping: a comment that names the gap and nominates somebody else to close it is not a fix.** Two more: the filter needs a security-definer helper rather than a join, because `members_select_own` means a member's session reads nobody's row but their own and the join would have returned null for everyone, quietly emptying the directory instead; and it was kept out of the RLS policy on purpose, because `getHeadshotUrls()` reads the same table for chat and pairing, so a policy-level filter would have blanked a cancelled member's face out of messages they sent while `display_names()` deliberately kept their name
+
+28. **There was no way to end a reporting client's access at all** (29 Oct, same audit). Not a bug in anything written — a hole where a feature should be, and every obvious door shut for a different reason: `cancel_member()` raises "No member with id", because a retainer client deliberately has no `members` row; `access_end_date` is refused by `report_workspaces_only_chiarezza_expires`; `unassign_report_team_member()` deletes `role = 'team'` rows only; and the admin screen offered invite, assign and save-details. So the only ways to stop a paying client's login were to delete their `report_access` row by hand — destroying the only evidence it happened — or disable the auth user in the Supabase dashboard, which is invisible from inside aOS. Both are the wrong shape for a product whose first standing rule is that nothing is ever deleted. **Found by asking what happens at the end of something, for a product built entirely around the beginning of it.** Fixed with `revoked_at`/`revoked_by` on the grant, `end_report_client_access()`, and "End this client's access" on the card
+
 ## Environment variables confirmed set in Vercel
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, and since 14 Sep `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; see CLAUDE.md for why the public one needs a redeploy to take). **`ANTHROPIC_API_KEY` is never needed** — settled 3 Sep, see the AI decision above.
 
 ## Migrations
-**Eighty-five on disk, all eighty-five applied to live** — seventy-eight
-by 7 October, then seven more between the 8th and the 9th: the launch
-lock, the private cover bucket, the launch delete sweep, the cover
-bucket's admin arm, one workspace per member, a member's workspace
-arriving with the member, and the two reminder job kinds.
+**Eighty-nine on disk, eighty-seven applied to live.** Seventy-eight by
+7 October, then seven more between the 8th and the 9th (the launch lock,
+the private cover bucket, the launch delete sweep, the cover bucket's
+admin arm, one workspace per member, a member's workspace arriving with
+the member, and the two reminder job kinds), then two on 29 October:
+Nina's review of the metric list, and `update_email_sent_at` with the
+restated publish guard.
+
+**Two are written and not applied** (29 Oct), both waiting on Dom:
+`20261029110000_directory_lists_active_members` (the `active_member_ids`
+helper behind bug 27) and `20261029120000_report_access_can_be_ended`
+(`revoked_at` on the grant, the two access helpers restated with one
+added line each, and `end_report_client_access`). Both are applied
+locally and green against the full suite; neither has touched live.
 
 **Every header now says whether it has run.** On 27 October eleven of
 them still read "NOT APPROVED — do not apply", written before approval
