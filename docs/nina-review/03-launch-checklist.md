@@ -42,7 +42,12 @@ Five emails exist and none has been read by you in the form a client receives. *
 
 The reminder wording is taken **verbatim from your brief**. The other four were written for you and need your eye.
 
-One of them, the invitation, is **Supabase's own template and lives in their dashboard rather than in our code** — so it is the only one that can be changed without a deploy, and the only one nobody has ever seen arrive.
+One of them, the invitation, **lives in the Supabase dashboard rather than in our code** — so it is the only one that can be changed without a deploy, and the only one nobody has ever seen arrive. Its exact text is in 04-wording.md, and reading it turned up two things:
+
+- **The sender name is misspelt: "Allegro Stategia", missing the *r*.** It is on every auth email — invitations, password resets, the lot — and it is the first thing in anybody's inbox. One field in the dashboard, no deploy. **Dom doing now.**
+- **The invitation says nothing about Allegro Strategia or about a report.** It is Supabase's default wording with only the link corrected. Yours to decide whether it should say more.
+
+**Custom SMTP is already set up**, so invitations are not going through Supabase's default sender and its three-an-hour limit. They go via Resend from `noreply@allegrostrategia.com`, the same provider and domain as the product emails. The auth rate limit is **30 emails an hour**, which is a real ceiling only on a day somebody invites a lot of people at once.
 
 ## 4. The draw prize still says "test" — **Dom doing now**
 

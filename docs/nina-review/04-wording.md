@@ -15,11 +15,31 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 **When:** the moment you add a client in the admin panel. It's the first thing they ever receive from aOS.
 **Who:** the client contact you named.
 
-**This one isn't written by us.** It's Supabase's own invitation template, which lives in the Supabase dashboard rather than in the code — Authentication → Emails → Invite user. So it's the one email on this list that can be changed without a deploy, and the one nobody has looked at in the form a client receives.
+**This one lives in the Supabase dashboard rather than in our code** — Authentication → Emails → Invite user. So it's the only email on this list that can be changed without a deploy, and the only one nobody has watched arrive.
 
-The link in it lands them on a page to set a password, and from there on their report.
+Here it is, exactly as configured today:
 
-**Worth doing before the first real client:** send one to yourself and read what actually arrives.
+> **Subject:** You've been invited
+>
+> ## You've been invited
+>
+> You've been invited to create an account. Follow the link below to accept.
+>
+> [Accept invitation]
+
+The link takes them to a page to set a password, and from there to their report.
+
+**Two things to notice, and both are yours to decide:**
+
+**It doesn't say who it's from, or what for.** The body is Supabase's default wording — the subject has never been changed, and the body only as far as fixing the link. There's no mention of Allegro Strategia, no mention of a report, and nothing to tell someone who has been expecting a call from you that this is that. It arrives as "You've been invited" from a name they may not recognise.
+
+**The sender's name is misspelt.** Every auth email goes out as:
+
+> **Allegro Stategia** &lt;noreply@allegrostrategia.com&gt;
+
+"Stategia", missing the *r*. The address is right; the display name is not, and it's the first thing anybody sees in their inbox. It's one field in the Supabase dashboard — Dom can fix it in a minute, and it needs no deploy.
+
+**Worth doing before the first real client:** send yourself one and read what arrives.
 
 ---
 
