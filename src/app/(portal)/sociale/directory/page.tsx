@@ -78,6 +78,20 @@ export default async function DirectoryPage({
         </Card>
       ) : null}
 
+      {/* The listing only shows active members (see `searchDirectory`), so a
+          member still in onboarding who has filled the form in is finished and
+          invisible at the same time. Saying nothing would leave them reading a
+          directory they aren't in and no way to know it. */}
+      {ownListing === "complete" && member.status !== "active" ? (
+        <Card className="mb-6 bg-lemon/25">
+          <Eyebrow>Your profile is ready</Eyebrow>
+          <p className="mt-1 text-small text-ink/80">
+            Other members will see it once your membership starts. You can still
+            change anything on it before then.
+          </p>
+        </Card>
+      ) : null}
+
       <form method="get" className="mb-6 flex flex-wrap gap-2">
         <input
           type="search"
