@@ -1394,6 +1394,42 @@ await check("a cancelled member sees no directory at all", async () => {
   return r.rows[0].c === 0;
 });
 
+// ---------------------------------------------------------------------------
+// The LISTED person's side, which the policy does not cover.
+//
+// `member_profiles_select_directory` gates on `has_portal_access()`, which
+// reads auth.uid() — the reader. The test above is that side. Nothing asked
+// whether the person listed was still a member, so a cancelled member kept
+// their card; `active_member_ids()` is what the listing query filters on now.
+// ---------------------------------------------------------------------------
+
+await check("active_member_ids drops a cancelled member", async () => {
+  const r = await as(ERIN, () => db.query(
+    `select public.active_member_ids(array['${DANA}','${BOB}']::uuid[]) ids`));
+  return !r.rows[0].ids.includes(DANA) && r.rows[0].ids.includes(BOB);
+});
+
+await check("active_member_ids drops a member still in onboarding", async () => {
+  // ALICE cancelled and rejoined earlier in this file, so she sits in
+  // onboarding — which is the state the directory has to hold back as well,
+  // the same bar pairing and the hot seat sheet already use.
+  const status = (await as(ADMIN, () => db.query(
+    `select status from public.members where id='${ALICE}'`))).rows[0].status;
+  const r = await as(ERIN, () => db.query(
+    `select public.active_member_ids(array['${ALICE}','${BOB}']::uuid[]) ids`));
+  return status === "onboarding"
+    && !r.rows[0].ids.includes(ALICE)
+    && r.rows[0].ids.includes(BOB);
+});
+
+await check("a cancelled member asking gets nobody", async () => {
+  // The caller gate, so a revoked login cannot use this as a free lookup
+  // into who is still a member.
+  const r = await as(DANA, () => db.query(
+    `select public.active_member_ids(array['${BOB}','${ERIN}']::uuid[]) ids`));
+  return r.rows[0].ids.length === 0;
+});
+
 // The three states the "you're not listed yet" card reads. All three are the
 // same policy — an owner reads their own row complete or not — but the card
 // says something different for each, and getting them the wrong way round

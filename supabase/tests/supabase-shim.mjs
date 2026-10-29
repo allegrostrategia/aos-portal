@@ -310,6 +310,7 @@ export function createShimClient(db, uid) {
       filters: [],
       inFilters: [],
       isFilters: [],
+      textSearches: [],
       or: [],
       columns: "*",
       count: null,
@@ -361,6 +362,13 @@ export function createShimClient(db, uid) {
       // unknown one throws rather than quietly matching everything —
       // a filter that silently widens is how a client sees another
       // client's row.
+      for (const [column, query] of state.textSearches) {
+        params.push(query);
+        clauses.push(
+          `${quoteIdent(column)} @@ websearch_to_tsquery('english', $${params.length})`,
+        );
+      }
+
       for (const group of state.or) {
         const parts = group.split(",").map((part) => {
           const [column, op, ...rest] = part.split(".");
@@ -641,6 +649,23 @@ export function createShimClient(db, uid) {
       },
       or(expression) {
         state.or.push(expression);
+        return api;
+      },
+      // PostgREST's `?col=wfts(english).query`, which supabase-js sends for
+      // `.textSearch(col, q, { type: "websearch" })`. Only `websearch` is
+      // translated, because it is the only type the app uses and because the
+      // four of them are four different parsers — `plain` would silently
+      // accept a quoted phrase the real column rejects. The config is
+      // hardcoded to english, matching every `search_vector` in the schema.
+      textSearch(column, query, options = {}) {
+        if (options.type !== "websearch") {
+          throw new Error(
+            `Shim only translates .textSearch(..., { type: "websearch" }), got ${
+              options.type ?? "undefined"
+            }. Add it rather than guessing.`,
+          );
+        }
+        state.textSearches.push([column, query]);
         return api;
       },
       limit(n) {

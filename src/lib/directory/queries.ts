@@ -29,6 +29,21 @@ const HEADSHOT_URL_SECONDS = 60 * 60;
  *
  * RLS returns only completed listings, so a half-filled profile never appears as
  * an empty card, and only to members with portal access.
+ *
+ * **The policy gates on the reader, so the subject is filtered here.**
+ * `member_profiles_select_directory` is `has_portal_access() and completed_at
+ * is not null`, and `has_portal_access()` reads `auth.uid()` — whoever is
+ * looking. Nothing in it asks whether the person listed is still a member, and
+ * the migration that wrote it said this query had to. It didn't, so a cancelled
+ * member kept their card indefinitely, and kept their row in the "new message"
+ * list that calls this with an empty query — where clicking them then failed,
+ * because `open_direct_channel` refuses them. Active only, so an onboarding
+ * member who has filled the form in appears when their membership starts, the
+ * same bar pairing and the hot seat already use.
+ *
+ * `active_member_ids()` rather than a join: `members_select_own` is the only
+ * non-admin read policy on `members`, so joining would return null for every
+ * other member and quietly empty the directory.
  */
 export async function searchDirectory(query: string): Promise<DirectoryEntry[]> {
   const supabase = await createClient();
@@ -45,7 +60,7 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
 
   const { data } = await request;
 
-  const rows = (data ?? []) as {
+  const listed = (data ?? []) as {
     member_id: string;
     display_name: string;
     title: string | null;
@@ -54,6 +69,20 @@ export async function searchDirectory(query: string): Promise<DirectoryEntry[]> 
     links: { label: string; url: string }[] | null;
     headshot_path: string | null;
   }[];
+
+  if (listed.length === 0) return [];
+
+  const { data: activeIds } = await supabase.rpc("active_member_ids", {
+    p_member_ids: listed.map((row) => row.member_id),
+  });
+
+  // An error, or a reader without portal access, leaves this empty — and an
+  // empty directory is the safe way to be wrong. The alternative reads as
+  // "show everybody" on exactly the failure this filter exists for.
+  const active = new Set((activeIds ?? []) as string[]);
+  const rows = listed.filter((row) => active.has(row.member_id));
+
+  if (rows.length === 0) return [];
 
   // The headshots bucket is private but readable by anyone with portal access,
   // so the member's own session can sign these — no service role needed. Signed
