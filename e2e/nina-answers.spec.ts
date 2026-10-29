@@ -246,7 +246,7 @@ test("decisions 19 and 20: conversion against sign-ups, retention against the ro
   // 430 of the 600 who were in the room at the start — not of the 520 who
   // were there when the pitch began, which reads 83%.
   expect(text).toMatch(/430 still live at the end of the pitch/);
-  expect(text).toMatch(/72% of the 600 who started/);
+  expect(text).toMatch(/72% of the 600 there at the start of the session/);
   expect(text).not.toMatch(/83% of/);
 
   await shot(page, "05-launch-figures-client", w);
@@ -342,4 +342,60 @@ test("decision 11: publishing a member's month emails nobody", async ({ page }) 
 
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   expect(text).not.toMatch(/publish this month|the client can see/i);
+});
+
+// ---------------- decision 28: optional, but still on the screen
+
+test("decision 28: the four stay in the main list, labelled optional", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+
+  // Visible without opening anything. Making them optional moved them
+  // behind "+ Add more detail" as a side effect of what optional has
+  // always meant here, which is a bigger change than Nina asked for —
+  // cash in bank in particular would simply stop being entered.
+  const cash = page.getByLabel(/cash in bank at month end/i);
+  await expect(cash).toBeVisible();
+
+  // And the word is on them, so they do not read as core fields the
+  // "still to fill in" count has forgotten.
+  const field = page
+    .locator("div")
+    .filter({ has: cash })
+    .last();
+  await expect(field.getByText("optional", { exact: true })).toBeVisible();
+
+  await shot(page, "10-optional-visible-admin", w);
+});
+
+test("decision 28: and they do not hold the section back", async ({ page }) => {
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  const ws = `(select id from public.report_workspaces where business_name = 'Northwind Studio')`;
+  const admin = `(select id from public.members where role = 'admin' limit 1)`;
+
+  // Every CORE financials figure entered — there are three; revenue is
+  // pulled from Offers and the rest are worked out — and cash in bank
+  // deliberately left empty. Before decision 28 that was three of four
+  // and the section stayed orange.
+  for (const [key, value] of [
+    ["financials_fixed_costs", 300],
+    ["financials_variable_costs", 250],
+    ["financials_team_costs", 500],
+  ] as const) {
+    sql(`delete from public.report_values where workspace_id = ${ws}
+           and month = '${MONTHS.sep}-01' and metric_key = '${key}' and entity_id is null;
+         insert into public.report_values
+           (workspace_id, month, metric_key, value, entered_by)
+         values (${ws}, '${MONTHS.sep}-01', '${key}', ${value}, ${admin});`);
+  }
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  await expect(page.getByText(/all filled in/i)).toBeVisible();
+
+  // Empty, and the section is finished anyway.
+  await expect(page.getByLabel(/cash in bank at month end/i)).toHaveValue("");
 });

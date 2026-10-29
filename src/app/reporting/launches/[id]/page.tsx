@@ -261,7 +261,7 @@ export default async function LaunchPage({
                     <span className="font-mono text-ink">
                       {s.liveAtStart.toLocaleString("en-GB")}
                     </span>{" "}
-                    who started.
+                    there at the start of the session.
                   </>
                 ) : (
                   <>
@@ -366,6 +366,7 @@ export default async function LaunchPage({
           name={detail.launch.name}
           publishedAt={detail.launch.published_at}
           canEmailClient={ctx.workspace.kind === "retainer"}
+          updateEmailSentAt={detail.launch.update_email_sent_at}
         />
       ) : null}
 
