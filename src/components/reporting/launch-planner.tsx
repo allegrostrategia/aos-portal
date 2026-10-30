@@ -67,7 +67,7 @@ export function LaunchPlanner({
               <dt className="text-caption uppercase tracking-wide text-ink/55">
                 Sign-ups needed
               </dt>
-              <dd className="font-mono text-h3 text-ink">
+              <dd className="font-mono text-heading text-ink">
                 {signUpsNeeded?.toLocaleString("en-GB") ?? "—"}
               </dd>
             </div>
@@ -75,7 +75,7 @@ export function LaunchPlanner({
               <dt className="text-caption uppercase tracking-wide text-ink/55">
                 Expected in the room
               </dt>
-              <dd className="font-mono text-h3 text-ink">
+              <dd className="font-mono text-heading text-ink">
                 {liveAttendeesNeeded?.toLocaleString("en-GB") ?? "—"}
               </dd>
             </div>

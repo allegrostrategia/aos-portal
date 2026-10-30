@@ -108,75 +108,83 @@ export function LaunchCard({
   coverUrl?: string | null;
 }) {
   return (
-    // The cover runs down the LEFT of the whole card, as the mockup draws
-    // it, rather than being a thumbnail tucked above the title (Dom, 30
-    // October).
+    // **A small landscape cover beside the name, not a band down the whole
+    // card** (Dom, 30 October — this replaces the full-height band of
+    // earlier the same day).
     //
-    // **It holds at phone width**, which was the condition and was measured
-    // rather than assumed: at 390px the card is 358px inside its padding,
-    // the cover takes 88 and the gap 16, which leaves 254 for the name, the
-    // status pill, two figures and the ring.
+    // The band version worked, and it cost too much width. These cards sit
+    // three across, and at 1440 that is a card about 299px wide inside its
+    // padding; a 96px cover and a 16px gap left 187px for a serif h3, which
+    // broke "Autumn challenge" over two lines and the description over
+    // three. At 80×56 the name gets 207px and sits on one line, and the
+    // card loses about 40px of height into the bargain — which is what
+    // makes a row of three read as a row.
     //
-    // `items-stretch` is what makes it a band down the side instead of a
-    // square at the top: it takes its height from the content beside it, so
-    // a launch with a description gets a taller cover rather than a gap
-    // under a short one.
-    <Card className="flex items-stretch gap-4">
-      {/* Decorative, with an empty alt: the launch's name is beside it, and
-          a cover is something the client chose rather than information.
-          next/image is wrong for this one — the URL is a signed link that
-          expires in an hour, and the optimiser would cache it and keep
-          serving it long after it stops working. The same reason the
-          directory's headshots are plain <img>. */}
-      {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={coverUrl}
-          alt=""
-          className="w-22 shrink-0 self-stretch rounded-xl object-cover sm:w-24"
-        />
+    // `flex-col` with `mt-auto` below is what keeps the figure rows level
+    // across a row of cards whose names and descriptions are different
+    // lengths. Without it each card's ring floats to wherever its own text
+    // ended.
+    <Card className="flex h-full flex-col gap-4">
+      <div className="flex items-start gap-3">
+        {/* Decorative, with an empty alt: the launch's name is beside it,
+            and a cover is something the client chose rather than
+            information. next/image is wrong for this one — the URL is a
+            signed link that expires in an hour, and the optimiser would
+            cache it and keep serving it long after it stops working. The
+            same reason the directory's headshots are plain <img>. */}
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={coverUrl}
+            alt=""
+            className="h-14 w-20 shrink-0 rounded-lg object-cover"
+          />
+        ) : null}
+
+        <div className="min-w-0 flex-1">
+          <Link
+            href={href}
+            className="font-display text-heading font-medium text-ink underline-offset-4 hover:underline"
+          >
+            {launch.name}
+          </Link>
+          {/* Under the name rather than beside it. The mockup has room for
+              both on one line at its own width; we do not, and of the two
+              the name is the one that has to stay unbroken. */}
+          <p className="mt-1.5">
+            <span
+              className={`inline-block rounded-full px-3 py-1 text-caption font-medium tracking-wide ${STATUS_TONE[launch.status]}`}
+            >
+              {STATUS_LABEL[launch.status]}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {launch.description ? (
+        <p className="text-small text-ink/60">{launch.description}</p>
       ) : null}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <Link
-              href={href}
-              className="font-display text-h3 font-medium text-ink underline-offset-4 hover:underline"
-            >
-              {launch.name}
-            </Link>
-            {launch.description ? (
-              <p className="mt-1 text-small text-ink/60">{launch.description}</p>
-            ) : null}
+      {/* The mockup's figure row: revenue and sales across, the ring on the
+          right. Stacked, these two pushed the ring down beside a column of
+          labels and made the card half as tall again. */}
+      <div className="mt-auto flex items-end justify-between gap-3">
+        <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-2">
+          <div>
+            <dt className="text-caption uppercase tracking-wide text-ink/55">Revenue</dt>
+            <dd className="font-mono text-heading text-ink">
+              {formatValue(summary.totalRevenue, "currency", "GBP")}
+            </dd>
           </div>
-          <span
-            className={`shrink-0 rounded-full px-3 py-1 text-caption font-medium tracking-wide ${STATUS_TONE[launch.status]}`}
-          >
-            {STATUS_LABEL[launch.status]}
-          </span>
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-4">
-          <dl className="flex flex-col gap-2">
-            <div>
-              <dt className="text-caption uppercase tracking-wide text-ink/55">Revenue</dt>
-              <dd className="font-mono text-h3 text-ink">
-                {formatValue(summary.totalRevenue, "currency", "GBP")}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-caption uppercase tracking-wide text-ink/55">Sales</dt>
-              <dd className="font-mono text-body text-ink">
-                {summary.totalSales ?? "—"}
-                {goal === null ? null : (
-                  <span className="text-ink/50"> of {goal}</span>
-                )}
-              </dd>
-            </div>
-          </dl>
-          <ProgressRing percent={summary.percentOfGood} />
-        </div>
+          <div>
+            <dt className="text-caption uppercase tracking-wide text-ink/55">Sales</dt>
+            <dd className="font-mono text-heading text-ink">
+              {summary.totalSales ?? "—"}
+              {goal === null ? null : <span className="text-ink/50"> of {goal}</span>}
+            </dd>
+          </div>
+        </dl>
+        <ProgressRing percent={summary.percentOfGood} />
       </div>
     </Card>
   );

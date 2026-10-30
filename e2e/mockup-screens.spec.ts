@@ -112,6 +112,33 @@ test.describe("the five mockup screens", () => {
   });
 
   /**
+   * Two more launches, so the row is a row.
+   *
+   * The base seed has two, and the page splits them: one is live in
+   * September and goes under its own heading, the other does not. Three
+   * cards across is the layout being judged and two launches in two
+   * sections cannot show it — the screenshot said "stacked" when the
+   * grid was three-across all along.
+   *
+   * Empty on purpose, both of them. The mockup's own third card is a
+   * planning launch with £0, 0/15 and an empty ring, and a card with
+   * nothing in it is the one most likely to lay out wrong.
+   */
+  test.beforeAll(async () => {
+    await db(`
+      insert into public.report_launches
+        (workspace_id, name, description, status, goal_good, goal_better, goal_best,
+         planner_show_up_rate, planner_conversion_rate)
+      values
+        ((select id from public.report_workspaces where business_name = '${RETAINER}'),
+         'Evergreen mastermind', null, 'planning', 15, 25, 40, 47, 5),
+        ((select id from public.report_workspaces where business_name = '${RETAINER}'),
+         'Winter workshop', 'One afternoon, one offer', 'planning', 25, 40, 55, 47, 5)
+      on conflict do nothing;
+    `);
+  });
+
+  /**
    * Two offers with a month's figures, which the seed also does not have.
    *
    * Without them the Offers screen is an empty state, and an empty state is
@@ -167,6 +194,8 @@ test.describe("the five mockup screens", () => {
       delete from public.report_targets
        where workspace_id = (select id from public.report_workspaces
                               where business_name = '${RETAINER}');
+      delete from public.report_launches
+       where name in ('Evergreen mastermind', 'Winter workshop');
       delete from public.report_values
        where entity_id in (
          select id from public.report_entities
@@ -489,7 +518,44 @@ test.describe("the five mockup screens", () => {
     await expect(page.getByText(RETAINER).first()).toBeVisible();
     // The cover the fixture put on Autumn challenge. Decorative, so it has
     // an empty alt and is found by its source rather than by a name.
-    await expect(page.locator('img[src*="launch-covers"]').first()).toBeVisible();
+    const cover = page.locator('img[src*="launch-covers"]').first();
+    await expect(cover).toBeVisible();
+
+    // **The cover is a small landscape thumbnail, not a band down the
+    // card** (Dom, 30 Oct), and the name it makes room for sits on one
+    // line. Both measured on the rendered card, because both are about
+    // pixels: a screenshot shows them and no ordinary assertion does.
+    const box = await cover.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThan(box!.height);
+    expect(box!.height).toBeLessThan(80);
+
+    // One line: the heading link's height is within a line-and-a-bit of
+    // its own font size. A wrapped serif h3 is roughly double.
+    const name = page.getByRole("link", { name: "Autumn challenge" });
+    const lines = await name.evaluate((el) => {
+      const style = getComputedStyle(el);
+      // An inline <a>: getClientRects() gives one rect per line box, which
+      // is the question asked directly rather than inferred from heights.
+      return { rects: el.getClientRects().length, size: style.fontSize };
+    });
+    expect(lines.rects, `"Autumn challenge" wrapped (${lines.size})`).toBe(1);
+
     await shot(page, "5-launches", width(info.project.name));
+  });
+
+  test("6 — a launch, opened", async ({ page }, info) => {
+    // The list is where the launch cards live; this is the page behind
+    // one of them, and Nina reads it far more often than she reads the
+    // list (Dom, 30 Oct).
+    await page.goto("/reporting/launches");
+    await page.getByRole("link", { name: "Autumn challenge" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Autumn challenge" }),
+    ).toBeVisible();
+    // Its figures, so the screenshot is of a launch with something in it
+    // rather than of an empty frame that happens to have loaded.
+    await expect(page.getByText(/sold/).first()).toBeVisible();
+    await shot(page, "6-launch-detail", width(info.project.name));
   });
 });
