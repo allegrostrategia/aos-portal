@@ -1,4 +1,5 @@
 import { Card, SectionTitle } from "@/components/ui/card";
+import { IconCircle } from "./icons";
 import { launch as launchFormulas } from "@/lib/reporting/formulas";
 
 /**
@@ -47,7 +48,9 @@ export function LaunchPlanner({
 
   return (
     <Card className={className}>
-      <SectionTitle>Working backwards</SectionTitle>
+      <SectionTitle icon={<IconCircle name="target" tone="blush" />}>
+        Working backwards
+      </SectionTitle>
 
       {missing.length > 0 ? (
         <p className="text-body text-ink/70">

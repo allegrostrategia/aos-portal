@@ -58,7 +58,10 @@ export function FunnelChart({
   const totalHeight = drawn.length * HEIGHT + (drawn.length - 1) * GAP;
 
   return (
-    <div>
+    // Capped. The numbers list takes the rest of the row, so on a
+    // full-width card the percentage ends up at the far edge of the card
+    // with the label it belongs to half a screen away.
+    <div className="max-w-xl">
       <div className="flex items-start gap-4">
         <svg
           aria-hidden="true"

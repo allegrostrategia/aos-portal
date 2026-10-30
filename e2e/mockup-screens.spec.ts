@@ -211,8 +211,50 @@ test.describe("the five mockup screens", () => {
     `);
   });
 
+  /**
+   * Two more stages on Autumn challenge, so the timeline has a shape.
+   *
+   * The seed gives it two — a challenge and a masterclass — which is a
+   * real launch and a thin picture: a horizontal timeline of two discs
+   * says very little about whether a horizontal timeline works. The
+   * mockup draws five. These two take it to four, which is enough to see
+   * the rail, the spacing and what happens to it at 390px.
+   *
+   * Neither carries a figure, so nothing downstream changes: the
+   * attendance panels filter on having one, the conversion rate hangs off
+   * the main selling stage, and that is still the masterclass.
+   *
+   * Removed in `afterAll`, like the two extra launches — `launches.spec`
+   * edits this launch's stages through its own screen and must find them
+   * as the seed left them.
+   */
+  test.beforeAll(async () => {
+    await db(`
+      insert into public.report_launch_stages
+        (launch_id, position, stage_type, name, live_days,
+         promo_start, promo_end, live_start, live_end)
+      select l.id, v.position, v.stage_type::public.report_launch_stage_type,
+             v.name, null, v.promo_start::date, v.promo_end::date,
+             v.live_start::date, v.live_end::date
+      from public.report_launches l
+      cross join (values
+        (3, 'open_cart', 'Sales week', '2026-09-19', '2026-09-20',
+         '2026-09-20', '2026-09-25'),
+        (4, 'other', 'Replay window', null, null,
+         '2026-09-26', '2026-09-28')
+      ) as v(position, stage_type, name, promo_start, promo_end,
+             live_start, live_end)
+      where l.name = 'Autumn challenge'
+      on conflict do nothing;
+    `);
+  });
+
   test.afterAll(async () => {
     await db(`
+      delete from public.report_launch_stages
+       where name in ('Sales week', 'Replay window')
+         and launch_id = (select id from public.report_launches
+                           where name = 'Autumn challenge');
       delete from public.report_targets
        where workspace_id = (select id from public.report_workspaces
                               where business_name = '${RETAINER}');
@@ -566,6 +608,7 @@ test.describe("the five mockup screens", () => {
       page.getByText("Below your £200 an hour target").first(),
     ).toBeVisible();
 
+
     // Six months of revenue, one bar per offer per month.
     await expect(page.getByText("Revenue by offer")).toBeVisible();
     await expect(
@@ -619,6 +662,16 @@ test.describe("the five mockup screens", () => {
     await shot(page, "5-launches", width(info.project.name));
   });
 
+  /** The six headline cards of the launch page, in the order they sit. */
+  const headlineLabels = [
+    "Total sales",
+    "Total revenue",
+    "Still to collect",
+    "Average order value",
+    "Conversion rate",
+    "Cash collected",
+  ];
+
   test("6 — a launch, opened", async ({ page }, info) => {
     // The list is where the launch cards live; this is the page behind
     // one of them, and Nina reads it far more often than she reads the
@@ -631,6 +684,95 @@ test.describe("the five mockup screens", () => {
     // Its figures, so the screenshot is of a launch with something in it
     // rather than of an empty frame that happens to have loaded.
     await expect(page.getByText(/sold/).first()).toBeVisible();
+
+    // **"How it ran" is a horizontal timeline on desktop and a stacked
+    // list on the phone** (Nina, 30 Oct). Measured rather than asserted
+    // from a class name: a flex direction that does not take is a class
+    // present in the DOM and a layout that never changed.
+    const howItRan = page.locator("section", { hasText: "How it ran" }).last();
+    await expect(howItRan).toBeVisible();
+    const steps = howItRan.locator("ol > li");
+    await expect(steps).toHaveCount(4);
+    const first = await steps.first().boundingBox();
+    const last = await steps.last().boundingBox();
+    expect(first).not.toBeNull();
+    expect(last).not.toBeNull();
+    if (info.project.name === "phone") {
+      expect(last!.y, "the stages should stack at 390px").toBeGreaterThan(first!.y);
+    } else {
+      // Same row: their tops are within a few pixels of each other, and
+      // the last one is well to the right of the first.
+      expect(Math.abs(last!.y - first!.y), "the stages should share a row").toBeLessThan(4);
+      expect(last!.x).toBeGreaterThan(first!.x + first!.width);
+    }
+
+    // **"Who turned up" is the funnel now**, signed up → attended live →
+    // stayed to the pitch → bought, with the share at each step.
+    const masterclass = page
+      .locator("section", { hasText: "The masterclass: who turned up" })
+      .last();
+    for (const step of ["Signed up", "Attended live", "Stayed to the pitch", "Bought"]) {
+      await expect(masterclass.getByText(step, { exact: true })).toBeVisible();
+    }
+    // 900 → 600 → 430 → 30, and the share at each step. Asserted on the
+    // row rather than on the page, because 430 is also the figure in the
+    // sentence underneath — and a funnel row carrying the right number
+    // with the wrong percentage beside it is the failure worth catching.
+    // 72% is 430 of 600, the step above it: get the denominator wrong
+    // and this is the figure that moves.
+    await expect(
+      masterclass.locator("li", { hasText: "Signed up" }),
+    ).toContainText("900");
+    const stayed = masterclass.locator("li", { hasText: "Stayed to the pitch" });
+    await expect(stayed).toContainText("430");
+    await expect(stayed).toContainText("72%");
+
+    // **Only the main selling stage gets a "Bought" step.** There is no
+    // per-stage sales figure, so the five day challenge — which is not
+    // the selling stage — must not sprout one from the launch total.
+    const challenge = page
+      .locator("section", { hasText: "Five day challenge: who turned up" })
+      .last();
+    await expect(challenge.getByText("Bought", { exact: true })).toHaveCount(0);
+    // It keeps its day-by-day bars, because it ran for five days and they
+    // answer a different question. The masterclass ran for one and does
+    // not get a chart of a single bar.
+    await expect(challenge.getByText("Day 5", { exact: true })).toBeVisible();
+    await expect(masterclass.getByText("Day 1", { exact: true })).toHaveCount(0);
+
+    // **A disc on all six headline cards and on every panel title**, as on
+    // every other screen in the report.
+    //
+    // Asked of each one rather than counted. A count is the assertion that
+    // looks right and is not: this page carries a dozen discs on its panel
+    // titles alone, so dropping all six from the cards leaves a total that
+    // still clears any threshold worth setting. Both checks lean on the
+    // same fact — a disc is rendered immediately before the thing it
+    // belongs to, and `aria-hidden`, which is how they are found at all.
+    const cardsWithoutDisc = await page.evaluate((labels: string[]) => {
+      const discBefore = (el: Element | null) =>
+        el?.getAttribute("aria-hidden") === "true" && el.querySelector("svg") !== null;
+      return labels.filter((label) => {
+        const span = [...document.querySelectorAll("span")].find(
+          (el) => el.textContent?.trim() === label,
+        );
+        return !span || !discBefore(span.previousElementSibling);
+      });
+    }, headlineLabels);
+    expect(cardsWithoutDisc, "headline cards with no disc").toEqual([]);
+
+    const titlesWithoutDisc = await page.evaluate(() =>
+      [...document.querySelectorAll("h2")]
+        .filter((h) => {
+          const before = h.previousElementSibling;
+          return !(
+            before?.getAttribute("aria-hidden") === "true" && before.querySelector("svg")
+          );
+        })
+        .map((h) => h.textContent?.trim() ?? ""),
+    );
+    expect(titlesWithoutDisc, "panel titles with no disc").toEqual([]);
+
     await shot(page, "6-launch-detail", width(info.project.name));
   });
 });

@@ -517,6 +517,66 @@ Two things caught in the browser rather than by a test, both now pinned:
 does exist and is what the bar chart below the cards is measured against.
 A margin target would be a migration and Nina's decision.
 
+### Phase 4b: the launch detail page brought in line — 30 October 2026
+
+Nina, after Phase 4: *"Launch detail page: bring it in line with the
+other screens."* Three things, all against the approved mockup.
+
+**Discs on the six headline cards and on every panel title.** The cards
+became a list so the tones rotate through `toneFor` the way `/reporting`
+and the category pages do theirs, rather than this one screen picking its
+own. Six distinct glyphs, per `metric-icons.ts`' rule that decoration
+repeating its own label beats decoration repeating its neighbour.
+
+**"Who turned up" is the funnel now**, reusing `FunnelChart`: signed up →
+attended live → stayed to the pitch → bought, each step a share of the
+step above it. The shape is the measurement here — every step is a subset
+of the one before — which is the one case the brief allows a funnel over
+four bars.
+
+- **Only the main selling stage gets a "Bought" step.** There is no
+  per-stage sales figure in the schema: sales are recorded by price option
+  and by source, never by stage. So the launch total belongs to the one
+  stage §6.4 already measures conversion against, and every other stage's
+  funnel is three deep rather than guessing.
+- **The day-by-day bars stay** under a stage that ran for more than one
+  day. They answer a different question — not how many were lost but which
+  day lost them — and a one-day stage does not get them, because a chart
+  of one bar says nothing the funnel's second step has not.
+- **Decision 19's sentence stays too.** The funnel's third step is a share
+  of the step above it; pitch retention is measured against the room at
+  the *start of the session*, which Nina settled on 28 October. Different
+  denominators, so both are on the card.
+- The mockup's own funnel mixes the two: its last figure, 5.6%, is of the
+  top rather than of the step above it, while the two before it are of the
+  step above. One column meaning two things is not something to copy.
+
+**"How it ran" is horizontal on desktop and stacked on the phone**, a disc
+per stage with a hairline rail behind them. The earlier list was argued
+for on the grounds that a scaled timeline of four stages over six weeks is
+mostly empty space — true of a *scaled* one, where the gap between stages
+is the gap in days. This is not that: every stage takes an equal share of
+the row. At 390px the row would give each stage 60px, so it becomes the
+list it always was with the disc where the two-digit index used to be.
+
+The rail is two half-width absolute elements per stage rather than one
+line across the row, because the row is a flex container sized by its own
+text and there is no "centre of the first disc" to measure from in CSS.
+Each half reaches half a column **plus the gutter** — without that it
+breaks at every column edge and reads as four separate stages.
+
+The browser test measures the layout rather than reading a class name: a
+flex direction that does not take is a class present in the DOM and a
+layout that never changed. It also asserts the ring inks by offer name,
+because the way green-unless-below breaks is a condition that is always
+true or always false, which draws four rings of one colour and looks
+perfectly deliberate in a screenshot.
+
+The review fixture gained two more stages on Autumn challenge (a cart week
+and a replay window, neither carrying a figure), removed again in
+`afterAll` — a horizontal timeline of two discs says very little about
+whether a horizontal timeline works.
+
 ### Open questions and known gaps
 
 - **`client_experience_active_clients_at_start` cannot be built as specified.** §5.8 calls it "last month's active at end" *and* says "the very first month asks for active clients at start as a one-off input" — a field pulled in most months and typed in one, which the schema refuses outright (`report_values` will not store a pulled metric). Needs Nina's decision. Named in `PULLED_NOT_IMPLEMENTED` with a test that fails if someone quietly implements it. Stage 3.

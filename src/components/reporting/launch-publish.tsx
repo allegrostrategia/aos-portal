@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { IconCircle } from "./icons";
 import { formatSessionTime } from "@/lib/time-zone";
 import {
   publishLaunch,
@@ -52,7 +53,9 @@ export function LaunchPublishControl({
 
   return (
     <Card className="mt-6">
-      <SectionTitle>{publishedAt ? "Published" : "Ready to publish?"}</SectionTitle>
+      <SectionTitle icon={<IconCircle name="upload" tone="sky" />}>
+        {publishedAt ? "Published" : "Ready to publish?"}
+      </SectionTitle>
       <p className="text-body text-ink/70">
         {publishedAt
           ? `${name} is visible to the client. Take it back to draft if something needs fixing.`
@@ -157,7 +160,9 @@ export function LaunchLock({
 
   return (
     <Card className="mb-6">
-      <SectionTitle>{name} has gone out</SectionTitle>
+      <SectionTitle icon={<IconCircle name="share" tone="gold" />}>
+        {name} has gone out
+      </SectionTitle>
       <p className="text-body text-ink/80">
         The client has this launch report, so it is read-only. To correct
         something, take it back to draft, make the change, and publish again.

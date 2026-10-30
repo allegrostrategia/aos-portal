@@ -5,7 +5,13 @@ import { notFound } from "next/navigation";
 
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
+import { FunnelChart } from "@/components/reporting/charts/funnel-chart";
 import { LineChart } from "@/components/reporting/charts/line-chart";
+import {
+  IconCircle,
+  type ReportIconName,
+  toneFor,
+} from "@/components/reporting/icons";
 import { KpiCard } from "@/components/reporting/kpi-card";
 import { LaunchPlanner } from "@/components/reporting/launch-planner";
 import { LaunchPublishControl } from "@/components/reporting/launch-publish";
@@ -72,6 +78,30 @@ export default async function LaunchPage({
     ),
   );
 
+  /**
+   * The six headline cards, and the glyph on each.
+   *
+   * Six distinct glyphs rather than six launches. The rule is the one
+   * `metric-icons.ts` sets out for every other row in the report:
+   * decoration that repeats its own label is better than decoration that
+   * repeats its neighbour, and a row of six identical rockets would be the
+   * duller reading of the same cards.
+   */
+  const headline: {
+    label: string;
+    value: number | null;
+    unit: "count" | "currency" | "percent";
+    goodDirection: "up" | "down";
+    icon: ReportIconName;
+  }[] = [
+    { label: "Total sales", value: summary.totalSales, unit: "count", goodDirection: "up", icon: "star" },
+    { label: "Total revenue", value: summary.totalRevenue, unit: "currency", goodDirection: "up", icon: "revenue" },
+    { label: "Still to collect", value: summary.revenueStillToCollect, unit: "currency", goodDirection: "down", icon: "clock" },
+    { label: "Average order value", value: summary.averageOrderValue, unit: "currency", goodDirection: "up", icon: "calculator" },
+    { label: "Conversion rate", value: summary.conversionRate, unit: "percent", goodDirection: "up", icon: "target" },
+    { label: "Cash collected", value: summary.cashCollected, unit: "currency", goodDirection: "up", icon: "profit" },
+  ];
+
   const goals = [
     { label: "Good", target: detail.launch.goal_good, percent: summary.percentOfGood },
     { label: "Better", target: detail.launch.goal_better, percent: summary.percentOfBetter },
@@ -123,67 +153,33 @@ export default async function LaunchPage({
 
       {/* §6.4's headline figures. No month to compare against — a launch
           is not a month and has no previous one — so every card says so
-          rather than inventing an arrow. */}
+          rather than inventing an arrow.
+
+          A list rather than six hand-written cards, so the discs rotate
+          through the four tones the way `/reporting` and every category
+          page do theirs, rather than this one screen picking its own. */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiCard
-          label="Total sales"
-          value={summary.totalSales}
-          previous={null}
-          unit="count"
-          goodDirection="up"
-          currency={currency}
-          previousLabel={null}
-        />
-        <KpiCard
-          label="Total revenue"
-          value={summary.totalRevenue}
-          previous={null}
-          unit="currency"
-          goodDirection="up"
-          currency={currency}
-          previousLabel={null}
-        />
-        <KpiCard
-          label="Still to collect"
-          value={summary.revenueStillToCollect}
-          previous={null}
-          unit="currency"
-          goodDirection="down"
-          currency={currency}
-          previousLabel={null}
-        />
-        <KpiCard
-          label="Average order value"
-          value={summary.averageOrderValue}
-          previous={null}
-          unit="currency"
-          goodDirection="up"
-          currency={currency}
-          previousLabel={null}
-        />
-        <KpiCard
-          label="Conversion rate"
-          value={summary.conversionRate}
-          previous={null}
-          unit="percent"
-          goodDirection="up"
-          currency={currency}
-          previousLabel={null}
-        />
-        <KpiCard
-          label="Cash collected"
-          value={summary.cashCollected}
-          previous={null}
-          unit="currency"
-          goodDirection="up"
-          currency={currency}
-          previousLabel={null}
-        />
+        {headline.map((card, index) => (
+          <KpiCard
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            previous={null}
+            unit={card.unit}
+            goodDirection={card.goodDirection}
+            currency={currency}
+            previousLabel={null}
+            icon={{ name: card.icon, tone: toneFor(index) }}
+          />
+        ))}
       </div>
 
       {goals.length > 0 ? (
         <Card className="mt-6">
-          <SectionTitle aside={`${summary.totalSales ?? "—"} sold`}>
+          <SectionTitle
+            icon={<IconCircle name="target" tone="gold" />}
+            aside={`${summary.totalSales ?? "—"} sold`}
+          >
             Good, better, best
           </SectionTitle>
           <ul className="flex flex-col gap-4">
@@ -212,8 +208,19 @@ export default async function LaunchPage({
 
       <StageTimeline stages={detail.stages} className="mt-6" />
 
-      {/* §6.2's attendance, one chart per stage with live days. Horizontal
-          bars, because the thing being read is the drop from day one. */}
+      {/* §6.2's attendance, one panel per stage with live days.
+
+          **The funnel is the panel's graphic now** (Nina, 30 October,
+          against the approved mockup): signed up → attended live → still
+          there at the end of the pitch → bought, each stage a share of the
+          one above it. That is what a funnel is for and what four bars
+          could not say — every step here is a subset of the step before.
+
+          The day-by-day bars stay underneath where a stage ran for more
+          than one day, because they answer a different question: not how
+          many were lost, but which day lost them. A one-day stage has
+          nothing for them to show that the funnel's second step has not
+          already said, so it does not get them. */}
       {stages
         .filter(
           (s) => s.attendeesByDay.some((d) => d !== null) || s.liveAtEndOfPitch !== null,
@@ -221,24 +228,50 @@ export default async function LaunchPage({
         .map((s) => (
           <Card key={s.stage.id} className="mt-6">
             <SectionTitle
+              icon={<IconCircle name="funnels" tone="blush" />}
               aside={s.showUpRate === null ? undefined : `${Math.round(s.showUpRate)}% showed up`}
             >
               {s.stage.name}: who turned up
             </SectionTitle>
-            {s.attendeesByDay.some((d) => d !== null) ? (
-              <BarChart
-                data={s.attendeesByDay.map((value, i) => ({
-                  label: `Day ${i + 1}`,
-                  value,
-                  display: value === null ? "—" : value.toLocaleString("en-GB"),
-                  missingNote: "Not entered",
-                }))}
-                caption={
-                  s.signUps === null
-                    ? "Live attendees each day."
-                    : `Live attendees each day, from ${s.signUps.toLocaleString("en-GB")} sign-ups.`
-                }
-              />
+
+            <FunnelChart
+              stages={[
+                { label: "Signed up", value: s.signUps },
+                // Day one, which is what "showed up" is measured against
+                // everywhere else on this page.
+                { label: "Attended live", value: s.attendeesByDay[0] ?? null },
+                { label: "Stayed to the pitch", value: s.liveAtEndOfPitch },
+                {
+                  // **Only the main selling stage gets a "bought" step.**
+                  // There is no per-stage sales figure in the schema —
+                  // sales are recorded by price option and by source, not
+                  // by stage — so the launch's own total belongs to the
+                  // one stage §6.4 already measures conversion against.
+                  // On any other stage the step is absent rather than
+                  // guessed, and the funnel is three deep.
+                  label: "Bought",
+                  value: s.stage.is_main_selling_stage ? summary.totalSales : null,
+                },
+              ]}
+              caption="Each step as a share of the step above it."
+            />
+
+            {s.attendeesByDay.length > 1 && s.attendeesByDay.some((d) => d !== null) ? (
+              <div className="mt-6 border-t border-ink/8 pt-5">
+                <BarChart
+                  data={s.attendeesByDay.map((value, i) => ({
+                    label: `Day ${i + 1}`,
+                    value,
+                    display: value === null ? "—" : value.toLocaleString("en-GB"),
+                    missingNote: "Not entered",
+                  }))}
+                  caption={
+                    s.signUps === null
+                      ? "Live attendees each day."
+                      : `Live attendees each day, from ${s.signUps.toLocaleString("en-GB")} sign-ups.`
+                  }
+                />
+              </div>
             ) : null}
 
             {/* Decision 19, as Nina asked for it on 28 October: the count
@@ -277,7 +310,9 @@ export default async function LaunchPage({
         ))}
 
       <Card className="mt-6">
-        <SectionTitle>The email sequence</SectionTitle>
+        <SectionTitle icon={<IconCircle name="email" tone="sky" />}>
+          The email sequence
+        </SectionTitle>
         <LineChart
           // As many points as there are emails, not a fixed twenty. The
           // first build drew an axis running 1 to 20 under a line that
@@ -299,7 +334,9 @@ export default async function LaunchPage({
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
-          <SectionTitle>Where the sales came from</SectionTitle>
+          <SectionTitle icon={<IconCircle name="leads" tone="orange" />}>
+            Where the sales came from
+          </SectionTitle>
           <DonutChart
             // `colorIndex` is the source's place in the FIXED list, not
             // in the drawn order — colour follows the thing, never its
@@ -332,7 +369,9 @@ export default async function LaunchPage({
         </Card>
 
         <Card>
-          <SectionTitle>What each price option sold</SectionTitle>
+          <SectionTitle icon={<IconCircle name="offers" tone="gold" />}>
+            What each price option sold
+          </SectionTitle>
           <dl className="flex flex-col gap-3">
             {detail.prices.map((price) => {
               const sold = detail.values.get("launches_sales_per_price_option", {
