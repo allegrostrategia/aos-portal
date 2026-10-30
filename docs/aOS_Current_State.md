@@ -368,9 +368,13 @@ Asserted by test, not comment: each of the three signs in and must read zero row
 - **Social Media figures are stored per platform**, created on first save as "Instagram", so a second platform later is a new row and not a backfill.
 - **Brand**: keep the approved mockups' *layout*, render it in L'Editoriale (Nina, 30 Sep). The brief's own §3 palette table is the pre-13-Sep look and is superseded by `CLAUDE.md`. **Do not rebuild the layout.**
 
-### Two mockup arithmetic errors — build to the brief, not the mockup
+### The mockups' numbers are illustrative, not specs — settled 30 October 2026
 
-§12 already records the launch planner showing 600 sign-ups where §6.6's formula gives **1,277**. The second was found on 30 Sep: **mockup 2 prints a 6.9% engagement rate where §5.2's formula gives 9.34%** — 6.9% is likes and comments over reach, leaving out the saves and shares the formula includes. Both wrong figures are pinned by tests. Dom is raising the mockups with Nina separately; **do not "fix" the formulas to match them.**
+**Dom, 30 Oct: the figures printed on the mockups are a designer's placeholders. Never change a formula to agree with one.** That was already the practice; it is now the rule, and it retires the "two mockup arithmetic errors" note that stood here from 2 October.
+
+**One of the two was never an error at all, as it turns out.** The launch planner's 600 sign-ups for 30 sales read as wrong against §6.6's old formula, which gave 1,277. **Decision 20 turned conversion round — it is sales ÷ sign-ups — so sign-ups = 30 ÷ 5% = 600 and the mockup is simply right.** The code has read that way since 29 October and `formulas.test.ts` pins both halves: `signUpsNeeded === 600` and an explicit `notEqual(1277)` carrying the reason.
+
+The other, **mockup 2's 6.9% engagement rate where §5.2 gives 9.34%**, stands as a difference and is not going to be chased. 6.9% is likes and comments over reach; the formula includes saves and shares. The code follows the formula.
 
 ### Open questions and known gaps
 
@@ -1892,7 +1896,7 @@ last.
 - ~~**A decision on `client_experience_active_clients_at_start`**~~ — **answered and built.** The opening figure is typed once, on the workspace's first month, and carried forward; the entry screen says which month it belongs on. It is decision 27 on her list. Original note: §5.8 of the reporting brief specifies it two incompatible ways: "last month's active at end" *and* "the very first month asks for active clients at start as a one-off input". A field that is pulled in most months and typed in one, which the schema refuses outright. Blocks Stage 3's Client Experience page.
 - ~~**Four questions on the §8 plan**~~ — **all four answered and built**: the client gets the publish email, a reply stays once sent, objectives are the team's on a retainer and the member's own on a self-serve report, and a republished month emails again worded as an update. Original note (2 Oct, amended 3 Oct): who gets the publish email, whether a client may reply more than once, whether objectives are hers alone or Elize's too, and whether republishing a corrected month emails again. The plan is a document, not in this repo.
 - ~~**Four questions on the Stage 3 plan**~~ — **answered at the time; Stage 3 is built and switched off.** Original note (3 Oct): charts first or Stage 3 in order; which of three ways out of the §5.8 contradiction; the two-column benchmark migration; and six sentence templates for "Look at these first" in her voice.
-- **The two mockup arithmetic errors** (added 2 Oct) — the launch planner card shows **600 sign-ups where §6.6's formula gives 1,277**, and the Social Media entry mockup shows a **6.9% engagement rate where §5.2's formula gives 9.34%** (6.9% leaves out the saves and shares the formula includes). Both are built to the brief and pinned by tests. The mockups are client-approved, so correcting them may mean going back to whoever approved them.
+- ~~**The two mockup arithmetic errors**~~ (added 2 Oct) — **closed 30 October.** The mockups' numbers are illustrative, not specs (Dom). The launch planner's 600 sign-ups turned out to be correct all along once decision 20 reversed conversion; the 6.9% engagement rate is a difference that stands, with the code following §5.2. Nobody needs to go back to whoever approved them.
 - **The September draw's prize** — the `draws` row for September still has the literal prize `"test"`, so the Piazza card reads "test.". Set the real prize in `/admin/draw`, or delete the row and let the fallback copy show.
 
 ## Waiting on Dom

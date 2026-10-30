@@ -363,7 +363,7 @@ Works backwards from a sales goal. For a first launch the client enters their ex
 \text{Live attendees needed} = \frac{\text{Sales goal}}{\text{Conversion rate}} \qquad \text{Sign-ups needed} = \frac{\text{Live attendees needed}}{\text{Show-up rate}}
 ```
 
-Worked check: 30 sales at 5% conversion needs 600 live attendees; at 47% show-up that's 1,277 sign-ups (always round up). Note: the approved mockup shows 600 sign-ups, which is wrong. Build to this formula, not the mockup.
+Worked check, **as amended by decision 20 (30 Oct 2026)**: conversion is sales ÷ **sign-ups**, so 30 sales at 5% needs **600 sign-ups**, and at 47% show-up that fills a room of 282 (always round up). The earlier reading of this line — 600 live attendees and 1,277 sign-ups — belonged to the old direction of conversion and is gone. **The approved mockup's 600 sign-ups is therefore right, not wrong.** More generally: the mockups' numbers are illustrative, never specs — build to the formula and do not change a formula to agree with a picture.
 
 ### 6.7 Compare launches
 
@@ -583,7 +583,7 @@ All seven were resolved with Nina on 28 and 29 Sept. Kept here as a record of wh
 - [ ] **Benchmark values** (section 7). Resolved: set per client for their niche, using a copy-and-paste AI prompt in first-time setup (section 7).
 - [ ] **Sample CSV exports.** Resolved: upload for Meta content and Meta Ads only; HeyClients, ActiveCampaign, Kit and Flodesk are manual for now (section 10)
 - [ ] **Satisfaction score.** Resolved: dropped; "Issues raised" added instead (5.8)
-- [ ] **Launch attendance goal.** The mockup's planner card shows 600 sign-ups for 30 sales; the correct figure is 1,277 (6.6). Fix the mockup before anyone reuses it.
+- [x] **Launch attendance goal.** Resolved 30 Oct 2026: decision 20 made conversion sales ÷ sign-ups, so 30 sales at 5% **is** 600 sign-ups and the mockup needs no fixing. The code and `formulas.test.ts` have read that way since 29 Oct.
 
 **Actions**
 
@@ -600,7 +600,7 @@ Read this whole brief before writing any code, then follow these rules.
 2. Build one stage at a time (section 11). Start each stage with a short written plan and wait for Nina's approval.
 3. Show every database migration's SQL to Nina before running it. She reviews it and runs verification queries in the Supabase SQL Editor.
 4. Don't commit or push client-facing changes until Nina confirms testing is done.
-5. The five mockup images in `docs/reporting/mockups/` are the visual reference (Overview, Social Media entry, Launches, Social Media report, Offers). The first two show a left sidebar: ignore it and use the top tab row (section 3). The Launches mockup's planner number is wrong: follow the formula in 6.6.
+5. The five mockup images in `docs/reporting/mockups/` are the visual reference (Overview, Social Media entry, Launches, Social Media report, Offers). The first two show a left sidebar: ignore it and use the top tab row (section 3). **Their numbers are illustrative, not specs** — follow the formulas in sections 5 and 6, and never change a formula to agree with a mockup. (The Launches planner's 600 sign-ups, long recorded here as wrong, is correct under decision 20.)
 
 **Hard rules**
 

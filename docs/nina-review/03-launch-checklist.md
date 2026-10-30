@@ -67,9 +67,11 @@ Once it is ended the same card offers **"Restore [name]'s access"**, also two pr
 
 The route exists and is tested, but nobody has walked it on a live month with a real client's figures. It sends a second email, worded as an update. Worth doing once, deliberately, before it happens by accident.
 
-## 7. The trend charts, read against real history
+## 7. The trend charts — not yet built, and waiting on Phase 3
 
-Every chart with more than one month in it has only ever been drawn from seeded data. They need a real client with three or four real months behind them before anyone can say they read correctly — a chart that's right for one month and wrong across six looks the same on the day it's built.
+**Reworded 30 October.** This item used to say the trend charts needed reading against real history. They cannot be: **they do not exist yet.** The Overview has one bar chart and the launch report has one line chart; everything time-shaped in the mock-ups — the sparkline on each KPI card, Revenue vs Profit, Followers over time, Reach and views, Save rate vs share rate, Revenue by offer — is unbuilt, because none of it has a twelve-month history query to draw from.
+
+That query, the sparklines and those charts are **Phase 3** of the mock-up work Nina approved on 30 October. Once they are built, the original point still stands and comes back to this list: a chart that is right for one month and wrong across six looks the same on the day it is built, so they need a real client with three or four real months behind them before anyone can say they read correctly.
 
 ## 8. The dashes
 
