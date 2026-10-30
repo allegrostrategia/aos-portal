@@ -13,6 +13,7 @@ import {
   AssignTeamForm,
   EditWorkspaceForm,
   EndAccessForm,
+  RestoreAccessForm,
 } from "./forms";
 
 export const metadata: Metadata = {
@@ -79,7 +80,7 @@ export default async function AdminReportingPage() {
   // ended client as a current one.
   type People = {
     client: { userId: string; name: string } | null;
-    ended: { name: string; on: string }[];
+    ended: { userId: string; name: string; on: string }[];
     team: string[];
   };
   const byWorkspace = new Map<string, People>(
@@ -89,7 +90,12 @@ export default async function AdminReportingPage() {
     const entry = byWorkspace.get(grant.workspace_id);
     if (!entry) continue;
     if (grant.role === "client") {
-      if (grant.revoked_at) entry.ended.push({ name: grant.display_name, on: grant.revoked_at });
+      if (grant.revoked_at)
+        entry.ended.push({
+          userId: grant.user_id,
+          name: grant.display_name,
+          on: grant.revoked_at,
+        });
       else entry.client = { userId: grant.user_id, name: grant.display_name };
     } else if (!grant.revoked_at) {
       entry.team.push(grant.display_name);
@@ -289,6 +295,33 @@ export default async function AdminReportingPage() {
                   </div>
                 </details>
               ) : null}
+
+              {/* And the way back. Only shown where there is something to
+                  restore, so the two controls are never both on a card: a
+                  retainer login is either the live client or an ended one.
+                  `restore_report_client_access` refuses every other kind and
+                  says which route to use instead, so this is not the only
+                  guard either. */}
+              {workspace.kind === "retainer" && people?.ended.length
+                ? people.ended.map((person) => (
+                    <details
+                      key={person.userId}
+                      className="group mt-3 border-t border-ink/8 pt-3"
+                    >
+                      <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
+                        Restore {person.name}&rsquo;s access
+                      </summary>
+                      <div className="mt-3">
+                        <RestoreAccessForm
+                          workspaceId={workspace.id}
+                          userId={person.userId}
+                          businessName={workspace.business_name}
+                          contactName={person.name}
+                        />
+                      </div>
+                    </details>
+                  ))
+                : null}
             </Card>
           );
               })}

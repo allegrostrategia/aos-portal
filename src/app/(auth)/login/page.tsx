@@ -47,10 +47,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         aOS is invitation only. If you&rsquo;ve joined and haven&rsquo;t received
         your invitation, email{" "}
         <a
-          href="mailto:hello@allegrostrategia.com"
+          href="mailto:contact@allegrobusinessservices.co.uk"
           className="underline underline-offset-2"
         >
-          hello@allegrostrategia.com
+          contact@allegrobusinessservices.co.uk
         </a>
         .
       </p>

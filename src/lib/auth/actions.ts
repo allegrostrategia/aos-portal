@@ -97,7 +97,7 @@ export async function requestPasswordReset(
   if (!origin) {
     return {
       error:
-        "Password resets aren't configured yet. Email hello@allegrostrategia.com and we'll help you in.",
+        "Password resets aren't configured yet. Email contact@allegrobusinessservices.co.uk and we'll help you in.",
     };
   }
 

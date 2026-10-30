@@ -59,7 +59,9 @@ The grant on the test reporting workspace carried the display name "Nina", which
 
 It could also have been done from the screen: **Reporting → the client's card → Edit details → "Client contact's name"**, which has existed since 5 October for exactly this.
 
-**And there is now a way to stop a reporting login.** Until 29 October there was none at all — cancelling a member needs a membership, and a retainer client deliberately has none, so the only ways out were deleting their grant by hand or disabling the account in Supabase. The card now carries **"End this client's access"**: two presses, nothing deleted, and the card afterwards says who lost access and when. Every month, figure, note and reply stays, and stays readable to you.
+**And there is now a way to stop a reporting login, and to start it again.** Until 29 October there was none at all — cancelling a member needs a membership, and a retainer client deliberately has none, so the only ways out were deleting their grant by hand or disabling the account in Supabase. The card now carries **"End this client's access"**: two presses, nothing deleted, and the card afterwards says who lost access and when. Every month, figure, note and reply stays, and stays readable to you.
+
+Once it is ended the same card offers **"Restore [name]'s access"**, also two presses. It puts them back on the grant they already had, so every month they already have comes back with them and nothing is set up twice — and both the ending and the restoring are kept on the record, so clearing the flag does not erase the fact that it happened.
 
 ## 6. Unpublish → fix → republish, done once for real
 

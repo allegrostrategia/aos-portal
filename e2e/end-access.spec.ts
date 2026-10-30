@@ -143,6 +143,14 @@ test.describe("ending a client's access", () => {
     await expect(
       page.getByText(/every figure in your reports is still there/),
     ).toBeVisible();
+    // "ended on", not "ran until" — the latter is the Chiarezza sentence, for
+    // a window that reached a date set when they were invited.
+    await expect(page.getByText(/Your reporting access ended on/)).toBeVisible();
+    await expect(page.getByText(/ran until/)).toHaveCount(0);
+    // Rule 8: the only address a client is ever given.
+    await expect(
+      page.getByRole("link", { name: "contact@allegrobusinessservices.co.uk" }),
+    ).toBeVisible();
     await shot(page, "05-client-told", w);
 
     // The same sign-in, but carrying the `next` a stale tab leaves behind —
@@ -162,4 +170,40 @@ test.describe("ending a client's access", () => {
     await shot(page, "06-client-told-stale-link", w);
   });
 
+  // Straight after, because it needs the ended state the test above leaves.
+  // Playwright runs a file's tests in order with `workers: 1`.
+  test("and giving it back, from the same card", async ({ page }, info) => {
+    const w = info.project.name === "phone" ? "phone" : "desktop";
+    const card = cardFor(page, RETAINER);
+
+    // The two controls are never both up: this one is here only because the
+    // client grant is ended, and ending is offered only while it is live.
+    await expect(card.getByText("End this client’s access")).toHaveCount(0);
+
+    await card.getByText("Restore Bella Test’s access").click();
+    await expect(card.getByText(/Their login opens this report again/)).toBeVisible();
+    await shot(page, "07-restore-disclosure", w);
+
+    await card.getByRole("button", { name: "Restore their access" }).click();
+    await expect(card.getByText(/emailed again when one is published/)).toBeVisible();
+    await shot(page, "08-restore-confirm-asked", w);
+    // Still ended until the second press.
+    await expect(card.getByText("Access ended")).toBeVisible();
+
+    await card.getByRole("button", { name: "Yes, restore their access" }).click();
+
+    // The card going back to naming them as the client is the confirmation,
+    // the same way the ended line was.
+    await expect(card.getByText("Access ended")).toHaveCount(0, { timeout: 15_000 });
+    await expect(card.getByText("End this client’s access")).toBeVisible();
+    await shot(page, "09-access-restored", w);
+
+    // And they are really back in, on the months they already had.
+    await signIn(page, "client");
+    await expect(
+      page.getByRole("heading", { name: /Your access has ended/i }),
+    ).toHaveCount(0);
+    await expect(page.getByText(RETAINER)).toBeVisible({ timeout: 20_000 });
+    await shot(page, "10-client-back-in", w);
+  });
 });

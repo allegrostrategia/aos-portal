@@ -49,7 +49,12 @@ export default async function NoAccessPage() {
             </>
           ) : accessEnded ? (
             <>
-              Your reporting access ran until{" "}
+              {/* Two sentences for two different things. A Chiarezza window
+                  "ran until" a date set when they were invited; a retainer
+                  client's access "ended on" a day Nina chose. Dom, 30 Oct. */}
+              {accessEnded.reason === "revoked"
+                ? "Your reporting access ended on "
+                : "Your reporting access ran until "}
               {formatCalendarDate(accessEnded.endedOn)}. Nothing has been
               deleted — every figure in your reports is still there, and it
               comes back with you if you come back.
@@ -66,10 +71,10 @@ export default async function NoAccessPage() {
         <p className="mt-4 text-small text-ink/70">
           Email{" "}
           <a
-            href="mailto:hello@allegrostrategia.com"
+            href="mailto:contact@allegrobusinessservices.co.uk"
             className="underline decoration-orange decoration-2 underline-offset-4"
           >
-            hello@allegrostrategia.com
+            contact@allegrobusinessservices.co.uk
           </a>{" "}
           and we&rsquo;ll sort it out.
         </p>

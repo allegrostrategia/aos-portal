@@ -993,5 +993,96 @@ await check("a live team grant still is one", async () =>
 await check("Bella Ltd is unaffected — one client's end is not everyone's", async () =>
   (await one(RETAINER, `select public.report_can_view('${WS_R}') v`)).v === true);
 
+console.log("\n— and giving it back (30 October) —");
+//
+// The grant row is unique on (workspace_id, user_id), so while the revoked
+// row is there nothing can grant that person this workspace again. Restoring
+// the row they already have is the only way back that keeps their months.
+// ---------------------------------------------------------------------------
+
+await rejects("a non-admin cannot restore anybody's access", () =>
+  as(ELIZE, () => db.query(
+    `select public.restore_report_client_access('${WS_RIVAL}', '${RIVAL}')`)),
+  "Only an admin");
+
+await rejects("the client cannot restore their own", () =>
+  as(RIVAL, () => db.query(
+    `select public.restore_report_client_access('${WS_RIVAL}', '${RIVAL}')`)),
+  "Only an admin");
+
+await rejects("an aos_member workspace points at reinstating the membership", () =>
+  as(NINA, () => db.query(
+    `select public.restore_report_client_access('${WS_M}', '${MEMBER}')`)),
+  "reinstate the membership");
+
+await rejects("a Chiarezza workspace points at the access end date", () =>
+  as(NINA, () => db.query(
+    `select public.restore_report_client_access('${WS_C}', '${CHIARA}')`)),
+  "set the access end date");
+
+await rejects("a team assignment is not restored here either", () =>
+  as(NINA, () => db.query(
+    `select public.restore_report_client_access('${WS_RIVAL}', '${ELIZE}')`)),
+  "not ended or restored here");
+
+await rejects("a login with no grant on the workspace", () =>
+  as(NINA, () => db.query(
+    `select public.restore_report_client_access('${WS_RIVAL}', '${MEMBER}')`)),
+  "no grant on this workspace");
+
+await rejects("a client whose access is live has nothing to restore", () =>
+  as(NINA, () => db.query(
+    `select public.restore_report_client_access('${WS_R}', '${RETAINER}')`)),
+  "has not been ended");
+
+await check("Nina restores it, and the flag is cleared", async () => {
+  await one(NINA, `select public.restore_report_client_access('${WS_RIVAL}', '${RIVAL}')`);
+  const row = await one(NINA, `
+    select revoked_at, revoked_by from public.report_access
+     where workspace_id = '${WS_RIVAL}' and user_id = '${RIVAL}'`);
+  return row.revoked_at === null && row.revoked_by === null;
+});
+
+await check("and they read their own month again", async () =>
+  (await count(RIVAL,
+    `select count(*)::int c from public.report_values where workspace_id = '${WS_RIVAL}'`)) === 1);
+
+await check("report_can_view says yes again", async () =>
+  (await one(RIVAL, `select public.report_can_view('${WS_RIVAL}') v`)).v === true);
+
+await rejects("it cannot be restored twice", () =>
+  as(NINA, () => db.query(
+    `select public.restore_report_client_access('${WS_RIVAL}', '${RIVAL}')`)),
+  "has not been ended");
+
+await check("both the ending and the restoring are on the record", async () => {
+  // The point of the events table. `revoked_at` is cleared now, so without
+  // this there would be nothing anywhere to say the client was ever cut off.
+  const rows = await as(NINA, () => db.query(`
+    select action, actor_name from public.report_access_events
+     where workspace_id = '${WS_RIVAL}' and user_id = '${RIVAL}'
+     order by created_at, action desc`));
+  return (
+    rows.rows.length === 2 &&
+    rows.rows[0].action === "ended" &&
+    rows.rows[1].action === "restored" &&
+    rows.rows.every((r) => r.actor_name === "Nina Oliver")
+  );
+});
+
+await check("the client cannot read the record of it", async () =>
+  (await count(RIVAL,
+    `select count(*)::int c from public.report_access_events`)) === 0);
+
+await check("it can be ended again, and that is a third event", async () => {
+  await one(NINA, `select public.end_report_client_access('${WS_RIVAL}', '${RIVAL}')`);
+  const c = await count(NINA, `
+    select count(*)::int c from public.report_access_events
+     where workspace_id = '${WS_RIVAL}' and user_id = '${RIVAL}'`);
+  // Put it back, so the file ends with the client able to read their report.
+  await one(NINA, `select public.restore_report_client_access('${WS_RIVAL}', '${RIVAL}')`);
+  return c === 3;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

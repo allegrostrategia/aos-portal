@@ -4,6 +4,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
+ * Why a reporting login stopped, which decides how the page says it.
+ *
+ * `expired` is a Chiarezza window reaching the date it was always going to
+ * reach; `revoked` is Nina ending a retainer client's access on a day nobody
+ * knew in advance. "Ran until" is right for the first and slightly wrong for
+ * the second — it implies a term that was planned — so they get their own
+ * sentence. Dom, 30 October.
+ */
+export type AccessEndedReason = "expired" | "revoked";
+
+/**
  * Whether this login's reporting access has run out, and when.
  *
  * A Chiarezza attendee is given access with an end date. The day after
@@ -20,7 +31,10 @@ import { createClient } from "@/lib/supabase/server";
  * being reported on. Scoped to the signed-in user's own id, so it can
  * only ever answer about them.
  */
-export async function reportAccessEnded(): Promise<{ endedOn: string } | null> {
+export async function reportAccessEnded(): Promise<{
+  endedOn: string;
+  reason: AccessEndedReason;
+} | null> {
   const supabase = await createClient();
   const { data: user } = await supabase.auth.getUser();
   const userId = user.user?.id;
@@ -49,15 +63,24 @@ export async function reportAccessEnded(): Promise<{ endedOn: string } | null> {
   // have read "your account isn't ready yet" — an invitation to email about
   // something that is working as intended, which is the exact failure this
   // function was written for.
-  const stopped = rows.map((row) => {
-    if (row.revoked_at) return row.revoked_at.slice(0, 10);
+  const stopped = rows.map((row): { on: string; reason: AccessEndedReason } | null => {
+    if (row.revoked_at) return { on: row.revoked_at.slice(0, 10), reason: "revoked" };
     const end = row.report_workspaces?.access_end_date ?? null;
-    return end !== null && end < today ? end : null;
+    return end !== null && end < today ? { on: end, reason: "expired" } : null;
   });
 
   // Any grant still live means access did not end — something else is going
   // on, and saying "your access has ended" would be wrong.
-  if (stopped.some((d) => d === null)) return null;
+  if (stopped.some((stop) => stop === null)) return null;
 
-  return { endedOn: (stopped as string[]).sort().at(-1)! };
+  // The most recent stop is the one to name: it is the day they actually
+  // lost the last of it, and its own reason is the true one for that day.
+  // A login with both kinds is not a shape anybody has today — it would take
+  // one person holding a Chiarezza place and a retainer — but picking the
+  // latest means the answer stays right if it ever happens.
+  const [latest] = (stopped as { on: string; reason: AccessEndedReason }[]).sort(
+    (a, b) => b.on.localeCompare(a.on),
+  );
+
+  return { endedOn: latest.on, reason: latest.reason };
 }

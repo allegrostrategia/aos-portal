@@ -9,6 +9,7 @@ import {
   assignReportTeamMember,
   endReportClientAccess,
   inviteReportClient,
+  restoreReportClientAccess,
   saveWorkspaceSettings,
   type EndAccessState,
   type ReportInviteState,
@@ -232,12 +233,55 @@ export function EndAccessForm({
   );
 }
 
+export function RestoreAccessForm({
+  workspaceId,
+  userId,
+  businessName,
+  contactName,
+}: {
+  workspaceId: string;
+  userId: string;
+  businessName: string;
+  /** How the client contact is named on their grant, for the warning. */
+  contactName: string;
+}) {
+  const [state, action] = useActionState<EndAccessState, FormData>(
+    restoreReportClientAccess,
+    null,
+  );
+
+  const confirming = Boolean(state?.needsConfirm);
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="workspace_id" value={workspaceId} />
+      <input type="hidden" name="user_id" value={userId} />
+      <input type="hidden" name="business_name" value={businessName} />
+      <input type="hidden" name="contact_name" value={contactName} />
+      <input type="hidden" name="confirm" value={confirming ? "1" : ""} />
+      <p className="text-caption text-ink/55">
+        Their login opens this report again, with every month it already holds.
+        It is the same grant they had, so nothing has to be set up twice — and
+        both the ending and this are kept on the record.
+      </p>
+      <EndFooter
+        state={state}
+        confirming={confirming}
+        labels={["Restore their access", "Yes, restore their access"]}
+      />
+    </form>
+  );
+}
+
 function EndFooter({
   state,
   confirming,
+  labels = ["End their access", "Yes, end their access"],
 }: {
   state: EndAccessState;
   confirming: boolean;
+  /** [resting, confirming] — the only thing the two forms differ in. */
+  labels?: [string, string];
 }) {
   const { pending } = useFormStatus();
   return (
@@ -249,7 +293,7 @@ function EndFooter({
         {pending ? "Working\u2026" : (state?.error ?? state?.notice ?? "")}
       </p>
       <Button type="submit" variant="secondary" disabled={pending}>
-        {confirming ? "Yes, end their access" : "End their access"}
+        {confirming ? labels[1] : labels[0]}
       </Button>
     </div>
   );

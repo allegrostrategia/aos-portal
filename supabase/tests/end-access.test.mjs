@@ -22,9 +22,12 @@ import { flushAfter } from "./stubs/next-server.mjs";
 
 process.env.NEXT_PUBLIC_SITE_URL = "https://aos.allegrostrategia.com";
 
-const { endReportClientAccess } = await import("../../src/lib/admin/report-users.ts");
+const { endReportClientAccess, restoreReportClientAccess } = await import(
+  "../../src/lib/admin/report-users.ts",
+);
 const { publishMonth } = await import("../../src/lib/reporting/note-actions.ts");
 const { getReportUser } = await import("../../src/lib/auth/report.ts");
+const { reportAccessEnded } = await import("../../src/lib/reporting/access-ended.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
 const ELIZE = "22222222-2222-2222-2222-222222222222";
@@ -141,6 +144,17 @@ test("a second attempt says it has already happened", async () => {
 // them because it is their own row. So without the filter in getReportUser an
 // ended client would open on a picker listing Bella Ltd, and every figure
 // behind it would then refuse to load.
+test("and /no-access says their access ENDED, with the date", async () => {
+  // The sentence a retainer client reads. It is not the Chiarezza one — that
+  // window "ran until" a date set when they were invited, this one ended on a
+  // day Nina chose — and the only thing standing between the two is `reason`.
+  as(CLIENT);
+  const ended = await reportAccessEnded();
+
+  assert.equal(ended?.reason, "revoked");
+  assert.equal(ended?.endedOn, new Date().toISOString().slice(0, 10));
+});
+
 test("their own session no longer sees the workspace", async () => {
   as(CLIENT);
   const user = await getReportUser();
@@ -191,4 +205,91 @@ test("the month really did publish — it is the email that stopped", async () =
     /nobody to email/,
     "and it says why nothing went out, rather than looking like a success",
   );
+});
+
+// --- giving it back ---------------------------------------------------------
+//
+// The half that makes ending it safe to do. Same two presses, same action
+// shape; what matters here is that everything the ending switched off comes
+// back on, because each of those was a separate filter that had to be right
+// in both directions.
+
+test("a team member cannot restore it either", async () => {
+  as(ELIZE);
+  await assert.rejects(() => restoreReportClientAccess(null, endForm()), /REDIRECT:/);
+  assert.ok((await grant()).revoked_at, "still ended");
+});
+
+test("the first press asks, and changes nothing", async () => {
+  as(NINA);
+  const state = await restoreReportClientAccess(null, endForm());
+
+  assert.equal(state?.needsConfirm, true);
+  assert.match(state?.error ?? "", /Bella Rossi/);
+  assert.match(state?.error ?? "", /Bella Ltd/);
+  assert.match(state?.error ?? "", /emailed again/);
+  assert.ok((await grant()).revoked_at, "the first press must not restore anything");
+});
+
+test("the second press restores it, on the same grant row", async () => {
+  as(NINA);
+  const state = await restoreReportClientAccess(null, endForm({ confirm: "1" }));
+
+  assert.equal(state?.needsConfirm, undefined);
+  assert.match(state?.notice ?? "", /Access restored/);
+
+  const row = await grant();
+  assert.equal(row.revoked_at, null);
+  assert.equal(row.by, null);
+});
+
+test("their own session finds the workspace again", async () => {
+  as(CLIENT);
+  const user = await getReportUser();
+  assert.equal(user?.isAdmin, false);
+  assert.equal(user?.grants.length, 1, "the grant they had, not a second empty one");
+  assert.equal(user?.grants[0].business_name, "Bella Ltd");
+});
+
+test("and publishing a month emails them again", async () => {
+  reset();
+  as(NINA);
+  // September, because August was published while their access was ended.
+  const state = await publishMonth(null, form({ workspace_id: workspace, month: SEP }));
+  await flushAfter();
+
+  assert.equal(state?.error, undefined, `publish should work: ${state?.error}`);
+  assert.deepEqual(sent().map((m) => m.to), ["bella@client.test"]);
+});
+
+test("every month they had is still theirs, including the one sent to nobody", async () => {
+  // The whole argument for restoring the row rather than re-inviting: August
+  // was published while they were gone and is waiting for them.
+  const months = await asMember(db, NINA, () =>
+    db.query(
+      `select count(*)::int c from public.report_periods
+        where workspace_id = '${workspace}' and published_at is not null`,
+    ),
+  );
+  assert.equal(months.rows[0].c, 2);
+});
+
+
+// --- the other way a reporting login stops ----------------------------------
+
+test("a Chiarezza window that ran out says 'ran until', not 'ended on'", async () => {
+  const CHIARA = "44444444-4444-4444-4444-444444444444";
+  await db.exec(`insert into auth.users (id, email) values ('${CHIARA}','chiara@course.test')`);
+
+  await asMember(db, NINA, () =>
+    db.query(`
+      select public.create_report_workspace(
+        '${CHIARA}', 'chiarezza', 'Chiara Co', 'Chiara', '${AUG}', 'GBP', '2026-09-30')`),
+  );
+
+  as(CHIARA);
+  const ended = await reportAccessEnded();
+
+  assert.equal(ended?.reason, "expired", "a window running out is not a revoking");
+  assert.equal(ended?.endedOn, "2026-09-30", "the date it was always going to end");
 });

@@ -134,6 +134,19 @@ test("and a bare sign-in sends them to the root, which says why", async () => {
   assert.equal(await signInAs(CLIENT, CLIENT_EMAIL, undefined), "/");
 });
 
+test("and when it is restored they are carried back again", async () => {
+  await asMember(db, NINA, () =>
+    db.query(`select public.restore_report_client_access('${workspace}', '${CLIENT}')`),
+  );
+
+  const next = `/reporting?workspace=${workspace}&month=2026-08`;
+  assert.equal(
+    await signInAs(CLIENT, CLIENT_EMAIL, next),
+    next,
+    "the same deep link that worked before it was ended",
+  );
+});
+
 test("a wrong password is reported, not redirected", async () => {
   configure(db, CLIENT);
   const form = new FormData();

@@ -434,3 +434,56 @@ export async function endReportClientAccess(
     notice: `Access ended. ${businessName || "The client"}'s reports are all still here.`,
   };
 }
+
+/**
+ * Give an ended retainer client their access back.
+ *
+ * Shares `EndAccessState` and the two-press shape with the action above, on
+ * purpose. Restoring is not destructive the way ending is, but it is still
+ * handing a person outside Allegro the key to a live report — and on a screen
+ * listing every client, a single press next to a name is too easy to give to
+ * the wrong one. The warning names them for the same reason the other does.
+ */
+export async function restoreReportClientAccess(
+  _prev: EndAccessState,
+  formData: FormData,
+): Promise<EndAccessState> {
+  await requireAdmin();
+
+  const workspaceId = String(formData.get("workspace_id") ?? "").trim();
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const businessName = String(formData.get("business_name") ?? "").trim();
+  const contactName = String(formData.get("contact_name") ?? "").trim();
+
+  if (!workspaceId || !userId) {
+    return { error: "No client given." };
+  }
+
+  if (String(formData.get("confirm") ?? "") !== "1") {
+    return {
+      needsConfirm: true,
+      error:
+        `This lets ${contactName || "their contact"} back into ${businessName || "this client"} ` +
+        `and into every month it already holds, and they will be emailed again when one is ` +
+        `published. Press again to restore it.`,
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("restore_report_client_access", {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/reporting");
+  revalidatePath("/reporting", "layout");
+
+  // Same as above: the disclosure this is submitted from is rendered from an
+  // ENDED grant, so restoring unmounts it. The card going back to naming them
+  // as the client is the confirmation.
+  return {
+    notice: `Access restored. ${contactName || "They"} can open ${businessName || "this client"} again.`,
+  };
+}
