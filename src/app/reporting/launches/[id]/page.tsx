@@ -236,11 +236,26 @@ export default async function LaunchPage({
 
             <FunnelChart
               stages={[
-                { label: "Signed up", value: s.signUps },
+                { label: "Signed up", value: s.signUps, of: "of sign-ups" },
                 // Day one, which is what "showed up" is measured against
                 // everywhere else on this page.
-                { label: "Attended live", value: s.attendeesByDay[0] ?? null },
-                { label: "Stayed to the pitch", value: s.liveAtEndOfPitch },
+                // **Short phrases, measured at 390px.** The row shares its
+                // width with the funnel beside it, so "7% of those at the
+                // pitch" ran into the figure on its left and truncated
+                // "Bought" to "B" on a phone — which the assertions did
+                // not catch, because every element was still technically
+                // on the page. These fit with room to spare, and the row
+                // above each one says the long version in full.
+                {
+                  label: "Attended live",
+                  value: s.attendeesByDay[0] ?? null,
+                  of: "of attendees",
+                },
+                {
+                  label: "Stayed to the pitch",
+                  value: s.liveAtEndOfPitch,
+                  of: "of the pitch",
+                },
                 {
                   // **Only the main selling stage gets a "bought" step.**
                   // There is no per-stage sales figure in the schema —
@@ -251,9 +266,33 @@ export default async function LaunchPage({
                   // guessed, and the funnel is three deep.
                   label: "Bought",
                   value: s.stage.is_main_selling_stage ? summary.totalSales : null,
+                  // **Two shares, and the second is the card's own
+                  // number** (Nina, 30 October). The funnel measures every
+                  // step against the step above it, so "Bought" lands on
+                  // sales ÷ those still in the room — while the
+                  // Conversion rate card at the top of this page is sales
+                  // ÷ sign-ups to the main selling stage, which Nina
+                  // settled on 28 October. Both are true and they are
+                  // different numbers, so a row showing only the first
+                  // reads as the card being wrong.
+                  //
+                  // It is `conversionRate` rendered by the same formatter
+                  // the card uses, not the same sum done twice: there is
+                  // one value and one rounding, so the two cannot drift.
+                  also:
+                    s.stage.is_main_selling_stage && summary.conversionRate !== null
+                      ? {
+                          display: formatValue(summary.conversionRate, "percent"),
+                          of: "of sign-ups",
+                        }
+                      : undefined,
                 },
               ]}
-              caption="Each step as a share of the step above it."
+              caption={
+                s.stage.is_main_selling_stage
+                  ? "Each step as a share of the step above it, and the last against sign-ups too — which is the conversion rate on the card above."
+                  : "Each step as a share of the step above it."
+              }
             />
 
             {s.attendeesByDay.length > 1 && s.attendeesByDay.some((d) => d !== null) ? (

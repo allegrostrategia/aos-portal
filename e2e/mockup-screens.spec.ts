@@ -748,6 +748,52 @@ test.describe("the five mockup screens", () => {
     await expect(stayed).toContainText("430");
     await expect(stayed).toContainText("72%");
 
+    // **The funnel's second share IS the Conversion rate card's figure**
+    // (Nina, 30 October). The funnel measures each step against the step
+    // above it, so "Bought" on its own reads 7% — of those still in the
+    // room — while the card at the top of the page reads 3.3%, sales over
+    // sign-ups to the main selling stage, which is what decision 19
+    // settled. Both are true, and a row showing only the first makes the
+    // card look broken.
+    //
+    // Read off the page and compared, not asserted as 3.3% twice: what
+    // is being tested is that the two agree, and a test naming the number
+    // would pass just as happily with the page computing it in two places
+    // and rounding them apart.
+    const cardRate = await page.evaluate(() => {
+      const label = [...document.querySelectorAll("span")].find(
+        (el) => el.textContent?.trim() === "Conversion rate",
+      );
+      // Walk up to whichever ancestor holds the figure. A KPI card is a
+      // plain `div`, not a `section`, so there is no tag to aim at.
+      let el: Element | null | undefined = label?.parentElement;
+      while (el && !el.querySelector(":scope > p")) el = el.parentElement;
+      return el?.querySelector(":scope > p")?.textContent?.trim() ?? "";
+    });
+    expect(cardRate, "the Conversion rate card").toMatch(/^\d+(\.\d+)?%$/);
+    const bought = masterclass.locator("li", { hasText: "Bought" });
+    await expect(bought).toContainText("of the pitch");
+    await expect(bought).toContainText(`${cardRate} of sign-ups`);
+
+    // **And both figures fit beside the funnel at 390px.** The first
+    // version of this row did not: "7% of those at the pitch" ran into
+    // the figure on its left and squeezed the label down to "B", with
+    // every element still present and still "visible" to an assertion.
+    // So the check is on the geometry — nothing in the row overlaps the
+    // figure, and the label is wide enough to be a word.
+    const boughtFits = await bought.evaluate((li) => {
+      const [left, right] = [...li.children] as HTMLElement[];
+      const label = left.lastElementChild as HTMLElement;
+      return {
+        gap: right.getBoundingClientRect().left - left.getBoundingClientRect().right,
+        label: label.getBoundingClientRect().width,
+        text: label.textContent ?? "",
+      };
+    });
+    expect(boughtFits.gap, "the shares run into the figure").toBeGreaterThan(0);
+    expect(boughtFits.text).toBe("Bought");
+    expect(boughtFits.label, '"Bought" is squeezed to nothing').toBeGreaterThan(40);
+
     // **Only the main selling stage gets a "Bought" step.** There is no
     // per-stage sales figure, so the five day challenge — which is not
     // the selling stage — must not sprout one from the launch total.

@@ -563,6 +563,29 @@ four bars.
 - The mockup's own funnel mixes the two: its last figure, 5.6%, is of the
   top rather than of the step above it, while the two before it are of the
   step above. One column meaning two things is not something to copy.
+- **The "Bought" row shows both shares** (Nina, 30 October). Measured
+  against the step above it, Bought is 7% — of those still in the room —
+  while the Conversion rate card at the top of the same page reads 3.3%,
+  sales over sign-ups to the main selling stage, which decision 19
+  settled. Both are true and a row showing only the first makes the card
+  look broken. The second figure is `summary.conversionRate` rendered by
+  the same `formatValue` the card uses: one value, one rounding, so they
+  cannot drift. The browser test reads both off the page and compares
+  them rather than naming 3.3% twice.
+- The words for each share travel with the step they describe
+  (`FunnelStage.of`), not with the row that quotes them. Which step comes
+  before which is not fixed — a stage with no "live at end of pitch"
+  figure drops that row — and a hard-coded "of the pitch" on the row below
+  would then be describing the people who merely turned up.
+- **Both shares had to be measured at 390px, and the first wording did not
+  fit.** "7% of those at the pitch" beside a fixed 180px funnel ran into
+  the figure on its left and squeezed "Bought" down to "B", with every
+  element still present and still passing a visibility assertion. The
+  funnel SVG is now narrower on a phone and squashed rather than scaled
+  (`preserveAspectRatio="none"`), because its height has to stay level
+  with the list rows beside it; the wording is shorter; and the test
+  checks the row's geometry — that nothing overlaps and the label is still
+  wide enough to be a word.
 
 **"How it ran" is horizontal on desktop and stacked on the phone**, a disc
 per stage with a hairline rail behind them. The earlier list was argued
@@ -589,6 +612,15 @@ The review fixture gained two more stages on Autumn challenge (a cart week
 and a replay window, neither carrying a figure), removed again in
 `afterAll` — a horizontal timeline of two discs says very little about
 whether a horizontal timeline works.
+
+**Discs on "Effective hourly rate" and the overflow panel** (Nina,
+30 October). Both were panel titles without one on a page where every
+other title had one, which read as an omission rather than a choice. The
+overflow panel is shared, so this puts a disc on "Everything else this
+month" for every category and not only Offers — which is the consistency
+being asked for. Three panel titles still have none: "Notes from your
+strategist" and the two "What worked this month" panels in
+`top-items.tsx`. Not an oversight; not asked for either.
 
 ### Open questions and known gaps
 

@@ -329,7 +329,10 @@ export default async function CategoryReportPage({
                   />
                 </Card>
                 <Card>
-                  <SectionTitle aside="(revenue − other direct costs) ÷ hours">
+                  <SectionTitle
+                    icon={<IconCircle name="target" tone="sky" />}
+                    aside="(revenue − other direct costs) ÷ hours"
+                  >
                     Effective hourly rate
                   </SectionTitle>
                   <BarChart
@@ -451,7 +454,15 @@ export default async function CategoryReportPage({
 
                   The month compared against is said once, in the aside,
                   rather than "vs. August" on each of a dozen rows. */}
-              <SectionTitle aside={previousLabel ? `vs. ${previousLabel}` : undefined}>
+              {/* The disc is on every other panel title in the report, so
+                  this one looked like an omission rather than a choice
+                  (Nina, 30 October). It is the shared overflow panel, so
+                  this puts one on every category page and not only on
+                  Offers, which is the consistency being asked for. */}
+              <SectionTitle
+                icon={<IconCircle name="notes" tone="gold" />}
+                aside={previousLabel ? `vs. ${previousLabel}` : undefined}
+              >
                 Everything else this month
               </SectionTitle>
               <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
