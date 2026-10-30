@@ -12,6 +12,12 @@
 
 # testing
 /coverage
+# Playwright's run artefacts: traces, videos, and .last-run.json, which
+# records the result of whichever suite ran last on this machine. None of
+# it is reproducible or reviewable, and the run file in particular changes
+# on every local run, so it kept turning up in unrelated diffs.
+/test-results/
+/e2e/report/
 
 # next.js
 /.next/
