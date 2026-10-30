@@ -63,6 +63,21 @@ const METRIC_ICONS: Record<string, ReportIconName> = {
   leads_conversions_close_rate: "target",
   leads_conversions_lead_to_client_rate: "target",
 
+  // Offers. The mockup's row is coins, a pie, a clock and a person; of
+  // those the icon set has a clock, so the other three go to the nearest
+  // thing it does have rather than to four new glyphs drawn for one row.
+  offers_total_revenue_from_offers: "revenue",
+  offers_overall_margin: "profit",
+  offers_total_hours_spent_delivering: "clock",
+  offers_overall_effective_hourly_rate: "target",
+  offers_revenue_this_month: "revenue",
+  offers_units_sold: "offers",
+  offers_hours_spent_delivering: "clock",
+  offers_margin: "profit",
+  offers_effective_hourly_rate: "target",
+  offers_delivery_cost: "calculator",
+  offers_other_direct_costs: "calculator",
+
   // Email.
   email_list_size_at_month_end: "people",
   email_new_subscribers: "person-plus",

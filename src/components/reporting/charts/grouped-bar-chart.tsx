@@ -57,6 +57,7 @@ export function GroupedBarChart({
   caption,
   emptyMessage,
   narrow = false,
+  colours = "pair",
 }: {
   series: GroupedSeries[];
   months: string[];
@@ -66,6 +67,21 @@ export function GroupedBarChart({
   emptyMessage: string;
   /** True where the chart shares its row, so the labels stay legible. */
   narrow?: boolean;
+  /**
+   * Which two hues, or which n.
+   *
+   * `"pair"` is two measures of the same thing side by side — reach
+   * against views — and takes orange and sky, skipping gold so the two
+   * are as far apart as the palette allows.
+   *
+   * `"entities"` is one bar per identity: an offer, a campaign. It walks
+   * `SERIES` in order from the first, so the nth offer by the page's own
+   * ordering keeps the nth colour and matches the donut beside it. That
+   * is the palette's rule — colour follows the entity, never its rank in
+   * this particular chart — and it only holds because the caller builds
+   * both from the same list in the same order.
+   */
+  colours?: "pair" | "entities";
 }) {
   const W = narrow ? NARROW : WIDE;
   /**
@@ -85,6 +101,13 @@ export function GroupedBarChart({
   if (values.length === 0) return <p className="text-small text-ink/55">{emptyMessage}</p>;
 
   const scaleTop = niceCeiling(Math.max(...values));
+
+  // Against `series`, not `drawn`: an offer with an empty month must not
+  // hand its colour to the next one along.
+  const fillOf = (line: GroupedSeries) => {
+    const index = series.indexOf(line);
+    return fillFor(colours === "pair" ? (index === 0 ? 0 : 2) : index);
+  };
 
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
@@ -143,7 +166,7 @@ export function GroupedBarChart({
                 width={barW}
                 height={height}
                 rx="2"
-                fill={fillFor(series.indexOf(line) === 0 ? 0 : 2)}
+                fill={fillOf(line)}
                 // Every pale fill owes the reader a boundary where it meets
                 // the card, and a separator so two bars never touch.
                 stroke={EDGE}
@@ -154,11 +177,15 @@ export function GroupedBarChart({
           });
         })}
 
-        {/* Drawn over the joins, in the card's own colour. */}
+        {/* Drawn over the joins, in the card's own colour.
+            **From the axis, not from zero.** Spanning the full width it
+            also covered the bottom gridline's own label — "£0" sat at
+            x < PAD.left and simply vanished under this, which looked like
+            a chart whose scale started somewhere unstated. */}
         <rect
-          x="0"
+          x={PAD.left}
           y={PAD.top + plotH}
-          width={W}
+          width={W - PAD.left}
           height={PAD.bottom}
           fill={SEPARATOR}
         />
@@ -185,7 +212,7 @@ export function GroupedBarChart({
               aria-hidden="true"
               className="inline-block h-2.5 w-2.5 rounded-sm"
               style={{
-                background: fillFor(series.indexOf(line) === 0 ? 0 : 2),
+                background: fillOf(line),
                 outline: `1px solid ${EDGE}`,
               }}
             />

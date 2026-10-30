@@ -155,7 +155,9 @@ test.describe("the five mockup screens", () => {
           (workspace_id, entity_type, name, active, sort_order, price, pricing_model, hourly_cost)
         values
           ((select id from w), 'offer', 'Signature Programme', true, 1, 2500, 'one_off', 45),
-          ((select id from w), 'offer', 'The Membership',      true, 2,  250, 'recurring', 45)
+          ((select id from w), 'offer', 'The Membership',      true, 2,  250, 'recurring', 45),
+          ((select id from w), 'offer', 'VIP Day',             true, 3, 1500, 'one_off', 45),
+          ((select id from w), 'offer', 'Done-with-you Launch',true, 4, 4850, 'one_off', 45)
         on conflict do nothing
         returning id, name
       )
@@ -183,9 +185,29 @@ test.describe("the five mockup screens", () => {
         ('The Membership', 'offers_units_sold', 22),
         ('The Membership', 'offers_revenue_this_month', 5500),
         ('The Membership', 'offers_hours_spent_delivering', 28),
-        ('The Membership', 'offers_other_direct_costs', 300)
+        ('The Membership', 'offers_other_direct_costs', 300),
+        ('VIP Day', 'offers_units_sold', 3),
+        ('VIP Day', 'offers_revenue_this_month', 4500),
+        ('VIP Day', 'offers_hours_spent_delivering', 18),
+        ('VIP Day', 'offers_other_direct_costs', 250),
+        -- Deliberately the thin one: 30 hours against £4,850 is £162 an
+        -- hour, under the £200 target below, so the card's warning and
+        -- the bar chart's target line both have something to say. The
+        -- mockup's own fourth offer is the same shape.
+        ('Done-with-you Launch', 'offers_units_sold', 1),
+        ('Done-with-you Launch', 'offers_revenue_this_month', 4850),
+        ('Done-with-you Launch', 'offers_hours_spent_delivering', 30),
+        ('Done-with-you Launch', 'offers_other_direct_costs', 0)
       ) as v(name, key, value) on v.name = inserted.name
       on conflict do nothing;
+    `);
+
+    // The target the hourly-rate bars are measured against, and what the
+    // offer cards warn below. Without it the chart draws bars and no
+    // line, which is half the panel.
+    await db(`
+      update public.report_workspaces set target_hourly_rate = 200
+       where business_name = '${RETAINER}';
     `);
   });
 
@@ -196,15 +218,19 @@ test.describe("the five mockup screens", () => {
                               where business_name = '${RETAINER}');
       delete from public.report_launches
        where name in ('Evergreen mastermind', 'Winter workshop');
+      update public.report_workspaces set target_hourly_rate = null
+       where business_name = '${RETAINER}';
       delete from public.report_values
        where entity_id in (
          select id from public.report_entities
           where entity_type = 'offer'
-            and name in ('Signature Programme', 'The Membership')
+            and name in ('Signature Programme', 'The Membership',
+                         'VIP Day', 'Done-with-you Launch')
        );
       delete from public.report_entities
        where entity_type = 'offer'
-         and name in ('Signature Programme', 'The Membership');
+         and name in ('Signature Programme', 'The Membership',
+                      'VIP Day', 'Done-with-you Launch');
       -- The fixture's own rows, and **only** those.
       --
       -- Two deletes rather than one, because the fixture and the base seed
@@ -510,6 +536,55 @@ test.describe("the five mockup screens", () => {
     // The mockups' pill, on both kinds.
     await expect(page.getByText("One-off").first()).toBeVisible();
     await expect(page.getByText("Recurring").first()).toBeVisible();
+
+    // **A card per offer, with its price as it is sold** (Phase 4). The
+    // recurring one says so in the price line, which is the thing a
+    // table of monthly figures could not say at all.
+    await expect(page.getByRole("heading", { name: "The Membership" })).toBeVisible();
+    await expect(page.getByText("£250").first()).toBeVisible();
+    await expect(page.getByText("/ month").first()).toBeVisible();
+
+    // **The margin ring is on a 0-100 scale.** `percentage()` returns 87
+    // for 87%, and the first ring multiplied by 100 again and drew
+    // "8700%" on every card — a bug a screenshot shows and no assertion
+    // about the figures would have. Signature Programme: £10,000 revenue,
+    // 20 hours at £45 plus £400 other costs is £1,300, so 87%.
+    const rings = page.locator('svg[aria-label^="Margin"]');
+    await expect(rings).toHaveCount(4);
+    await expect(rings.filter({ hasText: "87%" })).toHaveCount(1);
+    const overHundred = await page.evaluate(
+      () =>
+        [...document.querySelectorAll('svg[aria-label^="Margin"] text')].filter(
+          (t) => Number((t.textContent ?? "").replace("%", "")) > 100,
+        ).length,
+    );
+    expect(overHundred, "a margin over 100% is the scale being wrong twice").toBe(0);
+
+    // The hourly-rate target line, and the warning on the offer under it.
+    await expect(page.getByText("Target £200 an hour")).toBeVisible();
+    await expect(
+      page.getByText("Below your £200 an hour target").first(),
+    ).toBeVisible();
+
+    // Six months of revenue, one bar per offer per month.
+    await expect(page.getByText("Revenue by offer")).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /across 6 months/ }),
+    ).toBeVisible();
+    await expect(page.getByText(/months of figures are needed/)).toHaveCount(0);
+
+    // A card for each of the four, so the row is the row the mockup draws
+    // and not three with one underneath.
+    for (const name of ["Signature Programme", "The Membership", "VIP Day",
+                        "Done-with-you Launch"]) {
+      await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    }
+    // Each offer keeping one colour across the donut, the bars and the
+    // six-month chart is checked where the logic is, in
+    // `chart-data.test.ts` — the bars are sorted by rate and the donut is
+    // in the offers' own order, so a colour following a row's position
+    // would disagree with itself on this screen.
+
     await shot(page, "4-offers", width(info.project.name));
   });
 

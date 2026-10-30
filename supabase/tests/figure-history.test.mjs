@@ -24,7 +24,7 @@ import { configure } from "./stubs/supabase-server.mjs";
 
 const { resolveReportContext } = await import("../../src/lib/reporting/context.ts");
 const { getMonthFigures } = await import("../../src/lib/reporting/month-figures.ts");
-const { getFigureHistory, inputKeysFor } = await import(
+const { getEntityHistory, getFigureHistory, inputKeysFor } = await import(
   "../../src/lib/reporting/figure-history.ts"
 );
 const { monthsEndingAt } = await import("../../src/lib/reporting/months.ts");
@@ -311,4 +311,60 @@ test("a client reads their published months and no draft", async () => {
   assert.deepEqual(history.get("social_media_followers_at_month_end"), [1000, 2000, null]);
   assert.equal(history.get("financials_total_revenue").at(-1), null, "September is a draft");
   assert.equal(history.get("financials_total_revenue")[1], 4700, "August is published");
+});
+
+/**
+ * The other history loader: one stored metric, per row, across months.
+ *
+ * `offers_revenue_this_month` needs no `calculate()` — it is typed against
+ * the offer — so "Revenue by offer" is a plain query. What it shares with
+ * the one above is the thing that goes wrong quietly: a window off by a
+ * month, or a row landing in the wrong slot, draws a confident chart with
+ * a month missing from it and says nothing. The offer seeded at the top of
+ * this file earns 3,000 in July, 4,500 in August and 6,000 in September.
+ */
+test("an offer's own revenue, month by month", async () => {
+  configure(db, NINA);
+  const history = await getEntityHistory({
+    workspaceId: WS,
+    months: monthsEndingAt(SEP, 4),
+    metricKey: "offers_revenue_this_month",
+    entityIds: [offerId],
+  });
+
+  // June is before the offer existed, and is a gap rather than a zero.
+  assert.deepEqual(history.get(offerId), [null, 3000, 4500, 6000]);
+});
+
+test("the newest point is the figure on the offer's own card", async () => {
+  // §9 again, for the per-row loader: the last bar of the chart and the
+  // card above it are the same month's revenue, or one of them is wrong.
+  configure(db, NINA);
+  const ctx = await resolveReportContext({ workspace: WS, month: "2026-09" }, "2026-10-02");
+  const figures = await getMonthFigures(ctx);
+  const onCard = figures.offerRows.find((row) => row.id === offerId);
+
+  const history = await getEntityHistory({
+    workspaceId: WS,
+    months: monthsEndingAt(SEP, 6),
+    metricKey: "offers_revenue_this_month",
+    entityIds: [offerId],
+  });
+
+  assert.equal(onCard?.revenue, 6000, "the card, as a control");
+  assert.equal(history.get(offerId).at(-1), onCard?.revenue);
+  // And the series is exactly as long as the axis asked for, whatever
+  // came back — the promise the caller lines its labels up against.
+  assert.equal(history.get(offerId).length, 6);
+});
+
+test("an entity nobody asked about is not in the answer", async () => {
+  configure(db, NINA);
+  const history = await getEntityHistory({
+    workspaceId: WS,
+    months: monthsEndingAt(SEP, 3),
+    metricKey: "offers_revenue_this_month",
+    entityIds: [],
+  });
+  assert.equal(history.size, 0, "no offers asked for, no series back");
 });

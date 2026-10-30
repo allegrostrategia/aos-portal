@@ -438,11 +438,19 @@ by `node scripts/check-chart-palette.mjs "orange-ink,navy,sky-ink" white
 --lines`, which the script grew a `--lines` mode for because sub-3:1 is
 fatal for a stroke and only a warning for a fill.
 
-**Sparklines are navy, all of them** — a deliberate departure from the
-mockups, which give each card's sparkline the hue of its own icon disc.
-That cannot be done honestly for the reason above, and one ink also stops
-the colour implying something: it would be following the card's *position*
-in the row rather than the metric. The colour on the card is the disc.
+**A sparkline takes its own card's disc colour** — the mockups' intent,
+reached the long way round. The first pass drew all of them navy, because
+gold and blush have no legible line form; Nina asked for the mockups'
+reading back on 30 October and the answer is each disc tone mapped to the
+nearest ink that passes rather than to its own fill. Gold and lemon land on
+navy, blush on orange's ink, sky on sky's. Two of those are approximations
+and say so in `palette.ts`.
+
+This is colour following a card's *position* in the row, which the palette
+rules otherwise forbid. It is allowed here for a narrow reason worth
+keeping straight: a sparkline is alone on its card, one series, no legend,
+so its hue distinguishes it from nothing. The rule is about charts where
+two colours sit in one picture and a reader has to match them to a key.
 
 **Cormorant's default figures are old-style**, which is why the headline
 numbers carry `lining-nums proportional-nums`. Measured in Chrome against
@@ -454,10 +462,60 @@ running text.
 
 Also in this phase, from Dom's list: one icon per **metric** rather than
 per category (`metric-icons.ts`, falling back to the category's); tab
-icons at 18px in ink; the launch cover as a band down the left of the card
-(it holds at 390px — the card is 358px inside its padding, the cover takes
-88); "Email list size" shortened to "Email list" so six cards across keep
-their labels on one line.
+icons at 18px in ink; the launch cover beside the name — first as a band
+down the left of the card, then, the same day, as an 80x56 landscape
+thumbnail, because the band took 96 of a 299px card and broke the name
+over two lines at three across; "Email list size" shortened to "Email
+list" so six cards across keep their labels on one line.
+
+**`text-h3` was never a token.** Tailwind v4 has no config file and no
+error for a class it does not know, so it compiled to nothing in five
+places across two components and the launch card's name had been
+rendering at body size since it was written — found by measuring a card in
+the browser, which is not a way of finding the other four.
+`src/app/type-scale.test.ts` now checks every `text-` class in `src`
+against what `globals.css` defines.
+
+### Phase 4 of the mockup work: the Offers page rebuilt — 30 October 2026
+
+The table of six columns is gone and each offer is a card: its price as it
+is sold ("£250 / month", not £250), what it sold, a ring for the margin,
+hours and effective hourly rate. Same figures, same `calculateOffer` —
+what changed is that the thing the page is about is the size of the thing
+the page is about.
+
+**One colour per offer, across all four panels.** The donut, the
+hourly-rate bars, the cards and the new six-month chart all walk
+`offerBreakdown(figures)` in its own order, so the nth offer wears the nth
+hue everywhere and a reader can carry one across the page. The bars made
+this real work: they are sorted by rate, so `fillFor(index)` was colouring
+them by *rank* — an offer moving from second to first changed colour and
+stopped matching its own slice. `BarDatum` now carries an optional
+`colorIndex`, which is the entity's position rather than the row's.
+
+**"Revenue by offer" is grouped bars, not the mockup's lines.** Lines need
+one legible ink each and there are three (`charts/palette.ts`); a bar is a
+fill, so all five hues apply and each offer keeps its donut colour.
+`getEntityHistory` loads it — a plain query, deliberately not
+`getFigureHistory`, because `offers_revenue_this_month` is stored against
+the offer and there is nothing to work out. Up to six months, and an offer
+that sold in April but not this month is not on this page at all, which is
+the rule the donut has always followed.
+
+Two things caught in the browser rather than by a test, both now pinned:
+
+- **The margin ring drew "8700%".** `percentage()` in `formulas.ts`
+  returns a 0–100 number and the ring multiplied by 100 again. The scale is
+  now stated in `chart-data.test.ts` and the Offers browser test fails on
+  any ring over 100%.
+- **The grouped chart's masking rect covered its own "£0" label.** It
+  spanned the full width; it now starts at the axis. Phase 3's "Reach and
+  views" had the same hole.
+
+**There is no margin target in the schema**, so the mockup's "Below your
+45% margin target" warning is drawn against `target_hourly_rate`, which
+does exist and is what the bar chart below the cards is measured against.
+A margin target would be a migration and Nina's decision.
 
 ### Open questions and known gaps
 
@@ -2282,8 +2340,9 @@ targets, the benchmarks and the row labels it went out with. Proved by
 diffing every Stage 2 tab as the client before and after the change —
 twelve files, no difference.
 
-**What remains live history, on purpose:** the trend charts and the Proven
-marker. The charts landed on 30 October (Phase 3) and read live history
+**What remains live history, on purpose:** the trend charts, Offers'
+"Revenue by offer" and the Proven marker. The charts landed on 30 October
+(Phases 3 and 4) and read live history
 rather than the snapshot — and that is safe for the reason the snapshot
 exists at all: a published month is read-only, so every point behind a
 client's chart is as fixed as the figure on the card above it. An

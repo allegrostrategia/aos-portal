@@ -416,10 +416,10 @@ export function calculateFunnel(funnel: FunnelMonth): CalcResults {
  * pulling in the Supabase client. `offerBreakdown` in month-figures.ts is
  * this with the two arguments read off the figures.
  */
-export function offerResults(
-  offerRows: OfferMonth[],
+export function offerResults<T extends OfferMonth>(
+  offerRows: T[],
   totalRevenue: Figure,
-): { offer: OfferMonth; results: CalcResults }[] {
+): { offer: T; results: CalcResults }[] {
   return offerRows.map((offer) => ({ offer, results: calculateOffer(offer, totalRevenue) }));
 }
 

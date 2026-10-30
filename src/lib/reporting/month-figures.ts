@@ -49,8 +49,16 @@ export interface MonthFigures {
   figure: (metricKey: string) => number | null;
   /** Last month's, for the change. */
   previousFigure: (metricKey: string) => number | null;
-  /** The offers, with their setup, ready for the Offers screen. */
-  offerRows: OfferMonth[];
+  /**
+   * The offers, with their setup, ready for the Offers screen.
+   *
+   * Carrying the entity's own `id` and `price` alongside the month's
+   * figures, the way `campaignRows` does. The id is what lets the page
+   * ask for an offer's history; the price is setup rather than arithmetic,
+   * which is why neither belongs in `OfferMonth` itself — the formulas
+   * must not be able to reach for them.
+   */
+  offerRows: (OfferMonth & { id: string; price: number | null })[];
   /** The ad campaigns, with their goals, for the Ads screen (§5.7). */
   campaignRows: (AdCampaign & { id: string })[];
   /** The funnels, each with the price captured for this month (§5.5). */
@@ -65,11 +73,16 @@ export interface MonthFigures {
   byKey: Map<string, ReportMetric>;
 }
 
-function offerRowsFrom(data: MonthData, values: MonthData["values"]): OfferMonth[] {
+function offerRowsFrom(
+  data: MonthData,
+  values: MonthData["values"],
+): (OfferMonth & { id: string; price: number | null })[] {
   return data.entities
     .filter((e) => e.entity_type === "offer")
     .map((offer) => ({
+      id: offer.id,
       name: offer.name,
+      price: offer.price,
       hourlyCost: offer.hourly_cost,
       pricingModel: offer.pricing_model ?? undefined,
       unitsSold: values.get("offers_units_sold", offer.id),

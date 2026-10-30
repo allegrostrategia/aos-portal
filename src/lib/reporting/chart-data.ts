@@ -89,12 +89,17 @@ export function hourlyRateByOffer(
   currency: string,
 ): BarDatum[] {
   return offersOf(figures)
-    .map(({ offer, results }) => {
+    .map(({ offer, results }, index) => {
       const rate = results.offers_effective_hourly_rate ?? null;
       return {
         label: offer.name,
         value: rate,
         display: formatValue(rate, "currency", currency),
+        // The offer's own position, carried past the sort below so the
+        // bar keeps the colour its slice has in the donut on the same
+        // screen. Sorting is what made this necessary: by rank, the
+        // colours would reshuffle whenever two offers swapped places.
+        colorIndex: index,
         missingNote:
           offer.hoursSpent === null || offer.hoursSpent === undefined
             ? "hours not entered"

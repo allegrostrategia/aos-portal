@@ -23,7 +23,9 @@ import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { calculateFunnel } from "@/lib/reporting/calculate";
 import { TopItemsReport } from "@/components/reporting/top-items";
 import { getTargets, getTopItems } from "@/lib/reporting/queries";
-import { getFigureHistory } from "@/lib/reporting/figure-history";
+import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
+import { OfferCard } from "@/components/reporting/offer-card";
+import { GroupedBarChart } from "@/components/reporting/charts/grouped-bar-chart";
 import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { metricIcon } from "@/lib/reporting/metric-icons";
 import { TrendPanel } from "@/components/reporting/trend-panel";
@@ -134,6 +136,32 @@ export default async function CategoryReportPage({
     ? await getTargets(ctx.workspace.id, ctx.month.month)
     : new Map<string, number>();
 
+  /**
+   * Six months of revenue, one series per offer (the mockup's "Revenue by
+   * offer", Phase 4).
+   *
+   * **This month's offers, in this month's order.** The donut, the hourly
+   * rate bars and this chart all walk `offerBreakdown(figures)`, so the
+   * nth offer wears the nth colour in all three and a reader can carry one
+   * across the page. An offer that sold in April and not in September is
+   * not on this page at all — the same rule the donut has always followed,
+   * stated here because this chart is the one where it shows.
+   *
+   * `offers_revenue_this_month` is stored per offer, so this is a plain
+   * query rather than `getFigureHistory`: there is nothing to work out.
+   */
+  const offerRows = category.key === "offers" ? offerBreakdown(figures) : [];
+  const offerMonths = STAGE_3 ? historyMonths.slice(-6) : [];
+  const offerHistory =
+    offerRows.length > 0 && offerMonths.length > 0
+      ? await getEntityHistory({
+          workspaceId: ctx.workspace.id,
+          months: offerMonths,
+          metricKey: "offers_revenue_this_month",
+          entityIds: offerRows.map(({ offer }) => offer.id),
+        })
+      : new Map<string, (number | null)[]>();
+
   const notes = figures.data.notes.filter(
     (n) => n.note_type === "strategist" && n.category === category.key,
   );
@@ -204,7 +232,16 @@ export default async function CategoryReportPage({
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Four across where there are four — the Offers row, which the
+              mockup draws as one line of four and which came out as three
+              and a card on its own underneath. Written out rather than
+              built from a variable, because Tailwind reads the class
+              names out of the source. */}
+          <div
+            className={`grid gap-4 sm:grid-cols-2 ${
+              headline.length === 4 ? "xl:grid-cols-4" : "lg:grid-cols-3"
+            }`}
+          >
             {headline.map((metric, index) => (
               <KpiCard
                 key={metric.key}
@@ -297,6 +334,12 @@ export default async function CategoryReportPage({
                   </SectionTitle>
                   <BarChart
                     data={hourlyRateByOffer(figures, ctx.workspace.currency)}
+                    // The categories ARE the identities here, and the
+                    // donut beside it is already using the same five
+                    // hues for the same offers. Each bar carries its
+                    // offer's index rather than its own, so the sort
+                    // does not repaint them.
+                    colourByCategory
                     target={ctx.workspace.target_hourly_rate}
                     targetLabel={
                       ctx.workspace.target_hourly_rate === null
@@ -311,7 +354,64 @@ export default async function CategoryReportPage({
                   />
                 </Card>
               </div>
-              <OffersTable ctx={ctx} figures={figures} />
+
+              {/* **A card per offer, in place of the table** (Phase 4, the
+                  approved mockup). Up to three across, which is what the
+                  cards hold at — the mockup draws four at its own wider
+                  page. Same figures, same `calculateOffer`; what changed
+                  is that the margin is a ring the size of the thing being
+                  judged rather than the fourth of six columns. */}
+              <div
+                className={`mt-6 grid gap-4 sm:grid-cols-2 ${
+                  offerRows.length >= 4 ? "xl:grid-cols-4" : "lg:grid-cols-3"
+                }`}
+              >
+                {offerRows.map(({ offer, results }, index) => (
+                  <OfferCard
+                    key={offer.id}
+                    name={offer.name}
+                    pricingModel={offer.pricingModel}
+                    price={offer.price}
+                    unitsSold={offer.unitsSold}
+                    revenue={offer.revenue}
+                    hoursSpent={offer.hoursSpent}
+                    margin={results.offers_margin}
+                    hourlyRate={results.offers_effective_hourly_rate}
+                    targetHourlyRate={ctx.workspace.target_hourly_rate}
+                    currency={ctx.workspace.currency}
+                    tone={toneFor(index)}
+                  />
+                ))}
+              </div>
+
+              {STAGE_3 && offerRows.length > 0 ? (
+                <Card className="mt-6">
+                  <SectionTitle
+                    icon={<IconCircle name="revenue" tone="orange" />}
+                    aside="Last 6 months"
+                  >
+                    Revenue by offer
+                  </SectionTitle>
+                  {/* Grouped bars, not lines. Lines would need one legible
+                      ink per offer and there are three (see
+                      `charts/palette.ts`); a bar is a fill, so the
+                      five-hue palette applies and each offer keeps the
+                      colour it has in the donut above. */}
+                  <GroupedBarChart
+                    series={offerRows.map(({ offer }) => ({
+                      label: offer.name,
+                      points:
+                        offerHistory.get(offer.id) ?? offerMonths.map(() => null),
+                    }))}
+                    months={offerMonths.map(shortMonthLabel)}
+                    unit="currency"
+                    currency={ctx.workspace.currency}
+                    colours="entities"
+                    caption="What each offer earned, month by month. A month with nothing entered leaves a space."
+                    emptyMessage="Two months of figures are needed before there is a comparison to draw."
+                  />
+                </Card>
+              ) : null}
             </>
           ) : null}
 
@@ -410,88 +510,6 @@ export default async function CategoryReportPage({
         />
       </div>
     </ReportShell>
-  );
-}
-
-/**
- * One row per offer (§5.9), because "total revenue from offers" says nothing
- * about which offer earned it and the point of the page is the comparison.
- */
-function OffersTable({
-  ctx,
-  figures,
-}: {
-  ctx: Awaited<ReturnType<typeof resolveReportContext>>;
-  figures: Awaited<ReturnType<typeof getMonthFigures>>;
-}) {
-  const rows = offerBreakdown(figures);
-  if (rows.length === 0) return null;
-
-  const currency = ctx.workspace.currency;
-
-  return (
-    <Card className="mt-6" padded={false}>
-      <div className="p-5 sm:p-6">
-        <SectionTitle icon={<IconCircle name="offers" tone="gold" />}>
-          Each offer this month
-        </SectionTitle>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-left">
-          <thead>
-            <tr className="border-y border-ink/8 text-caption text-ink/55 uppercase">
-              <th scope="col" className="px-5 py-2.5 font-medium sm:px-6">Offer</th>
-              <th scope="col" className="px-3 py-2.5 text-right font-medium">Sold</th>
-              <th scope="col" className="px-3 py-2.5 text-right font-medium">Revenue</th>
-              <th scope="col" className="px-3 py-2.5 text-right font-medium">Hours</th>
-              <th scope="col" className="px-3 py-2.5 text-right font-medium">Margin</th>
-              <th scope="col" className="px-5 py-2.5 text-right font-medium sm:px-6">
-                Hourly rate
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ offer, results }) => (
-              <tr key={offer.name} className="border-b border-ink/8 last:border-0">
-                <th scope="row" className="px-5 py-3 text-body font-medium text-ink sm:px-6">
-                  {offer.name}
-                  {/* The mockups' pill, on both kinds rather than only the
-                      recurring one: "no pill" is not a label, and a reader
-                      should not have to know that silence means one-off. */}
-                  <span
-                    className={`ml-2 inline-block rounded-full px-2.5 py-0.5 align-middle text-caption font-medium ${
-                      offer.pricingModel === "recurring"
-                        ? "bg-blush/45 text-ink"
-                        : "bg-sky/45 text-ink"
-                    }`}
-                  >
-                    {offer.pricingModel === "recurring" ? "Recurring" : "One-off"}
-                  </span>
-                </th>
-                {/* "Units sold" is labelled "Members" on a recurring offer
-                    (§5.9); the column header stays generic and the row says
-                    which it is. */}
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
-                  {formatValue(offer.unitsSold ?? null, "count")}
-                </td>
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
-                  {formatValue(offer.revenue ?? null, "currency", currency)}
-                </td>
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
-                  {formatValue(offer.hoursSpent ?? null, "hours")}
-                </td>
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
-                  {formatValue(results.offers_margin, "percent")}
-                </td>
-                <td className="px-5 py-3 text-right font-mono text-body text-ink sm:px-6">
-                  {formatValue(results.offers_effective_hourly_rate, "currency", currency)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
   );
 }
 

@@ -214,3 +214,40 @@ test("the cost donut is the four lines, and skips the ones at nothing", () => {
     ],
   );
 });
+
+test("a bar keeps its offer's colour when the sort moves it", () => {
+  // The rule the palette exists for: colour follows the entity, never its
+  // rank. These bars are sorted by rate, so the top one is not the first
+  // offer — and without `colorIndex` the hue would follow the ranking and
+  // stop matching the donut's slice for the same offer on the same screen.
+  const figures = figuresFrom(OFFERS);
+  const bars = hourlyRateByOffer(figures, "GBP");
+  const slices = revenueByOffer(figures, "GBP");
+
+  assert.ok(bars.length > 1, "a one-bar chart cannot show this");
+  assert.notDeepEqual(
+    bars.map((b) => b.label),
+    OFFERS.map((o) => o.name),
+    "the sort has to move something, or this test proves nothing",
+  );
+
+  for (const bar of bars) {
+    const slice = slices.find((s) => s.label === bar.label);
+    if (!slice) continue;
+    assert.equal(
+      bar.colorIndex,
+      slice.colorIndex,
+      `${bar.label}: the bar and the slice must be the same colour`,
+    );
+  }
+});
+
+test("the margin the offer card rings is a 0-100 number", () => {
+  // Scale, stated once in a test rather than guessed at each call site.
+  // `percentage()` returns 87 for 87%, and the ring's first version
+  // multiplied by 100 again and drew "8700%". Delivery cost is
+  // 60 × 40 + 1500 = 3,900, so (9000 − 3900) ÷ 9000 is 56.67%.
+  const margin = calculateOffer(OFFERS[0], offers.totalRevenue(OFFERS)).offers_margin;
+  assert.ok(margin !== null && margin > 1, "a proportion would be 0.57, not 57");
+  assert.equal(Math.round(margin * 100) / 100, 56.67);
+});

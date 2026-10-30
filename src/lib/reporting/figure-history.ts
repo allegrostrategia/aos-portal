@@ -340,3 +340,69 @@ export async function getFigureHistory({
 
   return series;
 }
+
+/**
+ * One stored, per-row metric across several months — revenue by offer.
+ *
+ * Deliberately not `getFigureHistory`. That one exists because most of what
+ * the Overview's charts draw is worked out and has no row to read;
+ * `offers_revenue_this_month` is the opposite — a `core` metric stored
+ * against the offer, so there is nothing to calculate and the straight
+ * query is both the simple answer and the correct one. Routing it through
+ * the calc machinery would have meant running four categories' formulas
+ * twelve times to read a column.
+ *
+ * **Keyed by entity, with one slot per month asked for**, so the caller
+ * can line a series up against the axis without knowing which months came
+ * back. An offer with nothing in a month gets null there, never a zero: a
+ * zero says it earned nothing, which is a claim nobody made.
+ *
+ * §13's 1,000-row cap applies here as everywhere, and this read is a long
+ * way inside it — one key, so it is offers × months, and twenty offers over
+ * a year is 240 rows. It is written as one query for that reason; a page
+ * that ever wants several keys at once should split them as
+ * `getFigureHistory` does rather than widening this.
+ */
+export async function getEntityHistory({
+  workspaceId,
+  months,
+  metricKey,
+  entityIds,
+}: {
+  workspaceId: string;
+  /** Oldest first. Every returned series is exactly this long. */
+  months: string[];
+  metricKey: string;
+  entityIds: string[];
+}): Promise<Map<string, (number | null)[]>> {
+  const series = new Map<string, (number | null)[]>(
+    entityIds.map((id) => [id, months.map(() => null)]),
+  );
+  if (entityIds.length === 0 || months.length === 0) return series;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("report_values")
+    .select("month, entity_id, value")
+    .eq("workspace_id", workspaceId)
+    .eq("metric_key", metricKey)
+    .in("entity_id", entityIds)
+    .gte("month", months[0])
+    .lte("month", months[months.length - 1])
+    .returns<{ month: string; entity_id: string | null; value: number | null }[]>();
+
+  const at = new Map(months.map((month, index) => [month, index]));
+
+  for (const row of data ?? []) {
+    if (!row.entity_id) continue;
+    const slot = at.get(row.month);
+    const points = series.get(row.entity_id);
+    // A month outside the window, or an entity nobody asked about, is
+    // dropped rather than appended: the length of every series is the
+    // promise this function makes.
+    if (slot === undefined || !points) continue;
+    points[slot] = row.value ?? null;
+  }
+
+  return series;
+}

@@ -33,6 +33,16 @@ export interface BarDatum {
   display: string;
   /** Said instead of a bar when `value` is null. */
   missingNote?: string;
+  /**
+   * Which of the five hues this row wears, where `colourByCategory` is on.
+   *
+   * The entity's own index, not the row's. These bars are sorted by value,
+   * so without this the colour would follow the ranking — the offer that
+   * moved from second to first would change colour, and would stop
+   * matching its slice in the donut beside it. That is precisely the
+   * failure the palette rules exist to prevent.
+   */
+  colorIndex?: number;
 }
 
 export function BarChart({
@@ -100,7 +110,9 @@ export function BarChart({
                     // The row order is the caller's and is stable, so the
                     // nth source keeps the nth colour: a month where one
                     // source drops to nothing does not repaint the others.
-                    background: colourByCategory ? fillFor(index) : SINGLE,
+                    background: colourByCategory
+                      ? fillFor(datum.colorIndex ?? index)
+                      : SINGLE,
                     // Pale fills need an edge; navy does not, but the same
                     // hairline keeps every mark in the product consistent.
                     boxShadow: `inset 0 0 0 1px ${EDGE}`,
