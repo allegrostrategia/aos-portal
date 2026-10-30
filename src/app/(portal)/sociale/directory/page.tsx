@@ -126,8 +126,8 @@ export default async function DirectoryPage({
           className="text-ink underline decoration-orange decoration-2 underline-offset-4"
         >
           Your profile
-        </Link>{" "}
-. Add a photo, change your bio, or update your links.
+        </Link>
+        . Add a photo, change your bio, or update your links.
       </p>
 
       {entries.length === 0 ? (
