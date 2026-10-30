@@ -187,6 +187,20 @@ This is a standing rule of the whole product, not a reporting decision.
 
 ---
 
+## One left open, for later if you want it
+
+**A margin target, so an offer's margin ring can go orange on its own account.**
+
+The approved Offers mock-up draws a warning under a card reading *"Below your 45% margin target"*. **There is no margin target in the tool.** A client sets a target hourly rate and nothing else, so the warning — and the orange ring beside it — are drawn against that instead: an offer goes orange when its effective hourly rate falls under the rate you set, which is the same target the bar chart lower down the page is measured against.
+
+That is a real test and it catches real problems, but it is not quite the same question. An offer can clear your hourly rate and still be thin once delivery costs come out of it, and a margin target would be the thing that says so.
+
+*What it would take:* a new column on the client's settings, a field on the settings screen to fill it in, and one more comparison on the offer card. **It needs a database migration**, which is the only reason it is here rather than built — it is an hour's work, not a week's, but it changes the shape of the stored data and that is your call rather than Dom's.
+
+*Nothing is built either way*, and nothing needs to be. The rings work as described above until you say otherwise.
+
+---
+
 ## The one you were asked to settle, now settled
 
 **A campaign with no figures for the month shows on the published report as a row of dashes.** That's true whether it came from a file or was typed in — a campaign set up in August and paused in September is a row of dashes on September's report.

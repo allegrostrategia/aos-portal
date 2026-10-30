@@ -20,8 +20,41 @@ import type { Figure } from "@/lib/reporting/formulas";
  * colour or by shape alone.
  */
 
+/**
+ * The two colours a margin ring is drawn in.
+ *
+ * **Green unless the offer is below the hourly-rate target** (Nina,
+ * 30 October). Not the brand orange and not a red: `#e56135` is the ink
+ * the sparklines already use, because a 6px stroke on a white card owes
+ * the reader 3:1 and brand orange is 2.93 — the same reason the line
+ * palette exists at all. `#1f7a4d` is the green the report already has in
+ * `CHANGE_TONE_CLASS` and `TARGET_TONE_FILL`, not a new one.
+ *
+ * Checked rather than judged, both surfaces:
+ *
+ *   node scripts/check-chart-palette.mjs "green,orange-ink" white --lines
+ *
+ * white 5.32 / 3.45 · cream 4.78 / 3.10 · the pair separates by 23.3 under
+ * deuteranopia and protanopia, well over the floor of 8. Green against a
+ * RED would have been the one pair most colourblind readers cannot split;
+ * against this orange it is not close.
+ *
+ * **And it is never colour alone anyway.** The percentage is printed
+ * inside the ring, and the orange case always carries the sentence
+ * underneath saying what the offer is below and by how much.
+ */
+const MARGIN_OK = "#1f7a4d";
+const MARGIN_BELOW = "#e56135";
+
 /** The margin ring: one number against a hundred, as a stroked circle. */
-function MarginRing({ percent }: { percent: number | null }) {
+function MarginRing({
+  percent,
+  belowTarget,
+}: {
+  percent: number | null;
+  /** Below the hourly-rate target — the ring's only reason to go orange. */
+  belowTarget: boolean;
+}) {
   // **A 0–100 number, not a proportion.** `percentage()` in formulas.ts
   // returns 87 for 87%, and `formatValue(x, "percent")` prints it as it
   // stands — so the first version's `percent * 100` drew "8700%". Caught
@@ -60,10 +93,9 @@ function MarginRing({ percent }: { percent: number | null }) {
           cy="32"
           r={radius}
           fill="none"
-          stroke="currentColor"
           strokeWidth="6"
           strokeLinecap="round"
-          className="text-orange"
+          stroke={belowTarget ? MARGIN_BELOW : MARGIN_OK}
           strokeDasharray={`${(shown / 100) * circumference} ${circumference}`}
           // Twelve o'clock, where a reader's eye starts on a dial — the
           // same as the launch card's goal ring, so the two read alike.
@@ -166,7 +198,7 @@ export function OfferCard({
             the three labels along the bottom of the card ran into each
             other at three cards across. */}
         <div className="flex flex-col items-center gap-1">
-          <MarginRing percent={margin} />
+          <MarginRing percent={margin} belowTarget={belowTarget} />
           <span className="text-caption uppercase tracking-wide text-ink/55">Margin</span>
         </div>
         <dl className="flex flex-wrap justify-end gap-x-5 gap-y-2 text-right">

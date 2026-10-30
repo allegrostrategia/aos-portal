@@ -602,12 +602,33 @@ test.describe("the five mockup screens", () => {
     );
     expect(overHundred, "a margin over 100% is the scale being wrong twice").toBe(0);
 
-    // The hourly-rate target line, and the warning on the offer under it.
+    // The hourly-rate target line, and the warning on the offers under it.
     await expect(page.getByText("Target £200 an hour")).toBeVisible();
     await expect(
       page.getByText("Below your £200 an hour target").first(),
     ).toBeVisible();
 
+    // **Green unless the offer is below the hourly-rate target** (Nina,
+    // 30 Oct). Two of the four are: The Membership at £196 an hour and
+    // Done-with-you Launch at £162, against a £200 target. Read off the
+    // rendered stroke, because the way this breaks is a condition that
+    // is always true or always false — which draws four rings of one
+    // colour and looks perfectly deliberate in a screenshot.
+    const ringInk = await page.evaluate(() =>
+      [...document.querySelectorAll('svg[aria-label^="Margin"]')].map((svg) => {
+        const arc = [...svg.querySelectorAll("circle")].find((c) =>
+          c.hasAttribute("stroke-dasharray"),
+        );
+        const name = svg.closest("section")?.querySelector("h3")?.textContent ?? "";
+        return [name, arc?.getAttribute("stroke") ?? null] as const;
+      }),
+    );
+    expect(Object.fromEntries(ringInk)).toEqual({
+      "Signature Programme": "#1f7a4d",
+      "The Membership": "#e56135",
+      "VIP Day": "#1f7a4d",
+      "Done-with-you Launch": "#e56135",
+    });
 
     // Six months of revenue, one bar per offer per month.
     await expect(page.getByText("Revenue by offer")).toBeVisible();

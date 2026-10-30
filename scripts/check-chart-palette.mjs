@@ -96,6 +96,12 @@ const BRAND = {
   // round it and a line is not.
   "orange-ink": "#e56135",
   "sky-ink": "#688fb0",
+  // Not a brand hue and not a series colour: the one green the product
+  // already uses for "this went the right way" — the change arrow in
+  // `CHANGE_TONE_CLASS` and the met step of `TARGET_TONE_FILL`. It is here
+  // so a mark drawn in it can be checked like any other, rather than
+  // being the one colour nobody ran the numbers on.
+  green: "#1f7a4d",
 };
 const INK = "#0a1e4a";
 

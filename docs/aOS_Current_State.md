@@ -515,7 +515,20 @@ Two things caught in the browser rather than by a test, both now pinned:
 **There is no margin target in the schema**, so the mockup's "Below your
 45% margin target" warning is drawn against `target_hourly_rate`, which
 does exist and is what the bar chart below the cards is measured against.
-A margin target would be a migration and Nina's decision.
+A margin target would be a migration and Nina's decision. **Written up for
+her** on 30 October, under *"One left open, for later if you want it"* in
+`docs/nina-review/01-decisions.md` — not built, and nothing waiting on it.
+
+**The margin ring is green unless the offer is below the hourly-rate
+target, and then orange** (Nina, 30 October). `#1f7a4d` is the green the
+report already has in `CHANGE_TONE_CLASS` and `TARGET_TONE_FILL`; the
+orange is `#e56135`, the sparklines' ink, because a 6px stroke on a white
+card owes the reader 3:1 and brand orange is 2.93. The pair is checked
+rather than judged — `check-chart-palette.mjs` learned the green so it
+could be — and separates by 23.3 under both simulated CVDs, where
+green/red would have been the one pair most colourblind readers cannot
+split. It is never colour alone either: the percentage is inside the ring
+and the orange case always carries the sentence underneath.
 
 ### Phase 4b: the launch detail page brought in line — 30 October 2026
 
