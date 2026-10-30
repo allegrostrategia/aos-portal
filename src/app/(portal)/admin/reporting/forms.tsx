@@ -268,6 +268,7 @@ export function RestoreAccessForm({
         state={state}
         confirming={confirming}
         labels={["Restore their access", "Yes, restore their access"]}
+        confirmTone="neutral"
       />
     </form>
   );
@@ -277,19 +278,36 @@ function EndFooter({
   state,
   confirming,
   labels = ["End their access", "Yes, end their access"],
+  confirmTone = "warning",
 }: {
   state: EndAccessState;
   confirming: boolean;
   /** [resting, confirming] — the only thing the two forms differ in. */
   labels?: [string, string];
+  /**
+   * How the question before the second press reads.
+   *
+   * `error` carries two different things: something that went wrong, and the
+   * question asked before the second press. Red is right for the first, and
+   * right for ending — that one is not undoable from this screen. It is wrong
+   * for restoring, where it puts the colour of a problem on a sentence saying
+   * something good is about to happen. Dom, 30 October.
+   *
+   * A real error stays red either way: this only softens `needsConfirm`.
+   */
+  confirmTone?: "warning" | "neutral";
 }) {
   const { pending } = useFormStatus();
+  const asking = Boolean(state?.needsConfirm) && confirmTone === "neutral";
+  const messageTone = !state?.error
+    ? "text-ink/65"
+    : asking
+      ? "text-ink/80"
+      : "text-deep-red";
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p
-        aria-live="polite"
-        className={`text-small ${state?.error ? "text-deep-red" : "text-ink/65"}`}
-      >
+      <p aria-live="polite" className={`text-small ${messageTone}`}>
         {pending ? "Working\u2026" : (state?.error ?? state?.notice ?? "")}
       </p>
       <Button type="submit" variant="secondary" disabled={pending}>
