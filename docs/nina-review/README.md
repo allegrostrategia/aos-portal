@@ -22,6 +22,8 @@ The screens from the earlier work — the monthly report itself, targets, benchm
 
 `screens-end-access/` is five more, also at both widths, and the only ones that are not about a report: **ending a retainer client's access**, which there was no way to do until 29 October. Your screen, not theirs — the card, the warning it asks you to read, what the card says afterwards, and the page the client lands on if they try to open their report. It is number 5 on the checklist.
 
+`screens-directory/` is two at both widths, and these are a member's screen rather than yours: **the member directory, read by someone whose profile is finished but whose membership has not started**. From 29 October the directory lists active members only, so there is a gap — a few days, usually — where a new member has filled the form in and is not in it. The first pair is what they see, with the new card explaining it; the second is the same directory read by an active member, who gets no card. Nothing on the checklist; it is there because it is new wording a member reads.
+
 ### 3. [Every word a client reads](04-wording.md)
 
 The full text of all five emails and the screen a client sees between months, each with when it goes out and who gets it. Nothing in it has been changed — it's set out for you to mark up.
