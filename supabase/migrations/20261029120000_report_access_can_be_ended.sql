@@ -128,6 +128,33 @@ $$;
 comment on function public.report_can_edit(uuid) is
   'Write access to a workspace''s figures. False for a retainer client by design (§2), and false for an ended grant.';
 
+-- The third helper, which `report_notes_write` is written in terms of.
+--
+-- Nothing can revoke a team grant through the product — `end_report_client_access`
+-- below refuses one, and `unassign_report_team_member()` deletes it instead. So
+-- this line is unreachable today, and that is exactly why it is here: the
+-- invariant is "a revoked row is not permission", not "a revoked CLIENT row is
+-- not permission". The same gap in `report_can_edit` looked covered by a test
+-- that could not fail, and was found only by mutating the line away.
+create or replace function public.report_is_team(p_workspace_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.report_access
+    where workspace_id = p_workspace_id
+      and user_id = (select auth.uid())
+      and role = 'team'
+      and revoked_at is null
+  );
+$$;
+
+comment on function public.report_is_team(uuid) is
+  'Whether the caller holds a live team assignment on this workspace. A revoked row is not one.';
+
 -- =============================================================================
 -- Ending it
 -- =============================================================================

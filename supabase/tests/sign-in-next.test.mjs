@@ -109,6 +109,31 @@ test("an external next is still refused", async () => {
   assert.equal(await signInAs(NINA, NINA_EMAIL, "//evil.test/"), "/");
 });
 
+// --- once their access has been ended (29 October) ---
+//
+// Last, because it is the one test here that changes the fixture.
+
+test("an ended client is no longer carried back to their report", async () => {
+  // The same deep link the first test in this file proves IS honoured while
+  // their access is live. The only thing that changes is the grant.
+  const next = `/reporting?workspace=${workspace}&month=2026-08`;
+  assert.equal(await signInAs(CLIENT, CLIENT_EMAIL, next), next);
+
+  await asMember(db, NINA, () =>
+    db.query(`select public.end_report_client_access('${workspace}', '${CLIENT}')`),
+  );
+
+  // `report_access_select_own` still returns their row — deliberately, so
+  // /no-access can say when it ended — so without the `revoked_at` filter in
+  // landingForSession this login still reads as "has a report", and the
+  // redirect hands them a page whose every figure then refuses to load.
+  assert.equal(await signInAs(CLIENT, CLIENT_EMAIL, next), "/");
+});
+
+test("and a bare sign-in sends them to the root, which says why", async () => {
+  assert.equal(await signInAs(CLIENT, CLIENT_EMAIL, undefined), "/");
+});
+
 test("a wrong password is reported, not redirected", async () => {
   configure(db, CLIENT);
   const form = new FormData();

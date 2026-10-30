@@ -965,6 +965,31 @@ await check("a revoked grant is never permission, whatever its role", async () =
   return r.v === false && r.e === false;
 });
 
+// The positive control is not optional here. Both of these first went in
+// above "a team assignment on the same workspace is untouched" — the check
+// that gives Elize her grant on Rival Ltd — so the revoked case passed
+// against a user with no grant at all, which is no test. This pair runs
+// after it, and the live case is what proves the fixture is really there.
+await check("a revoked team grant is not a team assignment either", async () => {
+  // The same invariant one helper further on. `report_is_team` is what
+  // `report_notes_write` is written in terms of, so without this a revoked
+  // team row would still be allowed to write notes on the workspace.
+  await as(NINA, () => db.query(`
+    update public.report_access set revoked_at = now(), revoked_by = '${NINA}'
+     where workspace_id = '${WS_RIVAL}' and user_id = '${ELIZE}'`));
+
+  const r = await one(ELIZE, `select public.report_is_team('${WS_RIVAL}') t`);
+
+  await as(NINA, () => db.query(`
+    update public.report_access set revoked_at = null, revoked_by = null
+     where workspace_id = '${WS_RIVAL}' and user_id = '${ELIZE}'`));
+
+  return r.t === false;
+});
+
+await check("a live team grant still is one", async () =>
+  (await one(ELIZE, `select public.report_is_team('${WS_RIVAL}') t`)).t === true);
+
 await check("Bella Ltd is unaffected — one client's end is not everyone's", async () =>
   (await one(RETAINER, `select public.report_can_view('${WS_R}') v`)).v === true);
 

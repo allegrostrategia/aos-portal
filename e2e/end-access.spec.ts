@@ -144,6 +144,22 @@ test.describe("ending a client's access", () => {
       page.getByText(/every figure in your reports is still there/),
     ).toBeVisible();
     await shot(page, "05-client-told", w);
+
+    // The same sign-in, but carrying the `next` a stale tab leaves behind —
+    // the 5 October shape, and the only one where the landing decision is
+    // actually consulted. A bare sign-in goes to "/" and the root page works
+    // it out from getReportUser(); this one does not reach the root page at
+    // all, so it is landingForSession that has to refuse.
+    await page.context().clearCookies();
+    await page.goto("/login?next=%2Freporting");
+    await page.getByLabel(/email/i).fill("client@aos.test");
+    await page.getByLabel(/password/i).fill("test-password-client");
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /Your access has ended/i }),
+    ).toBeVisible({ timeout: 20_000 });
+    expect(new URL(page.url()).pathname).toBe("/no-access");
+    await shot(page, "06-client-told-stale-link", w);
   });
 
 });

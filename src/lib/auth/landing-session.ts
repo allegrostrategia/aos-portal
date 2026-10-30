@@ -29,8 +29,12 @@ export async function landingForSession(
 
   const [member, grants] = await Promise.all([
     supabase.from("members").select("status").eq("id", user.id).maybeSingle(),
-    // RLS returns this login's own grants, so one row is enough to answer.
-    supabase.from("report_access").select("workspace_id").limit(1),
+    // RLS returns this login's own grants, so one row is enough to answer —
+    // but `report_access_select_own` returns an ENDED grant too, deliberately,
+    // so `/no-access` can say when it ended. Without this filter a client
+    // whose access was ended would be handed back to /reporting on their next
+    // sign-in, and every screen behind it would then refuse to load.
+    supabase.from("report_access").select("workspace_id").is("revoked_at", null).limit(1),
   ]);
 
   return landingPath({
