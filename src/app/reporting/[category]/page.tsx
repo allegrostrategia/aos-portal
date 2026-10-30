@@ -24,6 +24,7 @@ import { calculateFunnel } from "@/lib/reporting/calculate";
 import { TopItemsReport } from "@/components/reporting/top-items";
 import { getTopItems } from "@/lib/reporting/queries";
 import { monthLabel } from "@/lib/reporting/months";
+import { metricIcon } from "@/lib/reporting/metric-icons";
 import { ads as adsFormulas, monthOnMonthChange } from "@/lib/reporting/formulas";
 import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
@@ -165,13 +166,17 @@ export default async function CategoryReportPage({
               <KpiCard
                 key={metric.key}
                 label={metric.label}
-                // Every category's headline cards, not only the Overview's
-                // (Nina, 30 Oct). One mark per category rather than one per
-                // metric: the cards on a page are all the same subject, and
-                // a different glyph on each would invent distinctions the
-                // figures do not have. The tint still rotates, so a row
-                // reads as a set.
-                icon={{ name: CATEGORY_ICONS[category.key], tone: toneFor(index) }}
+                // One mark per METRIC, falling back to the category's
+                // where a metric has none of its own (Dom, 30 October).
+                // The first pass gave all six cards the category glyph;
+                // the mockups give the Social Media row people, person-
+                // plus, heart, bars and pointer, which is both the
+                // approved drawing and the more useful one. The tint
+                // still rotates by position, so a row reads as a set.
+                icon={{
+                  name: metricIcon(metric.key, CATEGORY_ICONS[category.key]),
+                  tone: toneFor(index),
+                }}
                 value={figures.figure(metric.key)}
                 previous={figures.previousFigure(metric.key)}
                 unit={metric.unit}
@@ -181,6 +186,7 @@ export default async function CategoryReportPage({
               />
             ))}
           </div>
+
 
           {category.key === "leads_conversions" ? (
             <Card className="mt-6">

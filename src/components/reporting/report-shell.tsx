@@ -285,7 +285,17 @@ function TabRow({
                       : "text-ink/55 hover:bg-ink/5 hover:text-ink"
                   }`}
                 >
-                  <ReportIcon name={CATEGORY_ICONS[category.key]} className="size-4 shrink-0" />
+                  {/* **The icon in ink on every tab, not in the label's
+                      grey** (Dom, 30 October). The label of an inactive tab
+                      is ink/55 because it is secondary text; the icon is a
+                      shape rather than text, and at 18px a shape at 55%
+                      reads as switched off rather than as not-current. The
+                      mockups draw all eleven in full colour and let the
+                      lemon pill alone say which one you are on. */}
+                  <ReportIcon
+                    name={CATEGORY_ICONS[category.key]}
+                    className="size-[18px] shrink-0 text-ink"
+                  />
                   {category.label}
                   {sectionStatus?.[category.key] ? (
                     <SectionMarker state={sectionStatus[category.key]!} />

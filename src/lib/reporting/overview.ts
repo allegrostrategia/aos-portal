@@ -37,6 +37,10 @@ export const OVERVIEW_KPIS: OverviewKpi[] = [
   { metricKey: "financials_profit", category: "financials", label: "Profit", icon: "profit" },
   { metricKey: "leads_conversions_total_leads", category: "leads_conversions", label: "New leads", icon: "leads" },
   { metricKey: "leads_conversions_new_clients", category: "leads_conversions", label: "New clients", icon: "person-plus" },
-  { metricKey: "email_list_size_at_month_end", category: "email", label: "Email list size", icon: "email" },
+  // "Email list", not "Email list size" (Dom, 30 October): six across, a
+  // card has about 115px beside the 40px disc, and the longer wording was
+  // the one label that wrapped to a second line and made its card taller
+  // than the five beside it.
+  { metricKey: "email_list_size_at_month_end", category: "email", label: "Email list", icon: "email" },
   { metricKey: "social_media_followers_at_month_end", category: "social_media", label: "Followers", icon: "people" },
 ];

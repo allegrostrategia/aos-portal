@@ -43,7 +43,9 @@ export type ReportIconName =
   | "rocket"
   | "calculator"
   | "upload"
-  | "share";
+  | "share"
+  | "eye"
+  | "bookmark";
 
 const PATHS: Record<ReportIconName, React.ReactNode> = {
   // A roof over a floor: the report's front page.
@@ -217,6 +219,19 @@ const PATHS: Record<ReportIconName, React.ReactNode> = {
       <path d="M12 16V5" />
       <path d="m8 8.5 4-3.5 4 3.5" />
       <path d="M4.5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+    </>
+  ),
+  // Views: an eye, as the mockup's Views series is marked.
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  // Saves: a bookmark.
+  bookmark: (
+    <>
+      <path d="M6.5 3.5h11v17L12 16l-5.5 4.5v-17Z" />
     </>
   ),
   share: (

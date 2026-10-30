@@ -14,11 +14,6 @@ import { monthOnMonthChange } from "@/lib/reporting/formulas";
  * The KPI card of §3's pattern list: label, big number, month-on-month change
  * with an arrow, and the month it is compared against.
  *
- * No sparkline yet. The mockup draws one on every card and it needs twelve
- * months of history per metric — a real query and a real chart, which is
- * Stage 3's work alongside the other charts. A card without one still says
- * the thing the card is for.
- *
  * The arrow's colour comes from the metric's own direction, never from the
  * sign: a fall in costs is good news, and a report that congratulates
  * somebody on their costs rising is worse than one with no colour at all.
@@ -90,11 +85,17 @@ export function KpiCard({
       {/* The label in sentence case beside the disc, not a tracked small-cap
           eyebrow (Nina, 30 Oct). The mockups read "Revenue", and at this
           size the eyebrow treatment was competing with the figure under
-          it rather than introducing it. */}
+          it rather than introducing it.
+
+          `gap-2.5` and `min-w-0` are what keep the longest one on a single
+          line in a six-across row: at 178px a card has about 115px beside
+          a 40px disc, which "Email list" fits and "Email list size" did
+          not. The shortening itself is in `overview.ts`, where the wording
+          lives; this is the room it needed. */}
       {icon ? (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <IconCircle name={icon.name} tone={icon.tone} size="sm" />
-          <span className="text-small font-medium text-ink/75">{label}</span>
+          <span className="min-w-0 text-small font-medium text-ink/75">{label}</span>
         </div>
       ) : (
         <span className="block text-small font-medium text-ink/75">{label}</span>
@@ -107,22 +108,45 @@ export function KpiCard({
           Sized to the card, not to the page. `text-title` clamps up to
           44px, which overflows a six-across grid the moment a figure
           reaches £24,850 — caught by looking at it, not by a test. */}
-      {/* **No `tabular-nums` here**, which the mono version had and needed.
-          Tabular figures exist to make columns line up; a headline figure
-          is not in a column, and Cormorant's tabular "1" is a bare serifed
-          stem — "184,500" read as "I84,500" on the first pass. The
-          proportional figures are the ones the face was drawn with. */}
-      <p className="font-display mt-2 text-[2rem] leading-tight font-medium text-ink 2xl:text-[2.25rem]">
+      {/* **`lining-nums proportional-nums`, and it is not a preference.**
+          Cormorant's default figures are OLD-STYLE: measured in Chrome
+          against the actual webfont, the default rendering is pixel-for-
+          pixel identical to `oldstyle-nums`, which draws "1" as a bare
+          stem at x-height and sinks 0, 4 and 5 below the others —
+          "184,500" reads as "I84,5oo" on a card (Dom, 30 October). `lnum`
+          IS in the Google webfont and switching it on levels them at cap
+          height.
+
+          Proportional, not tabular: tabular figures exist to make columns
+          line up and a headline figure is not in a column, so the face's
+          own spacing is the better one. Scoped to the FIGURE rather than
+          to `.font-display` everywhere, because old-style figures are
+          correct inside running text and a heading — this is the one
+          place where the digits are the content. */}
+      <p className="font-display mt-2 text-[2rem] leading-tight font-medium text-ink lining-nums proportional-nums 2xl:text-[2.25rem]">
         {formatValue(value, unit, currency)}
       </p>
-      {changeText && previousLabel ? (
-        <p className="mt-2 flex items-baseline gap-2 text-small">
-          <span className={`font-medium ${toneClass}`}>{changeText}</span>
-          <span className="text-ink/45">vs. {previousLabel}</span>
-        </p>
-      ) : (
-        <p className="mt-2 text-small text-ink/40">No month to compare</p>
-      )}
+      {/* The change and the month it is against stack, as the mockups
+          draw them. Inline, "↑ 18% vs. Aug 2026" wrapped anyway in a
+          six-across row, so the second line was already there. */}
+      <div className="mt-2 flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          {changeText && previousLabel ? (
+            <>
+              {/* Each line whole or not at all. "↑ 611%" broken after the
+                  arrow is not a figure, it is three fragments. */}
+              <p className={`whitespace-nowrap text-small font-medium ${toneClass}`}>
+                {changeText}
+              </p>
+              <p className="whitespace-nowrap text-caption text-ink/45">
+                vs. {previousLabel}
+              </p>
+            </>
+          ) : (
+            <p className="text-small text-ink/40">No month to compare</p>
+          )}
+        </div>
+      </div>
       {/* Each phrase wraps as a whole or not at all: six cards across,
           "On track" broke over two lines and "vs. last month" over two
           more. Seen on the rendered card, not in the markup. */}
