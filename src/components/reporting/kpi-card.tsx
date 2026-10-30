@@ -165,6 +165,9 @@ export function KpiCard({
           <Sparkline
             points={history}
             label={`${label} over the last ${history.length} months`}
+            // The disc's colour, in its legible ink — so the card is one
+            // object rather than a tinted circle and an unrelated wire.
+            tone={icon?.tone}
           />
         ) : null}
       </div>

@@ -30,6 +30,8 @@
  * does not repaint the survivors.
  */
 
+import type { IconTone } from "../icons";
+
 export const SERIES = [
   { name: "orange", fill: "var(--aos-orange)" },
   { name: "gold", fill: "var(--aos-gold)" },
@@ -119,17 +121,55 @@ export function strokeFor(index: number): string {
 }
 
 /**
- * The one ink a sparkline is drawn in.
+ * The ink a sparkline is drawn in: its own card's disc, darkened until it
+ * passes.
  *
- * **Navy, and one colour for all of them.** The mockups give each KPI card's
- * sparkline the hue of its own icon disc, and that cannot be done honestly:
- * gold and blush have no legible line form (see above), so a row of six
- * would have had two cards whose sparkline was barely visible. One ink also
- * stops the colour implying something — a sparkline's hue would be following
- * the card's POSITION in the row, not the metric, and colour that follows
- * rank is the thing the palette rules exist to prevent. The colour on the
- * card is the disc, which is where the mockups put most of it anyway.
+ * **The mockups' intent, kept; their colours, not quite.** Each KPI card's
+ * sparkline takes the hue of the icon disc beside it (Dom, 30 October), so
+ * the card reads as one object rather than a tinted circle with an unrelated
+ * navy wire under it. What it cannot take is the disc's *value*: a disc is a
+ * large filled shape and survives at 1.4:1, a 2px line is its own edge and
+ * owes the reader 3:1. So each tone maps to the nearest ink in `LINE_SERIES`
+ * that clears it.
+ *
+ * Gold and lemon both land on navy, for the reason set out above — a dark
+ * yellow is olive, and there is no darkening of gold that is both legible
+ * and still gold. Blush lands on orange-ink for the same reason in the other
+ * direction: a dark coral is mauve, and of the three inks that exist
+ * orange's is the one a coral disc points at. Those two are approximations
+ * and are meant to be read as such; the alternative was a third palette
+ * nobody approved.
+ *
+ * Checked, not judged — the three inks are `LINE_SERIES`, so:
+ *
+ *   node scripts/check-chart-palette.mjs "orange-ink,navy,sky-ink" white --lines
+ *
+ * white: 3.45 / 10.32 / 3.42 · cream: 3.10 / 9.28 / 3.07.
+ *
+ * **This is colour following position, and that is allowed here only
+ * because nothing is being told apart by it.** The rule the palette exists
+ * to protect — colour follows the entity, never its rank — is about charts
+ * where two colours sit in one picture and the reader has to match them to
+ * a legend. A sparkline is alone on its card, with one series and no
+ * legend, so its hue distinguishes it from nothing. It is the disc's
+ * colour, repeated.
  */
+const SPARK_INK: Record<IconTone, string> = {
+  orange: "#e56135",
+  blush: "#e56135",
+  sky: "#688fb0",
+  gold: "var(--aos-navy)",
+  lemon: "var(--aos-navy)",
+};
+
+/** Navy, for a card with no disc to take a colour from. */
 export const SPARK_STROKE = "var(--aos-navy)";
+
+export function sparkStroke(tone?: IconTone): string {
+  return tone ? SPARK_INK[tone] : SPARK_STROKE;
+}
+
 /** The wash under it, so it reads as a shape and not only as a wire. */
-export const SPARK_FILL = "color-mix(in oklab, var(--aos-navy) 12%, transparent)";
+export function sparkFill(tone?: IconTone): string {
+  return `color-mix(in oklab, ${sparkStroke(tone)} 12%, transparent)`;
+}

@@ -399,6 +399,26 @@ test.describe("the five mockup screens", () => {
     ).toBeVisible();
     // The shortened label, on one line beside its disc.
     await expect(page.getByText("Email list", { exact: true })).toBeVisible();
+
+    // **Each sparkline wears its own card's disc colour** (Dom, 30 Oct),
+    // in the darkened ink that clears 3:1 — never the disc's own fill,
+    // which for gold is 1.41:1 and would be a line present in the DOM and
+    // absent from the screen. Read off the rendered strokes, because the
+    // two ways this breaks are both invisible in a screenshot: a mapping
+    // that quietly falls back to one colour for every card, and one that
+    // reaches for the brand variables instead of the inks.
+    const inks = await page.evaluate(() =>
+      [...document.querySelectorAll('svg[aria-label*="over the last"] polyline')].map(
+        (line) => line.getAttribute("stroke"),
+      ),
+    );
+    expect(inks.length).toBeGreaterThan(2);
+    // The three of `LINE_SERIES`, and nothing else. The disc rotation is
+    // gold, blush, sky, orange, so a six-across row uses all three.
+    expect([...new Set(inks)].sort()).toEqual(
+      ["#688fb0", "#e56135", "var(--aos-navy)"],
+    );
+
     await shot(page, "1-overview", width(info.project.name));
   });
 

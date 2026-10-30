@@ -1,4 +1,5 @@
-import { SPARK_FILL, SPARK_STROKE } from "./palette.ts";
+import { sparkFill, sparkStroke } from "./palette.ts";
+import type { IconTone } from "../icons";
 
 /**
  * The shape of a metric's last twelve months, on the KPI card.
@@ -36,11 +37,17 @@ const PAD = 3;
 export function Sparkline({
   points,
   label,
+  tone,
 }: {
   /** One per month, oldest first. Null is a month with nothing entered. */
   points: (number | null)[];
   /** What the shape is of — "Revenue over the last 12 months". */
   label: string;
+  /**
+   * The tone of the icon disc on the same card, so the line is drawn in
+   * that colour's ink. Omitted on a card with no disc, which gets navy.
+   */
+  tone?: IconTone;
 }) {
   const present = points
     .map((value, i) => ({ value, i }))
@@ -74,6 +81,9 @@ export function Sparkline({
   const last = present[present.length - 1];
   const first = present[0];
 
+  const stroke = sparkStroke(tone);
+  const fill = sparkFill(tone);
+
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -92,7 +102,7 @@ export function Sparkline({
               ...run.map((p) => `${x(p.i)},${y(p.value)}`),
               `${x(run[run.length - 1].i)},${H}`,
             ].join(" ")}
-            fill={SPARK_FILL}
+            fill={fill}
           />
         ),
       )}
@@ -105,13 +115,13 @@ export function Sparkline({
             cx={x(run[0].i)}
             cy={y(run[0].value)}
             r="1.75"
-            fill={SPARK_STROKE}
+            fill={stroke}
           />
         ) : (
           <polyline
             key={`line-${run[0].i}`}
             fill="none"
-            stroke={SPARK_STROKE}
+            stroke={stroke}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -125,7 +135,7 @@ export function Sparkline({
         cx={x(last.i)}
         cy={y(last.value)}
         r="2.75"
-        fill={SPARK_STROKE}
+        fill={stroke}
         stroke="var(--aos-card)"
         strokeWidth="1.5"
       />
