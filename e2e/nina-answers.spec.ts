@@ -240,8 +240,8 @@ test("decisions 19 and 20: conversion against sign-ups, retention against the ro
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   // 30 sales ÷ the masterclass's 900 sign-ups. Its 600 attendees would
   // read 5.0%; the challenge's five days would read about 1%.
-  expect(text).toMatch(/CONVERSION RATE 3\.3%/);
-  expect(text).not.toMatch(/CONVERSION RATE 5\.0%/);
+  expect(text).toMatch(/Conversion rate 3\.3%/);
+  expect(text).not.toMatch(/Conversion rate 5\.0%/);
 
   // 430 of the 600 who were in the room at the start — not of the 520 who
   // were there when the pitch began, which reads 83%.

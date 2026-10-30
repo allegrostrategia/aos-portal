@@ -210,8 +210,8 @@ test("what unpublishing really does to a later published month", async ({ page }
   const before = await readAugust();
   expect(before.start).toBe("22");
   expect(before.end).toBe("25");
-  expect(before.text).toMatch(/RETENTION RATE\s*[0-9]/);
-  expect(before.text).toMatch(/CHURN RATE\s*[0-9]/);
+  expect(before.text).toMatch(/Retention rate\s*[0-9]/);
+  expect(before.text).toMatch(/Churn rate\s*[0-9]/);
   await shoot(page, TAB, "11-client-before-unpublish", w);
 
   await signIn(page, "nina");
@@ -225,9 +225,9 @@ test("what unpublishing really does to a later published month", async ({ page }
   // The one that used to read "3". A dash now, or no row at all — never a
   // number worked out from a figure the reader cannot see.
   expect(after.end === undefined || after.end === "—", `at end was "${after.end}"`).toBe(true);
-  expect(after.text).not.toMatch(/ACTIVE CLIENTS AT END\s*[0-9]/);
-  expect(after.text).not.toMatch(/RETENTION RATE\s*[0-9]/);
-  expect(after.text).not.toMatch(/CHURN RATE\s*[0-9]/);
+  expect(after.text).not.toMatch(/Active clients at end\s*[0-9]/);
+  expect(after.text).not.toMatch(/Retention rate\s*[0-9]/);
+  expect(after.text).not.toMatch(/Churn rate\s*[0-9]/);
   await shoot(page, TAB, "12-client-after-unpublish", w);
 
   // It comes back. The damage is the window, not the data.

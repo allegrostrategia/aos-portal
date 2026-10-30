@@ -89,6 +89,7 @@ export function LaunchCard({
   summary,
   href,
   goal,
+  coverUrl,
 }: {
   launch: LaunchRow;
   summary: LaunchSummary;
@@ -96,11 +97,35 @@ export function LaunchCard({
   /** The goal the ring is drawn against — §6.1's Good, by default. */
   goal: number | null;
   currency?: string;
+  /**
+   * A signed link to the launch's cover, or null.
+   *
+   * Signed by the page through the reader's own session, never here: the
+   * policy that decides whether a client may see a draft launch's picture
+   * is the same one that decides whether they may see the launch, and a
+   * component is the wrong place to be asking.
+   */
+  coverUrl?: string | null;
 }) {
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        {/* The mockups put a photograph on every launch card. Decorative,
+            with an empty alt: the launch's name is beside it, and a cover
+            is something the client chose rather than information.
+            next/image is wrong for this one — the URL is a signed link
+            that expires in an hour, and the optimiser would cache it and
+            keep serving it long after it stops working. The same reason
+            the directory's headshots are plain <img>. */}
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={coverUrl}
+            alt=""
+            className="size-14 shrink-0 rounded-xl object-cover"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
           <Link
             href={href}
             className="font-display text-h3 font-medium text-ink underline-offset-4 hover:underline"

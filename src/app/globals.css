@@ -430,3 +430,28 @@ html:has(main[data-chat-screen]) .portal-content {
 
   background: var(--aos-cream);
 }
+
+/* Reporting's form fields: white with a grey border (Nina, 30 October).
+
+   On the warm scheme a field is a cream well a shade deeper than its card,
+   which works because the card is cream too. Against a white card the same
+   token became a pale lavender panel — a bigger field of colour than the
+   mockups draw, where an input is white with a border and the border is
+   what says "type here".
+
+   Element selectors rather than a prop on every field: `bg-cream-deep` is
+   set by `components/ui/form.tsx` and by three reporting forms that style
+   their own inputs, and threading a variant through all of them would make
+   each one re-decide. An attribute plus an element beats a single utility
+   class, so this lands without `!important`.
+
+   Checkboxes, radios and file inputs are left alone — they are not fields
+   you type into and the browser draws them itself. */
+[data-report-surface] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[data-report-surface] textarea,
+[data-report-surface] select {
+  background: #fff;
+  /* 22% measured 1.58:1 against the white fill — not a boundary, a
+     suggestion of one. 50% is 3.27:1, which clears the non-text minimum. */
+  border-color: color-mix(in oklab, var(--aos-ink) 50%, transparent);
+}

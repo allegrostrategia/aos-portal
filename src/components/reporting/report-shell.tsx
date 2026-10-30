@@ -285,7 +285,7 @@ function TabRow({
                       : "text-ink/55 hover:bg-ink/5 hover:text-ink"
                   }`}
                 >
-                  <ReportIcon name={TAB_ICONS[category.key]} className="size-4 shrink-0" />
+                  <ReportIcon name={CATEGORY_ICONS[category.key]} className="size-4 shrink-0" />
                   {category.label}
                   {sectionStatus?.[category.key] ? (
                     <SectionMarker state={sectionStatus[category.key]!} />
@@ -301,7 +301,12 @@ function TabRow({
 }
 
 /**
- * One icon per tab, as the mockups draw them.
+ * One icon per category, as the mockups draw them.
+ *
+ * Exported because the category pages put the same mark on their headline
+ * cards — the Offers page's four cards all carry the Offers glyph. One map,
+ * so a category cannot end up with one icon on its tab and another on its
+ * cards.
  *
  * Keyed by `CategoryKey` and exhaustive, so adding a category to
  * `categories.ts` without choosing its icon is a type error rather than a
@@ -310,7 +315,7 @@ function TabRow({
  * Decorative in the strict sense: every tab still has its label beside the
  * icon at every width, and the icons are `aria-hidden`.
  */
-const TAB_ICONS: Record<CategoryKey, ReportIconName> = {
+export const CATEGORY_ICONS: Record<CategoryKey, ReportIconName> = {
   overview: "overview",
   social_media: "social",
   trial_reels: "reels",

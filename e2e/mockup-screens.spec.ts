@@ -118,7 +118,94 @@ test.describe("the five mockup screens", () => {
       delete from public.report_entities
        where entity_type = 'offer'
          and name in ('Signature Programme', 'The Membership');
+      delete from public.report_values
+       where metric_key like 'social_media_%'
+         and month = '${MONTH}'
+         and workspace_id = (select id from public.report_workspaces
+                              where business_name = '${RETAINER}');
+      update public.report_launches set cover_image_path = null
+       where name = 'Autumn challenge';
     `);
+  });
+
+  /**
+   * A month of Social Media figures, which the seed also lacks.
+   *
+   * The Social Media report is one of the five screens being compared and
+   * it was drawing an empty state. These are the mockups' own numbers, so
+   * the two can be held side by side — illustrative, exactly as the brief
+   * now says mockup numbers are.
+   */
+  test.beforeAll(async () => {
+    const FIGURES: [string, number][] = [
+      ["social_media_followers_at_month_end", 26420],
+      ["social_media_posts_published", 22],
+      ["social_media_reach", 184500],
+      ["social_media_views", 412600],
+      ["social_media_likes_plus_comments", 12640],
+      ["social_media_saves", 3120],
+      ["social_media_shares", 1480],
+    ];
+
+    const rows = FIGURES.map(
+      ([key, value]) =>
+        `((select id from public.report_workspaces where business_name = '${RETAINER}'),
+          '${MONTH}', '${key}', ${value},
+          (select id from public.members where email = 'nina@aos.test'))`,
+    ).join(",");
+
+    await db(`
+      insert into public.report_values
+        (workspace_id, month, metric_key, value, entered_by)
+      values ${rows}
+      on conflict do nothing;
+    `);
+  });
+
+  /**
+   * A cover on the launch, because the mockups put a photograph on every
+   * launch card and an empty frame is not a thing to judge.
+   *
+   * A real object in the bucket rather than a path pointing at nothing:
+   * the page signs the path through the reader's own session, and a signed
+   * URL for a file that is not there is a broken image, which would look
+   * like a bug in the screenshot rather than a fixture.
+   */
+  test.beforeAll(async () => {
+    const stack = requireLocalStack();
+    const { readFileSync } = await import("node:fs");
+
+    const launchId = (
+      await db(
+        `select id::text from public.report_launches where name = 'Autumn challenge' limit 1;`,
+      )
+    ).trim();
+    if (!launchId) return;
+
+    const workspaceId = (
+      await db(
+        `select id::text from public.report_workspaces where business_name = '${RETAINER}' limit 1;`,
+      )
+    ).trim();
+
+    // The path shape the policies read: workspace/launch.ext.
+    const path = `${workspaceId}/${launchId}.jpg`;
+    const body = readFileSync("public/stations/terrazza.jpg");
+
+    await fetch(`${stack.url}/storage/v1/object/launch-covers/${path}`, {
+      method: "POST",
+      headers: {
+        apikey: stack.serviceKey,
+        Authorization: `Bearer ${stack.serviceKey}`,
+        "Content-Type": "image/jpeg",
+        "x-upsert": "true",
+      },
+      body,
+    });
+
+    await db(
+      `update public.report_launches set cover_image_path = '${path}' where id = '${launchId}';`,
+    );
   });
 
   test.beforeEach(async ({ page }) => {
@@ -170,6 +257,9 @@ test.describe("the five mockup screens", () => {
   test("5 — Launches", async ({ page }, info) => {
     await page.goto("/reporting/launches");
     await expect(page.getByText(RETAINER).first()).toBeVisible();
+    // The cover the fixture put on Autumn challenge. Decorative, so it has
+    // an empty alt and is found by its source rather than by a name.
+    await expect(page.locator('img[src*="launch-covers"]').first()).toBeVisible();
     await shot(page, "5-launches", width(info.project.name));
   });
 });

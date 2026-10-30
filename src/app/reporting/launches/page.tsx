@@ -10,6 +10,7 @@ import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { launchSummary } from "@/lib/reporting/launch-figures";
 import { getLaunch, getLaunches } from "@/lib/reporting/launch-queries";
+import { signLaunchCover } from "@/lib/reporting/launch-cover";
 import { lastDayOf } from "@/lib/reporting/months";
 
 export const metadata: Metadata = {
@@ -50,9 +51,11 @@ export default async function LaunchesPage({
   const cards = await Promise.all(
     launches.map(async (launch) => {
       const detail = await getLaunch(launch.id);
-      return detail
-        ? { launch, summary: launchSummary(detail), stages: detail.stages }
-        : null;
+      if (!detail) return null;
+      // Signed here, through the reader's own session, so a client gets a
+      // link to a published launch's cover and nothing for a draft's.
+      const coverUrl = await signLaunchCover(launch.cover_image_path ?? null);
+      return { launch, summary: launchSummary(detail), stages: detail.stages, coverUrl };
     }),
   );
 
@@ -131,12 +134,13 @@ export default async function LaunchesPage({
             <section>
               <Eyebrow className="mb-3">Live in {ctx.month.label}</Eyebrow>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {thisMonth.map(({ launch, summary }) => (
+                {thisMonth.map(({ launch, summary, coverUrl }) => (
                   <LaunchCard
                     key={launch.id}
                     launch={launch}
                     summary={summary}
                     goal={launch.goal_good}
+                    coverUrl={coverUrl}
                     href={reportHref(`/reporting/launches/${launch.id}`, ctx)}
                   />
                 ))}
@@ -150,12 +154,13 @@ export default async function LaunchesPage({
                 <Eyebrow className="mb-3">Every other launch</Eyebrow>
               ) : null}
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {others.map(({ launch, summary }) => (
+                {others.map(({ launch, summary, coverUrl }) => (
                   <LaunchCard
                     key={launch.id}
                     launch={launch}
                     summary={summary}
                     goal={launch.goal_good}
+                    coverUrl={coverUrl}
                     href={reportHref(`/reporting/launches/${launch.id}`, ctx)}
                   />
                 ))}

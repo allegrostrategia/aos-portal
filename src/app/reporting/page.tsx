@@ -311,7 +311,12 @@ export default async function ReportingOverviewPage({
               <ul className="flex flex-col gap-3">
                 {panels.attention.map((item) => (
                   <li key={item.text} className="text-body text-ink/80">
-                    <span className="mb-1 inline-block rounded-full bg-cream-deep px-2.5 py-0.5 text-caption font-medium uppercase tracking-wide text-ink/60">
+                    {/* Coral, not grey (Nina, 30 Oct): the tag is the one
+                        thing marking these three as the ones to read first,
+                        and a grey pill read as furniture. Ink on it is
+                        9.3:1, so the colour is decoration over a label that
+                        already says what it is. */}
+                    <span className="mb-1 inline-block rounded-full bg-blush/60 px-2.5 py-0.5 text-caption font-medium uppercase tracking-wide text-ink/75">
                       {FOCUS_TAG}
                     </span>
                     <br />

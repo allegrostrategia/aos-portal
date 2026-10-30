@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { Eyebrow } from "@/components/ui/card";
 import { IconCircle, type IconTone, type ReportIconName } from "./icons";
 import {
   CHANGE_TONE_CLASS,
@@ -88,18 +87,32 @@ export function KpiCard({
 
   const body = (
     <>
+      {/* The label in sentence case beside the disc, not a tracked small-cap
+          eyebrow (Nina, 30 Oct). The mockups read "Revenue", and at this
+          size the eyebrow treatment was competing with the figure under
+          it rather than introducing it. */}
       {icon ? (
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <IconCircle name={icon.name} tone={icon.tone} size="sm" />
-          <Eyebrow>{label}</Eyebrow>
+          <span className="text-small font-medium text-ink/75">{label}</span>
         </div>
       ) : (
-        <Eyebrow>{label}</Eyebrow>
+        <span className="block text-small font-medium text-ink/75">{label}</span>
       )}
-      {/* Sized to the card, not to the page. `text-title` clamps up to 44px,
-          which overflows a six-across grid the moment a figure reaches
-          £24,850 — caught by looking at it rather than by any test. */}
-      <p className="font-mono mt-2 text-[1.5rem] leading-tight tracking-tight text-ink tabular-nums 2xl:text-[1.75rem]">
+      {/* **The display serif, not the mono.** CLAUDE.md gives Cormorant
+          "headings and display values" and reserves the mono for numbers
+          in running data — a table column, a date beside a label. A
+          headline figure on a card is a display value, and it is what the
+          mockups draw.
+          Sized to the card, not to the page. `text-title` clamps up to
+          44px, which overflows a six-across grid the moment a figure
+          reaches £24,850 — caught by looking at it, not by a test. */}
+      {/* **No `tabular-nums` here**, which the mono version had and needed.
+          Tabular figures exist to make columns line up; a headline figure
+          is not in a column, and Cormorant's tabular "1" is a bare serifed
+          stem — "184,500" read as "I84,500" on the first pass. The
+          proportional figures are the ones the face was drawn with. */}
+      <p className="font-display mt-2 text-[2rem] leading-tight font-medium text-ink 2xl:text-[2.25rem]">
         {formatValue(value, unit, currency)}
       </p>
       {changeText && previousLabel ? (

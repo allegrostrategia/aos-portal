@@ -62,7 +62,7 @@ test("the Overview carries none of Stage 3 at the production flag", async ({ pag
   expect(text).not.toMatch(/(On track|Close|Off track) vs\./);
 
   // And the screen is still itself: the Stage 2 Overview, intact.
-  expect(text).toMatch(/NEW LEADS/);
+  expect(text).toMatch(/New leads/);
   expect(text).toMatch(/Notes from your strategist/);
   expect(text).toMatch(/Ready to publish\?/);
 });

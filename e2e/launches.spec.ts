@@ -147,17 +147,21 @@ test("the launch report, end to end", async ({ page }, info) => {
 
   // §6.4's headline figures, from the seed's §6.6 numbers: 22 at £500 plus
   // 8 at £600 at full contract value, £12,600 collected.
-  expect(text).toMatch(/TOTAL SALES 30/);
-  expect(text).toMatch(/TOTAL REVENUE £15,800/);
-  expect(text).toMatch(/STILL TO COLLECT £3,200/);
+  // Sentence case since 30 October: the KPI card's label is a label beside
+  // the icon now, not a tracked uppercase eyebrow above the figure. The same
+  // change moved the matching lines in nina-answers, published-lock and
+  // stage-gate.
+  expect(text).toMatch(/Total sales 30/);
+  expect(text).toMatch(/Total revenue £15,800/);
+  expect(text).toMatch(/Still to collect £3,200/);
   // 15,800 ÷ 30.
-  expect(text).toMatch(/AVERAGE ORDER VALUE £526\.67/);
+  expect(text).toMatch(/Average order value £526\.67/);
   // **30 sales against the masterclass's 900 SIGN-UPS** — Nina's decision
   // 20, 28 October. Not its 600 attendees, which read 5.0% and flattered
   // the show-up rate; not the challenge's 2,450 across five days, which
   // would read 1%. The seed's three numbers are deliberately all
   // different, so each wrong reading shows as its own figure.
-  expect(text).toMatch(/CONVERSION RATE 3\.3%/);
+  expect(text).toMatch(/Conversion rate 3\.3%/);
 
   // Decision 19: the count still in the room, and that against the room
   // at the START of the session — 430 of 600, not 430 of the 520 who were
@@ -222,7 +226,7 @@ test("the client sees a published launch's report and none of the planner", asyn
   await page.waitForURL(/\/reporting\/launches\/[0-9a-f-]{36}/);
 
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
-  expect(text).toMatch(/TOTAL REVENUE £15,800/);
+  expect(text).toMatch(/Total revenue £15,800/);
   // The planner is a planning tool for a conversation, not a number to
   // hand somebody — §6.6 is the team's.
   expect(text).not.toMatch(/Working backwards/);

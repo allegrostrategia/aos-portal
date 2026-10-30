@@ -17,7 +17,13 @@ export interface OverviewKpi {
   metricKey: string;
   /** The category it belongs to, so the card can link to that page. */
   category: CategoryKey;
-  /** The mockup's wording, which is shorter than the metric's own label. */
+  /**
+   * The mockup's wording, which is shorter than the metric's own label.
+   *
+   * Sentence case (Nina, 30 Oct): it sits beside the icon as a label, not
+   * above the card as a tracked eyebrow, and Title Case on a six-across
+   * grid made every two-word label look like a heading.
+   */
   label: string;
   /**
    * The mark on the card, from the mockups. Decorative: the label beside it
@@ -29,8 +35,8 @@ export interface OverviewKpi {
 export const OVERVIEW_KPIS: OverviewKpi[] = [
   { metricKey: "financials_total_revenue", category: "financials", label: "Revenue", icon: "revenue" },
   { metricKey: "financials_profit", category: "financials", label: "Profit", icon: "profit" },
-  { metricKey: "leads_conversions_total_leads", category: "leads_conversions", label: "New Leads", icon: "leads" },
-  { metricKey: "leads_conversions_new_clients", category: "leads_conversions", label: "New Clients", icon: "person-plus" },
-  { metricKey: "email_list_size_at_month_end", category: "email", label: "Email List Size", icon: "email" },
+  { metricKey: "leads_conversions_total_leads", category: "leads_conversions", label: "New leads", icon: "leads" },
+  { metricKey: "leads_conversions_new_clients", category: "leads_conversions", label: "New clients", icon: "person-plus" },
+  { metricKey: "email_list_size_at_month_end", category: "email", label: "Email list size", icon: "email" },
   { metricKey: "social_media_followers_at_month_end", category: "social_media", label: "Followers", icon: "people" },
 ];

@@ -8,7 +8,8 @@ import { StrategistNotes } from "@/components/reporting/notes";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
-import { IconCircle } from "@/components/reporting/icons";
+import { IconCircle, toneFor } from "@/components/reporting/icons";
+import { CATEGORY_ICONS } from "@/components/reporting/report-shell";
 import { FunnelChart } from "@/components/reporting/charts/funnel-chart";
 import { categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
@@ -160,10 +161,17 @@ export default async function CategoryReportPage({
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {headline.map((metric) => (
+            {headline.map((metric, index) => (
               <KpiCard
                 key={metric.key}
                 label={metric.label}
+                // Every category's headline cards, not only the Overview's
+                // (Nina, 30 Oct). One mark per category rather than one per
+                // metric: the cards on a page are all the same subject, and
+                // a different glyph on each would invent distinctions the
+                // figures do not have. The tint still rotates, so a row
+                // reads as a set.
+                icon={{ name: CATEGORY_ICONS[category.key], tone: toneFor(index) }}
                 value={figures.figure(metric.key)}
                 previous={figures.previousFigure(metric.key)}
                 unit={metric.unit}

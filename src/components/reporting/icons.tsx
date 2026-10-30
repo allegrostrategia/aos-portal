@@ -265,16 +265,35 @@ export function ReportIcon({
  */
 export type IconTone = "gold" | "blush" | "sky" | "orange" | "lemon";
 
+/**
+ * The tints, at the strength the mockups draw them (Dom, 30 October: the
+ * first pass was too faint to read as a disc at all).
+ *
+ * Alpha rather than a solid colour, so each one sits on whichever card it
+ * lands on — white on `/reporting`, cream everywhere else — without a
+ * second set of values. Every one of them keeps ink above 12:1, which is
+ * checked by `scripts/check-icon-circles.mjs`.
+ */
 const TONE_BG: Record<IconTone, string> = {
-  gold: "bg-gold/30",
-  blush: "bg-blush/35",
-  sky: "bg-sky/40",
-  orange: "bg-orange/20",
-  lemon: "bg-lemon/50",
+  gold: "bg-gold/90",
+  blush: "bg-blush/85",
+  sky: "bg-sky/85",
+  orange: "bg-orange/50",
+  lemon: "bg-lemon",
 };
 
-/** The rotation, so a row of cards alternates without each one choosing. */
-export const ICON_TONES: IconTone[] = ["gold", "blush", "sky", "orange", "lemon"];
+/**
+ * The rotation, so a row of cards alternates without each one choosing.
+ *
+ * **Four, not five: lemon is out.** Two reasons, and the second is the one
+ * that decided it. Lemon is the palest hue in the brand and tops out at
+ * 1.25:1 against a white card even at full strength, so as a disc it barely
+ * exists — and lemon is already doing a job on these pages, as the active
+ * tab's pill. Spending it on decoration as well would blunt the one place
+ * it means something. It stays in `IconTone` for a caller that wants it
+ * deliberately; nothing in the rotation reaches for it.
+ */
+export const ICON_TONES: IconTone[] = ["gold", "blush", "sky", "orange"];
 
 export function toneFor(index: number): IconTone {
   return ICON_TONES[index % ICON_TONES.length];
@@ -287,11 +306,16 @@ export function IconCircle({
 }: {
   name: ReportIconName;
   tone?: IconTone;
-  /** `sm` for a KPI card's label row, `md` for a panel title. */
+  /**
+   * Both are 40px, which is what the mockups draw and roughly double the
+   * first pass. `sm` keeps a slightly smaller glyph inside the same disc,
+   * for a KPI card where the disc sits beside a label rather than a
+   * heading.
+   */
   size?: "sm" | "md";
 }) {
-  const box = size === "sm" ? "size-7" : "size-9";
-  const icon = size === "sm" ? "size-3.5" : "size-[18px]";
+  const box = "size-10";
+  const icon = size === "sm" ? "size-[18px]" : "size-5";
 
   return (
     <span
