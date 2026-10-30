@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CATEGORIES } from "./categories.ts";
+import { CATEGORIES, ENTRY_CATEGORIES, type CategoryKey } from "./categories.ts";
 import {
   calculate,
   entityAwareLookup,
@@ -293,3 +293,50 @@ export function offerBreakdown(figures: MonthFigures) {
 }
 
 export { categoryCompletion } from "./completion.ts";
+import { categoryCompletion } from "./completion.ts";
+import type { CompletionInput, SectionState } from "./completion.ts";
+export type { SectionState } from "./completion.ts";
+
+
+/**
+ * Where every entry section stands, for the entry screen's tab markers and
+ * its "6 of 10 sections complete" bar (the mockups, and brief §3).
+ *
+ * Built on `categoryCompletion`, the same function the Overview's "Still to
+ * fill in" panel uses, so the two can never disagree about whether a section
+ * is finished — which they would within a week if each counted for itself.
+ *
+ * **A section with nothing in it to fill is finished, not excluded.** A
+ * member with no funnels and no ad campaigns owes those sections nothing,
+ * and counting them as outstanding meant they could never reach the end
+ * however much they typed. That rule is already in the Overview panel; this
+ * is the same rule, read from the same place.
+ */
+export function sectionStates(
+  figures: CompletionInput,
+  hidden: string[],
+): {
+  states: Partial<Record<CategoryKey, SectionState>>;
+  done: number;
+  total: number;
+} {
+  const states: Partial<Record<CategoryKey, SectionState>> = {};
+  let done = 0;
+  let total = 0;
+
+  for (const category of ENTRY_CATEGORIES) {
+    if (hidden.includes(category.key)) continue;
+    total++;
+
+    const { filled, total: count } = categoryCompletion(figures, category.key);
+
+    if (count === 0 || filled === count) {
+      states[category.key] = "done";
+      done++;
+    } else {
+      states[category.key] = filled > 0 ? "started" : "empty";
+    }
+  }
+
+  return { states, done, total };
+}

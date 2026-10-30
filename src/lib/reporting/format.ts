@@ -153,6 +153,56 @@ export const CHANGE_TONE_CLASS: Record<"good" | "bad" | "neutral", string> = {
   neutral: "text-ink/55",
 };
 
+/**
+ * The colour of a target bar, which the mockups vary by how close the month
+ * is to its target rather than drawing every bar the same.
+ *
+ * Four steps, and the thresholds are the point: a bar's colour is a second
+ * reading of a number already printed beside it as "4 of 6  67%", never the
+ * only one. Somebody who cannot separate gold from orange still has the
+ * figure, the percentage and the bar's own length.
+ *
+ *   met          green   — on or past it, or under it where under is the win
+ *   ≥ 75%        gold    — close
+ *   ≥ 50%        orange  — halfway
+ *   below        blush   — a long way off
+ *
+ * **"Met" is not "100%".** A metric whose good direction is down — cost per
+ * lead, clients who left — is met by being *under* its target, and a bar
+ * showing 40% of a cost target is the best news on the page. Reading those
+ * as "40%, a long way off" is exactly backwards, so the caller passes the
+ * direction and this asks the right question for it.
+ */
+export type TargetTone = "met" | "close" | "halfway" | "far";
+
+export function targetTone(
+  value: number | null,
+  target: number,
+  goodDirection: "up" | "down" | "none",
+): TargetTone {
+  const reached = value ?? 0;
+
+  if (goodDirection === "down") {
+    // Under target is the win; there is no "nearly" worth a colour of its
+    // own, so the only question is whether they are over it.
+    return reached <= target ? "met" : "far";
+  }
+
+  const share = target > 0 ? (reached / target) * 100 : 0;
+  if (share >= 100) return "met";
+  if (share >= 75) return "close";
+  if (share >= 50) return "halfway";
+  return "far";
+}
+
+/** The fill for each step. Green is the one in CHANGE_TONE_CLASS. */
+export const TARGET_TONE_FILL: Record<TargetTone, string> = {
+  met: "#1f7a4d",
+  close: "var(--aos-gold)",
+  halfway: "var(--aos-orange)",
+  far: "var(--aos-blush)",
+};
+
 /** "↑ 18%" / "↓ 22%". The sign is the movement; the colour is the meaning. */
 export function formatChange(changePercent: number | null): string | null {
   if (changePercent === null || !Number.isFinite(changePercent)) return null;

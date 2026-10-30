@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Badge, Eyebrow } from "@/components/ui/card";
 import { signOut } from "@/lib/auth/actions";
 import { SHIPPED_CATEGORIES, type CategoryKey } from "@/lib/reporting/categories";
+import { ReportIcon, type ReportIconName } from "./icons";
+import type { SectionState } from "@/lib/reporting/completion";
 import { reportHref, type ReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
 import { SectionPicker } from "./section-picker";
@@ -28,6 +30,8 @@ export function ReportShell({
   title,
   tagline,
   actions,
+  progress,
+  sectionStatus,
   children,
 }: {
   ctx: ReportContext;
@@ -45,6 +49,22 @@ export function ReportShell({
   title: string;
   tagline?: string;
   actions?: React.ReactNode;
+  /**
+   * The mockups' "6 of 10 sections complete" bar, on the entry screens.
+   *
+   * Only where it is true: the report itself is not something a reader
+   * completes, and a progress bar over somebody else's finished report
+   * would be measuring the wrong person's work.
+   */
+  progress?: { done: number; total: number };
+  /**
+   * Per-tab completion, on the entry screens (brief §3): a tick for done,
+   * a dot for started, an empty ring for nothing yet.
+   *
+   * Every marker carries a word in its `title` and in the visually hidden
+   * text beside it, so the three states are never three colours alone.
+   */
+  sectionStatus?: Partial<Record<CategoryKey, SectionState>>;
   children: React.ReactNode;
 }) {
   return (
@@ -68,13 +88,99 @@ export function ReportShell({
             </div>
           </div>
 
-          <TabRow ctx={ctx} active={active} />
+          {progress ? <SectionProgress {...progress} /> : null}
+
+          <TabRow ctx={ctx} active={active} sectionStatus={sectionStatus} />
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
         {children}
       </main>
+    </>
+  );
+}
+
+/**
+ * "6 of 10 sections complete", with the mockups' gold bar.
+ *
+ * The sentence is the measurement and the bar repeats it, not the other way
+ * round: a bar alone would leave somebody counting pixels to find out how
+ * much is left, and it is the one number on this screen that answers "am I
+ * nearly done".
+ */
+function SectionProgress({ done, total }: { done: number; total: number }) {
+  const share = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div
+        className="h-2.5 w-full max-w-xs overflow-hidden rounded-full sm:w-56"
+        style={{ background: "var(--aos-cream-deep)" }}
+        role="progressbar"
+        aria-valuenow={done}
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-label={`${done} of ${total} sections complete`}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${share}%`,
+            background: "var(--aos-gold)",
+            boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--aos-ink) 14%, transparent)",
+          }}
+        />
+      </div>
+      <p className="text-small text-ink/65">
+        {done} of {total} sections complete
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The tick, dot or ring beside a tab on the entry screens.
+ *
+ * Three shapes as well as three colours, and a word in the tooltip and in
+ * the hidden text — so it survives being read in greyscale, by somebody who
+ * cannot separate green from orange, and out loud.
+ */
+function SectionMarker({ state }: { state: SectionState }) {
+  const label =
+    state === "done" ? "complete" : state === "started" ? "in progress" : "not started";
+
+  return (
+    <>
+      <span aria-hidden="true" title={label} className="shrink-0">
+        {state === "done" ? (
+          <svg viewBox="0 0 16 16" className="size-4" fill="none">
+            <circle cx="8" cy="8" r="7" fill="#1f7a4d" />
+            <path
+              d="m5 8.2 2.1 2.1L11 6.4"
+              stroke="#fff"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : state === "started" ? (
+          <svg viewBox="0 0 16 16" className="size-4">
+            <circle cx="8" cy="8" r="5" fill="var(--aos-orange)" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" className="size-4" fill="none">
+            <circle
+              cx="8"
+              cy="8"
+              r="5.5"
+              stroke="color-mix(in oklab, var(--aos-ink) 28%, transparent)"
+              strokeWidth="1.5"
+            />
+          </svg>
+        )}
+      </span>
+      <span className="sr-only"> — {label}</span>
     </>
   );
 }
@@ -113,7 +219,15 @@ function SignOut() {
  * one route in, so a tab for something unbuilt is not drawn at all rather than
  * drawn and disabled.
  */
-function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey | null }) {
+function TabRow({
+  ctx,
+  active,
+  sectionStatus,
+}: {
+  ctx: ReportContext;
+  active: CategoryKey | null;
+  sectionStatus?: Partial<Record<CategoryKey, SectionState>>;
+}) {
   const visible = SHIPPED_CATEGORIES.filter(
     (c) => !ctx.workspace.hidden_categories.includes(c.key),
   );
@@ -161,13 +275,21 @@ function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey | nul
                 <Link
                   href={hrefFor(category)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`inline-block rounded-t-xl border-b-2 px-4 py-3 text-small font-medium whitespace-nowrap transition ${
+                  // The mockups' active tab: a lemon pill, not an underline.
+                  // It carries its own background, so `aria-current` is not
+                  // the only thing saying where you are — and the label stays
+                  // ink on lemon, which is 12.6:1.
+                  className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2.5 text-small font-medium whitespace-nowrap transition ${
                     isActive
-                      ? "border-orange text-ink"
-                      : "border-transparent text-ink/55 hover:text-ink"
+                      ? "bg-lemon text-ink"
+                      : "text-ink/55 hover:bg-ink/5 hover:text-ink"
                   }`}
                 >
+                  <ReportIcon name={TAB_ICONS[category.key]} className="size-4 shrink-0" />
                   {category.label}
+                  {sectionStatus?.[category.key] ? (
+                    <SectionMarker state={sectionStatus[category.key]!} />
+                  ) : null}
                 </Link>
               </li>
             );
@@ -177,6 +299,30 @@ function TabRow({ ctx, active }: { ctx: ReportContext; active: CategoryKey | nul
     </>
   );
 }
+
+/**
+ * One icon per tab, as the mockups draw them.
+ *
+ * Keyed by `CategoryKey` and exhaustive, so adding a category to
+ * `categories.ts` without choosing its icon is a type error rather than a
+ * tab that silently renders nothing.
+ *
+ * Decorative in the strict sense: every tab still has its label beside the
+ * icon at every width, and the icons are `aria-hidden`.
+ */
+const TAB_ICONS: Record<CategoryKey, ReportIconName> = {
+  overview: "overview",
+  social_media: "social",
+  trial_reels: "reels",
+  email: "email",
+  funnels: "funnels",
+  leads_conversions: "leads",
+  ads: "ads",
+  client_experience: "experience",
+  offers: "offers",
+  financials: "financials",
+  launches: "launches",
+};
 
 /**
  * The month dropdown from the mockups, as a `<details>`.

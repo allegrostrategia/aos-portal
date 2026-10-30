@@ -8,6 +8,7 @@ import { Objectives } from "@/components/reporting/objectives";
 import { Reflection } from "@/components/reporting/reflection";
 import { ClientReplies } from "@/components/reporting/replies";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
+import { IconCircle, toneFor } from "@/components/reporting/icons";
 import { leadsBySource } from "@/lib/reporting/chart-data";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { lightFor } from "@/lib/reporting/lights";
@@ -18,7 +19,7 @@ import { draftMonthsBefore } from "@/lib/reporting/carried-build";
 import { getPublishedMonths } from "@/lib/reporting/queries";
 import { FOCUS_TAG, PANELS, highlights } from "@/lib/reporting/highlights";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
-import { formatValue } from "@/lib/reporting/format";
+import { TARGET_TONE_FILL, formatValue, targetTone } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { ENTRY_CATEGORIES, STAGE_3, STAGE_5, categoryByKey } from "@/lib/reporting/categories";
@@ -184,8 +185,12 @@ export default async function ReportingOverviewPage({
             wraps into it, and the month is already in the page header and
             on the picker. The Leads page keeps it — the card is full width
             there and it has room. */}
-        <SectionTitle>Where the leads came from</SectionTitle>
-        <BarChart data={leads} caption="New leads this month, by source." />
+        <SectionTitle icon={<IconCircle name="chart" tone="sky" />}>
+          Where the leads came from
+        </SectionTitle>
+        {/* `colourByCategory`: the sources ARE the identities here, and the
+            same five colours carry them in the mockups' donut too. */}
+        <BarChart data={leads} colourByCategory caption="New leads this month, by source." />
       </Card>
     ) : null;
 
@@ -254,7 +259,7 @@ export default async function ReportingOverviewPage({
 
       <section aria-label="This month at a glance">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {OVERVIEW_KPIS.map((kpi) => {
+          {OVERVIEW_KPIS.map((kpi, index) => {
             const metric = figures.byKey.get(kpi.metricKey);
             if (!metric) return null;
             const category = categoryByKey(kpi.category);
@@ -265,6 +270,9 @@ export default async function ReportingOverviewPage({
               <KpiCard
                 key={kpi.metricKey}
                 label={kpi.label}
+                // The tint rotates across the row rather than each card
+                // choosing, which is what makes six of them read as a set.
+                icon={{ name: kpi.icon, tone: toneFor(index) }}
                 value={figures.figure(kpi.metricKey)}
                 previous={figures.previousFigure(kpi.metricKey)}
                 unit={metric.unit}
@@ -293,7 +301,9 @@ export default async function ReportingOverviewPage({
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {panels.attention.length > 0 ? (
             <Card>
-              <SectionTitle>{PANELS.attention}</SectionTitle>
+              <SectionTitle icon={<IconCircle name="target" tone="blush" />}>
+                {PANELS.attention}
+              </SectionTitle>
               {/* The tag, not a tail on every sentence (Nina, 28 October).
                   Its own line above the sentence rather than beside it:
                   inline, it pushed the first words of a two-line item into
@@ -314,7 +324,9 @@ export default async function ReportingOverviewPage({
 
           {panels.wins.length > 0 ? (
             <Card>
-              <SectionTitle>{PANELS.wins}</SectionTitle>
+              <SectionTitle icon={<IconCircle name="star" tone="gold" />}>
+                {PANELS.wins}
+              </SectionTitle>
               <ul className="flex flex-col gap-2.5">
                 {panels.wins.map((item) => (
                   <li key={item.text} className="text-body text-ink/80">
@@ -330,6 +342,7 @@ export default async function ReportingOverviewPage({
       {STAGE_3 && targetRows.length > 0 ? (
         <Card className="mt-8">
           <SectionTitle
+            icon={<IconCircle name="target" tone="orange" />}
             aside={
               ctx.canEdit ? (
                 <Link
@@ -346,8 +359,10 @@ export default async function ReportingOverviewPage({
           <ul className="mt-1 flex flex-col gap-4">
             {targetRows.map(({ metric, target, value }) => {
               const share = target > 0 ? ((value ?? 0) / target) * 100 : 0;
-              const good =
-                metric.good_direction === "up" ? share >= 100 : (value ?? 0) <= target;
+              // Four steps rather than two (the mockups): met, close,
+              // halfway, far. The percentage is printed beside the bar, so
+              // the colour is a second reading of it and never the only one.
+              const tone = targetTone(value, target, metric.good_direction);
               return (
                 <li key={metric.key}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -369,7 +384,7 @@ export default async function ReportingOverviewPage({
                       className="absolute inset-y-0 left-0 rounded-full"
                       style={{
                         width: `${Math.min(100, Math.max(0, share))}%`,
-                        background: good ? "var(--aos-navy)" : "var(--aos-orange)",
+                        background: TARGET_TONE_FILL[tone],
                         boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--aos-ink) 14%, transparent)",
                       }}
                     />

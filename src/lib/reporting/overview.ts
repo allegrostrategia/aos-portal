@@ -1,4 +1,5 @@
 import type { CategoryKey } from "./categories.ts";
+import type { ReportIconName } from "@/components/reporting/icons";
 
 /**
  * The six KPI cards on the Overview (§5.1), and where each one comes from.
@@ -18,13 +19,18 @@ export interface OverviewKpi {
   category: CategoryKey;
   /** The mockup's wording, which is shorter than the metric's own label. */
   label: string;
+  /**
+   * The mark on the card, from the mockups. Decorative: the label beside it
+   * says the same thing in words, so the icon carries nothing on its own.
+   */
+  icon: ReportIconName;
 }
 
 export const OVERVIEW_KPIS: OverviewKpi[] = [
-  { metricKey: "financials_total_revenue", category: "financials", label: "Revenue" },
-  { metricKey: "financials_profit", category: "financials", label: "Profit" },
-  { metricKey: "leads_conversions_total_leads", category: "leads_conversions", label: "New Leads" },
-  { metricKey: "leads_conversions_new_clients", category: "leads_conversions", label: "New Clients" },
-  { metricKey: "email_list_size_at_month_end", category: "email", label: "Email List Size" },
-  { metricKey: "social_media_followers_at_month_end", category: "social_media", label: "Followers" },
+  { metricKey: "financials_total_revenue", category: "financials", label: "Revenue", icon: "revenue" },
+  { metricKey: "financials_profit", category: "financials", label: "Profit", icon: "profit" },
+  { metricKey: "leads_conversions_total_leads", category: "leads_conversions", label: "New Leads", icon: "leads" },
+  { metricKey: "leads_conversions_new_clients", category: "leads_conversions", label: "New Clients", icon: "person-plus" },
+  { metricKey: "email_list_size_at_month_end", category: "email", label: "Email List Size", icon: "email" },
+  { metricKey: "social_media_followers_at_month_end", category: "social_media", label: "Followers", icon: "people" },
 ];

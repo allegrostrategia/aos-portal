@@ -17,5 +17,13 @@ import { requireReportUser } from "@/lib/auth/report";
 export default async function ReportingLayout({ children }: LayoutProps<"/reporting">) {
   await requireReportUser();
 
-  return <div className="flex min-h-svh flex-col bg-cream">{children}</div>;
+  // `data-report-surface` is the scoped exception in globals.css: white
+  // cards on the mockups' cool pale ground, for these pages only (Nina,
+  // 30 October 2026). It redefines the surface tokens for the subtree, so
+  // nothing below here knows there are two schemes.
+  return (
+    <div data-report-surface className="flex min-h-svh flex-col bg-cream">
+      {children}
+    </div>
+  );
 }

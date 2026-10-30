@@ -396,3 +396,37 @@ html:has(main[data-chat-screen]) .portal-content {
   .flip-digit { animation: none; }
   .draw-line { animation: none; stroke-dashoffset: 0; }
 }
+
+/* ---------------------------------------------------------------------------
+   The reporting tool's surface — a scoped exception, and only here.
+
+   Nina, 30 October 2026, reversing her own 30 September decision for
+   `/reporting` alone: these pages wear the approved mockups' surface, white
+   cards with a soft shadow on a cool pale ground, instead of L'Editoriale's
+   cream on cream. Every other route keeps cream, and CLAUDE.md's "do not
+   drift back to a cool off-white ground" rule still holds for all of them.
+
+   Done by redefining the tokens on one wrapper rather than by giving the
+   reporting components their own classes. Everything inside already paints
+   itself from `--aos-card`, `--aos-cream` and `--aos-cream-deep` — `<Card>`,
+   the chart separator, every well and list row — so the subtree changes
+   surface without a single component learning that two surfaces exist. It
+   also means the exception can be lifted by deleting this block.
+--------------------------------------------------------------------------- */
+[data-report-surface] {
+  /* The mockups' ground, from the brief's §3 table. */
+  --aos-cream: #f3f5fd;
+  /* A step down from it for wells and list rows, the job cream-deep does on
+     the warm scheme. Cool, so it reads as the same family. */
+  --aos-cream-deep: #e8ecfa;
+  /* The cards themselves. */
+  --aos-card: #ffffff;
+
+  /* Cooler and a touch deeper than the warm pair: a white card needs a real
+     shadow to lift off a pale ground, where a cream card only needed a hint
+     of one against cream. */
+  --shadow-soft: 0 1px 2px rgb(7 60 140 / 0.05), 0 10px 28px -14px rgb(7 60 140 / 0.18);
+  --shadow-lift: 0 2px 6px rgb(7 60 140 / 0.07), 0 18px 44px -18px rgb(7 60 140 / 0.24);
+
+  background: var(--aos-cream);
+}

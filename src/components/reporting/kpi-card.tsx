@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Eyebrow } from "@/components/ui/card";
+import { IconCircle, type IconTone, type ReportIconName } from "./icons";
 import {
   CHANGE_TONE_CLASS,
   changeTone,
@@ -33,6 +34,7 @@ export function KpiCard({
   previousLabel,
   href,
   light,
+  icon,
 }: {
   label: string;
   value: number | null;
@@ -53,6 +55,12 @@ export function KpiCard({
    * was measured against.
    */
   light?: { tone: "green" | "amber" | "red"; against: string } | null;
+  /**
+   * The mockups' tinted disc beside the label. Decorative — it repeats the
+   * label, which is right there in words — so a card without one says
+   * everything a card with one says.
+   */
+  icon?: { name: ReportIconName; tone: IconTone };
 }) {
   const change = monthOnMonthChange(value, previous);
   const tone = changeTone(change, goodDirection);
@@ -80,7 +88,14 @@ export function KpiCard({
 
   const body = (
     <>
-      <Eyebrow>{label}</Eyebrow>
+      {icon ? (
+        <div className="flex items-center gap-2.5">
+          <IconCircle name={icon.name} tone={icon.tone} size="sm" />
+          <Eyebrow>{label}</Eyebrow>
+        </div>
+      ) : (
+        <Eyebrow>{label}</Eyebrow>
+      )}
       {/* Sized to the card, not to the page. `text-title` clamps up to 44px,
           which overflows a six-across grid the moment a figure reaches
           £24,850 — caught by looking at it rather than by any test. */}

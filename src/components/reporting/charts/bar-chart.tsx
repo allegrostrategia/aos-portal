@@ -1,12 +1,19 @@
-import { EDGE, SINGLE } from "./palette.ts";
+import { EDGE, SINGLE, fillFor } from "./palette.ts";
 
 /**
  * One measure across a handful of named things — leads by source, effective
  * hourly rate by offer.
  *
- * **One hue, not one per bar.** The bars are the same measure; colouring
- * them differently would say they were different kinds of thing. A rainbow
- * here is the commonest chart mistake after the dual axis.
+ * **One hue by default, not one per bar.** The bars are the same measure;
+ * colouring them differently would say they were different kinds of thing.
+ * A rainbow here is the commonest chart mistake after the dual axis.
+ *
+ * `colourByCategory` is the one exception, and it is narrow: a chart whose
+ * categories ARE the identities, where the same five colours are already
+ * carrying those identities in a donut or a legend on the same screen —
+ * leads by source, revenue by offer. There the hue is the entity, not the
+ * rank, so it means something. A chart of one measure across days or stages
+ * must not pass it.
  *
  * Horizontal, because the names are words: a vertical bar chart with five
  * source names underneath it either rotates the labels or truncates them,
@@ -34,6 +41,7 @@ export function BarChart({
   target,
   targetLabel,
   caption,
+  colourByCategory = false,
 }: {
   data: BarDatum[];
   /** The scale's top. Passed in so two charts can share one scale. */
@@ -42,6 +50,8 @@ export function BarChart({
   target?: number | null;
   targetLabel?: string;
   caption?: string;
+  /** See the note above: only where the categories are the identities. */
+  colourByCategory?: boolean;
 }) {
   const values = data.map((d) => d.value).filter((v): v is number => v !== null);
   // The target belongs inside the scale, or a bar under it has no line to be
@@ -64,7 +74,7 @@ export function BarChart({
     // great deal of ink for one number and makes the ends hard to compare.
     <div className="max-w-3xl">
       <ul className="flex flex-col gap-3">
-        {data.map((datum) => (
+        {data.map((datum, index) => (
           <li key={datum.label}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-small text-ink">{datum.label}</span>
@@ -87,7 +97,10 @@ export function BarChart({
                   className="absolute inset-y-0 left-0 rounded-full"
                   style={{
                     width: `${width(datum.value)}%`,
-                    background: SINGLE,
+                    // The row order is the caller's and is stable, so the
+                    // nth source keeps the nth colour: a month where one
+                    // source drops to nothing does not repaint the others.
+                    background: colourByCategory ? fillFor(index) : SINGLE,
                     // Pale fills need an edge; navy does not, but the same
                     // hairline keeps every mark in the product consistent.
                     boxShadow: `inset 0 0 0 1px ${EDGE}`,

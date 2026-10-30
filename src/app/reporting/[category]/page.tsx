@@ -8,6 +8,8 @@ import { StrategistNotes } from "@/components/reporting/notes";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { IconCircle } from "@/components/reporting/icons";
+import { FunnelChart } from "@/components/reporting/charts/funnel-chart";
 import { categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import {
@@ -174,7 +176,9 @@ export default async function CategoryReportPage({
 
           {category.key === "leads_conversions" ? (
             <Card className="mt-6">
-              <SectionTitle aside={ctx.month.label}>Where the leads came from</SectionTitle>
+              <SectionTitle icon={<IconCircle name="chart" tone="sky" />} aside={ctx.month.label}>
+                Where the leads came from
+              </SectionTitle>
               <BarChart
                 data={leadsBySource(figures)}
                 caption="New leads this month, by source."
@@ -186,7 +190,9 @@ export default async function CategoryReportPage({
             <>
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <Card>
-                  <SectionTitle aside={ctx.month.label}>Share of revenue</SectionTitle>
+                  <SectionTitle icon={<IconCircle name="revenue" tone="gold" />} aside={ctx.month.label}>
+                    Share of revenue
+                  </SectionTitle>
                   <DonutChart
                     slices={revenueByOffer(figures, ctx.workspace.currency)}
                     total={figures.results.offers_total_revenue_from_offers ?? null}
@@ -233,7 +239,9 @@ export default async function CategoryReportPage({
 
           {category.key === "financials" ? (
             <Card className="mt-6">
-              <SectionTitle aside={ctx.month.label}>Where the money went</SectionTitle>
+              <SectionTitle icon={<IconCircle name="calculator" tone="blush" />} aside={ctx.month.label}>
+                Where the money went
+              </SectionTitle>
               <DonutChart
                 slices={costBreakdown(figures, ctx.workspace.currency)}
                 total={figures.results.financials_total_costs ?? null}
@@ -338,7 +346,9 @@ function OffersTable({
   return (
     <Card className="mt-6" padded={false}>
       <div className="p-5 sm:p-6">
-        <SectionTitle>Each offer this month</SectionTitle>
+        <SectionTitle icon={<IconCircle name="offers" tone="gold" />}>
+          Each offer this month
+        </SectionTitle>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] text-left">
@@ -359,9 +369,18 @@ function OffersTable({
               <tr key={offer.name} className="border-b border-ink/8 last:border-0">
                 <th scope="row" className="px-5 py-3 text-body font-medium text-ink sm:px-6">
                   {offer.name}
-                  {offer.pricingModel === "recurring" ? (
-                    <span className="ml-2 text-caption text-ink/50">Recurring</span>
-                  ) : null}
+                  {/* The mockups' pill, on both kinds rather than only the
+                      recurring one: "no pill" is not a label, and a reader
+                      should not have to know that silence means one-off. */}
+                  <span
+                    className={`ml-2 inline-block rounded-full px-2.5 py-0.5 align-middle text-caption font-medium ${
+                      offer.pricingModel === "recurring"
+                        ? "bg-blush/45 text-ink"
+                        : "bg-sky/45 text-ink"
+                    }`}
+                  >
+                    {offer.pricingModel === "recurring" ? "Recurring" : "One-off"}
+                  </span>
                 </th>
                 {/* "Units sold" is labelled "Members" on a recurring offer
                     (§5.9); the column header stays generic and the row says
@@ -420,7 +439,9 @@ function CampaignTable({
   return (
     <Card className="mt-6" padded={false}>
       <div className="p-5 sm:p-6">
-        <SectionTitle>Each campaign this month</SectionTitle>
+        <SectionTitle icon={<IconCircle name="ads" tone="orange" />}>
+          Each campaign this month
+        </SectionTitle>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[44rem] text-left">
@@ -517,8 +538,40 @@ function FunnelTable({
   return (
     <Card className="mt-6" padded={false}>
       <div className="p-5 sm:p-6">
-        <SectionTitle>Each funnel this month</SectionTitle>
+        <SectionTitle icon={<IconCircle name="funnels" tone="sky" />}>
+          Each funnel this month
+        </SectionTitle>
       </div>
+      {/* The mockups' graphic, above the table rather than instead of it:
+          the shape says where people fall out, the table says by how much.
+          Each funnel gets its own, because two funnels on one chart would
+          be two different populations drawn as one. */}
+      <div className="grid gap-6 px-5 pb-6 sm:px-6 lg:grid-cols-2">
+        {rows.map((row) => {
+          const results = calculateFunnel(row);
+          // Derived rather than stored: the opt-in count is the rate
+          // applied to the views, which is how §5.5 defines it.
+          const views = row.landingPageViews ?? null;
+          const optIns =
+            views !== null && results.funnels_opt_in_rate != null
+              ? Math.round((views * results.funnels_opt_in_rate) / 100)
+              : null;
+
+          return (
+            <div key={`funnel-${row.id}`}>
+              <h3 className="mb-3 text-small font-medium text-ink">{row.name}</h3>
+              <FunnelChart
+                stages={[
+                  { label: "Saw the page", value: views },
+                  { label: "Opted in", value: optIns },
+                  { label: "Bought", value: row.purchases ?? null },
+                ]}
+              />
+            </div>
+          );
+        })}
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[44rem] text-left">
           <thead>

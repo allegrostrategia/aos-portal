@@ -23,6 +23,7 @@ import {
   getMonthData,
   getTopItems,
 } from "@/lib/reporting/queries";
+import { getMonthFigures, sectionStates } from "@/lib/reporting/month-figures";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
 import { VISIBLE_OPTIONAL } from "@/lib/reporting/completion";
 import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
@@ -68,10 +69,18 @@ export default async function EnterCategoryPage({
     redirect(reportHref("/reporting", ctx));
   }
 
-  const [metrics, data] = await Promise.all([
+  const [metrics, data, figures] = await Promise.all([
     getMetricsFor(category.key),
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
+    // Every section's state, not just this one's: the tab row shows a
+    // marker on all of them and the header counts them. One more query on
+    // a screen that already makes two, in parallel with them.
+    getMonthFigures(ctx),
   ]);
+
+  // The mockups' "6 of 10 sections complete" bar and the per-tab ticks.
+  const { states, done, total } = sectionStates(figures, ctx.workspace.hidden_categories);
+  const shellProgress = { done, total };
 
   const previousLabel = ctx.month.previous
     ? monthLabel(ctx.month.previous).split(" ")[0]
@@ -102,6 +111,8 @@ export default async function EnterCategoryPage({
         active={category.key}
         path={`/reporting/enter/${category.slug}`}
         title="Enter your data"
+        progress={shellProgress}
+        sectionStatus={states}
         tagline={`${category.label} · ${ctx.month.label}`}
         actions={
           <PublishBadge
@@ -179,6 +190,8 @@ export default async function EnterCategoryPage({
         active={category.key}
         path={`/reporting/enter/${category.slug}`}
         title="Enter your data"
+        progress={shellProgress}
+        sectionStatus={states}
         tagline={`${category.label} · ${ctx.month.label}`}
         actions={
           <PublishBadge
@@ -232,6 +245,8 @@ export default async function EnterCategoryPage({
         active={category.key}
         path={`/reporting/enter/${category.slug}`}
         title="Enter your data"
+        progress={shellProgress}
+        sectionStatus={states}
         tagline={`${category.label} · ${ctx.month.label}`}
         actions={
           <PublishBadge
@@ -365,6 +380,8 @@ export default async function EnterCategoryPage({
       active={category.key}
       path={`/reporting/enter/${category.slug}`}
       title="Enter your data"
+      progress={shellProgress}
+      sectionStatus={states}
       tagline={`${category.label} · ${ctx.month.label}`}
       actions={
         <PublishBadge

@@ -132,3 +132,15 @@ export const VISIBLE_OPTIONAL = new Set([
   "ads_revenue_from_ads",
   "financials_cash_in_bank_at_month_end",
 ]);
+
+
+
+/**
+ * Where a section stands, for the entry screen's tab markers.
+ *
+ * The type lives here with `categoryCompletion`, which decides it; the
+ * function that walks every category is in `month-figures.ts`, because it
+ * needs the category list and this module deliberately imports nothing but
+ * types — that is what makes it testable without a database.
+ */
+export type SectionState = "done" | "started" | "empty";

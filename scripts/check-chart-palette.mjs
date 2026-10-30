@@ -1,8 +1,9 @@
 /**
  * Is a chart palette safe to use? Run it; don't reason about it.
  *
- *   node scripts/check-chart-palette.mjs                 # the default order
- *   node scripts/check-chart-palette.mjs navy,orange,sky  # a candidate
+ *   node scripts/check-chart-palette.mjs                        # the default, on cream
+ *   node scripts/check-chart-palette.mjs navy,orange,sky        # a candidate
+ *   node scripts/check-chart-palette.mjs <order> white          # on the reporting card
  *
  * Computed, never eyeballed: OKLab separation for every adjacent pair and
  * for the worst pair anywhere in the set, under normal vision and under
@@ -85,14 +86,45 @@ const BRAND = {
   lemon: "#f8e6a0",
   charcoal: "#1b1920",
 };
-const CARD = "#f9f2e6";
 const INK = "#0a1e4a";
 
-// The order the charts actually use. Changing it means re-running this.
-const DEFAULT = ["navy", "orange", "gold", "sky", "charcoal"];
-const order = process.argv[2]?.split(",") ?? DEFAULT;
+/**
+ * The surface the marks sit on, which the contrast check needs and which is
+ * no longer one colour.
+ *
+ * Two of them since 30 October 2026: L'Editoriale's cream card everywhere,
+ * and a white card on `/reporting`, which is Nina's scoped exception. A pale
+ * fill's contrast depends on what is behind it, so the surface is an argument
+ * rather than a constant — checking the reporting palette against cream would
+ * answer a question nobody is asking.
+ *
+ *   node scripts/check-chart-palette.mjs                      # cream, the default
+ *   node scripts/check-chart-palette.mjs <order> white        # the reporting card
+ *   node scripts/check-chart-palette.mjs <order> '#f3f5fd'    # or any hex
+ */
+const SURFACES = {
+  cream: "#f9f2e6",
+  white: "#ffffff",
+  ground: "#f3f5fd",
+};
 
-console.log(`order: ${order.join(" → ")}\nsurface: card ${CARD}\n`);
+// The order the charts actually use. Changing it means re-running this.
+const DEFAULT = ["orange", "gold", "sky", "blush", "navy"];
+// An empty first argument means "the default order, on the surface named
+// next" — otherwise `… "" white` would check a palette of nothing.
+const order = process.argv[2] ? process.argv[2].split(",") : DEFAULT;
+
+const surfaceArg = process.argv[3] ?? "cream";
+const CARD = SURFACES[surfaceArg] ?? surfaceArg;
+if (!/^#[0-9a-f]{6}$/i.test(CARD)) {
+  console.error(
+    `Unknown surface "${surfaceArg}". Use ${Object.keys(SURFACES).join(", ")} or a #rrggbb hex.`,
+  );
+  process.exit(1);
+}
+
+const surfaceName = SURFACES[surfaceArg] ? `${surfaceArg} ${CARD}` : CARD;
+console.log(`order: ${order.join(" → ")}\nsurface: card ${surfaceName}\n`);
 console.log("contrast against the card (a mark needs ≥ 3:1 to read as a shape):");
 let fails = 0;
 let warns = 0;

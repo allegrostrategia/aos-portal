@@ -180,16 +180,28 @@ export function PageHeader({
 export function SectionTitle({
   children,
   aside,
+  icon,
   className = "",
 }: {
   children: React.ReactNode;
   aside?: React.ReactNode;
+  /**
+   * A decorative mark before the heading — the reporting tool's `<IconCircle>`.
+   *
+   * Optional and unused everywhere else, because the mockups give reporting
+   * panels an icon and L'Editoriale's screens do not. Passing one does not
+   * change the heading, so a screen reader hears the same words either way.
+   */
+  icon?: React.ReactNode;
   className?: string;
 }) {
   return (
     <div className={`mb-4 flex items-baseline justify-between gap-4 ${className}`}>
-      <h2 className="font-display text-heading font-medium text-ink">{children}</h2>
-      {aside ? <div className="text-small text-ink/60">{aside}</div> : null}
+      <div className="flex min-w-0 items-center gap-3">
+        {icon}
+        <h2 className="font-display text-heading font-medium text-ink">{children}</h2>
+      </div>
+      {aside ? <div className="shrink-0 text-small text-ink/60">{aside}</div> : null}
     </div>
   );
 }
