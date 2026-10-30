@@ -263,12 +263,22 @@ a real month, and none of them can be finished before launch.
       every stage, with "Decided on Nina's behalf" as its first section.
       `npx playwright test nina-review.spec.ts` rebuilds the pictures; the
       README is written by hand. Last built 7 Oct, Stage 3 only.
-- [ ] **Trend charts and the Proven marker still read live history.** A
-      chart can change if an earlier month is unpublished. The snapshot
-      freezes a month's own figures and what it compares against; freezing
-      a chart would mean storing its whole series on every month, which is
-      a different and much larger thing. Flagged rather than solved
-      (Dom, 7 Oct).
+- [ ] **Trend charts and the Proven marker read live history.** Still
+      flagged rather than solved, and now with the charts actually built
+      (Phase 3, 30 October) the edge is narrower and worth stating
+      exactly.
+      **What cannot happen:** a point changing value under a client. A
+      published month is read-only, so every figure behind their chart is
+      as fixed as the one on the card above it.
+      **What can:** a point disappearing. Unpublish July and the client
+      can no longer read July, so it becomes a gap in a twelve-month line
+      they had already seen with July in it — while the September card
+      keeps the frozen "vs. August" beside it. The gap is honest about
+      what they may read; it is still a chart that changed.
+      Freezing it properly would mean storing a whole series on every
+      month, which is the different and much larger thing the 7 October
+      note described. **Worth Nina knowing before she unpublishes a month
+      a client has already opened** (Dom, 7 Oct; narrowed 30 Oct).
 - [ ] **If an offer price is wrong on a published month, the fix is
       unpublish, correct, republish** — and the client gets the "has been
       updated" email. A funnel month captures its offer's price on the
@@ -375,6 +385,79 @@ Asserted by test, not comment: each of the three signs in and must read zero row
 **One of the two was never an error at all, as it turns out.** The launch planner's 600 sign-ups for 30 sales read as wrong against §6.6's old formula, which gave 1,277. **Decision 20 turned conversion round — it is sales ÷ sign-ups — so sign-ups = 30 ÷ 5% = 600 and the mockup is simply right.** The code has read that way since 29 October and `formulas.test.ts` pins both halves: `signUpsNeeded === 600` and an explicit `notEqual(1277)` carrying the reason.
 
 The other, **mockup 2's 6.9% engagement rate where §5.2 gives 9.34%**, stands as a difference and is not going to be chased. 6.9% is likes and comments over reach; the formula includes saves and shares. The code follows the formula.
+
+### Phase 3 of the mockup work: history, sparklines and trend charts — 30 October 2026
+
+Behind `STAGE_3`, so pushing it changes nothing a client sees until
+`PRODUCTION_STAGE` moves. Four charts and a sparkline on every KPI card.
+
+**The thing worth knowing: most of what these charts draw cannot be read
+from the database.** Total revenue, profit, total leads, save rate and
+share rate are all `calc` metrics — `report_values` has never held a row
+for any of them, and never will. A straightforward `select … from
+report_values` for a twelve-month trend returns nothing for them, so
+"Revenue vs profit" (the chart at the top of the mockup's Overview) would
+have been a permanently empty panel with a confident title on it, and the
+first two cards would have had no sparkline on any client's report ever.
+Found by checking `input_type` before trusting the query.
+
+So `src/lib/reporting/figure-history.ts` loads the **inputs** for a span of
+months, splits them month by month, and runs the page's own `calculate()`
+on each one. §9's rule — one implementation of profit — now holds across
+time as well as across screens, and
+`supabase/tests/figure-history.test.mjs` is what keeps it: the newest point
+of every series must equal what `getMonthFigures` renders for that month,
+with a positive control so two sets of dashes cannot pass.
+
+Three things that bit during the build and would bite again:
+
+- **Social Media figures hang off a `social_platform` entity**, so the
+  loader has to fetch entities whether or not a calc category asked for
+  one. Loading them only "when needed" made every social series null —
+  the same shape as the entry card's 6 October bug.
+- **A requested stored metric must be loaded even when its category also
+  has a calculated one.** The first version left it to `inputKeysFor` to
+  bring the inputs back, which works for anything a formula reads —
+  `social_media_views` is read by no formula, so "Reach and views" drew
+  its empty state with a year of figures sitting in the database. Caught
+  in the browser, now pinned by a test.
+- **The axis and the points have to be sliced together.** A six-month
+  chart beside a twelve-month one takes the tail of the same arrays; slice
+  the labels in the page and leave the points alone and every figure is
+  right and every one of them in the wrong place. Done in `TrendPanel`,
+  one place, with a browser assertion on the six-month label.
+
+**Lines need their own palette.** A fill is a large shape with a hairline
+round it and survives at 1.4:1; a 2px stroke is its own edge and owes the
+reader the full 3:1 — at full strength only navy clears that on the white
+reporting card (orange 2.93, blush 1.73, sky 1.60, gold 1.41). So
+`LINE_SERIES` is the brand hues mixed towards ink until they pass: orange
+10%, sky 35%. **Gold and blush are deliberately absent** — a dark yellow
+is olive and a dark coral is mauve, so neither survives as itself. Checked
+by `node scripts/check-chart-palette.mjs "orange-ink,navy,sky-ink" white
+--lines`, which the script grew a `--lines` mode for because sub-3:1 is
+fatal for a stroke and only a warning for a fill.
+
+**Sparklines are navy, all of them** — a deliberate departure from the
+mockups, which give each card's sparkline the hue of its own icon disc.
+That cannot be done honestly for the reason above, and one ink also stops
+the colour implying something: it would be following the card's *position*
+in the row rather than the metric. The colour on the card is the disc.
+
+**Cormorant's default figures are old-style**, which is why the headline
+numbers carry `lining-nums proportional-nums`. Measured in Chrome against
+the actual webfont: the default rendering is pixel-identical to
+`oldstyle-nums`, and "184,500" reads as "I84,5oo". `lnum` is in the Google
+webfont and switching it on levels them at cap height. Scoped to the
+figure, not to `.font-display` — old-style figures are correct inside
+running text.
+
+Also in this phase, from Dom's list: one icon per **metric** rather than
+per category (`metric-icons.ts`, falling back to the category's); tab
+icons at 18px in ink; the launch cover as a band down the left of the card
+(it holds at 390px — the card is 358px inside its padding, the cover takes
+88); "Email list size" shortened to "Email list" so six cards across keep
+their labels on one line.
 
 ### Open questions and known gaps
 
@@ -2199,8 +2282,14 @@ targets, the benchmarks and the row labels it went out with. Proved by
 diffing every Stage 2 tab as the client before and after the change —
 twelve files, no difference.
 
-**What remains live history, on purpose:** trend charts and the Proven
-marker. On the launch checklist.
+**What remains live history, on purpose:** the trend charts and the Proven
+marker. The charts landed on 30 October (Phase 3) and read live history
+rather than the snapshot — and that is safe for the reason the snapshot
+exists at all: a published month is read-only, so every point behind a
+client's chart is as fixed as the figure on the card above it. An
+unpublished month is simply absent from what RLS returns, which draws as a
+gap. Nothing to do on the launch checklist for the charts; the Proven
+marker still stands there.
 
 **One decision is needed before Stage 3 touches Client Experience:**
 `client_experience_active_clients_at_start`, which §5.8 specifies two

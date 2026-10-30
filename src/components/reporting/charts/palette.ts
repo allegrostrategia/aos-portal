@@ -76,3 +76,60 @@ export const SEPARATOR = "var(--aos-card)";
 export function fillFor(index: number): string {
   return index < MAX_SERIES ? SERIES[index].fill : OTHER_FILL;
 }
+
+/**
+ * The colours a 2px STROKE may use — a trend line, a sparkline, a dot.
+ *
+ * **A separate set from `SERIES`, and it has to be.** A fill is a large
+ * shape and the hairline above gives it a boundary, so a pale hue survives
+ * at 1.4:1. A line IS its own edge, so it owes the reader the full 3:1
+ * unaided — and at full strength only navy clears that: on the white
+ * reporting card orange is 2.93, blush 1.73, sky 1.60 and gold 1.41. A gold
+ * line on white is very nearly not there.
+ *
+ * So these are the brand hues mixed towards ink in OKLab until they pass:
+ * orange needs 10% and sky 35%. **Gold and blush are deliberately absent.**
+ * A dark yellow is olive and a dark coral is mauve, so neither survives
+ * being darkened as itself — there is no version of them that is both legible
+ * as a line and recognisable as the brand colour, and inventing one would be
+ * a third palette nobody approved.
+ *
+ * Checked, not judged:
+ *
+ *   node scripts/check-chart-palette.mjs "orange-ink,navy,sky-ink" white --lines
+ *
+ * white: 3.45 / 10.32 / 3.42 · cream: 3.10 / 9.28 / 3.07 · worst CVD pair
+ * navy/sky-ink at 12.9, well over the floor of 8.
+ *
+ * Two series is all Stage 3's charts need (revenue against profit, reach
+ * against views, save rate against share rate). A chart wanting a third
+ * line should become small multiples instead of reaching further down this
+ * list.
+ */
+export const LINE_SERIES = [
+  { name: "orange-ink", stroke: "#e56135" },
+  { name: "navy", stroke: "var(--aos-navy)" },
+  { name: "sky-ink", stroke: "#688fb0" },
+] as const;
+
+export const MAX_LINES = LINE_SERIES.length;
+
+export function strokeFor(index: number): string {
+  return LINE_SERIES[index % MAX_LINES].stroke;
+}
+
+/**
+ * The one ink a sparkline is drawn in.
+ *
+ * **Navy, and one colour for all of them.** The mockups give each KPI card's
+ * sparkline the hue of its own icon disc, and that cannot be done honestly:
+ * gold and blush have no legible line form (see above), so a row of six
+ * would have had two cards whose sparkline was barely visible. One ink also
+ * stops the colour implying something — a sparkline's hue would be following
+ * the card's POSITION in the row, not the metric, and colour that follows
+ * rank is the thing the palette rules exist to prevent. The colour on the
+ * card is the disc, which is where the mockups put most of it anyway.
+ */
+export const SPARK_STROKE = "var(--aos-navy)";
+/** The wash under it, so it reads as a shape and not only as a wire. */
+export const SPARK_FILL = "color-mix(in oklab, var(--aos-navy) 12%, transparent)";

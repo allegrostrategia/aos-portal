@@ -11,6 +11,9 @@ import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { IconCircle, toneFor } from "@/components/reporting/icons";
 import { leadsBySource } from "@/lib/reporting/chart-data";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
+import { getFigureHistory } from "@/lib/reporting/figure-history";
+import { TrendPanel } from "@/components/reporting/trend-panel";
+import { TREND_CHARTS, trendMetricKeys, trendMonthsNeeded } from "@/lib/reporting/trends";
 import { lightFor } from "@/lib/reporting/lights";
 import { monthIsLocked } from "@/lib/reporting/locked";
 import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
@@ -25,7 +28,7 @@ import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { ENTRY_CATEGORIES, STAGE_3, STAGE_5, categoryByKey } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
-import { monthLabel } from "@/lib/reporting/months";
+import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { OVERVIEW_KPIS } from "@/lib/reporting/overview";
 
 export const metadata: Metadata = {
@@ -146,6 +149,36 @@ export default async function ReportingOverviewPage({
   const benchmarks = figures.carried
     ? new Map(Object.entries(figures.carried.benchmarks))
     : liveBenchmarks;
+  /**
+   * Twelve months behind this one, for the sparklines and the trend chart.
+   *
+   * **Stage 3, so it asks the switch before it asks the database.** The
+   * Overview is a screen a client already opens, and an unflagged query
+   * would be a Stage 3 round trip on every Stage 2 page view even with
+   * nothing drawn from it.
+   *
+   * Computed, not read: Revenue, Profit and Total leads
+   * are `calc` metrics with no row in `report_values` to read, so three of
+   * the six cards and the whole chart would have been permanently blank.
+   * It loads their inputs and runs the page's own `calculate()` per month.
+   */
+  const trendSpecs = STAGE_3 ? (TREND_CHARTS.overview ?? []) : [];
+  const historyMonths = STAGE_3
+    ? monthsEndingAt(ctx.month.month, Math.max(12, trendMonthsNeeded("overview")))
+    : [];
+  const historyKeys = STAGE_3
+    ? [...new Set([...OVERVIEW_KPIS.map((k) => k.metricKey), ...trendMetricKeys("overview")])]
+    : [];
+  const history = STAGE_3
+    ? await getFigureHistory({
+        workspaceId: ctx.workspace.id,
+        months: historyMonths,
+        metricKeys: historyKeys,
+        metrics: figures.metrics,
+      })
+    : new Map<string, (number | null)[]>();
+  const axis = historyMonths.map(shortMonthLabel);
+
   // §7's two panels. Every word in them is Nina's, from one file.
   const panels = highlights(
     figures.metrics
@@ -279,6 +312,7 @@ export default async function ReportingOverviewPage({
                 goodDirection={metric.good_direction}
                 currency={ctx.workspace.currency}
                 previousLabel={previousLabel}
+                history={history.get(kpi.metricKey)}
                 href={
                   category && category.stage <= 2
                     ? reportHref(`/reporting/${category.slug}`, ctx)
@@ -296,6 +330,21 @@ export default async function ReportingOverviewPage({
           })}
         </div>
       </section>
+
+      {trendSpecs.length > 0 ? (
+        <div className="mt-8 grid gap-6">
+          {trendSpecs.map((spec) => (
+            <TrendPanel
+              key={spec.id}
+              spec={spec}
+              history={history}
+              months={axis}
+              currency={ctx.workspace.currency}
+              target={spec.targetFor ? (targets.get(`${spec.targetFor}|`) ?? null) : null}
+            />
+          ))}
+        </div>
+      ) : null}
 
       {STAGE_3 && (panels.attention.length > 0 || panels.wins.length > 0) ? (
         <div className="mt-8 grid gap-6 lg:grid-cols-2">

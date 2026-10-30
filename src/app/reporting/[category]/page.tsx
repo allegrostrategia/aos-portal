@@ -11,7 +11,7 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { IconCircle, toneFor } from "@/components/reporting/icons";
 import { CATEGORY_ICONS } from "@/components/reporting/report-shell";
 import { FunnelChart } from "@/components/reporting/charts/funnel-chart";
-import { categoryBySlug } from "@/lib/reporting/categories";
+import { STAGE_3, categoryBySlug } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import {
   CHANGE_TONE_CLASS,
@@ -22,9 +22,12 @@ import {
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { calculateFunnel } from "@/lib/reporting/calculate";
 import { TopItemsReport } from "@/components/reporting/top-items";
-import { getTopItems } from "@/lib/reporting/queries";
-import { monthLabel } from "@/lib/reporting/months";
+import { getTargets, getTopItems } from "@/lib/reporting/queries";
+import { getFigureHistory } from "@/lib/reporting/figure-history";
+import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { metricIcon } from "@/lib/reporting/metric-icons";
+import { TrendPanel } from "@/components/reporting/trend-panel";
+import { TREND_CHARTS, trendMetricKeys, trendMonthsNeeded } from "@/lib/reporting/trends";
 import { ads as adsFormulas, monthOnMonthChange } from "@/lib/reporting/formulas";
 import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
@@ -90,6 +93,46 @@ export default async function CategoryReportPage({
   const rest = metrics.filter(
     (m) => !headline.includes(m) && figures.figure(m.key) !== null,
   );
+
+  /**
+   * Twelve months behind this one, for the sparklines and this category's
+   * trend charts.
+   *
+   * Stage 3, so the switch is asked before the database is — these pages
+   * are ones a client already opens, and the promise Stage 3 made is that
+   * pushing it changes nothing they see until `PRODUCTION_STAGE` moves.
+   *
+   * The span is the longest any one chart asks for, and the shorter charts
+   * take the tail of it: one load rather than one per chart, and the six-
+   * month chart beside the twelve-month one is then reading the same rows.
+   *
+   * Computed, not read: save rate and share rate are
+   * `calc` — saves ÷ reach, shares ÷ reach — and have never had a row in
+   * `report_values`, so reading them would have drawn an empty chart under
+   * a confident title.
+   */
+  const trendSpecs = STAGE_3 ? (TREND_CHARTS[category.key] ?? []) : [];
+  const historySpan = STAGE_3
+    ? Math.max(12, trendMonthsNeeded(category.key))
+    : 0;
+  const historyMonths = STAGE_3 ? monthsEndingAt(ctx.month.month, historySpan) : [];
+  const historyKeys = STAGE_3
+    ? [...new Set([...headline.map((m) => m.key), ...trendMetricKeys(category.key)])]
+    : [];
+  const history = STAGE_3
+    ? await getFigureHistory({
+        workspaceId: ctx.workspace.id,
+        months: historyMonths,
+        metricKeys: historyKeys,
+        metrics: figures.metrics,
+      })
+    : new Map<string, (number | null)[]>();
+  const axis = historyMonths.map(shortMonthLabel);
+  // Only a chart with a `targetFor` needs these, so a category with no
+  // such chart does not spend the round trip.
+  const chartTargets = trendSpecs.some((spec) => spec.targetFor)
+    ? await getTargets(ctx.workspace.id, ctx.month.month)
+    : new Map<string, number>();
 
   const notes = figures.data.notes.filter(
     (n) => n.note_type === "strategist" && n.category === category.key,
@@ -183,10 +226,39 @@ export default async function CategoryReportPage({
                 goodDirection={metric.good_direction}
                 currency={ctx.workspace.currency}
                 previousLabel={previousLabel}
+                history={history.get(metric.key)}
               />
             ))}
           </div>
 
+          {trendSpecs.length > 0 ? (
+            // Three across where there are three, as the mockup draws
+            // them, rather than two and a hole beside the third. Written
+            // out because a Tailwind class cannot be built from a
+            // variable at runtime.
+            <div
+              className={`mt-6 grid gap-6 ${
+                trendSpecs.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2"
+              }`}
+            >
+              {trendSpecs.map((spec) => (
+                <TrendPanel
+                  key={spec.id}
+                  spec={spec}
+                  history={history}
+                  // The whole span; the panel takes the tail its own
+                  // spec asks for, so the labels and the points can never
+                  // be sliced apart.
+                  months={axis}
+                  currency={ctx.workspace.currency}
+                  columns={trendSpecs.length >= 3 ? 3 : 2}
+                  target={
+                    spec.targetFor ? (chartTargets.get(`${spec.targetFor}|`) ?? null) : null
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
 
           {category.key === "leads_conversions" ? (
             <Card className="mt-6">

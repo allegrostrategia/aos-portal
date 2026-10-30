@@ -114,6 +114,59 @@ export function formatValue(
 }
 
 /**
+ * A figure short enough for a chart's axis: £50K, 600K, 4%, 2.1.
+ *
+ * Not `formatValue`. An axis label is read at a glance and sits in about
+ * forty pixels, and "£50,000" at that size either overlaps its neighbour or
+ * shrinks the plot to make room — the mockups print £50K and 600K for
+ * exactly that reason. Everywhere a figure is the answer rather than a
+ * gridline, `formatValue` is still the one to use: nothing here is accurate
+ * enough to quote.
+ *
+ * **Rounded towards the gridline it labels, never towards a nicer number.**
+ * The caller picks the gridline values, so these are already round; one
+ * decimal is kept only where dropping it would print two different
+ * gridlines the same, as 1.2M and 1.4M would both become "1M".
+ */
+export function compactAxisValue(
+  value: number,
+  unit: Unit,
+  currency = "GBP",
+): string {
+  const sign = value < 0 ? "−" : "";
+  const size = Math.abs(value);
+
+  const short = (() => {
+    if (size >= 1_000_000) {
+      const m = size / 1_000_000;
+      return `${m.toLocaleString("en-GB", { maximumFractionDigits: m < 10 ? 1 : 0 })}M`;
+    }
+    if (size >= 1_000) {
+      const k = size / 1_000;
+      return `${k.toLocaleString("en-GB", { maximumFractionDigits: k < 10 ? 1 : 0 })}K`;
+    }
+    // Under a thousand there is nothing to shorten, so a rate keeps the
+    // one decimal it is worth and everything else is whole.
+    const decimals = unit === "percent" || unit === "ratio" || unit === "hours" ? 1 : 0;
+    return size.toLocaleString("en-GB", {
+      minimumFractionDigits: Number.isInteger(size) ? 0 : decimals,
+      maximumFractionDigits: decimals,
+    });
+  })();
+
+  switch (unit) {
+    case "currency":
+      return `${sign}${currencySymbol(currency)}${short}`;
+    case "percent":
+      return `${sign}${short}%`;
+    case "hours":
+      return `${sign}${short}h`;
+    default:
+      return `${sign}${short}`;
+  }
+}
+
+/**
  * The month-on-month change beside a figure: "↑ 18% vs. Aug 2026".
  *
  * Returns null when there is nothing to compare against, so the caller draws

@@ -210,3 +210,30 @@ export function lastDayOf(month: string): string {
   const d = new Date(Date.UTC(year, monthNumber, 0));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
+
+/**
+ * The run of months a trend chart draws, oldest first, ending at `month`.
+ *
+ * The axis is built from the calendar, never from the rows that came back.
+ * A month with nothing entered has to be a gap on the chart rather than a
+ * month that is not there: drawing only the months that have figures would
+ * close the gap up and turn a quiet August into a line that goes straight
+ * from July to September, which is a different claim about the year.
+ */
+export function monthsEndingAt(month: string, count: number): string[] {
+  const months: string[] = [];
+  for (let back = count - 1; back >= 0; back -= 1) months.push(shift(month, -back));
+  return months;
+}
+
+/**
+ * "Oct", for a chart's x axis.
+ *
+ * No year: twelve labels with years on them do not fit under a chart at
+ * card width, and the card's own heading already says which twelve months
+ * these are. `monthLabel` stays the one to use anywhere the month is read
+ * on its own.
+ */
+export function shortMonthLabel(month: string): string {
+  return MONTH_NAMES[Number(month.split("-")[1]) - 1].slice(0, 3);
+}

@@ -85,6 +85,17 @@ const BRAND = {
   blush: "#ffb29e",
   lemon: "#f8e6a0",
   charcoal: "#1b1920",
+  // The line inks (30 October 2026). A 2px stroke has no edge to fall back
+  // on, so it owes the reader the full 3:1 on its own — and at full strength
+  // only navy clears it (orange 2.93, blush 1.73, sky 1.60, gold 1.41 on
+  // white). These two are the brand hues mixed towards ink in OKLab until
+  // they do: orange needs 10%, sky 35%. Gold and blush are not here on
+  // purpose — a dark yellow is olive and a dark coral is mauve, so neither
+  // survives the darkening as itself. Lines use these three; FILLS keep the
+  // five at full strength, because a bar is a large shape with a hairline
+  // round it and a line is not.
+  "orange-ink": "#e56135",
+  "sky-ink": "#688fb0",
 };
 const INK = "#0a1e4a";
 
@@ -110,11 +121,24 @@ const SURFACES = {
 
 // The order the charts actually use. Changing it means re-running this.
 const DEFAULT = ["orange", "gold", "sky", "blush", "navy"];
+
+/**
+ * `--lines` checks a set meant for 2px strokes and dots rather than fills.
+ *
+ * The only difference is that falling under 3:1 is fatal instead of a
+ * warning. A pale FILL can be rescued by an edge and a legend, which is
+ * what the WARN path asks for; a pale LINE cannot, because the edge would
+ * be the line.
+ *
+ *   node scripts/check-chart-palette.mjs orange-ink,navy white --lines
+ */
+const LINES = process.argv.includes("--lines");
 // An empty first argument means "the default order, on the surface named
 // next" — otherwise `… "" white` would check a palette of nothing.
-const order = process.argv[2] ? process.argv[2].split(",") : DEFAULT;
+const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const order = positional[0] ? positional[0].split(",") : DEFAULT;
 
-const surfaceArg = process.argv[3] ?? "cream";
+const surfaceArg = positional[1] ?? "cream";
 const CARD = SURFACES[surfaceArg] ?? surfaceArg;
 if (!/^#[0-9a-f]{6}$/i.test(CARD)) {
   console.error(
@@ -125,7 +149,11 @@ if (!/^#[0-9a-f]{6}$/i.test(CARD)) {
 
 const surfaceName = SURFACES[surfaceArg] ? `${surfaceArg} ${CARD}` : CARD;
 console.log(`order: ${order.join(" → ")}\nsurface: card ${surfaceName}\n`);
-console.log("contrast against the card (a mark needs ≥ 3:1 to read as a shape):");
+console.log(
+  LINES
+    ? "contrast against the card (a 2px stroke must clear 3:1 unaided):"
+    : "contrast against the card (a mark needs ≥ 3:1 to read as a shape):",
+);
 let fails = 0;
 let warns = 0;
 for (const name of order) {
@@ -135,8 +163,11 @@ for (const name of order) {
   // and a labelled legend, which the chart components give it. It is not
   // dismissable, and it is not the same as two colours nobody can tell
   // apart.
-  if (!ok) warns++;
-  console.log(`  ${ok ? "ok  " : "WARN"} ${name.padEnd(7)} ${c.toFixed(2)}:1`);
+  if (!ok) {
+    if (LINES) fails++;
+    else warns++;
+  }
+  console.log(`  ${ok ? "ok  " : LINES ? "FAIL" : "WARN"} ${name.padEnd(9)} ${c.toFixed(2)}:1`);
 }
 
 console.log("\nadjacent pairs — normal vision (≥15), deuteranopia and protanopia (≥8):");

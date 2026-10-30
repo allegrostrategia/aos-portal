@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Sparkline } from "./charts/sparkline";
 import { IconCircle, type IconTone, type ReportIconName } from "./icons";
 import {
   CHANGE_TONE_CLASS,
@@ -12,7 +13,12 @@ import { monthOnMonthChange } from "@/lib/reporting/formulas";
 
 /**
  * The KPI card of §3's pattern list: label, big number, month-on-month change
- * with an arrow, and the month it is compared against.
+ * with an arrow, the month it is compared against, and the shape of the last
+ * twelve months.
+ *
+ * The sparkline is optional and the card is complete without one — a metric
+ * with a single month of history has no shape to draw, and a client reading
+ * their first report should not see five cards with an empty box on each.
  *
  * The arrow's colour comes from the metric's own direction, never from the
  * sign: a fall in costs is good news, and a report that congratulates
@@ -29,6 +35,7 @@ export function KpiCard({
   href,
   light,
   icon,
+  history,
 }: {
   label: string;
   value: number | null;
@@ -55,6 +62,12 @@ export function KpiCard({
    * everything a card with one says.
    */
   icon?: { name: ReportIconName; tone: IconTone };
+  /**
+   * This metric's figure for each of the last twelve months, oldest first,
+   * null where nothing was entered. Undefined on a screen that has not
+   * loaded any — the card simply has no sparkline.
+   */
+  history?: (number | null)[];
 }) {
   const change = monthOnMonthChange(value, previous);
   const tone = changeTone(change, goodDirection);
@@ -126,9 +139,11 @@ export function KpiCard({
       <p className="font-display mt-2 text-[2rem] leading-tight font-medium text-ink lining-nums proportional-nums 2xl:text-[2.25rem]">
         {formatValue(value, unit, currency)}
       </p>
-      {/* The change and the month it is against stack, as the mockups
-          draw them. Inline, "↑ 18% vs. Aug 2026" wrapped anyway in a
-          six-across row, so the second line was already there. */}
+      {/* The change and the month it is against stack, with the sparkline
+          beside them — the mockups' arrangement, and the one that fits:
+          inline, "↑ 18% vs. Aug 2026" wrapped anyway in a six-across row,
+          so the second line was already there without the shape to show
+          for it. */}
       <div className="mt-2 flex items-end justify-between gap-2">
         <div className="min-w-0">
           {changeText && previousLabel ? (
@@ -146,6 +161,12 @@ export function KpiCard({
             <p className="text-small text-ink/40">No month to compare</p>
           )}
         </div>
+        {history ? (
+          <Sparkline
+            points={history}
+            label={`${label} over the last ${history.length} months`}
+          />
+        ) : null}
       </div>
       {/* Each phrase wraps as a whole or not at all: six cards across,
           "On track" broke over two lines and "vs. last month" over two

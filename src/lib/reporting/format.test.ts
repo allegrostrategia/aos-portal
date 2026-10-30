@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   DASH,
   changeTone,
+  compactAxisValue,
   formatChange,
   formatValue,
   fromInputValue,
@@ -115,4 +116,43 @@ test("money keeps its pennies when the pennies are the figure", () => {
   assert.equal(formatValue(24650.37, "currency"), "£24,650");
   assert.equal(formatValue(6, "currency"), "£6");
   assert.equal(formatValue(0, "currency"), "£0", "a genuine nothing is still £0");
+});
+
+/**
+ * The axis labels. Short enough to fit, and never quotable as a figure.
+ */
+
+test("an axis label shortens thousands and millions", () => {
+  assert.equal(compactAxisValue(600_000, "count"), "600K");
+  assert.equal(compactAxisValue(30_000, "count"), "30K");
+  assert.equal(compactAxisValue(1_200_000, "count"), "1.2M");
+  assert.equal(compactAxisValue(2_000_000, "count"), "2M");
+});
+
+test("money keeps its symbol and a rate keeps its sign", () => {
+  assert.equal(compactAxisValue(50_000, "currency"), "£50K");
+  assert.equal(compactAxisValue(50_000, "currency", "USD"), "$50K");
+  assert.equal(compactAxisValue(4, "percent"), "4%");
+  assert.equal(compactAxisValue(2.5, "percent"), "2.5%");
+});
+
+test("under a thousand there is nothing to shorten", () => {
+  assert.equal(compactAxisValue(0, "count"), "0");
+  assert.equal(compactAxisValue(312, "count"), "312");
+  assert.equal(compactAxisValue(850, "currency"), "£850");
+});
+
+test("a negative gridline keeps the minus in front of the symbol", () => {
+  // A loss-making month pulls the scale below zero, and "£-10K" is the
+  // wrong way round — the same rule formatValue follows.
+  assert.equal(compactAxisValue(-10_000, "currency"), "−£10K");
+  assert.equal(compactAxisValue(-5, "percent"), "−5%");
+});
+
+test("two gridlines a step apart do not print the same label", () => {
+  // The reason the decimal is kept under 10M and under 10K: 1.2M and 1.4M
+  // both round to "1M", and an axis with two identical labels on it is
+  // worse than no axis.
+  assert.notEqual(compactAxisValue(1_200_000, "count"), compactAxisValue(1_400_000, "count"));
+  assert.notEqual(compactAxisValue(2_500, "count"), compactAxisValue(5_000, "count"));
 });
