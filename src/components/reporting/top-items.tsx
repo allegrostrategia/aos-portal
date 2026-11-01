@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Badge, Card, SectionTitle } from "@/components/ui/card";
+import { IconCircle } from "./icons";
 import { formatValue, toInputValue } from "@/lib/reporting/format";
 import { saveTopItems, type TopItemState } from "@/lib/reporting/top-item-actions";
 import { provenness, type TopItem, type TopItemType } from "@/lib/reporting/top-items";
@@ -55,7 +56,9 @@ export function TopItemsEntry({
 
   return (
     <Card className="mt-6">
-      <SectionTitle>What worked this month</SectionTitle>
+      <SectionTitle icon={<IconCircle name="bookmark" tone="gold" />}>
+        What worked this month
+      </SectionTitle>
       <p className="mb-4 text-body text-ink/70">
         Kept so they can be used again. Anything that reaches the top three in two
         different months is marked <strong>Proven</strong>.
@@ -165,7 +168,9 @@ export function TopItemsReport({
 
   return (
     <Card className="mt-6">
-      <SectionTitle>What worked this month</SectionTitle>
+      <SectionTitle icon={<IconCircle name="bookmark" tone="gold" />}>
+        What worked this month
+      </SectionTitle>
       <div className="mt-2 grid gap-6 sm:grid-cols-2">
         {LISTS.map((list) => {
           const items = written

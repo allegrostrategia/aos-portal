@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { MONTHS } from "./guard.ts";
 import { expectNothingAdminish, requireLocalStack, shoot, signIn } from "./helpers.ts";
@@ -25,6 +25,23 @@ test.beforeEach(async () => {
   await seed({ quiet: true });
 });
 
+/**
+ * Whether the panel with this title has the mockups' tinted disc before it.
+ *
+ * Reads the rendered heading's own previous sibling rather than counting
+ * discs on the page: a count passes just as happily when a different panel
+ * grew one and this one lost it.
+ */
+async function hasDisc(page: Page, title: RegExp | string) {
+  return page.evaluate((text: string) => {
+    const h = [...document.querySelectorAll("h2")].find((el) =>
+      el.textContent?.trim().toLowerCase().includes(text.toLowerCase()),
+    );
+    const before = h?.previousElementSibling;
+    return before?.getAttribute("aria-hidden") === "true" && before.querySelector("svg") !== null;
+  }, typeof title === "string" ? title : title.source);
+}
+
 test("the lists sit under the figures, and mark what has proved itself", async ({
   page,
 }, info) => {
@@ -42,6 +59,11 @@ test("the lists sit under the figures, and mark what has proved itself", async (
   await expect(page.getByText(/Proven · 2 months/).first()).toBeVisible();
   // And exactly one of them is: the new hook and the b-roll are not.
   await expect(page.getByText(/Proven ·/)).toHaveCount(1);
+
+  // The mockups' disc, added 1 November — the entry half and the report
+  // half are one component, so a mark on one is a mark on both, and this
+  // is the only screen in the suite that draws either.
+  expect(await hasDisc(page, "What worked this month"), "the panel's disc").toBe(true);
 
   await shoot(page, TAB, "01-lists-with-proven", w);
 });
@@ -105,6 +127,8 @@ test("the client reads the lists once the month is published", async ({ page }, 
   await expect(page.getByText("The one thing nobody tells you")).toBeVisible();
   await expect(page.getByText(/Proven · 2 months/)).toBeVisible();
   await expect(page.getByText(/51,000 views/)).toBeVisible();
+  expect(await hasDisc(page, "What worked this month"), "the panel's disc").toBe(true);
+  expect(await hasDisc(page, "Notes from your strategist"), "the note's disc").toBe(true);
   await expectNothingAdminish(page);
   await shoot(page, TAB, "04-report-client", w);
 });

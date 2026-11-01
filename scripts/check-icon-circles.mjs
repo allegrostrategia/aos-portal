@@ -1,6 +1,6 @@
 /**
- * The tinted discs, pills and field borders the reporting pages added on
- * 30 October — run it, don't eyeball it.
+ * The tinted discs, pills, field borders and link colours the reporting
+ * pages rest on — run it, don't eyeball it.
  *
  *   node scripts/check-icon-circles.mjs
  *
@@ -89,6 +89,28 @@ for (const [label, surface] of Object.entries(SURFACES)) {
   const pill = over(BRAND.blush, 0.6, surface);
   const text = over(BRAND.ink, 0.75, `#${pill.map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`);
   check(contrast(text, pill) >= 4.5, `${label.padEnd(30)} ${contrast(text, pill).toFixed(2)}:1`);
+}
+
+/**
+ * The way out of the tool.
+ *
+ * `text-small` is 14px, which WCAG counts as normal text — so 4.5:1, not 3.
+ * It sits on the *ground* rather than on a card, which is the cool pale blue
+ * inside `/reporting` and cream everywhere else, so both are checked.
+ *
+ * Here because it failed: at ink/60 it was 4.25:1 on the reporting ground and
+ * 4.27:1 on cream, and had been since the link was written. It is the only
+ * way out of the reporting tool for a login that has no `/you`, so it is not
+ * a place to be a little short.
+ */
+console.log("\n--- the Sign out link: ink/70 on the ground (14px, so needs 4.5) ---");
+for (const [label, ground] of Object.entries({
+  "the reporting ground": "#f3f5fd",
+  "cream, everywhere else": "#fbf5ea",
+})) {
+  const text = over(BRAND.ink, 0.7, ground);
+  const c = contrast(text, hex(ground));
+  check(c >= 4.5, `${label.padEnd(24)} ${c.toFixed(2)}:1`);
 }
 
 console.log("\n--- reporting field borders: ink/50 on white (needs 3) ---");

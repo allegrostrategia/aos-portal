@@ -201,6 +201,16 @@ That is a real test and it catches real problems, but it is not quite the same q
 
 ---
 
+## One thing waiting on you — your signature
+
+The strategist's note now ends with your name and the words *"Your strategist"* beneath it, which is where your handwritten signature goes in the mock-up. **The slot is built and empty.** You asked that nothing stand in for the file until it arrives, so there is no grey box and no placeholder — the card simply shows the name line, and it looks finished rather than broken.
+
+*What to send:* the signature as an **SVG**, on a transparent background, in a single colour. Any size — it is drawn at 44px tall and scales from whatever you send. A PNG would work and would be softer at that size on a good screen, so an SVG if you have one.
+
+When it lands it is a one-line change: the file goes in `public/reporting/`, your name goes on the list that says whose signature is whose, and it appears under every note you have written. **It is keyed to the author's name on purpose** — Elize writes notes too, and hers must never come out signed by you.
+
+---
+
 ## The one you were asked to settle, now settled
 
 **A campaign with no figures for the month shows on the published report as a row of dashes.** That's true whether it came from a file or was typed in — a campaign set up in August and paused in September is a row of dashes on September's report.

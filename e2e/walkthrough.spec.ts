@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { PEOPLE } from "./guard.ts";
 import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
 /**
@@ -72,6 +73,17 @@ test("a client reads the published month, and none of the team's half", async ({
 
   await signIn(page, "nina");
   await page.goto(`/reporting?month=${MONTHS.sep}`);
+
+  // **Write the note before publishing it.** The seed writes none, so
+  // until now the client's Notes card has only ever been an empty state
+  // and the sign-off beneath a real one — the part of the card Nina's
+  // signature goes into — had never been rendered by anything.
+  await page
+    .getByPlaceholder(/what happened this month/i)
+    .fill("Revenue held and the list grew. Next month, the ad set.");
+  await page.getByRole("button", { name: /save note/i }).click();
+  await expect(page.getByText("Note saved.")).toBeVisible();
+
   await page.getByRole("button", { name: /publish this month/i }).click();
   await expect(page.getByText(/^Published$/).first()).toBeVisible();
 
@@ -84,6 +96,30 @@ test("a client reads the published month, and none of the team's half", async ({
   expect(body, "nothing to publish").not.toMatch(/publish this month/i);
   expect(body, "no completion list").not.toMatch(/still to fill in/i);
   expect(body, "not a member's reflection").not.toMatch(/your reflection/i);
+
+  // **The sign-off under the note: the name, and the slot the signature
+  // will go in.** Nina's signature has not arrived, and her instruction was
+  // that until it does the card shows the name line and no placeholder
+  // graphic — so the slot is in the code and nothing on the screen is
+  // holding space for a picture. Asserted as an absence as well as a
+  // presence, because "ready for an SVG" is easy to satisfy by shipping a
+  // grey box that looks like a missing image.
+  await expect(page.getByText("Your strategist", { exact: true })).toBeVisible();
+  const sigs = await page.evaluate(() => {
+    const role = [...document.querySelectorAll("span")].find(
+      (el) => el.textContent?.trim() === "Your strategist",
+    );
+    const slot = role?.closest("div");
+    return {
+      name: slot?.querySelector("span")?.textContent?.trim() ?? "",
+      images: slot?.querySelectorAll("img, svg").length ?? -1,
+    };
+  });
+  // The fixture's name, not a literal: the signature is keyed by whatever
+  // the note was stored under, so this is the coupling written down.
+  expect(sigs.name, "who signed the note").toBe(PEOPLE.nina.name);
+  expect(sigs.images, "a placeholder where the signature will go").toBe(0);
+
   await shoot(page, TAB, "05-overview-client", w);
 });
 

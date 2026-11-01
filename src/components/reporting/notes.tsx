@@ -13,6 +13,7 @@ import {
   type NoteState,
 } from "@/lib/reporting/note-actions";
 import type { ReportNote } from "@/lib/reporting/queries";
+import { IconCircle } from "./icons";
 
 /**
  * "Notes from your strategist" (§8), and the box Elize and Nina write it in.
@@ -45,7 +46,9 @@ export function StrategistNotes({
 
   return (
     <Card>
-      <SectionTitle>Notes from your strategist</SectionTitle>
+      <SectionTitle icon={<IconCircle name="notes" tone="blush" />}>
+        Notes from your strategist
+      </SectionTitle>
 
       {notes.length === 0 && !canWrite ? (
         <p className="text-body text-ink/60">{emptyMessage}</p>
@@ -81,9 +84,54 @@ function WrittenNote({ note }: { note: ReportNote }) {
           {paragraph}
         </p>
       ))}
-      <p className="mt-4 text-caption text-ink/55">
-        <span className="font-display text-body text-ink">{note.author_name}</span>
-        <span className="ml-2">Your strategist</span>
+      <Signature name={note.author_name} />
+    </div>
+  );
+}
+
+/**
+ * The sign-off under a strategist's note: a signature, and who signed it.
+ *
+ * **The slot is here; the artwork is not yet.** The mockups end this card
+ * with Nina's handwritten signature and her name beside it. The SVG has not
+ * arrived, and Nina's instruction was explicit — show the name line only
+ * until it does, with no placeholder graphic. So an unregistered author
+ * renders exactly what was here before, one line of text, and nothing
+ * reserves space for a picture that might never come.
+ *
+ * **Keyed by author, because the signature is a person's and the note is not
+ * always Nina's.** Elize drafts; Nina publishes; both write notes, and both
+ * appear here under their own name. A signature rendered for whoever
+ * happened to write would be a forgery of the one whose it is.
+ *
+ * To fit the file when it arrives: drop it in `public/reporting/`, add the
+ * author's exact `author_name` to the map below with its own intrinsic
+ * width and height, and nothing else changes.
+ */
+const SIGNATURES: Record<string, { src: string; width: number; height: number }> = {};
+
+function Signature({ name }: { name: string }) {
+  const mark = SIGNATURES[name];
+
+  return (
+    <div className="mt-5 flex items-center gap-4 border-t border-ink/8 pt-4">
+      {mark ? (
+        // Decorative: the name is written out beside it in text, so the
+        // signature is never the only thing saying who wrote this.
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={mark.src}
+          alt=""
+          aria-hidden="true"
+          width={mark.width}
+          height={mark.height}
+          className="h-11 w-auto shrink-0"
+        />
+      ) : null}
+
+      <p className="min-w-0">
+        <span className="font-display block text-body text-ink">{name}</span>
+        <span className="block text-caption text-ink/55">Your strategist</span>
       </p>
     </div>
   );

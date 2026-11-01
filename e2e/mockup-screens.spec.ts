@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
+import sharp from "sharp";
 
 import { requireLocalStack, signIn } from "./helpers.ts";
 
@@ -18,6 +19,19 @@ requireLocalStack();
 
 const OUT = "docs/nina-review/screens-mockup";
 const RETAINER = "Northwind Studio";
+/**
+ * The month every one of these screens is shot on, named in the URL rather
+ * than left to whichever month the app opens on.
+ *
+ * It has to be named. The fixture below writes twelve months ending in
+ * September 2026, and the app opens on the most recent month there is to
+ * report — so for as long as these were run during October the default
+ * happened to be the fixture's last month and nobody had to say so. On
+ * 1 November it became the month after, every screen came up empty, and
+ * six tests failed at once for a reason that had nothing to do with the
+ * code they were testing.
+ */
+const SHOT_MONTH = "2026-09-01";
 /**
  * The twelve months the sparklines and trend charts draw, oldest first.
  *
@@ -67,6 +81,64 @@ const SEED_OWNED = new Set([
   "financials_team_costs",
 ]);
 const FIXTURE_ONLY_KEYS = FIXTURE_KEYS.filter((k) => !SEED_OWNED.has(k));
+
+/** `--aos-ink`, which every piece of text on these screens is some share of. */
+const INK: [number, number, number] = [10, 30, 74];
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const channel = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+/**
+ * The contrast of text drawn at `alpha` of ink against one backdrop pixel.
+ *
+ * The alpha is on the *text*, so the glyph's own colour depends on what is
+ * behind it — `text-ink/80` over a photograph is not the same colour it is
+ * over the ground. Compositing the glyph before measuring is the difference
+ * between a number and a guess.
+ */
+function inkContrast(bg: [number, number, number], alpha: number): number {
+  const fg = bg.map((c, i) => alpha * INK[i] + (1 - alpha) * c) as [number, number, number];
+  const [light, dark] = [luminance(bg), luminance(fg)].sort((a, b) => b - a);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/**
+ * The worst contrast any pixel behind `locator` gives the text drawn on it.
+ *
+ * **Measured, not reasoned about.** The brand line in the header sits in the
+ * fade of a photograph, and how legible that leaves it is a question about
+ * the pixels that end up on the screen — the mask, the image's own opacity,
+ * and which part of the photograph happens to be under those words. None of
+ * that is visible in a class name, and a mask that silently stopped applying
+ * would leave every assertion about the markup passing.
+ *
+ * So: hide the text, photograph the rectangle it was in, and composite the
+ * text colour onto every pixel of it.
+ */
+async function worstContrastBehind(page: Page, locator: ReturnType<Page["getByText"]>, alpha: number) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error("nothing to measure: the element has no box");
+
+  await locator.evaluate((el) => {
+    (el as HTMLElement).style.visibility = "hidden";
+  });
+  const behind = await page.screenshot({ clip: box });
+  await locator.evaluate((el) => {
+    (el as HTMLElement).style.visibility = "";
+  });
+
+  const { data } = await sharp(behind).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  let worst = Infinity;
+  for (let i = 0; i < data.length; i += 3) {
+    worst = Math.min(worst, inkContrast([data[i], data[i + 1], data[i + 2]], alpha));
+  }
+  return worst;
+}
 
 async function shot(page: Page, name: string, w: "phone" | "desktop") {
   mkdirSync(OUT, { recursive: true });
@@ -468,7 +540,7 @@ test.describe("the five mockup screens", () => {
   });
 
   test("1 — the Overview", async ({ page }, info) => {
-    await page.goto("/reporting");
+    await page.goto(`/reporting?month=${SHOT_MONTH}`);
     await expect(page.getByRole("heading", { name: "Monthly Report" })).toBeVisible();
     // The coloured target bars, which only exist once targets do.
     await expect(page.getByText("How this month is going")).toBeVisible();
@@ -516,11 +588,55 @@ test.describe("the five mockup screens", () => {
       ["#688fb0", "#e56135", "var(--aos-navy)"],
     );
 
+    // **The header art, and the brand line that sits in its fade.**
+    //
+    // The photograph is pinned to the top of the header and runs off the
+    // right of the window, so two of its sides are the edge of the page and
+    // the other two are a mask. If the mask ever stops applying there is a
+    // hard rectangle in the corner and nothing else says so, so check it is
+    // there — and then check the thing it exists to protect, which is
+    // whether the words over it can still be read.
+    if (info.project.name !== "phone") {
+      const art = page.locator("header span[aria-hidden='true']").first();
+      await expect(art).toHaveCSS("position", "absolute");
+      const mask = await art.evaluate((el) => getComputedStyle(el).maskImage);
+      expect(mask, "the header art's mask").toContain("radial-gradient");
+
+      const line = page.getByText("Where strategy meets la dolce vita");
+      await expect(line).toBeVisible();
+      // Asserted so the share below cannot drift from the share drawn:
+      // measuring 70% while the page paints 80% would be a kinder number
+      // than the screen's, and kind is the wrong direction for this one.
+      await expect(line).toHaveClass(/text-ink\/80/);
+      // 22px — normal text by WCAG's reckoning, so 4.5:1 and not 3:1.
+      const worst = await worstContrastBehind(page, line, 0.8);
+      expect(worst, "the brand line over the photograph").toBeGreaterThanOrEqual(4.5);
+    } else {
+      // Below `sm` the photograph is not drawn — **and not fetched.** A
+      // server component cannot know the width, so the box is
+      // `display: none` rather than absent; what makes that free is that a
+      // lazily-loaded image with no box never intersects the viewport, so
+      // the bytes never leave the server. `priority` on it would have
+      // preloaded a photograph to every phone that is not going to show
+      // one, and nothing on the screen would have said so.
+      const asked: string[] = [];
+      page.on("request", (r) => {
+        if (r.url().includes("terrazza")) asked.push(r.url());
+      });
+      await page.reload();
+      await expect(page.getByRole("heading", { name: "Monthly Report" })).toBeVisible();
+      await expect(page.locator("header img")).toBeHidden();
+      expect(asked, "the header photograph, fetched by a phone").toEqual([]);
+      // The words stay: they still read at 390px, and they are the half of
+      // this that carries the brand rather than the mood.
+      await expect(page.getByText("Where strategy meets la dolce vita")).toBeVisible();
+    }
+
     await shot(page, "1-overview", width(info.project.name));
   });
 
   test("2 — the Social Media report", async ({ page }, info) => {
-    await page.goto("/reporting/social-media");
+    await page.goto(`/reporting/social-media?month=${SHOT_MONTH}`);
     await expect(page.getByRole("heading", { name: "Social Media" })).toBeVisible();
     // The three charts of the mockup, all three drawing something.
     for (const title of ["Followers over time", "Reach and views", "Save rate vs share rate"]) {
@@ -565,7 +681,7 @@ test.describe("the five mockup screens", () => {
   });
 
   test("3 — the Social Media entry screen", async ({ page }, info) => {
-    await page.goto("/reporting/enter/social-media");
+    await page.goto(`/reporting/enter/social-media?month=${SHOT_MONTH}`);
     await expect(page.getByRole("heading", { name: "Enter your data" })).toBeVisible();
     // The mockups' progress bar, which is the entry screen's own furniture.
     await expect(page.getByText(/sections complete/)).toBeVisible();
@@ -573,7 +689,7 @@ test.describe("the five mockup screens", () => {
   });
 
   test("4 — Offers", async ({ page }, info) => {
-    await page.goto("/reporting/offers");
+    await page.goto(`/reporting/offers?month=${SHOT_MONTH}`);
     await expect(page.getByRole("heading", { name: "Offers" })).toBeVisible();
     // The mockups' pill, on both kinds.
     await expect(page.getByText("One-off").first()).toBeVisible();

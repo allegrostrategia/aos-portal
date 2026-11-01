@@ -620,7 +620,152 @@ overflow panel is shared, so this puts a disc on "Everything else this
 month" for every category and not only Offers — which is the consistency
 being asked for. Three panel titles still have none: "Notes from your
 strategist" and the two "What worked this month" panels in
-`top-items.tsx`. Not an oversight; not asked for either.
+`top-items.tsx`. Not an oversight; not asked for either. **All three got
+one on 1 November**, below.
+
+### Phase 5: the header art, the taglines, the last three discs — 1 November 2026
+
+Nina, after Phase 4b, and without the lemon artwork she had been going to
+send: *"an Amalfi photo from public/stations/ in the top-right corner of
+each reporting page, as in the mock-ups. Soft-faded into the background,
+no hard edges."* Plus the mockups' taglines, the three remaining discs,
+and a slot for her signature.
+
+**The photograph is the Terrazza station image, cropped in CSS.** One copy
+of it in the repo, so the header follows if the station photo is ever
+replaced. Its left third is a wall with "aOS TERRAZZA" painted on it,
+which does not belong in a client's report header, so `HeaderArt` shows
+the band x 600–1300, y 190–470 of it: the archway, the hillside town, the
+headland and the sunset. `object-position` cannot express that crop —
+taking that much width off a 3:2 photograph with `cover` needs a box
+taller than it is wide, and this one is two and a half times wider — so
+the image is laid out at 219% of the box and pulled left and up, which is
+the same crop written as shares of the box. The box is fixed at the crop's
+own 5:2 for exactly that reason: the ratio is what makes those shares a
+crop rather than a stretch.
+
+**"No hard edges" is geometry, not a gentler gradient.** The box is pinned
+to the top of the header and runs out to the *window's* right edge rather
+than the content column's — `right: calc(-1 * max(0px, (100vw - 72rem) /
+2))`, because past 72rem the column is centred and a photograph stopping
+at it has a cut edge with pale ground beyond. So two of its four sides are
+the edge of the page and can carry full opacity. The mask is then an
+ellipse on that corner, as wide and as tall as the box, which puts every
+point of the other two sides at or past the end of the gradient. A softer
+gradient would have left a line wherever it stopped short — which is what
+the first attempt did, and the screenshot is what showed it.
+
+**Nothing that has to be read sits on it.** The controls are the *second*
+row of their column rather than the first, specifically so the month
+picker, the Draft badge and Sign out are clear of the fade. The one thing
+in it is the brand line, and that was measured rather than argued: the
+spec hides the line, photographs the rectangle it was in, composites the
+text colour onto every pixel of it and takes the worst. The first pass
+drew it at `text-ink/70` over a wider mask: **4.24:1**, a fail. At
+`text-ink/80` with the mask pulled in it is **6.60:1**. The number moves
+the day the crop or the mask moves, because it is read off the screen
+rather than written down — and the share the line is drawn at is asserted
+in the same test, so the measurement cannot quietly stop matching the
+paint, which it did once while the figure still looked respectable.
+
+**The brand line is Cormorant italic**, which is reporting's one sanctioned
+use of italic outside `<Quote>` (CLAUDE.md). The mockups set it in a script
+face; a licensed script was considered and declined, and this is the
+nearest thing to a hand in the type we have. Which line you get is decided
+in the shell from `active === "overview"` rather than passed in by each
+page — thirteen routes each choosing would be thirteen chances to get it
+wrong. Overview gets "Where strategy meets la dolce vita"; everything else
+gets "Strategy today, sold out tomorrow".
+
+**On a phone the photograph is not drawn, and not fetched.** A server
+component cannot know the width, so the box is `display: none` below `sm`
+rather than absent — and what makes that free is that a lazily-loaded
+image with no box never intersects the viewport, so the bytes never leave
+the server. Which is why there is deliberately **no `priority`** on it,
+although Next asks for one: `priority` preloads, and it would preload a
+340×136 decoration to every phone that is not going to show it. The spec
+listens for the request and asserts it never comes. The brand line stays
+at 390px, full width rather than capped, because words still read there.
+
+**The last three discs.** "Notes from your strategist" takes the mockups'
+pen in blush; both "What worked this month" panels take a bookmark in gold
+— they are the lines kept to use again, which is what a bookmark is for,
+and the entry half and the report half are one component so they cannot
+diverge. **"Everything else this month" changed glyph as a consequence**:
+it wore the pen from 30 October, and the two panels sit one above the
+other on every category page, so the same mark twice in a column said they
+were the same kind of thing. It is now the ruled sheet (`financials`),
+which is what it is.
+
+Only Trial Reels renders either "What worked this month" panel, and no
+mockup screen covers Trial Reels — so the disc assertions live in
+`trial-reels.spec.ts`, reading each heading's own previous sibling rather
+than counting discs on the page. A count passes just as happily when a
+different panel grows one and this one loses it.
+
+**The signature slot is in the code and not on the screen.** Nina's SVG has
+not arrived, and her instruction was that until it does the card shows the
+name line and no placeholder graphic. So `SIGNATURES` in `notes.tsx` is an
+empty map keyed by the note's `author_name`, and an unregistered author
+renders exactly the line that was there before. Keyed by author because
+Elize writes notes too and both appear under their own name — a signature
+rendered for whoever happened to write would be a forgery of the one whose
+it is. To fit the file: drop it in `public/reporting/`, add one entry with
+its intrinsic width and height, and nothing else changes. The walkthrough
+spec asserts both halves — the name is there, and nothing in the slot is
+an image — and registering a signature in the map is what proved the image
+branch renders at all.
+
+**The walkthrough now writes a note before publishing it.** The seed writes
+none, so until 1 November the client's Notes card had only ever been an
+empty state and the sign-off under a real one had never been rendered by
+anything.
+
+**"Sign out" was failing AA, and had been since it was written** (Dom,
+1 November, after seeing it flagged). `text-small` is 14px, which WCAG
+counts as normal text, so it owes 4.5:1 — and `text-ink/60` is **4.30:1**
+on the reporting ground and **4.32:1** on cream. It is now `text-ink/70`:
+5.90:1 and 5.93:1. Two places, the reporting shell and `/no-access`;
+`/you`'s sign-out button is full ink and was always fine.
+`check-icon-circles.mjs` holds the figure now, so it cannot drift back.
+
+**The same `text-ink/60` is on 24 other interactive elements** across the
+app — small underlined links, `<summary>` toggles, "Cancel" buttons, five
+of them inside reporting. Every surface fails it: 4.28:1 on a cream card,
+4.30:1 on the reporting ground, 4.32:1 on cream, 4.43:1 on a white card.
+**Not changed**, because the ask was the Sign out link and the rest are
+member-facing controls across the portal that want their own commit and
+their own look. It is one find-and-replace when somebody says so.
+
+**The decorative image broke one test, and it was the test's locator.**
+`launches.spec.ts` found the launch cover with `img[alt='']` and took the
+first one. The header art is `alt=""` too, and being in the header it comes
+first — so on a phone, where the art is `display: none`, the assertion
+found it and reported it hidden. Scoped to `main` now, which is what it
+meant all along. Worth knowing for the next decorative image: an unscoped
+`alt=""` locator is a trap this codebase has already fallen into once.
+
+**Two tests broke on the date, in two different ways, and the second has no
+URL to pin.** The fixture's months are fixed calendar dates — July, August,
+September 2026 — while the app reads `new Date()`. For as long as these ran
+during October, "September" and "last month" were the same thing and no
+test had to say which it meant. On 1 November they came apart.
+
+- `mockup-screens.spec.ts` opened `/reporting` with no month and took
+  whatever the app opened on; every screen came up empty and six tests
+  failed at once. The month is named in the URL now (`SHOT_MONTH`).
+- `self-serve.spec.ts`'s "first login to a finished month" finished
+  September and then checked Piazza had stopped nudging — but the nudge
+  takes no month. It is always `latestReportableMonth(today)`, so it was
+  asking about October, which the member had not filled. That test now
+  works in the month the app considers current, which is what "a member
+  goes from first login to a finished month" meant in the first place.
+
+**This will keep happening.** The fixture is anchored to 2026 and the app
+is anchored to the clock, so any test whose assertion depends on "now"
+matching the fixture is a time bomb; two have gone off. The durable fix is
+a seed built relative to today, which is a bigger change than either of
+these and has not been made.
 
 ### Open questions and known gaps
 
@@ -2144,6 +2289,7 @@ last.
 - ~~**Four questions on the Stage 3 plan**~~ — **answered at the time; Stage 3 is built and switched off.** Original note (3 Oct): charts first or Stage 3 in order; which of three ways out of the §5.8 contradiction; the two-column benchmark migration; and six sentence templates for "Look at these first" in her voice.
 - ~~**The two mockup arithmetic errors**~~ (added 2 Oct) — **closed 30 October.** The mockups' numbers are illustrative, not specs (Dom). The launch planner's 600 sign-ups turned out to be correct all along once decision 20 reversed conversion; the 6.9% engagement rate is a difference that stands, with the code following §5.2. Nobody needs to go back to whoever approved them.
 - **The September draw's prize** — the `draws` row for September still has the literal prize `"test"`, so the Piazza card reads "test.". Set the real prize in `/admin/draw`, or delete the row and let the fallback copy show.
+- **Her signature, as an SVG** (added 1 November). The slot is built and empty: the strategist's note ends with the name line and no placeholder, which is what she asked for. When it lands, drop it in `public/reporting/`, add one entry to `SIGNATURES` in `notes.tsx` keyed by her exact `author_name`, and nothing else changes. Keyed by author because Elize writes notes too. **Nothing is blocked by it.** The lemon artwork she had been going to send is no longer wanted — Phase 5 was built without it, on her instruction.
 
 ## Waiting on Dom
 - ~~**The Stage 2 live walkthrough**~~ — **done 2 Oct on Test Client**, two months entered, one published, checked as the client. Six bugs found and fixed.

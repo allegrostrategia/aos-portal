@@ -459,8 +459,14 @@ export default async function CategoryReportPage({
                   (Nina, 30 October). It is the shared overflow panel, so
                   this puts one on every category page and not only on
                   Offers, which is the consistency being asked for. */}
+              {/* A ruled sheet rather than the pen it wore on 30 October.
+                  The pen is the strategist's note, which from 1 November
+                  has one — and the two panels sit one above the other on
+                  every category page, so the same glyph twice in a column
+                  said the two were the same kind of thing. This one is a
+                  page of figures. */}
               <SectionTitle
-                icon={<IconCircle name="notes" tone="gold" />}
+                icon={<IconCircle name="financials" tone="gold" />}
                 aside={previousLabel ? `vs. ${previousLabel}` : undefined}
               >
                 Everything else this month

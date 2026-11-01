@@ -505,7 +505,11 @@ test.describe("the cover image", () => {
 
     // A plain multipart post to a route handler — no JavaScript at all.
     await expect(page.locator("[data-saved]")).toHaveText("Cover image saved.");
-    await expect(page.locator("img[alt='']").first()).toBeVisible();
+    // **Scoped to `main`.** The reporting header grew a decorative
+    // photograph on 1 November, also `alt=""` — and it is in the header,
+    // so it comes first. Unscoped, this found that instead of the cover
+    // and reported it hidden on a phone, where the art is not drawn.
+    await expect(page.locator("main img[alt='']").first()).toBeVisible();
     await shoot(page, TAB, "18-cover-admin", w);
 
     // And it reaches the report, signed rather than public.

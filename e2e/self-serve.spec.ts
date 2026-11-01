@@ -94,6 +94,27 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   const w = width(info.project.name);
   const { MONTHS, PEOPLE, sql } = await import("../scripts/seed-test-db.mjs");
 
+  /**
+   * The month the app itself considers current, not the fixture's last one.
+   *
+   * This test ends by checking Piazza has stopped nudging — and the nudge
+   * takes no month: it is always about `latestReportableMonth(today)`,
+   * which is last month. The fixture's months are fixed calendar dates, so
+   * while these ran in October "September" and "last month" were the same
+   * thing and nobody had to say which they meant. On 1 November they came
+   * apart, the member finished September, Piazza asked about October, and
+   * the test failed for a reason that had nothing to do with the code.
+   *
+   * Worked out here rather than imported so the spec is not reading its
+   * expectation from the same function it is checking — but it is only a
+   * navigation target, and the month picker runs from the workspace's
+   * first month to this one, so it is always in range.
+   */
+  const now = new Date();
+  const CURRENT = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+    .toISOString()
+    .slice(0, 10);
+
   // A member who has genuinely never been through setup: the seed's
   // workspace is already named, so this puts it back to how
   // `ensure_member_report_workspace` leaves one.
@@ -132,7 +153,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
 
   // 4. She fills in what is left. Two sections, and the opening figure
   //    she is only ever asked once.
-  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${CURRENT}`);
   for (const [label, value] of [
     [/new leads from social/i, "20"], [/new leads from email/i, "8"],
     [/new leads from referral/i, "2"], [/calls booked/i, "6"],
@@ -151,7 +172,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await page.getByRole("button", { name: /save/i }).first().click();
   await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
 
-  await page.goto(`/reporting/enter/client-experience?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/enter/client-experience?month=${CURRENT}`);
   for (const [label, value] of [
     [/clients who left/i, "1"], [/renewals and upsells/i, "2"],
     [/issues raised/i, "0"],
@@ -161,7 +182,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await page.getByRole("button", { name: /save/i }).first().click();
   await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
 
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/enter/financials?month=${CURRENT}`);
   for (const [label, value] of [
     [/fixed costs/i, "300"], [/variable costs/i, "250"],
     [/team costs/i, "500"], [/cash in bank/i, "9000"],
@@ -172,7 +193,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
 
   // 5. Her reflection, and next month's objectives.
-  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await page.goto(`/reporting?month=${CURRENT}`);
   await page.getByRole("textbox", { name: /your reflection on/i })
     .fill("Fewer calls than I wanted, but the ones I had converted.");
   await page.getByRole("button", { name: /^save$/i }).first().click();
@@ -180,7 +201,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
 
   // 6. The month reads as done — every visible section, and the setup
   //    prompt is gone because she has been through it.
-  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await page.goto(`/reporting?month=${CURRENT}`);
   await expect(page.getByRole("heading", { name: /set your report up/i })).toHaveCount(0);
   const rows = page.locator("[data-completion]");
   const total = await rows.count();

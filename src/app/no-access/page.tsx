@@ -82,7 +82,9 @@ export default async function NoAccessPage() {
         <form action={signOut} className="mt-8">
           <button
             type="submit"
-            className="text-small text-ink/60 underline underline-offset-4 transition hover:text-ink"
+            // ink/70 for the same reason the reporting shell's is: at 60%
+            // this was 4.32:1 on cream, and 14px owes 4.5:1.
+            className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
             Sign out
           </button>

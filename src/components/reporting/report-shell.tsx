@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Badge, Eyebrow } from "@/components/ui/card";
@@ -69,9 +70,11 @@ export function ReportShell({
 }) {
   return (
     <>
-      <header className="border-b border-ink/8 bg-cream">
-        <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-0 sm:px-6 sm:pt-10">
-          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+      <header className="overflow-hidden border-b border-ink/8 bg-cream">
+        <div className="relative mx-auto w-full max-w-6xl px-4 pt-8 pb-0 sm:px-6 sm:pt-10">
+          <HeaderArt />
+
+          <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
             <div className="min-w-0">
               <Eyebrow>{ctx.workspace.business_name}</Eyebrow>
               <h1 className="font-display mt-2 text-display font-medium text-ink">
@@ -80,11 +83,22 @@ export function ReportShell({
               {tagline ? <Eyebrow className="mt-2">{tagline}</Eyebrow> : null}
             </div>
 
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-              {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
-              <MonthPicker ctx={ctx} path={path} />
-              {actions}
-              <SignOut />
+            {/* **The brand line above the controls, not below them.** The
+                photograph is in the corner behind this column, and whichever
+                row is nearest the corner sits in the last of its fade. That
+                is fine for a line of our own decorative text and wrong for
+                the way out of the tool: putting the controls second leaves
+                them clear of the photograph altogether, measured at every
+                width from 640 up. */}
+            <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:grow sm:items-end">
+              <BrandLine overview={active === "overview"} />
+
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
+                {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
+                <MonthPicker ctx={ctx} path={path} />
+                {actions}
+                <SignOut />
+              </div>
             </div>
           </div>
 
@@ -186,6 +200,141 @@ function SectionMarker({ state }: { state: SectionState }) {
 }
 
 /**
+ * The brand line beside the header art, in the mockups' hand.
+ *
+ * Two lines, and which one you get is decided here rather than passed in by
+ * each page: the mockups give the Overview "Where strategy meets la dolce
+ * vita" and every other screen "Strategy today, sold out tomorrow", and
+ * thirteen routes each choosing would be thirteen chances to get it wrong.
+ *
+ * **Cormorant italic.** The brand reserves italic for `<Quote>`, and
+ * reporting's page taglines are the one sanctioned exception (CLAUDE.md) —
+ * the mockups set this line in a script face, and a licensed script was
+ * considered and declined. Italic serif is what we have that is nearest to
+ * a hand.
+ *
+ * `ink/80` rather than something lighter, and it was measured rather than
+ * chosen: this line is the one thing on the header that does sit in the
+ * photograph's fade. The first pass drew it at 70% over a wider mask and
+ * the worst pixel behind it came to 4.24:1, which fails. At 80% with the
+ * mask pulled in it is 6.6:1. The spec photographs what is behind these
+ * words and composites them onto it, so the day the crop or the mask moves
+ * the number moves with it — and the share drawn here is asserted there,
+ * so the measurement cannot quietly stop matching the paint.
+ *
+ * Decorative in the sense that nothing depends on reading it, but it is real
+ * text — selectable, searchable, and spoken — rather than a picture of
+ * words.
+ */
+function BrandLine({ overview }: { overview: boolean }) {
+  return (
+    <p className="font-display text-heading leading-snug text-balance text-ink/80 italic sm:max-w-52 sm:text-right">
+      {overview ? "Where strategy meets la dolce vita" : "Strategy today, sold out tomorrow"}
+    </p>
+  );
+}
+
+/**
+ * The Amalfi photograph in the header's top-right corner (Nina, 1 November).
+ *
+ * **The crop, and why it is in CSS rather than a second file.** The source is
+ * the Terrazza station photograph, whole and unedited, so there is one copy of
+ * it in the repo and this follows if it is ever replaced. Its left third is a
+ * wall with "aOS TERRAZZA" painted on it, which is not what belongs in a
+ * client's report header, so this shows a band from its right: the archway,
+ * the hillside town, the headland and the sunset behind it.
+ *
+ * `object-position` cannot express that. Taking that much width off a 3:2
+ * photograph with `cover` needs a box taller than it is wide, and this one is
+ * two and a half times wider than it is tall — so the image is laid out at
+ * 219% of the box and pulled left and up, which is the same crop written as
+ * shares of the box and therefore holds at whatever size the box takes.
+ *
+ * The box's aspect ratio is what makes those shares a crop rather than a
+ * stretch, so 340x136 is the crop's own 5:2 and not a size that happened to
+ * look right.
+ *
+ * **Why it has no hard edges, and it is the geometry rather than the
+ * gradient that does it.** The box is pinned to the top of the header and
+ * runs out to the window's right edge, so two of its four sides are the edge
+ * of the page and can carry full opacity without an edge being visible. The
+ * mask is an ellipse on that corner, as wide and as tall as the box, which
+ * puts every point of the *other* two sides at or past the end of the
+ * gradient: the left and the bottom reach the ground at zero. Reaching for a
+ * softer gradient instead would have left a visible line wherever it stopped
+ * short.
+ *
+ * **It is behind nothing that has to be read.** Absolutely positioned, so it
+ * costs the header no height, `pointer-events-none`, and the controls are the
+ * second row of their column rather than the first precisely so that none of
+ * them lands in the fade. The one thing that does is the brand line, and the
+ * spec measures it: 6.6:1 against the worst pixel it covers.
+ *
+ * **Hidden below `sm`, and not fetched there either.** On a phone the header
+ * is already a business name, a title, a month, a full-width row of controls
+ * and a section picker; the room beside them at 390px is not enough for a
+ * photograph that is not carrying information. The brand line stays, because
+ * words at that size still read.
+ *
+ * It is `display: none` rather than absent, because a server component cannot
+ * know the width — and what makes that free is that a lazily-loaded image
+ * inside a box with no box never intersects the viewport, so the bytes never
+ * leave the server. Which is why there is no `priority` here, although Next
+ * asks for one: `priority` preloads, and it would preload this to every phone
+ * that is not going to draw it. The spec listens for the request.
+ */
+function HeaderArt() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute top-0 hidden h-[136px] w-[340px] overflow-hidden sm:block"
+      style={{
+        // Out to the window's right edge rather than the content column's.
+        // The column is centred, so past 72rem there is a gutter between it
+        // and the window, and a photograph that stopped at the column would
+        // have a cut edge down it with pale ground to its right. `max()`
+        // because below 72rem there is no gutter to cross.
+        right: "calc(-1 * max(0px, (100vw - 72rem) / 2))",
+        maskImage: HEADER_ART_MASK,
+        WebkitMaskImage: HEADER_ART_MASK,
+      }}
+    >
+      <Image
+        src="/stations/terrazza.jpg"
+        alt=""
+        // Its own pixels. Not `fill`, which pins the image to 100% of the
+        // box and refuses to be resized — and the whole of this is a resize.
+        width={1536}
+        height={1024}
+        // The rendered width is 219% of a 340px box, so ~750px; the next
+        // step up covers a 2x screen.
+        sizes="768px"
+        // 600/700 left and 190/280 up, with the width at 1536/700 — the crop
+        // x 600-1300, y 190-470 written as shares of the box. `h-auto` keeps
+        // the height in step, so only one of these has to stay true to the
+        // photograph's shape. The window is further left than the one that
+        // merely avoided the painted wall: what survives the mask is the
+        // corner nearest the page edge, and further right than this that
+        // corner was open sky.
+        className="absolute top-[-67.86%] left-[-85.71%] h-auto w-[219.43%] max-w-none opacity-70"
+      />
+    </span>
+  );
+}
+
+/**
+ * As wide and as tall as the box, on its top-right corner: see `HeaderArt`.
+ *
+ * The radii are what do the work — at 100% of each, the whole left side and
+ * the whole bottom sit at or past the end of the gradient, so they reach the
+ * ground at zero rather than at some small remainder that draws a line. The
+ * middle stop pulls the falloff forward of a straight ramp, which is what
+ * keeps the brand line clear of the busiest part of the photograph.
+ */
+const HEADER_ART_MASK =
+  "radial-gradient(100% 100% at 100% 0%, #000 0%, rgb(0 0 0 / 0.42) 38%, transparent 84%)";
+
+/**
  * The way out.
  *
  * A reporting login has nowhere else to sign out from: /you and /no-access
@@ -202,7 +351,11 @@ function SignOut() {
     <form action={signOut}>
       <button
         type="submit"
-        className="rounded-full px-3 py-2 text-small font-medium text-ink/60 underline underline-offset-4 transition hover:text-ink"
+        // **ink/70, not ink/60** (Dom, 1 November). 14px is normal text by
+        // WCAG's reckoning, so it owes 4.5:1, and at 60% it was 4.30:1 on
+        // the reporting ground — short, and short since it was written.
+        // At 70% it is 5.90:1. `check-icon-circles.mjs` holds the number.
+        className="rounded-full px-3 py-2 text-small font-medium text-ink/70 underline underline-offset-4 transition hover:text-ink"
       >
         Sign out
       </button>
