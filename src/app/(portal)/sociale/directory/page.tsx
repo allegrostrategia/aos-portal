@@ -107,7 +107,7 @@ export default async function DirectoryPage({
         {query ? (
           <Link
             href="/sociale/directory"
-            className="self-center text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink"
+            className="self-center text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
             Clear
           </Link>
@@ -224,7 +224,7 @@ export default async function DirectoryPage({
                   <p className="mt-4">
                     <Link
                       href="/onboarding/directory"
-                      className="text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink"
+                      className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
                     >
                       Edit your profile
                     </Link>

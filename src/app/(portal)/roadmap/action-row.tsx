@@ -184,7 +184,7 @@ export function ActionEditor({
         <button type="submit" className="rounded-full bg-orange px-3.5 py-1.5 text-small font-semibold text-ink">
           {action ? "Save" : "Add"}
         </button>
-        <button type="button" onClick={onDone} className="text-small text-ink/60 underline underline-offset-4 hover:text-ink">
+        <button type="button" onClick={onDone} className="text-small text-ink/70 underline underline-offset-4 hover:text-ink">
           Cancel
         </button>
         {action ? (

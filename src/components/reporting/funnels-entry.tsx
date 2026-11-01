@@ -127,7 +127,7 @@ export function FunnelsEntry(props: FunnelsEntryProps) {
 
         {retired.length > 0 ? (
           <details className="mt-4 border-t border-ink/8 pt-3">
-            <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4">
+            <summary className="cursor-pointer list-none text-small text-ink/70 underline underline-offset-4">
               {retired.length} retired
             </summary>
             <div className="mt-3 flex flex-col gap-3">
@@ -384,7 +384,7 @@ function FunnelSetup({
           {funnel.active ? null : <input type="hidden" name="restore" value="1" />}
           <button
             type="submit"
-            className="text-small text-ink/55 underline underline-offset-4 transition hover:text-ink"
+            className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
             {funnel.active ? "Retire this funnel" : "Put it back"}
           </button>

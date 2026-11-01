@@ -224,7 +224,7 @@ export function Composer({
               setImagePath("");
               setImagePreview(null);
             }}
-            className="text-caption text-ink/60 underline underline-offset-4 hover:text-ink"
+            className="text-caption text-ink/70 underline underline-offset-4 hover:text-ink"
           >
             Remove picture
           </button>
@@ -251,7 +251,7 @@ export function Composer({
               setRecording(null);
               setUploadedPath("");
             }}
-            className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
+            className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
             Discard
           </button>
@@ -260,7 +260,7 @@ export function Composer({
 
       {builds.length > 0 ? (
         <details className="text-small">
-          <summary className="cursor-pointer list-none text-caption text-ink/60 underline underline-offset-4">
+          <summary className="cursor-pointer list-none text-caption text-ink/70 underline underline-offset-4">
             Is this about one of your builds?
           </summary>
           <div className="mt-2 flex flex-col gap-2">

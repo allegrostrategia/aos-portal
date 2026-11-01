@@ -39,7 +39,7 @@ export function OnboardingPath({
           </h2>
         </div>
         {compact ? (
-          <Link href="/onboarding" className="text-small text-ink/60 underline underline-offset-4 hover:text-ink">
+          <Link href="/onboarding" className="text-small text-ink/70 underline underline-offset-4 hover:text-ink">
             All steps
           </Link>
         ) : null}
@@ -125,7 +125,7 @@ export function OnboardingPath({
                     <input type="hidden" name="done" value={step.done ? "false" : "true"} />
                     <button
                       type="submit"
-                      className="text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink"
+                      className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
                     >
                       {step.done ? "Untick" : step.key === "call" ? "I've booked it" : "I've done this"}
                     </button>

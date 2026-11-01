@@ -127,7 +127,7 @@ export default async function AdminLibraryPage({
                               and irreversible; unpublishing is the everyday
                               correction and sits first for that reason. */}
                           <details className="inline">
-                            <summary className="cursor-pointer list-none text-caption text-ink/40 transition hover:text-ink">
+                            <summary className="cursor-pointer list-none text-caption text-ink/70 transition hover:text-ink">
                               Remove
                             </summary>
                             <form action={deleteContent} className="mt-2">

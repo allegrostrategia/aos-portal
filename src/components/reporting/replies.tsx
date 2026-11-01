@@ -102,7 +102,7 @@ function Reply({ reply, mine }: { reply: ReportNote; mine: boolean }) {
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="mt-2 text-small text-ink/55 underline underline-offset-4 transition hover:text-ink"
+              className="mt-2 text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
             >
               Reword this
             </button>
@@ -134,7 +134,7 @@ function EditReply({ reply, onDone }: { reply: ReportNote; onDone: () => void })
         <button
           type="button"
           onClick={onDone}
-          className="text-small text-ink/55 underline underline-offset-4 transition hover:text-ink"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           Cancel
         </button>

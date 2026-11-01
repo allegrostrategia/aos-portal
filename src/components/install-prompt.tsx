@@ -110,7 +110,7 @@ export function InstallPrompt() {
           type="button"
           onClick={dismiss}
           aria-label="Dismiss"
-          className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
+          className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           Not now
         </button>

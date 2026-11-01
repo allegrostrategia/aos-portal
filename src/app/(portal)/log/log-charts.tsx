@@ -166,7 +166,7 @@ export function HoursByDay({
 function AsTable({ head, rows }: { head: string[]; rows: string[][] }) {
   return (
     <details className="mt-3">
-      <summary className="cursor-pointer text-caption text-ink/50 hover:text-ink">
+      <summary className="cursor-pointer text-caption text-ink/70 hover:text-ink">
         As a table
       </summary>
       <table className="mt-2 w-full text-small">

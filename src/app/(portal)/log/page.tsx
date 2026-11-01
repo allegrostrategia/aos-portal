@@ -292,7 +292,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
                             <input type="hidden" name="id" value={entry.id} />
                             <button
                               type="submit"
-                              className="text-caption text-ink/40 underline underline-offset-4 transition hover:text-ink"
+                              className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
                               aria-label={`Delete ${labelFor(entry.category_slug)} entry`}
                             >
                               Delete
@@ -312,7 +312,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
                       ) : null
                     ) : (
                     <details className="group mt-1">
-                      <summary className="cursor-pointer list-none text-caption text-ink/50 transition hover:text-ink">
+                      <summary className="cursor-pointer list-none text-caption text-ink/70 transition hover:text-ink">
                         {entry.note ? (
                           <span className="text-ink/70 italic">{entry.note}</span>
                         ) : (

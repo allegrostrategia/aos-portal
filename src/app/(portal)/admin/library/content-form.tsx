@@ -80,7 +80,7 @@ export function ContentForm({
           </p>
           <a
             href="/admin/library"
-            className="text-caption text-ink/60 underline underline-offset-4"
+            className="text-caption text-ink/70 underline underline-offset-4"
           >
             Cancel and add something new instead
           </a>

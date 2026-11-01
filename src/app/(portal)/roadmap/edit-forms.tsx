@@ -43,7 +43,7 @@ export function MonthTitle({
         <input type="hidden" name="month" value={month} />
         <input name="title" defaultValue={title} placeholder="Theme, e.g. Foundations" autoFocus className={FIELD} />
         <button type="submit" className="rounded-full bg-orange px-3 py-1 text-caption font-semibold text-ink">Save</button>
-        <button type="button" onClick={() => setEditing(false)} className="text-caption text-ink/60 underline">Cancel</button>
+        <button type="button" onClick={() => setEditing(false)} className="text-caption text-ink/70 underline">Cancel</button>
         <FormMessage error={state?.error} />
       </form>
     );
@@ -55,7 +55,7 @@ export function MonthTitle({
         {title || (editable ? "No theme yet" : "")}
       </span>
       {editable ? (
-        <button type="button" onClick={() => setEditing(true)} aria-label={`Edit month ${month}'s theme`} className="text-caption text-ink/50 hover:text-ink">
+        <button type="button" onClick={() => setEditing(true)} aria-label={`Edit month ${month}'s theme`} className="text-caption text-ink/70 hover:text-ink">
           ✎
         </button>
       ) : null}

@@ -106,7 +106,7 @@ export default async function ChannelPage({
             <div className="flex shrink-0 items-center gap-2">
               <Link
                 href="/sociale/search"
-                className="text-small text-ink/60 underline underline-offset-4 hover:text-ink"
+                className="text-small text-ink/70 underline underline-offset-4 hover:text-ink"
               >
                 Search
               </Link>
@@ -139,7 +139,7 @@ export default async function ChannelPage({
                         <input type="hidden" name="message_id" value={pin.id} />
                         <input type="hidden" name="channel_id" value={handle} />
                         <input type="hidden" name="pinned" value="false" />
-                        <button type="submit" className="text-caption text-ink/50 underline underline-offset-4 hover:text-ink">
+                        <button type="submit" className="text-caption text-ink/70 underline underline-offset-4 hover:text-ink">
                           Unpin
                         </button>
                       </form>

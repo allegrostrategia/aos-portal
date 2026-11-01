@@ -45,7 +45,7 @@ export default async function ArchivioEntryPage({
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
         <p className="mb-4">
-          <Link href="/stations/archivio?folder=templates" className="text-small text-ink/60 transition hover:text-ink">
+          <Link href="/stations/archivio?folder=templates" className="text-small text-ink/70 transition hover:text-ink">
             ← Templates
           </Link>
         </p>
@@ -61,7 +61,7 @@ export default async function ArchivioEntryPage({
           )}
         </Card>
         <details className="mt-6">
-          <summary className="cursor-pointer list-none text-caption text-ink/40 transition hover:text-ink">
+          <summary className="cursor-pointer list-none text-caption text-ink/70 transition hover:text-ink">
             Remove this template
           </summary>
           <form action={deleteSop} className="mt-2">
@@ -137,7 +137,7 @@ export default async function ArchivioEntryPage({
                process they thought better of. A build is a shared record and
                has no such option. */
             <details className="mt-6">
-              <summary className="cursor-pointer list-none text-caption text-ink/40 transition hover:text-ink">
+              <summary className="cursor-pointer list-none text-caption text-ink/70 transition hover:text-ink">
                 Remove this SOP
               </summary>
               <form action={deleteSop} className="mt-2">

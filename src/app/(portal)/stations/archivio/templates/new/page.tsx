@@ -13,7 +13,7 @@ export default async function NewTemplatePage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 py-6 sm:py-10">
       <p className="mb-4">
-        <Link href="/stations/archivio?folder=templates" className="text-small text-ink/60 transition hover:text-ink">
+        <Link href="/stations/archivio?folder=templates" className="text-small text-ink/70 transition hover:text-ink">
           ← Templates
         </Link>
       </p>

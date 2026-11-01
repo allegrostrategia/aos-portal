@@ -170,7 +170,7 @@ export function AssetField({
             <button
               type="button"
               onClick={() => setPath("")}
-              className="text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
+              className="text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
             >
               Detach
             </button>
@@ -206,7 +206,7 @@ export function AssetField({
           <button
             type="button"
             onClick={() => cancelRef.current?.()}
-            className="mt-2 text-caption text-ink/50 underline underline-offset-4 transition hover:text-ink"
+            className="mt-2 text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink"
           >
             Cancel
           </button>

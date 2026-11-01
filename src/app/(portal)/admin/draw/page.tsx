@@ -158,7 +158,7 @@ export default async function AdminDrawPage() {
 
                         {rows.length > 0 ? (
                           <details className="mt-4">
-                            <summary className="cursor-pointer list-none text-caption text-ink/60 underline underline-offset-4 transition hover:text-ink">
+                            <summary className="cursor-pointer list-none text-caption text-ink/70 underline underline-offset-4 transition hover:text-ink">
                               Who&rsquo;s where ({rows.length} active{" "}
                               {rows.length === 1 ? "member" : "members"})
                             </summary>

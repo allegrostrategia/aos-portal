@@ -16,6 +16,9 @@
  *          only thing saying "type here" once the fill is white
  */
 
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 const hex = (h) => {
   const v = h.replace("#", "");
   return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) / 255);
@@ -92,25 +95,66 @@ for (const [label, surface] of Object.entries(SURFACES)) {
 }
 
 /**
- * The way out of the tool.
+ * Every link, button and `<summary>` drawn in a share of ink.
  *
- * `text-small` is 14px, which WCAG counts as normal text — so 4.5:1, not 3.
- * It sits on the *ground* rather than on a card, which is the cool pale blue
- * inside `/reporting` and cream everywhere else, so both are checked.
+ * `text-small` is 14px and `text-caption` is 12px; WCAG counts both as normal
+ * text, so they owe 4.5:1, not 3. They sit on whichever surface they land on —
+ * the cool pale ground inside `/reporting`, cream everywhere else, and a card
+ * of either — so all four are checked and the weakest decides.
  *
- * Here because it failed: at ink/60 it was 4.25:1 on the reporting ground and
- * 4.27:1 on cream, and had been since the link was written. It is the only
- * way out of the reporting tool for a login that has no `/you`, so it is not
- * a place to be a little short.
+ * Here because it failed. These were ink/60, which is 4.28:1 on a cream card
+ * and 4.43:1 at its best, and had been since each one was written. 1 November:
+ * the Sign out link first, then the other 24 on Dom's instruction.
  */
-console.log("\n--- the Sign out link: ink/70 on the ground (14px, so needs 4.5) ---");
+const INTERACTIVE_ALPHA = 0.7;
+
+console.log(
+  `\n--- links, buttons and toggles: ink/${INTERACTIVE_ALPHA * 100} on every surface (needs 4.5) ---`,
+);
 for (const [label, ground] of Object.entries({
-  "the reporting ground": "#f3f5fd",
-  "cream, everywhere else": "#fbf5ea",
+  "reporting ground": "#f3f5fd",
+  "cream ground": "#fbf5ea",
+  "white card": "#ffffff",
+  "cream card": "#f9f2e6",
 })) {
-  const text = over(BRAND.ink, 0.7, ground);
+  const text = over(BRAND.ink, INTERACTIVE_ALPHA, ground);
   const c = contrast(text, hex(ground));
-  check(c >= 4.5, `${label.padEnd(24)} ${c.toFixed(2)}:1`);
+  check(c >= 4.5, `${label.padEnd(18)} ${c.toFixed(2)}:1`);
+}
+
+/**
+ * …and that nothing interactive has drifted back below it.
+ *
+ * The arithmetic above says ink/70 passes. It cannot say that every link is
+ * drawn in ink/70 — a new "Cancel" copied from an old one would be back at
+ * 4.28:1 with every number here still green. So this reads the source and
+ * names anything interactive still on a weaker share.
+ *
+ * Matched on the line, which is how these are written: the class list and the
+ * tag are on the same line, or the class list carries `underline` itself.
+ */
+console.log("\n--- …and nothing interactive is drawn weaker than that ---");
+{
+  const WEAK = /text-ink\/(?:[0-5]?\d|6[0-9])\b/;
+  const INTERACTIVE = /underline|<button|<summary|cursor-pointer|<a |<Link/;
+  const offenders = [];
+
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".tsx")) {
+        readFileSync(full, "utf8").split("\n").forEach((line, i) => {
+          if (WEAK.test(line) && INTERACTIVE.test(line)) offenders.push(`${full}:${i + 1}`);
+        });
+      }
+    }
+  };
+  walk("src");
+
+  check(offenders.length === 0, offenders.length === 0
+    ? "every interactive element is ink/70 or stronger"
+    : `${offenders.length}: ${offenders.slice(0, 5).join(", ")}${offenders.length > 5 ? " …" : ""}`);
 }
 
 console.log("\n--- reporting field borders: ink/50 on white (needs 3) ---");

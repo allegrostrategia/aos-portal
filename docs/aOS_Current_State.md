@@ -729,13 +729,8 @@ on the reporting ground and **4.32:1** on cream. It is now `text-ink/70`:
 `/you`'s sign-out button is full ink and was always fine.
 `check-icon-circles.mjs` holds the figure now, so it cannot drift back.
 
-**The same `text-ink/60` is on 24 other interactive elements** across the
-app — small underlined links, `<summary>` toggles, "Cancel" buttons, five
-of them inside reporting. Every surface fails it: 4.28:1 on a cream card,
-4.30:1 on the reporting ground, 4.32:1 on cream, 4.43:1 on a white card.
-**Not changed**, because the ask was the Sign out link and the rest are
-member-facing controls across the portal that want their own commit and
-their own look. It is one find-and-replace when somebody says so.
+**The same `text-ink/60` was on 24 other interactive elements**, which Dom
+then asked for as its own commit — see below.
 
 **The decorative image broke one test, and it was the test's locator.**
 `launches.spec.ts` found the launch cover with `img[alt='']` and took the
@@ -766,6 +761,43 @@ is anchored to the clock, so any test whose assertion depends on "now"
 matching the fixture is a time bomb; two have gone off. The durable fix is
 a seed built relative to today, which is a bigger change than either of
 these and has not been made.
+
+### Every link, button and toggle is ink/70 — 1 November 2026
+
+Dom, after the Sign out fix: *"fix the other 24 ink/60 interactive elements
+the same way (ink/70 or whatever passes AA on every surface they sit on),
+as their own commit."*
+
+**It was 41, not 24.** The 24 were what a grep for `text-ink/60` found.
+Adding the check to `check-icon-circles.mjs` — which reads the source
+rather than trusting the number — turned up **17 more at weaker shares
+still**: ink/55, ink/50 and ink/40, all of them links, `<summary>` toggles
+or buttons at caption or small size. Measured on the cream ground:
+
+| share | contrast | |
+| --- | --- | --- |
+| ink/40 | 2.44:1 | a "Remove this template" toggle |
+| ink/50 | 3.21:1 | "As a table", "Discard", several `<summary>` |
+| ink/55 | 3.71:1 | reporting's "clear this" links |
+| ink/60 | 4.32:1 | the 24 |
+| **ink/70** | **5.93:1** | all 41 now |
+
+14px and 12px are both normal text by WCAG, so all of them owed 4.5:1 and
+none of them had it. Fixing the 4.32:1 ones and leaving a 2.44:1 one would
+have been the wrong half of the job, so all 41 went.
+
+**The check is two halves, and the second is the one that matters.** The
+first is arithmetic: ink/70 against the four surfaces these land on — the
+reporting ground, cream, a white card, a cream card — worst 5.86:1. That
+says ink/70 passes; it cannot say every link *is* ink/70, and a new
+"Cancel" copied from an old one would be back at 4.32:1 with every number
+still green. So the second half reads `src/` and names anything matching
+both "interactive" and a share below 70. That is what found the 17.
+
+Nothing else moved: 117 uses of `text-ink/60` remain on **static** secondary
+text, which fails 1.4.3 by exactly the same arithmetic and was not in the
+ask. That is the obvious next sweep and it is deliberately not in this
+commit.
 
 ### Open questions and known gaps
 

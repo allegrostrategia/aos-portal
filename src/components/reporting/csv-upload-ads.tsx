@@ -208,7 +208,7 @@ export function CsvUploadAds({
           re-reads; months already saved keep their figures. */}
       {Object.keys(maps).length > 0 ? (
         <details data-csv-remembered className="mt-5 border-t border-ink/8 pt-4">
-          <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
+          <summary className="cursor-pointer list-none text-small text-ink/70 underline underline-offset-4 transition hover:text-ink">
             {Object.keys(maps).length} column
             {Object.keys(maps).length === 1 ? "" : "s"} you have already set up
           </summary>

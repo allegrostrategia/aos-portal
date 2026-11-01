@@ -307,7 +307,7 @@ function OfferSetup({
 }) {
   return (
     <details className="group mt-4 border-t border-ink/8 pt-3">
-      <summary className="cursor-pointer list-none text-small text-ink/60 underline underline-offset-4 transition hover:text-ink">
+      <summary className="cursor-pointer list-none text-small text-ink/70 underline underline-offset-4 transition hover:text-ink">
         Edit setup
       </summary>
       <div className="mt-3">

@@ -81,7 +81,7 @@ export function ManualEntryForm({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-small text-ink/60 underline underline-offset-4 transition hover:text-ink"
+          className="text-small text-ink/70 underline underline-offset-4 transition hover:text-ink"
         >
           Cancel
         </button>
