@@ -16,6 +16,11 @@ import { formatValue, type Unit } from "./format.ts";
  * Nothing here is generated. A template is picked and filled; no
  * sentence is composed, and no figure is described in words the
  * templates do not contain.
+ *
+ * **Which figures get one is `FOCUS_FLOORS`,** added 1 November: the
+ * sentences were always hers and until then the choice of what to say
+ * them about was "the three biggest moves there are", however small
+ * those were.
  */
 
 export const PANELS = {
@@ -55,6 +60,105 @@ export const TEMPLATES = {
   goodFall: "{Metric} down {n} - exactly the direction we want",
   badRise: "{Metric} up {n}",
 } as const;
+
+/**
+ * How big a move has to be before it is worth a sentence.
+ *
+ * Dom, 1 November, on an Overview screenshot: "Variable costs up £11"
+ * sitting in "Look at these first" beside two real problems. £239 to
+ * £250 is 4.6%, and it was there because the panel takes the three
+ * biggest things it has rather than the things worth reading. With no
+ * floor under it, a quiet month fills the panel with its own noise, and
+ * a list of three where one matters teaches the reader to skim all
+ * three.
+ *
+ * **Two floors, and a move has to clear both.** A share of last month,
+ * and an amount in the figure's own unit. Each catches what the other
+ * cannot: the share alone would keep a £1 move on a figure that lives
+ * at £2, and the amount alone would drop 2 new clients becoming 3 —
+ * half as many again, and the most important number on the page.
+ *
+ * In a map next to the wording, for the reason the wording is in this
+ * file: these are Nina's to change, and changing one should not mean
+ * reading a screen. They are written up for her in
+ * `docs/nina-review/04-wording.md` §7.
+ */
+export const FOCUS_FLOORS = {
+  /** Of last month's figure, as a percentage. */
+  relativePct: 10,
+
+  /**
+   * And at least this much in the figure's own unit: a percentage point
+   * for a rate, one of anything counted, two hours, a tenth of a ratio,
+   * half a month.
+   */
+  absolute: {
+    count: 1,
+    percent: 1,
+    hours: 2,
+    ratio: 0.1,
+    months: 0.5,
+    // Never reaches here — a text figure has no good direction — and
+    // listed so the map covers the unit type rather than most of it.
+    text: 0,
+  },
+
+  /**
+   * Money, by the size of the figure rather than by which figure it is.
+   *
+   * **No single amount is small for every money figure this tool
+   * holds.** Cost per click lives at 14p and revenue at £24,650, so
+   * £100 — right for revenue — silences a cost per click that doubled,
+   * and the 5p that keeps *that* honest is nothing at all on revenue.
+   * The tiers are the judgement `decimalsFor` already makes in
+   * `format.ts`, for the same reason: a figure's magnitude is knowable
+   * where its meaning is not.
+   *
+   * Read against the larger of the two months, so a figure that
+   * collapses is judged at the size it was.
+   */
+  currency: [
+    { upTo: 10, floor: 0.05 },
+    { upTo: 1000, floor: 1 },
+    { upTo: Infinity, floor: 100 },
+  ],
+
+  /**
+   * A target missed by less than this is not a focus area.
+   *
+   * **Deliberately not the 1% on the win side.** "Beat your target by
+   * 1% WOOOO" is a nice thing to read and costs the reader nothing;
+   * "at 97% of your target" is an item on a list of jobs, and it is
+   * not one.
+   */
+  targetMissPct: 5,
+
+  /** And a target beaten by less than this says nothing. */
+  targetBeatPct: 1,
+} as const;
+
+/** The smallest move in `unit` that counts, at the size the figure is. */
+export function floorFor(unit: Unit, figure: number): number {
+  if (unit === "currency") {
+    const size = Math.abs(figure);
+    return FOCUS_FLOORS.currency.find((tier) => size < tier.upTo)!.floor;
+  }
+  return FOCUS_FLOORS.absolute[unit];
+}
+
+/** Is a month-on-month move big enough to say anything about? */
+export function clearsFloors(unit: Unit, value: number, previous: number): boolean {
+  const moved = Math.abs(value - previous);
+  const size = Math.max(Math.abs(value), Math.abs(previous));
+  if (moved < floorFor(unit, size)) return false;
+
+  // Nothing to take a share of. A figure arriving from zero is news at
+  // any size that cleared the amount above — "0 to 2 new clients" is
+  // not a 200% anything, it is two clients.
+  if (previous === 0) return true;
+
+  return (moved / Math.abs(previous)) * 100 >= FOCUS_FLOORS.relativePct;
+}
 
 /**
  * A rate and the count that drives it, where both can reach a panel.
@@ -174,6 +278,10 @@ function asSentenceStart(label: string): string {
  * is about something somebody chose and "dropped from" is only about
  * what happened. A figure with neither says nothing at all rather than
  * reaching for a third-best sentence.
+ *
+ * And a figure that moved too little to matter — `FOCUS_FLOORS`, in
+ * either of the two ways a move can be too little — says nothing
+ * either, which is the same judgement one step earlier.
  */
 export function highlightFor(input: HighlightInput): Highlight | null {
   const { label, unit, goodDirection, value, previous, target, currency } = input;
@@ -188,7 +296,7 @@ export function highlightFor(input: HighlightInput): Highlight | null {
     if (beat) {
       // How far past, not how much of: "beat your target by 12%".
       const by = Math.abs(pct - 100);
-      if (by < 1) return null;
+      if (by < FOCUS_FLOORS.targetBeatPct) return null;
       return {
         key: "beatTarget",
         panel: "wins",
@@ -200,10 +308,16 @@ export function highlightFor(input: HighlightInput): Highlight | null {
       };
     }
 
+    // A near miss is not a job. 97% of a target is somebody who very
+    // nearly did the thing, and reading it under "Look at these first"
+    // is being told off for it.
+    const by = Math.abs(100 - pct);
+    if (by < FOCUS_FLOORS.targetMissPct) return null;
+
     return {
       key: "belowTarget",
       panel: "attention",
-      size: Math.abs(100 - pct),
+      size: by,
       text: fill(TEMPLATES.belowTarget, {
         Metric: asSentenceStart(label),
         pct: `${Math.round(pct)}%`,
@@ -212,6 +326,10 @@ export function highlightFor(input: HighlightInput): Highlight | null {
   }
 
   if (previous === null || previous === value) return null;
+
+  // The two floors, before any of the six movement sentences: below
+  // them there is a move, and no news in it.
+  if (!clearsFloors(unit, value, previous)) return null;
 
   // **Nina's first four movement sentences assume higher is better.**
   // "{n} MORE" is paired with "stunning" and "{n} fewer" with "worth a

@@ -26,7 +26,7 @@ The screens from the earlier work — the monthly report itself, targets, benchm
 
 ### 3. [Every word a client reads](04-wording.md)
 
-The full text of all five emails and the screen a client sees between months, each with when it goes out and who gets it. Nothing in it has been changed — it's set out for you to mark up.
+The full text of all five emails and the screen a client sees between months, each with when it goes out and who gets it. Nothing in it has been changed — it's set out for you to mark up. **Section 7 is new:** not wording but the numbers that decide which figures reach "Look at these first", which are yours to change the same way the sentences are.
 
 ### 4. [Before any of this goes on](03-launch-checklist.md)
 

@@ -818,6 +818,52 @@ text, which fails 1.4.3 by exactly the same arithmetic and was not in the
 ask. That is the obvious next sweep and it is deliberately not in this
 commit.
 
+### Focus areas get a floor — 1 November 2026
+
+Dom, on the Phase 5 Overview screenshot: *"Variable costs up £11 shows as
+a Focus area. Propose a minimum so trivial moves don't reach Look at
+these first."*
+
+**The rule had no minimum at all.** Every monthly figure with a good
+direction got at most one sentence — a target if one was set, last month
+otherwise — and the panel took the three biggest it had. Any non-zero
+move qualified, so a quiet month filled the panel with its own noise.
+That line was £239 → £250, **+4.6%, and third of three**, behind new
+clients at 20% of target and list size at 87%.
+
+**Two floors, and a move has to clear both** (`FOCUS_FLOORS`, approved by
+Dom before it was built):
+
+- **10% of last month**, which catches a small move on a big figure.
+- **An amount in the figure's own unit**, which catches the opposite: 1
+  of anything counted, a percentage point, two hours, 0.1 of a ratio,
+  half a month.
+
+**Money is tiered by magnitude** — 5p under £10, £1 under £1,000, £100
+above — and not by metric, which is the judgement `decimalsFor` already
+makes in `format.ts`. A flat £100, which is what was proposed and
+approved, breaks a committed test on purpose: cost per lead £6 → £4.50 is
+a 25% move and £1.50, and cost per click lives at 14p. There is no one
+amount that is small for every money figure this tool holds.
+
+**And a target missed by less than 5% is not a focus area**, mirroring
+the 1% that was already on the win side — deliberately a different
+number, because a near miss on a list of jobs is a job you don't have
+where a near win costs the reader nothing.
+
+Both floors are AND-ed, which is what keeps the one case that must never
+be silenced: **3 new clients becoming 2** is the smallest move a count
+can make and a third of the book. The amount floor alone would drop it;
+the share floor alone would keep a £1 move on a figure that lives at £2.
+
+Eight tests, five mutations each pointing at the right one: dropping the
+relative floor, zeroing the near-miss, flattening the money tiers,
+skipping the check entirely, and tiering on the smaller month rather
+than the larger. The numbers are one exported map beside Nina's eight
+sentences, written up for her as §7 of `docs/nina-review/04-wording.md`,
+and on the test month the only line that goes is the £11 — the wins
+panel is unchanged.
+
 ### Open questions and known gaps
 
 - **`client_experience_active_clients_at_start` cannot be built as specified.** §5.8 calls it "last month's active at end" *and* says "the very first month asks for active clients at start as a one-off input" — a field pulled in most months and typed in one, which the schema refuses outright (`report_values` will not store a pulled metric). Needs Nina's decision. Named in `PULLED_NOT_IMPLEMENTED` with a test that fails if someone quietly implements it. Stage 3.

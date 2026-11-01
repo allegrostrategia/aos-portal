@@ -151,6 +151,47 @@ It's the whole screen — no empty cards underneath it. There's a picture of it 
 
 ---
 
+## 7. Which figures reach "Look at these first 👀" — and the floors under it
+
+Not an email, and not new wording: the eight sentences in the two panels are already yours, word for word. **What is new, from 1 November, is which figures get one** — and that is a set of numbers you can change, so it belongs on this list.
+
+**How a figure is chosen.** Every monthly figure that has a good direction gets at most one sentence. If you have set it a target, the target is what the sentence is about. If you haven't, it's compared with last month. Each panel then shows the three biggest, and if a panel ends up with nothing it isn't shown at all.
+
+**Why this needed a floor.** On the October test month, "Variable costs up £11" appeared under "Look at these first" beside two real problems — new clients at a fifth of target, and a list that had shrunk. £239 to £250 is a 4.6% move, and it was there only because the panel took the three biggest things it had rather than the things worth reading. A list of three where one matters teaches a client to skim all three.
+
+So a move now has to clear **both** of these to be worth a sentence:
+
+| | The floor | Why both |
+| --- | --- | --- |
+| **A share of last month** | 10% | Catches a small move on a big figure — £50 on £24,650. |
+| **An amount, in the figure's own unit** | see below | Catches a big-looking percentage on a figure that is tiny — doubling £1. |
+
+The amounts, one per kind of figure:
+
+| Kind of figure | Has to move at least |
+| --- | --- |
+| Anything counted (clients, opt-ins, units sold) | 1 |
+| A rate (%) | 1 percentage point |
+| Money under £10 (cost per click) | 5p |
+| Money under £1,000 (costs, a small offer's revenue) | £1 |
+| Money of £1,000 or more (revenue, profit) | £100 |
+| Hours | 2 hours |
+| A ratio (ROAS, issues per 10 clients) | 0.1 |
+| Months (runway) | half a month |
+
+Money is split by size rather than by which figure it is, because there is no one amount that is small for all of it: £100 is nothing on £24,650 of revenue and it would silence a cost per click that went from 14p to 20p.
+
+**And two rules about targets:**
+
+- **A target missed by less than 5% is not a focus area.** At 97% of a target somebody very nearly did the thing, and reading about it under "Look at these first" is being told off for it.
+- **A target beaten by less than 1% still gets its WOOOO.** Deliberately not the same number: a near miss on a list of jobs is a job you don't have, where a near win is a nice thing to read and costs nothing.
+
+**What this changed on the test month.** "Variable costs up £11" is gone; the other two focus areas are exactly as they were, and "What went WELL this month" didn't change at all — all three of its lines clear the floors easily.
+
+**All of it is in one place in the code**, next to your eight sentences, so any of these numbers can be changed on its own without touching a screen. If 10% is too strict and you'd rather hear about a 5% move, or £100 is too high for revenue, say the number and it's a one-line change.
+
+---
+
 ## What to mark up
 
 Anything at all. The four written-for-you emails (1, 2, 3, 4) and the screen at 6 have had no eyes but ours. The two reminders at 5 are your own words and probably need nothing.

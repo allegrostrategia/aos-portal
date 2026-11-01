@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { DERIVED_FROM, FOCUS_TAG, PULLED_FROM, TEMPLATES, highlightFor, highlights, pluralise } from "./highlights.ts";
+import {
+  DERIVED_FROM,
+  FOCUS_FLOORS,
+  FOCUS_TAG,
+  PULLED_FROM,
+  TEMPLATES,
+  clearsFloors,
+  floorFor,
+  highlightFor,
+  highlights,
+  pluralise,
+} from "./highlights.ts";
 
 /**
  * "Look at these first 👀" and "What went WELL this month".
@@ -501,4 +512,232 @@ test("the attention panel only ever draws a stripped template", () => {
   for (const item of attention) {
     assert.doesNotMatch(item.text, /WHY|YET|worth a proper look|direction we want|👀/, item.text);
   }
+});
+
+/**
+ * The floors under both panels (Dom, 1 November).
+ *
+ * The case that asked for them is first, and it is a real screenshot
+ * rather than an invented number: variable costs £239 → £250, which
+ * reached "Look at these first" beside new clients at a fifth of
+ * target and a list that had shrunk.
+ */
+test("£11 on £239 is a move, not news", () => {
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Variable costs",
+      unit: "currency",
+      goodDirection: "down",
+      value: 250,
+      previous: 239,
+    }),
+    null,
+    "4.6% of last month, under the 10% floor",
+  );
+
+  // The same figure moved properly still speaks, so what was built is a
+  // floor and not an off switch.
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Variable costs",
+      unit: "currency",
+      goodDirection: "down",
+      value: 320,
+      previous: 239,
+    })?.text,
+    "Variable costs up £81",
+  );
+});
+
+test("the Overview that prompted it now shows two focus areas, not three", () => {
+  // The three lines on that screenshot, as the panel had them.
+  const { attention } = highlights([
+    {
+      ...base,
+      key: "leads_conversions_new_clients",
+      label: "New clients",
+      value: 1,
+      previous: 1,
+      target: 5,
+    },
+    {
+      ...base,
+      key: "email_list_size_at_month_end",
+      label: "List size at month end",
+      value: 870,
+      previous: 870,
+      target: 1000,
+    },
+    {
+      ...base,
+      key: "financials_variable_costs",
+      label: "Variable costs",
+      unit: "currency",
+      goodDirection: "down",
+      value: 250,
+      previous: 239,
+    },
+  ]);
+
+  assert.equal(attention.length, 2);
+  assert.ok(
+    !attention.some((h) => h.text.includes("Variable costs")),
+    `the £11 is gone, got ${JSON.stringify(attention.map((h) => h.text))}`,
+  );
+  // And the two real ones are untouched, in the order they were in.
+  assert.equal(attention[0].text, "New clients is at 20% of your target");
+  assert.equal(attention[1].text, "List size at month end is at 87% of your target");
+});
+
+test("one of three clients still speaks, in both directions", () => {
+  // **The reason the amount floor cannot stand alone.** One client is
+  // the smallest move a count can make and 3 → 2 is a third of the
+  // book: the single most important number on the page, and no floor
+  // may silence it.
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 2, previous: 3 })?.text,
+    "1 fewer new client than last month",
+  );
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 3, previous: 2 })?.text,
+    "1 MORE new client than last month - stunning",
+  );
+
+  // Ten clients becoming nine is the same one client and a tenth of
+  // the book — exactly on the floor, and in.
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 9, previous: 10 })?.text,
+    "1 fewer new client than last month",
+  );
+  // Eleven becoming ten is not.
+  assert.equal(highlightFor({ ...base, label: "New clients", value: 10, previous: 11 }), null);
+});
+
+test("a target missed by less than 5% is not a job", () => {
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 97, target: 100 }),
+    null,
+    "97% of target: nearly did the thing",
+  );
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 94, target: 100 })?.text,
+    "New clients is at 94% of your target",
+  );
+
+  // The same rule from the other side, where overshooting is the miss.
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Cost per lead",
+      unit: "currency",
+      goodDirection: "down",
+      value: 5.1,
+      target: 5,
+    }),
+    null,
+    "2% over a cost target",
+  );
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Cost per lead",
+      unit: "currency",
+      goodDirection: "down",
+      value: 6,
+      target: 5,
+    })?.text,
+    "Cost per lead is at 120% of your target",
+  );
+
+  // And the win side keeps its own, narrower threshold, on purpose.
+  assert.equal(FOCUS_FLOORS.targetBeatPct, 1);
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 102, target: 100 })?.text,
+    "New clients beat your target by 2% WOOOO",
+  );
+});
+
+test("money is judged at the size the money is", () => {
+  // 14p to 20p is six pence and nearly half again: the most important
+  // thing on an Ads tab, and £100 would have silenced it.
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Cost per click",
+      unit: "currency",
+      goodDirection: "down",
+      value: 0.2,
+      previous: 0.14,
+    })?.text,
+    // The move, in pennies, as the Ads card prints it.
+    "Cost per click up £0.06",
+  );
+
+  // £50 on £24,650 is the same arithmetic the other way up.
+  assert.equal(
+    highlightFor({
+      ...base,
+      label: "Total revenue",
+      unit: "currency",
+      value: 24700,
+      previous: 24650,
+    }),
+    null,
+  );
+
+  assert.equal(floorFor("currency", 0.14), 0.05);
+  assert.equal(floorFor("currency", 239), 1);
+  assert.equal(floorFor("currency", 24650), 100);
+  // **Judged at the larger of the two months**, which is the one place
+  // that choice shows: £950 → £1,049 is 10.4% and £99 — over the share
+  // floor, under the £100 a figure of that size owes. Tiered on the
+  // smaller month it would owe £1 and speak.
+  assert.ok(!clearsFloors("currency", 1049, 950));
+  assert.ok(clearsFloors("currency", 1060, 950));
+});
+
+test("the amount floor does the work the share cannot", () => {
+  // Doubling two hours of admin reclaimed is 100% of nothing much.
+  assert.ok(!clearsFloors("hours", 2.5, 1));
+  assert.ok(clearsFloors("hours", 3, 1));
+  // A rate that moved half a point, however small it started.
+  assert.ok(!clearsFloors("percent", 1.4, 0.9));
+  assert.ok(clearsFloors("percent", 2.1, 0.9));
+});
+
+test("a figure arriving from zero is read as what it is", () => {
+  // No share to take, so the amount is the whole test — and two new
+  // clients from none is two clients, not 200% of nothing.
+  assert.equal(
+    highlightFor({ ...base, label: "New clients", value: 2, previous: 0 })?.text,
+    "2 MORE new clients than last month - stunning",
+  );
+  // The amount floor is still the whole test from zero: 2p appearing on
+  // a figure that lives in pennies is not an event.
+  assert.ok(!clearsFloors("currency", 0.02, 0));
+  assert.ok(clearsFloors("currency", 0.4, 0));
+});
+
+test("the floors are five numbers, and they are in the map", () => {
+  // Asserted like the wording above and for the same reason: they are
+  // Nina's to change, they are written up for her in
+  // docs/nina-review/04-wording.md §7, and a change here should be a
+  // change there rather than a surprise on a screen.
+  assert.equal(FOCUS_FLOORS.relativePct, 10);
+  assert.equal(FOCUS_FLOORS.targetMissPct, 5);
+  assert.deepEqual(FOCUS_FLOORS.absolute, {
+    count: 1,
+    percent: 1,
+    hours: 2,
+    ratio: 0.1,
+    months: 0.5,
+    text: 0,
+  });
+  assert.deepEqual(FOCUS_FLOORS.currency, [
+    { upTo: 10, floor: 0.05 },
+    { upTo: 1000, floor: 1 },
+    { upTo: Infinity, floor: 100 },
+  ]);
 });
