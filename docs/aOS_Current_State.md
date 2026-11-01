@@ -655,18 +655,37 @@ point of the other two sides at or past the end of the gradient. A softer
 gradient would have left a line wherever it stopped short — which is what
 the first attempt did, and the screenshot is what showed it.
 
-**Nothing that has to be read sits on it.** The controls are the *second*
-row of their column rather than the first, specifically so the month
-picker, the Draft badge and Sign out are clear of the fade. The one thing
-in it is the brand line, and that was measured rather than argued: the
-spec hides the line, photographs the rectangle it was in, composites the
-text colour onto every pixel of it and takes the worst. The first pass
-drew it at `text-ink/70` over a wider mask: **4.24:1**, a fail. At
-`text-ink/80` with the mask pulled in it is **6.60:1**. The number moves
-the day the crop or the mask moves, because it is read off the screen
-rather than written down — and the share the line is drawn at is asserted
-in the same test, so the measurement cannot quietly stop matching the
-paint, which it did once while the figure still looked respectable.
+**Nothing that has to be read sits on it — and that is what pays for the
+photograph being visible at all.** The first version carried the mask
+*and* `opacity-70`, with the brand line right-aligned in the corner inside
+the fade; Dom, looking at it on 1 November: *"it reads as a pale smudge."*
+The cause was not the gradient. Ink needs a backdrop lighter than about
+`#999` to hold 4.5:1, and a photograph worth showing is darker than that
+over much of its area, so every pixel behind those words had to be washed
+nearly back to the ground — and the mask that did it washed out the rest
+of the picture with it. **There is no mask that is both strong and safe to
+put words on.**
+
+So on 1 November the words moved instead. The brand line sits under the
+title on plain ground, which is where the mockups put it — beside the
+corner image, never across it — and the row's controls are pinned to the
+bottom of a title block held open to the picture's own height, so they
+clear it too. With nothing inside the box the opacity is gone, the mask
+holds full strength out to 44% of the corner before it falls away, and the
+box grew from 340×136 to **410×164**. The desktop header is about 50px
+taller for it; the phone is unchanged.
+
+Both halves are asserted. The geometry — the brand line's rectangle is
+outside the picture's rectangle — so a layout change cannot quietly put
+words back over a photograph. And the contrast, measured rather than
+argued: the spec hides the text, photographs the rectangle it was in,
+composites the text colour onto every pixel and takes the worst. The brand
+line comes to **8.21:1** and **Sign out**, the nearest real text to the
+picture and the first thing a stronger mask would reach, to **5.90:1** —
+the plain-ground figure, which is how you know the fade is finished above
+it. The share the line is drawn at is asserted in the same test, so the
+measurement cannot quietly stop matching the paint, which it did once
+while the figure still looked respectable.
 
 **The brand line is Cormorant italic**, which is reporting's one sanctioned
 use of italic outside `<Quote>` (CLAUDE.md). The mockups set it in a script
@@ -683,7 +702,7 @@ rather than absent — and what makes that free is that a lazily-loaded
 image with no box never intersects the viewport, so the bytes never leave
 the server. Which is why there is deliberately **no `priority`** on it,
 although Next asks for one: `priority` preloads, and it would preload a
-340×136 decoration to every phone that is not going to show it. The spec
+410×164 decoration to every phone that is not going to show it. The spec
 listens for the request and asserts it never comes. The brand line stays
 at 390px, full width rather than capped, because words still read there.
 

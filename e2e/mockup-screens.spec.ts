@@ -588,14 +588,21 @@ test.describe("the five mockup screens", () => {
       ["#688fb0", "#e56135", "var(--aos-navy)"],
     );
 
-    // **The header art, and the brand line that sits in its fade.**
+    // **The header art, and everything the header draws near it.**
     //
     // The photograph is pinned to the top of the header and runs off the
     // right of the window, so two of its sides are the edge of the page and
     // the other two are a mask. If the mask ever stops applying there is a
     // hard rectangle in the corner and nothing else says so, so check it is
     // there — and then check the thing it exists to protect, which is
-    // whether the words over it can still be read.
+    // whether the words near it can still be read.
+    //
+    // It is drawn at full strength since 1 November, and what pays for that
+    // is that no text is inside its box: the brand line moved into the title
+    // block and the controls sit below the picture. Both halves of that are
+    // asserted here — the geometry, so a layout change cannot quietly put
+    // words back over a photograph, and the contrast, so a crop or a mask
+    // that crept outwards is caught by the number rather than by eye.
     if (info.project.name !== "phone") {
       const art = page.locator("header span[aria-hidden='true']").first();
       await expect(art).toHaveCSS("position", "absolute");
@@ -608,9 +615,32 @@ test.describe("the five mockup screens", () => {
       // measuring 70% while the page paints 80% would be a kinder number
       // than the screen's, and kind is the wrong direction for this one.
       await expect(line).toHaveClass(/text-ink\/80/);
+
+      // Clear of the picture, not merely legible over it. Boxes, because
+      // "is it over the photograph" is a question about rectangles and
+      // nothing in a class name answers it.
+      const artBox = (await art.boundingBox())!;
+      const lineBox = (await line.boundingBox())!;
+      expect(
+        lineBox.x + lineBox.width <= artBox.x + 1 || lineBox.y + lineBox.height <= artBox.y + 1,
+        "the brand line is outside the photograph's box",
+      ).toBe(true);
+
       // 22px — normal text by WCAG's reckoning, so 4.5:1 and not 3:1.
       const worst = await worstContrastBehind(page, line, 0.8);
       expect(worst, "the brand line over the photograph").toBeGreaterThanOrEqual(4.5);
+
+      // **The way out of the tool, measured on the same evidence.** It is
+      // the nearest piece of real text to the picture now, 14px and so
+      // owed 4.5:1 as well, and the bottom of the fade is exactly where it
+      // sits. Stronger stops in the mask would show up here first.
+      // Found by its text rather than its role: the measurement hides the
+      // element for one screenshot, and a `visibility: hidden` element is
+      // out of the accessibility tree, so a role locator stops matching
+      // halfway through and waits for it forever.
+      const signOut = page.locator("header button", { hasText: "Sign out" });
+      const worstSignOut = await worstContrastBehind(page, signOut, 0.7);
+      expect(worstSignOut, "Sign out below the photograph").toBeGreaterThanOrEqual(4.5);
     } else {
       // Below `sm` the photograph is not drawn — **and not fetched.** A
       // server component cannot know the width, so the box is

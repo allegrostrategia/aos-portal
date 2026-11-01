@@ -74,25 +74,38 @@ export function ReportShell({
         <div className="relative mx-auto w-full max-w-6xl px-4 pt-8 pb-0 sm:px-6 sm:pt-10">
           <HeaderArt />
 
-          <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-            <div className="min-w-0">
+          <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4 sm:items-stretch">
+            {/* **As tall as the photograph, and this is the column that
+                carries that.** The controls below are pinned to the bottom
+                of the row, so the row has to be at least the picture's
+                height or they end up inside it — but putting the minimum on
+                *their* column means a width where the header wraps gets a
+                second line 164px tall with one row of pills at the foot of
+                it, which is what the Launches page looked like for ten
+                minutes. On this side it does the same job unwrapped and
+                costs nothing wrapped, because a wrapped controls row is
+                already below a title block of exactly that height. */}
+            <div className="min-w-0 sm:min-h-[164px]">
               <Eyebrow>{ctx.workspace.business_name}</Eyebrow>
               <h1 className="font-display mt-2 text-display font-medium text-ink">
                 {title}
               </h1>
               {tagline ? <Eyebrow className="mt-2">{tagline}</Eyebrow> : null}
+              <BrandLine overview={active === "overview"} />
             </div>
 
-            {/* **The brand line above the controls, not below them.** The
-                photograph is in the corner behind this column, and whichever
-                row is nearest the corner sits in the last of its fade. That
-                is fine for a line of our own decorative text and wrong for
-                the way out of the tool: putting the controls second leaves
-                them clear of the photograph altogether, measured at every
-                width from 640 up. */}
-            <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:grow sm:items-end">
-              <BrandLine overview={active === "overview"} />
-
+            {/* **Nothing in this column is inside the photograph.** The
+                mockups put the script line to the *left* of the corner
+                image and the month picker beside the title, and the reason
+                turns out to be arithmetic rather than taste: ink needs a
+                backdrop lighter than about #999 to hold 4.5:1, and a
+                photograph strong enough to read as a photograph is darker
+                than that over most of its area. So the brand line sits in
+                the title block on plain ground, and this column is as tall
+                as the picture with its controls at the bottom of it —
+                which is what lets the picture come up to full strength.
+                The spec measures behind both. */}
+            <div className="flex w-full min-w-0 flex-col justify-end gap-3 sm:w-auto sm:grow sm:items-end">
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
                 {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
                 <MonthPicker ctx={ctx} path={path} />
@@ -213,14 +226,21 @@ function SectionMarker({ state }: { state: SectionState }) {
  * considered and declined. Italic serif is what we have that is nearest to
  * a hand.
  *
- * `ink/80` rather than something lighter, and it was measured rather than
- * chosen: this line is the one thing on the header that does sit in the
- * photograph's fade. The first pass drew it at 70% over a wider mask and
- * the worst pixel behind it came to 4.24:1, which fails. At 80% with the
- * mask pulled in it is 6.6:1. The spec photographs what is behind these
- * words and composites them onto it, so the day the crop or the mask moves
- * the number moves with it — and the share drawn here is asserted there,
- * so the measurement cannot quietly stop matching the paint.
+ * **Under the title, not in the corner** (1 November). It was in the
+ * corner for a day, right-aligned above the controls and inside the
+ * photograph's fade, and that is what kept the photograph faint: ink at
+ * 80% needs a backdrop lighter than about #999 to clear 4.5:1, so every
+ * pixel behind these words had to be washed almost back to the ground.
+ * Moving the words onto plain ground is what let the picture come up, and
+ * it is also where the mockups put this line — beside the corner image,
+ * never across it.
+ *
+ * Still `ink/80`, and still measured rather than assumed: the spec
+ * photographs what is behind these words, composites the text colour onto
+ * every pixel of it and asserts the worst one, so a crop or a mask that
+ * moved back over them would fail rather than quietly look wrong. The
+ * share drawn here is asserted there too, so the measurement cannot stop
+ * matching the paint.
  *
  * Decorative in the sense that nothing depends on reading it, but it is real
  * text — selectable, searchable, and spoken — rather than a picture of
@@ -228,7 +248,7 @@ function SectionMarker({ state }: { state: SectionState }) {
  */
 function BrandLine({ overview }: { overview: boolean }) {
   return (
-    <p className="font-display text-heading leading-snug text-balance text-ink/80 italic sm:max-w-52 sm:text-right">
+    <p className="font-display mt-3 max-w-xs text-heading leading-snug text-balance text-ink/80 italic">
       {overview ? "Where strategy meets la dolce vita" : "Strategy today, sold out tomorrow"}
     </p>
   );
@@ -251,7 +271,7 @@ function BrandLine({ overview }: { overview: boolean }) {
  * shares of the box and therefore holds at whatever size the box takes.
  *
  * The box's aspect ratio is what makes those shares a crop rather than a
- * stretch, so 340x136 is the crop's own 5:2 and not a size that happened to
+ * stretch, so 410x164 is the crop's own 5:2 and not a size that happened to
  * look right.
  *
  * **Why it has no hard edges, and it is the geometry rather than the
@@ -264,11 +284,23 @@ function BrandLine({ overview }: { overview: boolean }) {
  * softer gradient instead would have left a visible line wherever it stopped
  * short.
  *
- * **It is behind nothing that has to be read.** Absolutely positioned, so it
- * costs the header no height, `pointer-events-none`, and the controls are the
- * second row of their column rather than the first precisely so that none of
- * them lands in the fade. The one thing that does is the brand line, and the
- * spec measures it: 6.6:1 against the worst pixel it covers.
+ * **Drawn at full strength, and that is what the layout is for** (Dom,
+ * 1 November: "it reads as a pale smudge"). The first version carried the
+ * mask *and* 70% opacity, so the brightest pixel on the screen was 70% of
+ * a photograph and most of it far less — faint enough to look like a
+ * printing fault rather than a picture. The opacity is gone and the mask
+ * now holds full strength out to 44% of the corner before it falls away,
+ * which is the mockups' crisp corner image rather than a wash.
+ *
+ * **What made that affordable is that nothing readable is inside it any
+ * more.** Ink needs a backdrop lighter than about #999 to hold 4.5:1, and
+ * a photograph worth showing is darker than that over much of its area —
+ * so there is no mask that is both strong and safe to put words on. The
+ * brand line moved into the title block and the controls sit at the bottom
+ * of the row, below the picture, which is why the picture could come up.
+ * Absolutely positioned and `pointer-events-none`, so it still costs the
+ * header no height of its own; what holds the room open is the title
+ * block's `min-h`, the same 164 as this box so the two cannot drift apart.
  *
  * **Hidden below `sm`, and not fetched there either.** On a phone the header
  * is already a business name, a title, a month, a full-width row of controls
@@ -287,7 +319,7 @@ function HeaderArt() {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute top-0 hidden h-[136px] w-[340px] overflow-hidden sm:block"
+      className="pointer-events-none absolute top-0 hidden h-[164px] w-[410px] overflow-hidden sm:block"
       style={{
         // Out to the window's right edge rather than the content column's.
         // The column is centred, so past 72rem there is a gutter between it
@@ -306,9 +338,9 @@ function HeaderArt() {
         // box and refuses to be resized — and the whole of this is a resize.
         width={1536}
         height={1024}
-        // The rendered width is 219% of a 340px box, so ~750px; the next
+        // The rendered width is 219% of a 410px box, so ~900px; the next
         // step up covers a 2x screen.
-        sizes="768px"
+        sizes="1080px"
         // 600/700 left and 190/280 up, with the width at 1536/700 — the crop
         // x 600-1300, y 190-470 written as shares of the box. `h-auto` keeps
         // the height in step, so only one of these has to stay true to the
@@ -316,7 +348,7 @@ function HeaderArt() {
         // merely avoided the painted wall: what survives the mask is the
         // corner nearest the page edge, and further right than this that
         // corner was open sky.
-        className="absolute top-[-67.86%] left-[-85.71%] h-auto w-[219.43%] max-w-none opacity-70"
+        className="absolute top-[-67.86%] left-[-85.71%] h-auto w-[219.43%] max-w-none"
       />
     </span>
   );
@@ -327,12 +359,17 @@ function HeaderArt() {
  *
  * The radii are what do the work — at 100% of each, the whole left side and
  * the whole bottom sit at or past the end of the gradient, so they reach the
- * ground at zero rather than at some small remainder that draws a line. The
- * middle stop pulls the falloff forward of a straight ramp, which is what
- * keeps the brand line clear of the busiest part of the photograph.
+ * ground at zero rather than at some small remainder that draws a line.
+ *
+ * The stops are what changed on 1 November: solid out to 44% instead of
+ * starting to fall at once, so there is a real picture in the corner, and
+ * then a fast drop so the row of controls below it still sits on ground
+ * rather than on photograph. The spec measures the worst pixel behind
+ * "Sign out" as well as behind the brand line, which is what holds that
+ * second number honest.
  */
 const HEADER_ART_MASK =
-  "radial-gradient(100% 100% at 100% 0%, #000 0%, rgb(0 0 0 / 0.42) 38%, transparent 84%)";
+  "radial-gradient(100% 100% at 100% 0%, #000 0%, #000 44%, rgb(0 0 0 / 0.62) 70%, transparent 100%)";
 
 /**
  * The way out.
