@@ -181,3 +181,60 @@ test("a figure where falling is good reads both ways in Nina's words", async ({ 
 
   await shoot(page, TAB, "08-good-down-both-ways", w);
 });
+
+/**
+ * What a client reads where the team types (Dom, 3 November, for Nina).
+ *
+ * Her question was whether "Notes from your strategist" and "What we're
+ * focusing on next month" reach a client as **words** — no boxes, no
+ * instruction about how many to write. §13's rule is that an editor is
+ * removed from a client's page rather than hidden with CSS, and nothing
+ * asserted it on these two cards: they are the only places on the report
+ * where the same component draws a form for one person and prose for
+ * another, which is exactly where a hidden-not-removed mistake would
+ * live.
+ *
+ * Written through the real editors and published, so what the client
+ * reads is what Nina actually typed rather than a fixture row.
+ */
+test("the client reads the note and the focus list as words, with nothing to type in", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+
+  await page
+    .getByLabel("Your note for this month")
+    .fill(
+      "September was your best month for leads since we started, and the close rate is the one to work on next.\n\nI have put two things in the focus list below.",
+    );
+  await page.getByRole("button", { name: /save note/i }).click();
+  await expect(page.getByText(/saved/i).first()).toBeVisible();
+
+  await page.getByLabel("Objective 1").fill("Tighten the call booking page");
+  await page.getByLabel("Objective 2").fill("Three case studies out by the 20th");
+  await page.getByRole("button", { name: "Save focus" }).click();
+  await expect(page.getByText("Tighten the call booking page")).toBeVisible();
+
+  await page.getByRole("button", { name: /publish this month/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  await signIn(page, "client");
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+
+  // Her words, as prose.
+  await expect(page.getByText(/best month for leads since we started/)).toBeVisible();
+  await expect(page.getByText("What we’re focusing on next month")).toBeVisible();
+  await expect(page.getByText("Tighten the call booking page")).toBeVisible();
+
+  // **No boxes, and no instruction.** The reply box is the one thing a
+  // client is meant to type in, and it is a different card — so the test
+  // counts the editors by name rather than counting textareas.
+  await expect(page.getByLabel("Your note for this month")).toHaveCount(0);
+  await expect(page.getByLabel("Objective 1")).toHaveCount(0);
+  await expect(page.getByText(/Up to three/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /save note|publish this month/i })).toHaveCount(0);
+
+  await shoot(page, TAB, "09-client-reads-the-words", w);
+});
