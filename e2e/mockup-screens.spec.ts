@@ -604,7 +604,7 @@ test.describe("the five mockup screens", () => {
     // words back over a photograph, and the contrast, so a crop or a mask
     // that crept outwards is caught by the number rather than by eye.
     if (info.project.name !== "phone") {
-      const art = page.locator("header span[aria-hidden='true']").first();
+      const art = page.locator("header [data-header-art]");
       await expect(art).toHaveCSS("position", "absolute");
       const mask = await art.evaluate((el) => getComputedStyle(el).maskImage);
       expect(mask, "the header art's mask").toContain("radial-gradient");

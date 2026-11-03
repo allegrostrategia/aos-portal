@@ -70,10 +70,29 @@ export function ReportShell({
 }) {
   return (
     <>
-      <header className="overflow-hidden border-b border-ink/8 bg-cream">
-        <div className="relative mx-auto w-full max-w-6xl px-4 pt-8 pb-0 sm:px-6 sm:pt-10">
-          <HeaderArt />
+      <header className="relative border-b border-ink/8 bg-cream">
+        {/* **The clip belongs to the picture, not to the header** (Nina,
+            3 November: on the live site you cannot switch month or
+            client). Phase 5 put `overflow-hidden` here so the photograph
+            could run out to the window's edge without taking the page
+            with it — and both dropdowns are absolutely positioned inside
+            this header, so an open list was sliced off at its bottom
+            border. Two days live and nothing failed: every other test
+            navigates by URL, and an element clipped by an ancestor is
+            still `visible` to every check short of looking at the
+            pixels.
 
+            So the clipping box is this one, which holds the picture and
+            nothing else. It is full-bleed, which is also what lets
+            `HeaderArt` sit at `right-0` instead of measuring the gutter
+            off `100vw` — and `100vw` includes the scrollbar, so that
+            measurement was a sideways scroll waiting for a machine whose
+            scrollbars take up room. */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          <HeaderArt />
+        </span>
+
+        <div className="relative mx-auto w-full max-w-6xl px-4 pt-8 pb-0 sm:px-6 sm:pt-10">
           <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4 sm:items-stretch">
             {/* **As tall as the photograph, and this is the column that
                 carries that.** The controls below are pinned to the bottom
@@ -275,9 +294,12 @@ function BrandLine({ overview }: { overview: boolean }) {
  * look right.
  *
  * **Why it has no hard edges, and it is the geometry rather than the
- * gradient that does it.** The box is pinned to the top of the header and
- * runs out to the window's right edge, so two of its four sides are the edge
- * of the page and can carry full opacity without an edge being visible. The
+ * gradient that does it.** The box is pinned to the top right of the
+ * header's own full-bleed clipping box — so it reaches the window's edge
+ * without arithmetic on `100vw`, which counts a scrollbar as part of the
+ * window and would push the picture a few pixels past the page. Two of its
+ * four sides are therefore the edge of the page and can carry full opacity
+ * without an edge being visible. The
  * mask is an ellipse on that corner, as wide and as tall as the box, which
  * puts every point of the *other* two sides at or past the end of the
  * gradient: the left and the bottom reach the ground at zero. Reaching for a
@@ -319,14 +341,13 @@ function HeaderArt() {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute top-0 hidden h-[164px] w-[410px] overflow-hidden sm:block"
+      // Its own handle. Two aria-hidden spans in this header now — the
+      // clipping box and this — and the spec that measures the crop was
+      // finding "the first one", which is a way of naming a thing that
+      // stops being true the moment somebody adds another.
+      data-header-art
+      className="pointer-events-none absolute top-0 right-0 hidden h-[164px] w-[410px] overflow-hidden sm:block"
       style={{
-        // Out to the window's right edge rather than the content column's.
-        // The column is centred, so past 72rem there is a gutter between it
-        // and the window, and a photograph that stopped at the column would
-        // have a cut edge down it with pale ground to its right. `max()`
-        // because below 72rem there is no gutter to cross.
-        right: "calc(-1 * max(0px, (100vw - 72rem) / 2))",
         maskImage: HEADER_ART_MASK,
         WebkitMaskImage: HEADER_ART_MASK,
       }}
