@@ -89,7 +89,18 @@ export default async function CategoryReportPage({
 
   const metrics = figures.metrics.filter((m) => m.category === category.key);
   const headline = metrics
-    .filter((m) => m.input_type === "core" || m.input_type === "calc")
+    // **A pulled figure is a headline like any other** (Nina, 3 November:
+    // "New leads from ads" on Leads & Conversions). It already existed and
+    // was already computed — Ads' campaign totals feed it — and the only
+    // reason she could not see it was this line, which let a figure be a
+    // card if it was typed or worked out but not if it came from another
+    // tab. Where a number came from is the team's business, not the
+    // reader's. The two other pulled figures are "New clients" on Client
+    // Experience and "Revenue from offers" on Financials, which become
+    // cards too and should have been all along; the fourth,
+    // "Active clients at start", is unimplemented and so always null,
+    // which the next line drops.
+    .filter((m) => ["core", "calc", "pulled"].includes(m.input_type))
     .filter((m) => figures.figure(m.key) !== null)
     .slice(0, 6);
   const rest = metrics.filter(

@@ -193,11 +193,18 @@ export function KpiCard({
   const shell =
     "block rounded-card border border-ink/8 bg-card p-5 shadow-soft transition";
 
+  // Named, so a test can ask whether a figure is a CARD rather than a row
+  // in "Everything else this month" — the difference Nina asked for on
+  // "New leads from ads", and one that no class name answers: `Card` wears
+  // `rounded-card` too, so matching on the styling matches the panel the
+  // cards sit in.
   return href ? (
-    <Link href={href} className={`${shell} hover:border-ink/20`}>
+    <Link href={href} data-kpi={label} className={`${shell} hover:border-ink/20`}>
       {body}
     </Link>
   ) : (
-    <div className={shell}>{body}</div>
+    <div data-kpi={label} className={shell}>
+      {body}
+    </div>
   );
 }
