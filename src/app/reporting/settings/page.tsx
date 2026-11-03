@@ -56,6 +56,7 @@ export default async function ReportSettingsPage({
         businessName={ctx.workspace.business_name}
         currency={ctx.workspace.currency}
         targetHourlyRate={ctx.workspace.target_hourly_rate}
+        potentialRevenuePrice={ctx.workspace.potential_revenue_price}
         description={ctx.workspace.benchmark_business_description}
         offers={ctx.workspace.benchmark_main_offers}
         country={ctx.workspace.benchmark_country}

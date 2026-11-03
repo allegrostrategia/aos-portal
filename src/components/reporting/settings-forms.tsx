@@ -46,6 +46,7 @@ export function BusinessForm({
   businessName,
   currency,
   targetHourlyRate,
+  potentialRevenuePrice,
   description,
   offers,
   country,
@@ -55,6 +56,7 @@ export function BusinessForm({
   businessName: string;
   currency: string;
   targetHourlyRate: number | null;
+  potentialRevenuePrice: number | null;
   description: string | null;
   offers: string | null;
   country: string | null;
@@ -95,6 +97,28 @@ export function BusinessForm({
             />
           </label>
         </div>
+
+        {/* **What one sale is worth** (Nina, 3 November), for the two
+            potential-revenue lines on Leads & Conversions. Typed rather
+            than taken from an offer, because the figure is for a client
+            who has leads and has not sold anything yet, and every price
+            derived from this month's sales is a dash or a lie for
+            exactly that client. Blank is a real answer: it takes the
+            figure off the page. */}
+        <label className="flex flex-col gap-1.5">
+          <span className="text-small font-medium text-ink">
+            Price used for potential revenue{" "}
+            <span className="text-ink/45">
+              what one sale is worth. Leave blank to show neither line.
+            </span>
+          </span>
+          <input
+            name="potential_revenue_price"
+            inputMode="decimal"
+            defaultValue={potentialRevenuePrice ?? ""}
+            className={`${field} font-mono`}
+          />
+        </label>
 
         <fieldset className="contents">
           <legend className="text-small font-medium text-ink">

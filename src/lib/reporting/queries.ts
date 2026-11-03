@@ -46,6 +46,7 @@ export interface ReportWorkspace {
   first_month: string;
   access_end_date: string | null;
   target_hourly_rate: number | null;
+  potential_revenue_price: number | null;
   benchmark_business_description: string | null;
   benchmark_main_offers: string | null;
   benchmark_country: string | null;

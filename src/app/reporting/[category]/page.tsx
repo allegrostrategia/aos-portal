@@ -25,6 +25,7 @@ import { TopItemsReport } from "@/components/reporting/top-items";
 import { getTargets, getTopItems } from "@/lib/reporting/queries";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
 import { OfferCard } from "@/components/reporting/offer-card";
+import { PotentialRevenue } from "@/components/reporting/potential-revenue";
 import { GroupedBarChart } from "@/components/reporting/charts/grouped-bar-chart";
 import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { metricIcon } from "@/lib/reporting/metric-icons";
@@ -432,6 +433,15 @@ export default async function CategoryReportPage({
           {category.key === "ads" ? <CampaignTable ctx={ctx} figures={figures} /> : null}
 
           {category.key === "funnels" ? <FunnelTable ctx={ctx} figures={figures} /> : null}
+
+          {category.key === "leads_conversions" ? (
+            <PotentialRevenue
+              price={ctx.workspace.potential_revenue_price}
+              leads={figures.figure("leads_conversions_total_leads")}
+              leadToClientRate={figures.figure("leads_conversions_lead_to_client_rate")}
+              currency={ctx.workspace.currency}
+            />
+          ) : null}
 
           {topItems ? (
             <TopItemsReport thisMonth={topItems.thisMonth} history={topItems.history} />

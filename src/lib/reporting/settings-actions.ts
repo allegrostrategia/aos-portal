@@ -47,6 +47,7 @@ export async function saveReportSettings(
   const businessName = String(formData.get("business_name") ?? "").trim();
   const currency = String(formData.get("currency") ?? "").trim().toUpperCase();
   const rateRaw = String(formData.get("target_hourly_rate") ?? "").trim();
+  const priceRaw = String(formData.get("potential_revenue_price") ?? "").trim();
 
   if (!workspaceId) return { error: "That was missing something. Reload and try again." };
   if (!businessName) return { error: "What is the business called?" };
@@ -63,6 +64,21 @@ export async function saveReportSettings(
     rate = parsed;
   }
 
+  // What one sale is worth, for the potential revenue figure on Leads &
+  // Conversions. Blank clears it, and clearing it takes the figure off
+  // the page rather than printing £0 - a potential revenue of nothing is
+  // a statement about the business where a missing price is a statement
+  // about the setup. The database refuses zero and negatives too, so the
+  // two agree about what a price is.
+  let price: number | null = null;
+  if (priceRaw !== "") {
+    const parsed = Number(priceRaw.replace(/[£$€,\s]/g, ""));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return { error: "A price should be a number above zero, or blank." };
+    }
+    price = parsed;
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("report_workspaces")
@@ -70,6 +86,7 @@ export async function saveReportSettings(
       business_name: businessName,
       currency,
       target_hourly_rate: rate,
+      potential_revenue_price: price,
       // Blank clears them: these are prompts for a benchmark she pastes
       // in, not figures, so an empty one is a real answer.
       benchmark_business_description:
