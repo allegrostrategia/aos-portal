@@ -28,7 +28,11 @@ The screens from the earlier work — the monthly report itself, targets, benchm
 
 The full text of all five emails and the screen a client sees between months, each with when it goes out and who gets it. Nothing in it has been changed — it's set out for you to mark up. **Section 7 is new:** not wording but the numbers that decide which figures reach "Look at these first", which are yours to change the same way the sentences are.
 
-### 4. [Before any of this goes on](03-launch-checklist.md)
+### 4. [Five things you asked about](05-your-questions-answered.md)
+
+The five questions from your look at the live portal, answered as the tool works today: where targets are set and by whom, what a client sees where you type, how "Posts published" decides good from bad and why it can't have a target yet, whether the top-three card takes links, and exactly how "Still to collect" is worked out.
+
+### 5. [Before any of this goes on](03-launch-checklist.md)
 
 Ten things that can only be done with a real client, a real month, or your eyes. Including one that was skipped and shouldn't have been, and two your review added.
 
