@@ -91,7 +91,7 @@ test("a client reads the published month, and none of the team's half", async ({
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
 
-  expect(body, "their strategist's note is theirs").toMatch(/strategist/i);
+  expect(body, "their Allegro team's note is theirs").toMatch(/Notes from your Allegro Team/i);
   expect(body, "no upload card").not.toMatch(/fill from a file/i);
   expect(body, "nothing to publish").not.toMatch(/publish this month/i);
   expect(body, "no completion list").not.toMatch(/still to fill in/i);
@@ -104,10 +104,10 @@ test("a client reads the published month, and none of the team's half", async ({
   // holding space for a picture. Asserted as an absence as well as a
   // presence, because "ready for an SVG" is easy to satisfy by shipping a
   // grey box that looks like a missing image.
-  await expect(page.getByText("Your strategist", { exact: true })).toBeVisible();
+  await expect(page.getByText("Allegro Team", { exact: true })).toBeVisible();
   const sigs = await page.evaluate(() => {
     const role = [...document.querySelectorAll("span")].find(
-      (el) => el.textContent?.trim() === "Your strategist",
+      (el) => el.textContent?.trim() === "Allegro Team",
     );
     const slot = role?.closest("div");
     return {

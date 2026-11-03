@@ -44,6 +44,17 @@
      used for the Profit line and nothing else. */
   --aos-deep-red: #9e3b2f;
 
+  /* The brand orange, taken down until WORDS can be set in it (3 Nov 2026,
+     for the month in the reporting header). #ff6625 is 2.69:1 on the
+     reporting ground and 2.70 on cream — it is a fill colour, which is why
+     primary buttons are orange with INK text. This is the same hue at the
+     first value that clears 4.5:1 on all five surfaces aOS has: card 4.92,
+     cream 5.04, reporting ground 5.03, white 5.47, cream-deep 4.74. So it
+     needs no argument about text size, and none of the four other oranges
+     already in the codebase (the #e56135 line stroke, the chart inks) are
+     text colours — those clear 3:1 for a stroke and no more. */
+  --aos-orange-ink: #be3c07;
+
   --background: var(--aos-cream);
   --foreground: var(--aos-ink);
 
@@ -73,6 +84,7 @@
   --color-lemon: var(--aos-lemon);
   --color-off-white: var(--aos-off-white);
   --color-deep-red: var(--aos-deep-red);
+  --color-orange-ink: var(--aos-orange-ink);
 
   --color-cream: var(--aos-cream);
   --color-cream-deep: var(--aos-cream-deep);

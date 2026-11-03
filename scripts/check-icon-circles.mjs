@@ -95,6 +95,32 @@ for (const [label, surface] of Object.entries(SURFACES)) {
 }
 
 /**
+ * The month in the reporting header, which is the one piece of text in
+ * aOS set in a colour rather than in ink.
+ *
+ * The brand orange is a FILL — 2.69:1 on the reporting ground, which is
+ * why a primary button is orange with ink text and not the other way
+ * round. `--aos-orange-ink` is the same hue taken down until words can
+ * be set in it, and the number is checked here rather than trusted,
+ * against every surface in aOS so that moving the pill cannot quietly
+ * fail it.
+ */
+console.log("\n--- the month pill: orange-ink on each surface (needs 4.5) ---");
+{
+  const ORANGE_INK = "#be3c07";
+  const EVERY_SURFACE = {
+    ...SURFACES,
+    "reporting ground": "#f3f5fd",
+    "cream ground": "#fbf5ea",
+    "cream-deep (wells)": "#f4eee4",
+  };
+  for (const [label, surface] of Object.entries(EVERY_SURFACE)) {
+    const c = contrast(hex(ORANGE_INK), hex(surface));
+    check(c >= 4.5, `${label.padEnd(30)} ${c.toFixed(2)}:1`);
+  }
+}
+
+/**
  * Every link, button and `<summary>` drawn in a share of ink.
  *
  * `text-small` is 14px and `text-caption` is 12px; WCAG counts both as normal

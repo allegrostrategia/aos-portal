@@ -128,7 +128,7 @@ test("the client reads the lists once the month is published", async ({ page }, 
   await expect(page.getByText(/Proven · 2 months/)).toBeVisible();
   await expect(page.getByText(/51,000 views/)).toBeVisible();
   expect(await hasDisc(page, "What worked this month"), "the panel's disc").toBe(true);
-  expect(await hasDisc(page, "Notes from your strategist"), "the note's disc").toBe(true);
+  expect(await hasDisc(page, "Notes from your Allegro Team"), "the note's disc").toBe(true);
   await expectNothingAdminish(page);
   await shoot(page, TAB, "04-report-client", w);
 });

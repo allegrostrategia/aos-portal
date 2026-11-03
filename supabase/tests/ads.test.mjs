@@ -211,7 +211,7 @@ test("an assigned team member can run all of it; the client can run none", async
     ["retire one", () => retireCampaign(null, form({ workspace_id: WS, campaign_id: leadForm }))],
   ]) {
     const refused = await as(CLIENT, run);
-    assert.match(refused?.error ?? "", /filled in by your strategist/, `the client cannot ${what}`);
+    assert.match(refused?.error ?? "", /filled in by your Allegro team/, `the client cannot ${what}`);
   }
 
   const [spend] = await rows(NINA, `

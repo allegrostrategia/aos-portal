@@ -83,7 +83,7 @@ test("the Overview's note and objectives are read-only too", async ({ page }, in
   await expect(page.getByPlaceholder(/what happened this month/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /save note/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /save focus/i })).toHaveCount(0);
-  await expect(page.getByText(/notes from your strategist/i)).toBeVisible();
+  await expect(page.getByText(/notes from your Allegro Team/i)).toBeVisible();
 
   // September, a draft, still has both.
   await page.goto(`/reporting?month=${MONTHS.sep}`);
@@ -135,7 +135,7 @@ test("the client can still reply to a published month", async ({ page }, info) =
   const box = page.getByPlaceholder(/anything you.d like to raise/i);
   await expect(box).toBeEnabled();
   await box.fill("Could you check the fixed costs for me?");
-  await page.getByRole("button", { name: /send to your strategist/i }).click();
+  await page.getByRole("button", { name: /send to your Allegro team/i }).click();
   await expect(page.getByText(/could you check the fixed costs/i)).toBeVisible();
   await shoot(page, TAB, "07-client-can-still-reply", w);
 });

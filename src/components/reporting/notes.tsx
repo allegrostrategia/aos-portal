@@ -16,7 +16,15 @@ import type { ReportNote } from "@/lib/reporting/queries";
 import { IconCircle } from "./icons";
 
 /**
- * "Notes from your strategist" (§8), and the box Elize and Nina write it in.
+ * "Notes from your Allegro Team" (§8), and the box Elize and Nina write it in.
+ *
+ * **Renamed from "your strategist" on 3 November** (Nina), and the word
+ * reached a client in five places rather than one: this title, the line
+ * under the signature, the empty state on the Overview, the sentence
+ * above the reply box and the reply button itself. A sixth, the launches
+ * list's empty state, went with them. The `note_type` is still
+ * `strategist` in the database, because that is a column value and not
+ * something anybody reads.
  *
  * The same component does both, because who is looking decides which half
  * appears and building two would mean two chances to show a client an editor.
@@ -47,7 +55,7 @@ export function StrategistNotes({
   return (
     <Card>
       <SectionTitle icon={<IconCircle name="notes" tone="blush" />}>
-        Notes from your strategist
+        Notes from your Allegro Team
       </SectionTitle>
 
       {notes.length === 0 && !canWrite ? (
@@ -131,7 +139,10 @@ function Signature({ name }: { name: string }) {
 
       <p className="min-w-0">
         <span className="font-display block text-body text-ink">{name}</span>
-        <span className="block text-caption text-ink/55">Your strategist</span>
+        {/* Under a person's name, so the team rather than "your
+            Allegro team": "Nina Oliver / Your Allegro team" reads as
+            though she were a department. (Nina, 3 Nov.) */}
+        <span className="block text-caption text-ink/55">Allegro Team</span>
       </p>
     </div>
   );

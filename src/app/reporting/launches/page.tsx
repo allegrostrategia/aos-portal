@@ -125,7 +125,7 @@ export default async function LaunchesPage({
           <p className="text-body text-ink/70">
             {ctx.canEdit
               ? "A launch has its own dates and its own page, so it is not tied to a month. Start one when there is something to plan."
-              : "There is nothing here yet. Your strategist will add a launch when one is running."}
+              : "There is nothing here yet. Your Allegro team will add a launch when one is running."}
           </p>
         </Card>
       ) : (

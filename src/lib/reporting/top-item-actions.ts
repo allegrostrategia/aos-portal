@@ -54,7 +54,7 @@ export async function saveTopItems(
     kind: workspace.kind,
     isAdmin: reportUser.isAdmin,
   });
-  if (!mayEdit) return { error: "Your report is filled in by your strategist." };
+  if (!mayEdit) return { error: "Your report is filled in by your Allegro team." };
 
   const rows = new Map<string, { type: TopItemType; rank: number; body: string; views: number | null }>();
   for (const [field, raw] of formData.entries()) {

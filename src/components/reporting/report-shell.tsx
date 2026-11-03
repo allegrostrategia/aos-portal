@@ -582,8 +582,19 @@ function MonthPicker({ ctx, path }: { ctx: ReportContext; path: string }) {
       )}
 
       <details className="group relative">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 text-small font-medium text-ink">
-          <span className="font-mono">{ctx.month.label}</span>
+        {/* **The month, larger and in orange** (Nina, 3 November). It is
+            the control she uses most and it read as one pill among
+            several. Orange-ink rather than the brand orange: #ff6625 is
+            2.69:1 on this ground, which is why primary buttons are
+            orange with ink text rather than the other way round. This is
+            the same hue taken down to 4.92:1 on the pill's own cream, so
+            the size is not carrying the accessibility argument — at 18px
+            it would still be "normal text" by WCAG's reckoning and owe
+            4.5:1 anyway. The chevron stays ink: it is furniture. */}
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 font-medium text-ink">
+          <span className="font-mono text-[1.125rem] leading-none text-orange-ink">
+            {ctx.month.label}
+          </span>
           <Arrow direction="down" className="size-3.5 opacity-60" />
         </summary>
         <ul className="absolute right-0 z-20 mt-2 max-h-72 w-52 overflow-y-auto rounded-2xl border border-ink/10 bg-card p-1.5 shadow-lift">

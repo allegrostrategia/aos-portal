@@ -51,7 +51,7 @@ async function editableWorkspace(workspaceId: string) {
   });
 
   if (!mayEdit) {
-    return { error: "Your report is filled in by your strategist." } as const;
+    return { error: "Your report is filled in by your Allegro team." } as const;
   }
   return { reportUser, workspace } as const;
 }

@@ -48,7 +48,7 @@ export function ClientReplies({
       {replies.length === 0 ? (
         <p className="text-body text-ink/70">
           {canReply
-            ? `Questions, corrections, or anything ${monthLabel} brought up. Your strategist reads this with the report.`
+            ? `Questions, corrections, or anything ${monthLabel} brought up. Your Allegro team reads this with the report.`
             : null}
         </p>
       ) : (
@@ -186,7 +186,7 @@ function NewReply({
         >
           {state?.error ?? state?.notice ?? ""}
         </p>
-        <SubmitLabel idle={any ? "Send" : "Send to your strategist"} busy="Sending…" />
+        <SubmitLabel idle={any ? "Send" : "Send to your Allegro team"} busy="Sending…" />
       </div>
     </form>
   );

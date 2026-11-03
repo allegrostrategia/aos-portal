@@ -62,7 +62,7 @@ export async function saveCategoryValues(
   if (!mayEdit) {
     // A retainer client viewing their own report. §2: they comment, Allegro
     // enters. The database would refuse this too.
-    return { error: "Your report is filled in by your strategist." };
+    return { error: "Your report is filled in by your Allegro team." };
   }
 
   // Only fields belonging to this category, and only ones that are typed at

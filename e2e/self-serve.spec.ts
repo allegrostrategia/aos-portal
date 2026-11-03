@@ -38,7 +38,7 @@ test("none of the parts that assume somebody at Allegro is on the other side", a
   await page.goto("/reporting");
 
   const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
-  expect(body, "no strategist note").not.toMatch(/strategist/i);
+  expect(body, "no Allegro team note").not.toMatch(/Notes from your Allegro Team|strategist/i);
   expect(body, "nothing to publish").not.toMatch(/publish/i);
   expect(body, "nobody to reply to").not.toMatch(/reply/i);
   expect(body, "no month withheld from them").not.toMatch(/is being prepared/i);
@@ -366,7 +366,7 @@ test("a retainer client gets the reply box, not a reflection", async ({ page }) 
 
   const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(body, "no reflection box").not.toMatch(/your reflection/i);
-  expect(body, "their strategist's note is still theirs").toMatch(/strategist/i);
+  expect(body, "their Allegro team's note is still theirs").toMatch(/Notes from your Allegro Team/i);
 });
 
 test("Piazza says last month is unfinished, and says it to nobody else", async ({

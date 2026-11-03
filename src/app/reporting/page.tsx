@@ -285,7 +285,7 @@ export default async function ReportingOverviewPage({
           <p className="text-body text-ink/70">
             {ctx.canEdit
               ? "Start with whichever section you have the numbers for — nothing has to be done in order."
-              : "Your strategist is still putting this month together."}
+              : "Your Allegro team are still putting this month together."}
           </p>
         </Card>
       ) : null}
@@ -532,7 +532,7 @@ export default async function ReportingOverviewPage({
               month={ctx.month.month}
               category=""
               mine={mine}
-              emptyMessage="Your strategist hasn't written this month's note yet."
+              emptyMessage="Your Allegro team hasn't written this month's note yet."
             />
           ) : null}
 
