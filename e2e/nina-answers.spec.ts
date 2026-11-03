@@ -193,6 +193,14 @@ test("decision 10: a client sees the month coming, and no figures in it", async 
     page.getByRole("heading", { name: /your september 2026 report is being prepared/i }),
   ).toBeVisible();
 
+  // Her wording of 3 November, under it. The heading she kept; the body
+  // is hers, and "your Allegro team" is the phrase that changed.
+  await expect(
+    page.getByText(
+      "Your Allegro team are still putting this month together. You’ll be emailed as soon as it’s ready to read, and your earlier months are all still here in the month picker!",
+    ),
+  ).toBeVisible();
+
   // And it is the whole screen — no KPI cards, no panels, no grid of
   // dashes underneath explaining nothing.
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");

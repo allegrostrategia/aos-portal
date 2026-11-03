@@ -650,6 +650,43 @@ test("Nina presses it; the client is told, and told no figures", async () => {
   assert.match(email.text, /https:\/\/aos\.allegrostrategia\.com\/reporting\/launches\//);
 });
 
+/**
+ * Nina, 3 November: "use the launch's linked offer; if none is linked,
+ * use the launch name".
+ *
+ * The template's own fallback is asserted in `report-email-wording`.
+ * What is asserted here is the half a pure test cannot see — that this
+ * send path actually looks the offer up and hands it over. The launch
+ * above has no offer linked and its subject is its own name, so the two
+ * tests together cover both directions through the real action.
+ */
+test("and the subject is the linked offer's name, not the launch's", async () => {
+  const id = await freshLaunch("Winter Challenge");
+
+  await db.exec(`
+    insert into public.report_entities (workspace_id, entity_type, name)
+    values ('${WS}', 'offer', 'The Freedom Experience');
+  `);
+  const offerId = (await rows(
+    `select id from public.report_entities where workspace_id = '${WS}'
+       and name = 'The Freedom Experience' limit 1`,
+  ))[0].id;
+  await db.exec(
+    `update public.report_launches set offer_entity_id = '${offerId}' where id = '${id}';`,
+  );
+
+  await as(NINA, () => publishLaunch(null, form({ launch_id: id })));
+
+  resetEmail();
+  const result = await as(NINA, () => sendLaunchUpdate(null, form({ launch_id: id })));
+  assert.equal(result.error, undefined, result.error);
+
+  const [email] = sent();
+  assert.equal(email.subject, "Your The Freedom Experience launch tracker has been updated");
+  assert.match(email.text, /tracker for The Freedom Experience \(Northwind Studio\)/);
+  assert.doesNotMatch(email.text, /Winter Challenge/, "the team's name for it stays with the team");
+});
+
 test("neither Elize nor the client can email a client about a launch", async () => {
   const id = (await rows(
     `select id from public.report_launches where workspace_id = '${WS}'

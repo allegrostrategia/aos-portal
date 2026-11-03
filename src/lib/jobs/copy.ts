@@ -1,3 +1,4 @@
+import { greeting } from "@/lib/email/greeting";
 import { formatMinutes } from "@/lib/timer/format";
 import type { ReminderKind } from "./reminders";
 import type { HotSeatReminderKind } from "./hot-seat-reminders";
@@ -322,12 +323,17 @@ export function buildCheckInCopy(input: {
 }
 
 /**
- * §8.1's two report reminders, in the brief's own words.
+ * §8.1's two report reminders, in Nina's own words.
  *
- * Verbatim from the brief, which is already Nina's voice — the only
- * additions are the greeting and the link, which every other email here
- * carries. On Nina's list for her to reword if she wants (decision 24's
- * sentences are the save confirmations; these are the two emails).
+ * They were the brief's wording until 3 November, which was already her
+ * voice but written as a spec. **These are hers as sent**, given that
+ * day and used as written — including the sign-off, which is "Nina x"
+ * rather than the team: these two go to members, who know her, and they
+ * are the only reporting emails that say "I".
+ *
+ * Both say the same thing twice on purpose — you do not have to do this,
+ * and please do it — because that is the honest position: nothing in aOS
+ * is withheld from a member who skips a month.
  *
  * **There is no third.** The brief is explicit: "No further reminders
  * after that."
@@ -342,12 +348,21 @@ export function reportReminderCopy(input: {
     subject: input.second
       ? `Don't forget your ${input.monthLabel} report`
       : `Time to fill in your ${input.monthLabel} report`,
-    body: [
-      `${input.firstName},`,
-      input.second
-        ? `Don't forget to fill in your monthly report for ${input.monthLabel}.`
-        : `Time to fill in your report for ${input.monthLabel}.`,
-      `Your report: ${input.reportUrl}`,
-    ],
+    body: input.second
+      ? [
+          greeting(input.firstName),
+          `Don't forget to fill in your monthly report for ${input.monthLabel}.`,
+          `As always, you don't have to fill this in, but I hugely suggest you do as this data is GOLDDUST for us being able to make changes together to grow your business!`,
+          `Your report: ${input.reportUrl}`,
+          `Nina x`,
+        ]
+      : [
+          greeting(input.firstName),
+          `Time to fill in your report for ${input.monthLabel} - note that although you don't have to fill in your report, this is what is going to really help you move forward in your business so as always, I suggest doing it asap!`,
+          `The more data you have, the more we can use it.`,
+          `Anything you want to bring up, you can add to your weekly roadmap check in on Friday.`,
+          `Your report: ${input.reportUrl}`,
+          `Nina x`,
+        ],
   };
 }

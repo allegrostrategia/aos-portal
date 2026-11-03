@@ -35,13 +35,14 @@ export async function sendLaunchUpdateEmail(
 
   const { data: launch } = await admin
     .from("report_launches")
-    .select("id, name, workspace_id, published_at")
+    .select("id, name, workspace_id, published_at, offer_entity_id")
     .eq("id", launchId)
     .maybeSingle<{
       id: string;
       name: string;
       workspace_id: string;
       published_at: string | null;
+      offer_entity_id: string | null;
     }>();
 
   if (!launch) {
@@ -109,6 +110,24 @@ export async function sendLaunchUpdateEmail(
     };
   }
 
+  // **What the client is told the tracker is for** (Nina, 3 November):
+  // the linked offer, which is the name they recognise, falling back to
+  // the launch's own name. A second read rather than an embedded select,
+  // because it only happens when an offer is linked and because the
+  // test harness's Supabase shim does not do embedded selects — and the
+  // alternative, teaching it to, is a day's work to save a round trip on
+  // a button somebody presses by hand. Nullable all the way: no offer
+  // linked, or a row since removed, both land on the launch's name.
+  let offerName: string | null = null;
+  if (launch.offer_entity_id) {
+    const { data: offer } = await admin
+      .from("report_entities")
+      .select("name")
+      .eq("id", launch.offer_entity_id)
+      .maybeSingle<{ name: string }>();
+    offerName = offer?.name ?? null;
+  }
+
   const link = launchLinkFor(env.siteUrl, {
     workspaceId: launch.workspace_id,
     launchId: launch.id,
@@ -119,6 +138,7 @@ export async function sendLaunchUpdateEmail(
     name: contact.display_name,
     businessName: workspace.business_name,
     launchName: launch.name,
+    offerName,
     url: link.url,
   });
 

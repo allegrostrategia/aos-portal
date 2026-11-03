@@ -21,10 +21,14 @@ export function MonthBeingPrepared({ monthLabel }: { monthLabel: string }) {
   return (
     <Card>
       <SectionTitle>Your {monthLabel} report is being prepared</SectionTitle>
+      {/* Nina's wording, 3 November. The heading is unchanged; the body is
+          hers, and the one word that moved is the one that matters —
+          "your Allegro team" rather than "your strategist", which is the
+          same change she made to the two client emails' sign-off. */}
       <p className="text-body text-ink/70">
-        Your strategist is still putting this month together. You&rsquo;ll be
+        Your Allegro team are still putting this month together. You&rsquo;ll be
         emailed as soon as it&rsquo;s ready to read, and your earlier months
-        are all still here in the month picker.
+        are all still here in the month picker!
       </p>
     </Card>
   );

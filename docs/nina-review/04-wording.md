@@ -1,6 +1,8 @@
 # Every word a client or member reads
 
-Nina — this is the full text of everything the reporting tool sends or shows that isn't a figure. Nothing here has been changed; it's set out so you can mark it up.
+Nina — this is the full text of everything the reporting tool sends or shows that isn't a figure.
+
+**Updated 3 November: these are now your words.** Everything you sent on 3 November is built exactly as you wrote it, and what's below is what will actually arrive. Two things in §1 still need you, and they're marked.
 
 Each one says **when it goes out** and **who gets it**, then the email exactly as it arrives. The name, the month, the business and the launch are filled in per person; below they are shown with the test data, so "Bella", "Bella Ltd", "August 2026" and "Autumn challenge" are where a real one would be.
 
@@ -17,29 +19,32 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 
 **This one lives in the Supabase dashboard rather than in our code** — Authentication → Emails → Invite user. So it's the only email on this list that can be changed without a deploy, and the only one nobody has watched arrive.
 
-Here it is, exactly as configured today:
+**Your new wording is in and live.** Read back out of the live project on 3 November, this is exactly what is configured:
 
 > **Subject:** You've been invited
 >
-> ## You've been invited
+> ## Your aOS login is ready 🍋
 >
-> You've been invited to create an account. Follow the link below to accept.
+> ## You're in!
+>
+> I've set up your login for aOS - everything you're going to come to love over the next few months lives here.
+>
+> Click below to set your password & you're good to go
 >
 > [Accept invitation]
+>
+> See you inside wooo!!
+> Nina x
 
-The link takes them to a page to set a password, and from there to their report.
+**Two things still need you, and the first is the one that matters.**
 
-**Two things to notice, and both are yours to decide:**
+**The subject line was never changed.** "Your aOS login is ready 🍋" is the first *heading inside the email*, not its subject — the subject field is still Supabase's default, so this lands in their inbox as **"You've been invited"** from Allegro Strategia, which is the problem the old version of this page described and it is still there. Changing it is one field in the same dashboard screen, no deploy: Authentication → Emails → Invite user → Subject. Say the word and Dom will set it to "Your aOS login is ready 🍋", or to whatever you'd rather it said.
 
-**It doesn't say who it's from, or what for.** The body is Supabase's default wording — the subject has never been changed, and the body only as far as fixing the link. There's no mention of Allegro Strategia, no mention of a report, and nothing to tell someone who has been expecting a call from you that this is that. It arrives as "You've been invited" from a name they may not recognise.
+**It opens with two headings in a row.** "Your aOS login is ready 🍋" and then "You're in!", both as large as each other. That reads as a mistake rather than a flourish. If the subject becomes the first line, the body wants to start at "You're in!".
 
-**The sender's name is misspelt.** Every auth email goes out as:
+**The sender's name is fixed.** It went out as "Allegro Stategia" — missing the *r* — until this was last written; the live setting now reads **Allegro Strategia** &lt;noreply@allegrostrategia.com&gt;, so that one is done.
 
-> **Allegro Stategia** &lt;noreply@allegrostrategia.com&gt;
-
-"Stategia", missing the *r*. The address is right; the display name is not, and it's the first thing anybody sees in their inbox. It's one field in the Supabase dashboard — Dom can fix it in a minute, and it needs no deploy.
-
-**Worth doing before the first real client:** send yourself one and read what arrives.
+**Still worth doing before the first real client:** send yourself one and read what arrives.
 
 ---
 
@@ -52,17 +57,19 @@ The link takes them to a page to set a password, and from there to their report.
 >
 > Bella,
 >
-> Your August 2026 report for Bella Ltd is ready to read.
+> Your August 2026 report for Bella Ltd is ready for you!
 >
-> It covers where the month went, what we make of it, and what we're focusing on next.
+> We'll go through the key bits on your monthly strategy call but please have a read through before then so you're in the loop.
+>
+> It covers where the month went, what we make of it, and what changes we're suggesting!
 >
 > Read it here: https://aos.allegrostrategia.com/reporting?workspace=…&month=2026-08
 >
-> If anything in it needs a conversation, you can reply underneath the report itself and we'll pick it up there.
+> If you want to add any comments before the call, you can reply underneath the report itself and we'll pick it up there.
 >
-> Allegro Strategia
+> Team Allegro
 
-The first line is their name as you typed it on the grant. If there's no name on it, that line reads `Hello,`.
+**The greeting is their first name only.** It's taken from the name you typed on their login — so "Bella Fawkes" is greeted "Bella,". If that login somehow has no name at all, the line reads `Hello,` rather than a bare comma; nobody has one, because the form makes you type it.
 
 ---
 
@@ -75,13 +82,15 @@ The first line is their name as you typed it on the grant. If there's no name on
 >
 > Bella,
 >
-> We've updated your August 2026 report for Bella Ltd. Something in it needed correcting, so the version you read before isn't the current one.
+> We've updated your August 2026 report for Bella Ltd.
+>
+> Something in it needed correcting, so the version you read before isn't the current one.
 >
 > The updated report: https://aos.allegrostrategia.com/reporting?workspace=…&month=2026-08
 >
-> Do reply underneath it if you'd like to go through what changed.
+> This is now fully up to date.
 >
-> Allegro Strategia
+> Team Allegro
 
 This exists because of your own decision of 5 October: a client reading a changed figure should know it changed. The alternative is staying quiet about a number they've already acted on.
 
@@ -92,17 +101,19 @@ This exists because of your own decision of 5 October: a client reading a change
 **When:** only when you press **Send update to client** on a published launch. Nothing else sends it — not saving a figure, not publishing the launch, not the nightly job.
 **Who:** the client contact. Retainer clients only.
 
-> **Subject:** Your Autumn challenge tracker has been updated
+> **Subject:** Your The Freedom Experience launch tracker has been updated
 >
 > Bella,
 >
-> We've updated the launch tracker for Autumn challenge (Bella Ltd) — there are newer figures in it than the last time you looked.
+> We've updated the launch tracker for The Freedom Experience (Bella Ltd) - there are newer figures in it than the last time you looked.
 >
 > See it here: https://aos.allegrostrategia.com/reporting/launches/…
 >
-> If anything in it needs a conversation, do say and we'll pick it up.
->
-> Allegro Strategia
+> Team Allegro
+
+**It's named after the offer, as you asked** — the offer linked to the launch, which is the name the client recognises. A launch with no offer linked to it falls back to the launch's own name, so that one would read "Your Autumn challenge launch tracker has been updated".
+
+**One thing to look at:** with an offer whose name starts with "The", the subject reads "Your **The** Freedom Experience launch tracker has been updated". It's your sentence and it's built as written, but if that grates, dropping the "Your" — "The Freedom Experience launch tracker has been updated" — reads cleanly for every offer name. One word, say which.
 
 This is the newest of the five and the one you've seen least. It exists because a launch's figures keep arriving for weeks after the cart shuts, and before this there was no way to say so without waiting for the monthly report.
 
@@ -119,9 +130,15 @@ This is the newest of the five and the one you've seen least. It exists because 
 >
 > Ruth,
 >
-> Time to fill in your report for September 2026.
+> Time to fill in your report for September 2026 - note that although you don't have to fill in your report, this is what is going to really help you move forward in your business so as always, I suggest doing it asap!
+>
+> The more data you have, the more we can use it.
+>
+> Anything you want to bring up, you can add to your weekly roadmap check in on Friday.
 >
 > Your report: https://aos.allegrostrategia.com/reporting
+>
+> Nina x
 
 **The 8th:**
 
@@ -131,9 +148,13 @@ This is the newest of the five and the one you've seen least. It exists because 
 >
 > Don't forget to fill in your monthly report for September 2026.
 >
+> As always, you don't have to fill this in, but I hugely suggest you do as this data is GOLDDUST for us being able to make changes together to grow your business!
+>
 > Your report: https://aos.allegrostrategia.com/reporting
+>
+> Nina x
 
-**These two are already yours.** The wording is taken verbatim from your brief — only the greeting and the link were added, which every email here carries. The other three were written for you.
+**These two are the only emails in aOS that say "I".** They go to members, who know you, and they're signed "Nina x" where the three client emails are signed "Team Allegro" — which is how you wrote them, and it is the right line: a member hears from you, a client hears from the team.
 
 ---
 
@@ -143,7 +164,7 @@ Not an email. This is what a retainer client reads when they open a month that h
 
 > ### Your September 2026 report is being prepared
 >
-> Your strategist is still putting this month together. You'll be emailed as soon as it's ready to read, and your earlier months are all still here in the month picker.
+> Your Allegro team are still putting this month together. You'll be emailed as soon as it's ready to read, and your earlier months are all still here in the month picker!
 
 It's the whole screen — no empty cards underneath it. There's a picture of it in the review pack at `screens-review/03-being-prepared-client`.
 
@@ -192,8 +213,12 @@ Money is split by size rather than by which figure it is, because there is no on
 
 ---
 
-## What to mark up
+## What still needs you
 
-Anything at all. The four written-for-you emails (1, 2, 3, 4) and the screen at 6 have had no eyes but ours. The two reminders at 5 are your own words and probably need nothing.
+Three things, and only the first is urgent:
 
-If it's easier to say it out loud than to write on this, that works too — none of it is hard to change, and none of it is in front of anybody yet.
+1. **The invitation's subject line** (§1) — still "You've been invited". One field in the Supabase dashboard, no deploy.
+2. **Two headings in a row** at the top of that same invitation (§1).
+3. **"Your The Freedom Experience…"** in the launch subject (§4), if it grates.
+
+Everything else on this page is built as you wrote it. If it's easier to say a change out loud than to write on this, that works too — none of it is hard to change, and none of it is in front of anybody yet.

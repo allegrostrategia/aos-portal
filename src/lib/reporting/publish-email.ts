@@ -1,4 +1,5 @@
 import type { EmailCopy } from "@/lib/jobs/copy";
+import { greeting } from "@/lib/email/greeting";
 import { formatCalendarMonth } from "@/lib/time-zone";
 
 /**
@@ -9,6 +10,13 @@ import { formatCalendarMonth } from "@/lib/time-zone";
  * outlives the correction, and a report that can be read without signing in
  * is a report that has stopped being private. Settled with Dom and Nina,
  * 5 October 2026.
+ *
+ * **Every word is Nina's, given on 3 November and used as written** —
+ * the exclamation marks, "Team Allegro" rather than "Allegro Strategia",
+ * and the sentence about the monthly strategy call, which is the one
+ * thing in either email that says what happens next. Asserted line for
+ * line in the test beside this file, the same arrangement as the two
+ * report panels: her words are not a screen's to reword.
  *
  * Pure, so the wording can be read and tested without sending anything.
  */
@@ -40,12 +48,13 @@ export const PUBLISH_EMAIL = {
     return {
       subject: `Your ${monthName(month)} report is ready`,
       body: [
-        `${name ? `${name},` : "Hello,"}`,
-        `Your ${monthName(month)} report for ${businessName} is ready to read.`,
-        `It covers where the month went, what we make of it, and what we're focusing on next.`,
+        greeting(name),
+        `Your ${monthName(month)} report for ${businessName} is ready for you!`,
+        `We'll go through the key bits on your monthly strategy call but please have a read through before then so you're in the loop.`,
+        `It covers where the month went, what we make of it, and what changes we're suggesting!`,
         `Read it here: ${url}`,
-        `If anything in it needs a conversation, you can reply underneath the report itself and we'll pick it up there.`,
-        `Allegro Strategia`,
+        `If you want to add any comments before the call, you can reply underneath the report itself and we'll pick it up there.`,
+        `Team Allegro`,
       ],
     };
   },
@@ -72,11 +81,12 @@ export const PUBLISH_EMAIL = {
     return {
       subject: `Your ${monthName(month)} report has been updated`,
       body: [
-        `${name ? `${name},` : "Hello,"}`,
-        `We've updated your ${monthName(month)} report for ${businessName}. Something in it needed correcting, so the version you read before isn't the current one.`,
+        greeting(name),
+        `We've updated your ${monthName(month)} report for ${businessName}.`,
+        `Something in it needed correcting, so the version you read before isn't the current one.`,
         `The updated report: ${url}`,
-        `Do reply underneath it if you'd like to go through what changed.`,
-        `Allegro Strategia`,
+        `This is now fully up to date.`,
+        `Team Allegro`,
       ],
     };
   },

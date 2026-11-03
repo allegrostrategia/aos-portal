@@ -1,4 +1,5 @@
 import type { EmailCopy } from "@/lib/jobs/copy";
+import { greeting } from "@/lib/email/greeting";
 
 /**
  * Every word a client reads when a launch tracker is updated.
@@ -20,25 +21,39 @@ import type { EmailCopy } from "@/lib/jobs/copy";
  * Pure, so the wording can be read and tested without sending anything.
  */
 export const LAUNCH_EMAIL = {
+  /**
+   * **What the launch is called, to the client.**
+   *
+   * Nina, 3 November: "use the launch's linked offer; if none is linked,
+   * use the launch name". The two are often different and the offer is
+   * the one the client recognises — a launch is named for the team's
+   * convenience ("Autumn challenge"), where the offer is the thing they
+   * bought and sell ("The Freedom Experience"). `offerName` is null when
+   * no offer is linked, which is allowed: `offer_entity_id` is nullable
+   * and set null if the offer row is ever removed.
+   */
   update({
     name,
     businessName,
     launchName,
+    offerName,
     url,
   }: {
     name: string | null;
     businessName: string;
     launchName: string;
+    offerName?: string | null;
     url: string;
   }): EmailCopy {
+    const what = offerName?.trim() || launchName;
+
     return {
-      subject: `Your ${launchName} tracker has been updated`,
+      subject: `Your ${what} launch tracker has been updated`,
       body: [
-        `${name ? `${name},` : "Hello,"}`,
-        `We've updated the launch tracker for ${launchName} (${businessName}) — there are newer figures in it than the last time you looked.`,
+        greeting(name),
+        `We've updated the launch tracker for ${what} (${businessName}) - there are newer figures in it than the last time you looked.`,
         `See it here: ${url}`,
-        `If anything in it needs a conversation, do say and we'll pick it up.`,
-        `Allegro Strategia`,
+        `Team Allegro`,
       ],
     };
   },
