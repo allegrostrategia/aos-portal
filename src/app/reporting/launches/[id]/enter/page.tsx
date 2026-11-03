@@ -11,7 +11,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getLaunch } from "@/lib/reporting/launch-queries";
-import { launchIsLocked } from "@/lib/reporting/locked";
+import { launchIsLocked, launchLastDay } from "@/lib/reporting/locked";
 
 export const metadata: Metadata = { title: "Enter a launch's figures — aOS" };
 
@@ -43,7 +43,11 @@ export default async function EnterLaunchPage({
   const detail = await getLaunch(id);
   if (!detail || detail.launch.workspace_id !== ctx.workspace.id) notFound();
 
-  const locked = launchIsLocked(ctx.workspace, detail.launch.published_at);
+  const locked = launchIsLocked(
+    ctx.workspace,
+    detail.launch.published_at,
+    launchLastDay(detail.stages),
+  );
   const returnTo = reportHref(`/reporting/launches/${id}/enter`, ctx);
 
   return (

@@ -368,3 +368,126 @@ test("and Nina can put a cover on at all, which she could not", async () => {
   await db.query(`delete from storage.objects where name = '${draftPath}'`);
   await publish();
 });
+
+// ---------------------------------------------------------------------------
+// A launch still running stays editable (Nina, 3 November)
+// ---------------------------------------------------------------------------
+//
+// She updates a launch daily while it runs, and decision 18 locked a
+// published launch to everything but its status. Both are right: a
+// published launch is a scoreboard during the launch and a report after
+// it. So "published" and "finished" came apart, and the guard learned
+// the difference as well as the screen — leaving the guard alone would
+// have meant Nina doing daily data entry while Elize, whose job it is,
+// watched.
+//
+// Dates relative to today rather than fixed, because the rule is
+// literally "is it still running" and a fixture pinned to September
+// 2026 would answer that question differently every day until it
+// answered it wrongly for ever.
+
+const setStageDates = (promoStart, liveEnd) =>
+  asMember(db, NINA, () =>
+    db.query(`update public.report_launch_stages
+                 set promo_start = ${promoStart}, live_end = ${liveEnd}
+               where id = '${STAGE}'`),
+  );
+
+test("the last day is the latest date any stage carries", async () => {
+  await unpublish();
+  await setStageDates("current_date - 3", "current_date + 2");
+
+  const [{ day }] = await rows(
+    `select public.report_launch_last_day('${LAUNCH}')::text as day`,
+  );
+  const [{ expected }] = await rows(`select (current_date + 2)::text as expected`);
+  assert.equal(day, expected);
+});
+
+test("a published launch that is still running is Elize's to update", async () => {
+  await publish();
+
+  await asMember(db, ELIZE, async () => {
+    const changed = await db.query(`update public.report_launch_values set value = 1400
+                                     where launch_id = '${LAUNCH}'`);
+    assert.ok(changed.affectedRows > 0, "hers to type into while the launch is live");
+  });
+
+  const [{ locked }] = await rows(
+    `select public.report_launch_is_locked('${LAUNCH}') as locked`,
+  );
+  assert.equal(locked, false);
+});
+
+test("the last day of a launch is still a day she is typing into it", async () => {
+  await setStageDates("current_date - 10", "current_date");
+
+  const [{ locked }] = await rows(
+    `select public.report_launch_is_locked('${LAUNCH}') as locked`,
+  );
+  assert.equal(locked, false, "the comparison is strictly-after, on purpose");
+
+  await asMember(db, ELIZE, async () => {
+    const changed = await db.query(`update public.report_launch_values set value = 1450
+                                     where launch_id = '${LAUNCH}'`);
+    assert.ok(changed.affectedRows > 0);
+  });
+});
+
+test("and it locks the morning after it ends", async () => {
+  await setStageDates("current_date - 20", "current_date - 1");
+
+  const [{ locked }] = await rows(
+    `select public.report_launch_is_locked('${LAUNCH}') as locked`,
+  );
+  assert.equal(locked, true);
+
+  await asMember(db, ELIZE, async () => {
+    await assert.rejects(
+      () => db.query(`update public.report_launch_values set value = 9999
+                       where launch_id = '${LAUNCH}'`),
+      LOCKED,
+    );
+  });
+
+  // And unpublish -> fix -> republish is still the way through.
+  await unpublish();
+  await asMember(db, ELIZE, () =>
+    db.query(`update public.report_launch_values set value = 1500
+               where launch_id = '${LAUNCH}'`),
+  );
+  await publish();
+});
+
+test("a launch with no dates locks on publish, deliberately", async () => {
+  // The safe way round: nothing says when it stops, so a report that
+  // silently never locks is the worse mistake. Asserted rather than
+  // left to the earlier tests' fixture, which only had no dates by
+  // accident of being written before any of this.
+  await unpublish();
+  await setStageDates("null", "null");
+  await publish();
+
+  const [{ locked }] = await rows(
+    `select public.report_launch_is_locked('${LAUNCH}') as locked`,
+  );
+  assert.equal(locked, true);
+
+  await asMember(db, ELIZE, async () => {
+    await assert.rejects(
+      () => db.query(`update public.report_launch_values set value = 9999
+                       where launch_id = '${LAUNCH}'`),
+      LOCKED,
+    );
+  });
+});
+
+test("a self-serve launch is still never locked, running or not", async () => {
+  // The carve-out that was there before this and has to survive it: a
+  // member is their own editor and never publishes, so a date rule must
+  // not become a way to shut them out of their own launch.
+  const [{ locked }] = await rows(
+    `select public.report_launch_is_locked('${SELF_LAUNCH}') as locked`,
+  );
+  assert.equal(locked, false);
+});

@@ -23,6 +23,8 @@ import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
 import { launchSummary, stageFigures } from "@/lib/reporting/launch-figures";
+import { launchIsRunning, launchLastDay } from "@/lib/reporting/locked";
+import { formatCalendarDate } from "@/lib/time-zone";
 import { signLaunchCover } from "@/lib/reporting/launch-cover";
 import { getLaunch } from "@/lib/reporting/launch-queries";
 
@@ -102,6 +104,20 @@ export default async function LaunchPage({
     { label: "Cash collected", value: summary.cashCollected, unit: "currency", goodDirection: "up", icon: "profit" },
   ];
 
+  /**
+   * "Running totals, live until 12 October", on a launch still going.
+   *
+   * Nina updates a launch daily while it runs, so a published launch's
+   * figures move — and a published report is read as final unless it
+   * says otherwise. **This sentence is what buys that**: without it the
+   * client reads Tuesday's numbers as the answer and the Friday figures
+   * as a correction. Shown to everybody, team and client alike, because
+   * the team needs to know which state a launch is in as much as the
+   * client does.
+   */
+  const lastDay = launchLastDay(detail.stages);
+  const running = launchIsRunning(ctx.workspace, detail.launch.published_at, lastDay);
+
   const goals = [
     { label: "Good", target: detail.launch.goal_good, percent: summary.percentOfGood },
     { label: "Better", target: detail.launch.goal_better, percent: summary.percentOfBetter },
@@ -134,6 +150,19 @@ export default async function LaunchPage({
         ) : null
       }
     >
+      {running && lastDay ? (
+        <p className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-card border border-orange/30 bg-orange/10 px-4 py-3 text-small text-ink">
+          <span
+            aria-hidden
+            className="size-2 shrink-0 rounded-full bg-orange"
+          />
+          <span className="font-medium">Running totals</span>
+          <span className="text-ink/70">
+            live until {formatCalendarDate(lastDay)}, so these figures are still moving
+          </span>
+        </p>
+      ) : null}
+
       {/* The cover, where there is one (Nina's decision 12 — optional).
           Signed through the reader's own session, so a client only ever
           gets a link to a launch they can already see. */}

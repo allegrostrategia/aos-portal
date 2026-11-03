@@ -538,3 +538,56 @@ test.describe("the cover image", () => {
     await expect(page.getByText(/no cover yet/i)).toBeVisible();
   });
 });
+
+/**
+ * "Running totals, live until 12 October" (Nina, 3 November).
+ *
+ * She updates a launch daily while it runs, so a published launch's
+ * figures move — and a published report is read as final unless it says
+ * otherwise. The sentence is what buys the editing: without it the
+ * client reads Tuesday's numbers as the answer and Friday's as a
+ * correction.
+ *
+ * Dates relative to today, because the question is literally "is it
+ * still running" and a fixture pinned to a date answers it differently
+ * every day until it answers it wrongly for ever.
+ */
+test("a launch still running says so on the client's report, and stops when it ends", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+
+  const launch = `select l.id from public.report_launches l
+                    join public.report_workspaces w on w.id = l.workspace_id
+                   where w.business_name = 'Northwind Studio' and l.name = 'Autumn challenge'`;
+
+  // All four dates move together: the table checks that a promo window
+  // and a live window each run forwards, so setting an end date alone
+  // leaves the row refused by a constraint rather than by the rule
+  // under test.
+  const endOn = (sqlDate: string) =>
+    sql(`update public.report_launch_stages s
+            set promo_start = (${sqlDate}) - 7, promo_end = (${sqlDate}) - 2,
+                live_start = (${sqlDate}) - 1, live_end = (${sqlDate})
+          where s.launch_id = (${launch});
+         update public.report_launches l set published_at = now(),
+           published_by = (select id from public.members where role = 'admin' limit 1)
+          where l.id = (${launch});`);
+
+  endOn("current_date + 2");
+  const id = sql(`${launch} limit 1;`);
+
+  await signIn(page, "client");
+  await page.goto(`/reporting/launches/${id}`);
+
+  await expect(page.getByText("Running totals")).toBeVisible();
+  await expect(page.getByText(/live until .*, so these figures are still moving/)).toBeVisible();
+  await shoot(page, TAB, "11-running-totals-client", w);
+
+  // The morning after, the same report is a report.
+  endOn("current_date - 1");
+  await page.reload();
+  await expect(page.getByText("Running totals")).toHaveCount(0);
+  await shoot(page, TAB, "12-finished-client", w);
+});

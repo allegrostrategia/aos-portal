@@ -130,6 +130,30 @@ const CALENDAR_MONTH = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+const CALENDAR_TODAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * Today's date in the UK, as `YYYY-MM-DD`.
+ *
+ * Most of reporting asks `new Date().toISOString().slice(0, 10)`, which
+ * is today in UTC, and for a month picker the difference never shows.
+ * It shows for a launch that is editable "until the 12th": between
+ * midnight and 1am on a summer morning, UTC still says the 11th. The
+ * database decides that question in `Europe/London`, and the screen has
+ * to agree with the database or a form submits into a refusal.
+ *
+ * `en-CA` because its short date format is ISO order; the zone does the
+ * work, the locale is only a spelling.
+ */
+export function todayInAppZone(now: Date = new Date()): string {
+  return CALENDAR_TODAY.format(now);
+}
+
 /** "3 March 2026" — a date as written, never shifted. */
 export function formatCalendarDate(date: string): string {
   return CALENDAR_DATE.format(new Date(`${date.slice(0, 10)}T00:00:00Z`));

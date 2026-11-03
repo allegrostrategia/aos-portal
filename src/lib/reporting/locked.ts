@@ -1,3 +1,5 @@
+import { todayInAppZone } from "../time-zone.ts";
+import type { LaunchStage } from "./launch-queries.ts";
 import type { ReportWorkspace } from "./queries.ts";
 
 /**
@@ -44,12 +46,70 @@ export function monthIsLocked(
 export function launchIsLocked(
   workspace: Pick<ReportWorkspace, "kind">,
   publishedAt: string | null | undefined,
+  /** `launchLastDay(detail.stages)` — see it for why this is required. */
+  lastDay: string | null,
+  today: string = todayInAppZone(),
 ): boolean {
   // Publishing is a retainer concept. A self-serve member's launch is
   // visible to them from the moment they type it and they are their own
   // editor, so a lock here would shut them out of their own work.
   if (workspace.kind !== "retainer") return false;
-  return Boolean(publishedAt);
+  if (!publishedAt) return false;
+
+  // **A published launch is a scoreboard before it is a report** (Nina,
+  // 3 November: she updates a launch daily while it runs). Still
+  // running, still editable; the day it ends is a day she is still
+  // typing into it, so the comparison is strictly-after rather than
+  // on-or-after. No dates at all locks on publish, which is the safe way
+  // round: nothing says when it stops, and a report that silently never
+  // locks is worse than one that locks early.
+  if (lastDay === null) return true;
+  return today > lastDay;
+}
+
+/**
+ * The last day a launch is scheduled for, or null if nothing says.
+ *
+ * **A required argument to `launchIsLocked` rather than an optional
+ * one**, because the failure it prevents is a caller that forgets: an
+ * optional parameter would default a new screen back to the old rule
+ * and lock a running launch, which is the bug this was built to remove
+ * and would look exactly like it never shipped.
+ *
+ * The twin of `report_launch_last_day()`, and the same shape for the
+ * same reason the two lock functions are the same shape — a screen that
+ * disagrees with the database reads as the app being broken.
+ */
+export function launchLastDay(
+  stages: Pick<LaunchStage, "promo_start" | "promo_end" | "live_start" | "live_end">[],
+): string | null {
+  const dates = stages
+    .flatMap((s) => [s.promo_start, s.promo_end, s.live_start, s.live_end])
+    .filter((d): d is string => Boolean(d));
+  // ISO dates sort as strings, which is the whole reason they are stored
+  // as text up here: no Date object is built, so no zone can shift one.
+  return dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null;
+}
+
+/**
+ * Is this launch still running — published, and not yet past its dates?
+ *
+ * What the client's report says out loud: "Running totals, live until 12
+ * October". A published report is read as final unless it says
+ * otherwise, and this is the sentence that buys the editability above.
+ *
+ * Deliberately not `!launchIsLocked(...)`: a draft is not locked either,
+ * and a draft is not running.
+ */
+export function launchIsRunning(
+  workspace: Pick<ReportWorkspace, "kind">,
+  publishedAt: string | null | undefined,
+  lastDay: string | null,
+  today: string = todayInAppZone(),
+): boolean {
+  if (workspace.kind !== "retainer") return false;
+  if (!publishedAt) return false;
+  return lastDay !== null && today <= lastDay;
 }
 
 /** What the database says when a launch guard refuses. */

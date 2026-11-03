@@ -12,7 +12,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getLaunch } from "@/lib/reporting/launch-queries";
-import { launchIsLocked } from "@/lib/reporting/locked";
+import { launchIsLocked, launchLastDay } from "@/lib/reporting/locked";
 import { signLaunchCover } from "@/lib/reporting/launch-cover";
 import { createClient } from "@/lib/supabase/server";
 
@@ -50,7 +50,11 @@ export default async function EditLaunchPage({
   // Not found and not theirs are the same answer — §13.
   if (!detail || detail.launch.workspace_id !== ctx.workspace.id) notFound();
 
-  const locked = launchIsLocked(ctx.workspace, detail.launch.published_at);
+  const locked = launchIsLocked(
+    ctx.workspace,
+    detail.launch.published_at,
+    launchLastDay(detail.stages),
+  );
   // Where a save comes back to — this screen, keeping the workspace and
   // the month that are already on it.
   const returnTo = reportHref(`/reporting/launches/${id}/edit`, ctx);
