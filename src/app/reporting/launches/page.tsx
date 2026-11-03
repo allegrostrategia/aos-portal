@@ -8,6 +8,7 @@ import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
+import { launchRange } from "@/lib/reporting/launch-dates";
 import { launchSummary } from "@/lib/reporting/launch-figures";
 import { getLaunch, getLaunches } from "@/lib/reporting/launch-queries";
 import { signLaunchCover } from "@/lib/reporting/launch-cover";
@@ -134,12 +135,13 @@ export default async function LaunchesPage({
             <section>
               <Eyebrow className="mb-3">Live in {ctx.month.label}</Eyebrow>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {thisMonth.map(({ launch, summary, coverUrl }) => (
+                {thisMonth.map(({ launch, summary, stages, coverUrl }) => (
                   <LaunchCard
                     key={launch.id}
                     launch={launch}
                     summary={summary}
                     goal={launch.goal_good}
+                    dates={launchRange(stages)}
                     coverUrl={coverUrl}
                     href={reportHref(`/reporting/launches/${launch.id}`, ctx)}
                   />
@@ -154,12 +156,13 @@ export default async function LaunchesPage({
                 <Eyebrow className="mb-3">Every other launch</Eyebrow>
               ) : null}
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {others.map(({ launch, summary, coverUrl }) => (
+                {others.map(({ launch, summary, stages, coverUrl }) => (
                   <LaunchCard
                     key={launch.id}
                     launch={launch}
                     summary={summary}
                     goal={launch.goal_good}
+                    dates={launchRange(stages)}
                     coverUrl={coverUrl}
                     href={reportHref(`/reporting/launches/${launch.id}`, ctx)}
                   />

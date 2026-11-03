@@ -89,6 +89,7 @@ export function LaunchCard({
   summary,
   href,
   goal,
+  dates,
   coverUrl,
 }: {
   launch: LaunchRow;
@@ -97,6 +98,15 @@ export function LaunchCard({
   /** The goal the ring is drawn against — §6.1's Good, by default. */
   goal: number | null;
   currency?: string;
+  /**
+   * "14 Sep - 2 Oct 2026", from `launchRange(stages)`, or null while a
+   * launch has no dates on it yet.
+   *
+   * Passed in rather than worked out here: the page already has every
+   * launch's stages, and a component that fetched its own would turn a
+   * row of three cards into three more round trips.
+   */
+  dates?: string | null;
   /**
    * A signed link to the launch's cover, or null.
    *
@@ -158,6 +168,15 @@ export function LaunchCard({
               {STATUS_LABEL[launch.status]}
             </span>
           </p>
+          {/* **When it runs, under the status** (Nina, 3 November). A
+              launch is the one thing here that does not live inside a
+              month, and the heading above these cards says a month — so
+              without this, a launch promoted in September and sold in
+              October reads as a September launch. Mono, like every other
+              date in the report. */}
+          {dates ? (
+            <p className="mt-1.5 font-mono text-caption text-ink/70">{dates}</p>
+          ) : null}
         </div>
       </div>
 

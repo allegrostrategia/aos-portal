@@ -39,6 +39,11 @@ test("the team sees a card per launch, with its status and its goal", async ({ p
   expect(text).toMatch(/Completed/);
   expect(text).toMatch(/Planning/);
 
+  // **When it ran, under the status** (Nina, 3 November). The heading
+  // above these cards names a month, and a launch is the one thing here
+  // that does not live inside one.
+  expect(text).toMatch(/1 Sept - 19 Sept 2026/);
+
   await shoot(page, TAB, "01-list-admin", w);
 });
 
