@@ -127,6 +127,7 @@ export default async function EnterCategoryPage({
           month={ctx.month.month}
           previousLabel={previousLabel}
           currency={ctx.workspace.currency}
+          trackHours={ctx.workspace.track_offer_hours}
           offers={offers}
           values={Object.fromEntries(
             offers.flatMap((o) => KEYS.map((k) => cell(data.values, k, o.id))),

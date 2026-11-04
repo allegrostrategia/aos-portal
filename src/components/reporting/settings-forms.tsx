@@ -47,6 +47,7 @@ export function BusinessForm({
   currency,
   targetHourlyRate,
   potentialRevenuePrice,
+  trackOfferHours,
   description,
   offers,
   country,
@@ -57,6 +58,7 @@ export function BusinessForm({
   currency: string;
   targetHourlyRate: number | null;
   potentialRevenuePrice: number | null;
+  trackOfferHours: boolean;
   description: string | null;
   offers: string | null;
   country: string | null;
@@ -118,6 +120,32 @@ export function BusinessForm({
             defaultValue={potentialRevenuePrice ?? ""}
             className={`${field} font-mono`}
           />
+        </label>
+
+        {/* **Hours on Offers, per client** (Nina, 3 November). §5.9 asks
+            every offer for hours spent delivering, which is the figure
+            that makes Offers worth filling in for a service business and
+            a box nobody can answer for somebody selling a product — and
+            a box nobody can answer is how a month gets abandoned
+            half-done. Display only, like hiding a section: the hours
+            already entered stay, and switching it back on brings them
+            back. A checkbox for "yes" rather than "no", because a
+            setting phrased as a negative is read wrongly by somebody
+            scanning the page. */}
+        <label className="flex items-start gap-2.5 py-1">
+          <input
+            type="checkbox"
+            name="track_offer_hours"
+            defaultChecked={trackOfferHours}
+            className="mt-0.5 size-4 accent-orange"
+          />
+          <span className="text-small text-ink">
+            Track hours on offers{" "}
+            <span className="text-ink/55">
+              asks for hours spent delivering each offer, and shows the effective hourly
+              rate. Turning it off hides both; nothing already entered is lost.
+            </span>
+          </span>
         </label>
 
         <fieldset className="contents">

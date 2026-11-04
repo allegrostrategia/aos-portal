@@ -144,12 +144,61 @@ function funnelRowsFrom(data: MonthData, values: MonthData["values"]): FunnelMon
     }));
 }
 
+/**
+ * The four Offers figures that are about hours (Nina, 3 November).
+ *
+ * Hidden together or not at all: hours spent delivering, the effective
+ * hourly rate it feeds, and the same two added up across every offer. A
+ * client selling a product cannot answer the first, and the other three
+ * are arithmetic on an answer nobody gave.
+ *
+ * **Delivery cost and margin are deliberately not here.** They are built
+ * from hours AND from other direct costs, so they still mean something
+ * with the hours switched off - less, but something - and removing a
+ * client's margin because they do not track hours would take away more
+ * than was asked for.
+ */
+export const OFFER_HOURS_METRICS = [
+  "offers_hours_spent_delivering",
+  "offers_effective_hourly_rate",
+  "offers_total_hours_spent_delivering",
+  "offers_overall_effective_hourly_rate",
+] as const;
+
+/**
+ * The metric list with this client's switched-off figures taken out.
+ *
+ * **Exported because two places read metrics and neither may be the
+ * only one that knows.** `getMonthFigures` feeds every report and entry
+ * screen; the targets page reads `getMetrics()` straight, and without
+ * this it would go on offering a target for an effective hourly rate
+ * the client is never asked the hours for — a box that can be filled in
+ * for a figure that is not drawn.
+ */
+export function visibleMetrics(
+  metrics: ReportMetric[],
+  workspace: { track_offer_hours: boolean },
+): ReportMetric[] {
+  if (workspace.track_offer_hours) return metrics;
+  return metrics.filter((m) => !OFFER_HOURS_METRICS.includes(m.key as never));
+}
+
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
-  const [metrics, data, flow] = await Promise.all([
+  const [allMetrics, data, flow] = await Promise.all([
     getMetrics(),
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
     getClientFlow(ctx.workspace.id, ctx.month.month),
   ]);
+
+  /**
+   * The hours figures come out here rather than on each screen, so the
+   * switch cannot be honoured by the Offers page and forgotten by the
+   * Overview, the overflow list, the entry screen or a CSV. **Display
+   * only**: the rows stay in `report_values` and come back untouched
+   * when the switch goes back on, the same promise `hidden_categories`
+   * makes about a whole section.
+   */
+  const metrics = visibleMetrics(allMetrics, ctx.workspace);
 
   /**
    * On a published month, everything that comes from OTHER months comes

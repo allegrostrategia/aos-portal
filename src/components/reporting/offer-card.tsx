@@ -118,6 +118,7 @@ export function OfferCard({
   hoursSpent,
   margin,
   hourlyRate,
+  trackHours = true,
   targetHourlyRate,
   currency,
   tone,
@@ -132,6 +133,8 @@ export function OfferCard({
   /** A 0–100 number, as `offers_margin` gives it — 58, not 0.58. */
   margin: number | null;
   hourlyRate: number | null;
+  /** False hides the hours pair; see the block below. */
+  trackHours?: boolean;
   /** The workspace's own target, or null where none is set. */
   targetHourlyRate: number | null;
   currency: string;
@@ -201,20 +204,28 @@ export function OfferCard({
           <MarginRing percent={margin} belowTarget={belowTarget} />
           <span className="text-caption uppercase tracking-wide text-ink/55">Margin</span>
         </div>
-        <dl className="flex flex-wrap justify-end gap-x-5 gap-y-2 text-right">
-          <div>
-            <dt className="text-caption uppercase tracking-wide text-ink/55">Hours</dt>
-            <dd className="font-mono text-body text-ink">
-              {formatValue(hoursSpent ?? null, "hours")}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-caption uppercase tracking-wide text-ink/55">Hourly rate</dt>
-            <dd className="font-mono text-body text-ink">
-              {formatValue(hourlyRate, "currency", currency)}
-            </dd>
-          </div>
-        </dl>
+        {/* Both of these go when a client does not track hours (Nina,
+            3 November): without the hours there is no hourly rate to
+            show either, and two cells reading "—" are a worse answer
+            than no cells. The margin ring beside them stays - it is
+            built from other direct costs as well, so it still means
+            something. */}
+        {trackHours ? (
+          <dl className="flex flex-wrap justify-end gap-x-5 gap-y-2 text-right">
+            <div>
+              <dt className="text-caption uppercase tracking-wide text-ink/55">Hours</dt>
+              <dd className="font-mono text-body text-ink">
+                {formatValue(hoursSpent ?? null, "hours")}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-caption uppercase tracking-wide text-ink/55">Hourly rate</dt>
+              <dd className="font-mono text-body text-ink">
+                {formatValue(hourlyRate, "currency", currency)}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
       </div>
 
       {belowTarget ? (

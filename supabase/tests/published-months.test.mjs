@@ -387,7 +387,7 @@ test("the client cannot write figures, published or not — unchanged", async ()
   // Their refusal never depended on publication and does not now. The
   // wording is still the one §2 gives them, not the lock's.
   const refused = await saveFigure(CLIENT, { value: 1 });
-  assert.match(refused?.error ?? "", /filled in by your strategist/);
+  assert.match(refused?.error ?? "", /filled in by your Allegro team/);
 });
 
 test("the client CAN still reply to a published month, and reword their reply", async () => {

@@ -38,6 +38,16 @@ export interface OffersEntryProps {
   /** `${metricKey}|${offerId}` → this month's figure. */
   values: Record<string, number | null>;
   previous: Record<string, number | null>;
+  /**
+   * Whether this client is asked for hours (Nina, 3 November).
+   *
+   * False takes the box away as well as the figures: a client selling a
+   * product cannot answer "hours spent delivering", and a box nobody can
+   * answer is the reason a month gets abandoned half-done. Display only
+   * - hours already typed stay in the database and come back if it goes
+   * back on.
+   */
+  trackHours: boolean;
 }
 
 interface OfferFigure {
@@ -52,7 +62,7 @@ interface OfferFigure {
 /** The id the month's inputs attach themselves to. */
 const MONTH_FORM = "offers-month";
 
-const FIGURES: OfferFigure[] = [
+const ALL_FIGURES: OfferFigure[] = [
   { key: "offers_units_sold", label: "Units sold", recurringLabel: "Members", unit: "count" },
   { key: "offers_revenue_this_month", label: "Revenue this month", unit: "currency" },
   { key: "offers_hours_spent_delivering", label: "Hours spent delivering", unit: "hours" },
@@ -61,6 +71,10 @@ const FIGURES: OfferFigure[] = [
 
 export function OffersEntry(props: OffersEntryProps) {
   const [state, action] = useActionState<OfferState, FormData>(saveOfferMonth, null);
+
+  const FIGURES = ALL_FIGURES.filter(
+    (f) => props.trackHours || f.key !== "offers_hours_spent_delivering",
+  );
 
   const active = props.offers.filter((o) => o.active);
   const retired = props.offers.filter((o) => !o.active);
@@ -102,7 +116,7 @@ export function OffersEntry(props: OffersEntryProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Summary results={summary} currency={props.currency} />
+      <Summary results={summary} currency={props.currency} trackHours={props.trackHours} />
 
       <div className="flex flex-col gap-6">
         {active.length === 0 ? (
@@ -181,7 +195,9 @@ export function OffersEntry(props: OffersEntryProps) {
               <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 rounded-2xl bg-lemon/50 px-4 py-3">
                 <Worked label="Delivery cost" value={worked.offers_delivery_cost} unit="currency" currency={props.currency} />
                 <Worked label="Margin" value={worked.offers_margin} unit="percent" currency={props.currency} />
-                <Worked label="Effective hourly rate" value={worked.offers_effective_hourly_rate} unit="currency" currency={props.currency} />
+                {props.trackHours ? (
+                  <Worked label="Effective hourly rate" value={worked.offers_effective_hourly_rate} unit="currency" currency={props.currency} />
+                ) : null}
                 <Worked label="Share of revenue" value={worked.offers_share_of_total_revenue} unit="percent" currency={props.currency} />
               </dl>
 
@@ -261,16 +277,25 @@ function Worked({
 function Summary({
   results,
   currency,
+  trackHours,
 }: {
   results: Record<string, number | null>;
   currency: string;
+  trackHours: boolean;
 }) {
-  const cards = [
-    ["Total revenue from offers", results.offers_total_revenue_from_offers, "currency"],
-    ["Overall margin", results.offers_overall_margin, "percent"],
-    ["Hours spent delivering", results.offers_total_hours_spent_delivering, "hours"],
-    ["Effective hourly rate", results.offers_overall_effective_hourly_rate, "currency"],
-  ] as const;
+  // Two of the four are about hours, and a client who does not track
+  // them gets a row of two rather than two cards reading "—".
+  const cards = (
+    [
+      ["Total revenue from offers", results.offers_total_revenue_from_offers, "currency"],
+      ["Overall margin", results.offers_overall_margin, "percent"],
+      ["Hours spent delivering", results.offers_total_hours_spent_delivering, "hours"],
+      ["Effective hourly rate", results.offers_overall_effective_hourly_rate, "currency"],
+    ] as const
+  ).filter(
+    ([label]) =>
+      trackHours || (label !== "Hours spent delivering" && label !== "Effective hourly rate"),
+  );
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -220,7 +220,7 @@ test("the client cannot enter their own figures", async () => {
       "v:email_new_subscribers": "9999",
     })),
   );
-  assert.match(refused?.error ?? "", /filled in by your strategist/);
+  assert.match(refused?.error ?? "", /filled in by your Allegro team/);
 
   assert.equal(
     await count(NINA, `select count(*)::int c from public.report_values

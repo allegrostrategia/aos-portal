@@ -340,6 +340,12 @@ export default async function CategoryReportPage({
                     emptyMessage="No offer revenue entered for this month yet."
                   />
                 </Card>
+                {/* The whole panel goes when a client does not track
+                    hours (Nina, 3 November). A bar chart of one figure
+                    divided by a figure nobody entered is a chart of
+                    nothing, and this one carries the target hourly rate
+                    line as well. */}
+                {ctx.workspace.track_offer_hours ? (
                 <Card>
                   <SectionTitle
                     icon={<IconCircle name="target" tone="sky" />}
@@ -368,6 +374,7 @@ export default async function CategoryReportPage({
                     caption="What an hour of each offer is actually worth. Labour cost is not deducted."
                   />
                 </Card>
+                ) : null}
               </div>
 
               {/* **A card per offer, in place of the table** (Phase 4, the
@@ -392,6 +399,7 @@ export default async function CategoryReportPage({
                     hoursSpent={offer.hoursSpent}
                     margin={results.offers_margin}
                     hourlyRate={results.offers_effective_hourly_rate}
+                    trackHours={ctx.workspace.track_offer_hours}
                     targetHourlyRate={ctx.workspace.target_hourly_rate}
                     currency={ctx.workspace.currency}
                     tone={toneFor(index)}

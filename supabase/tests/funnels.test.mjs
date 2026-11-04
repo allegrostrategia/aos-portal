@@ -326,7 +326,7 @@ test("the client can do none of it", async () => {
     () => retireFunnel(null, form({ workspace_id: WS, funnel_id: funnelId })),
   ]) {
     const refused = await as(CLIENT, run);
-    assert.match(refused?.error ?? "", /filled in by your strategist/);
+    assert.match(refused?.error ?? "", /filled in by your Allegro team/);
   }
 });
 

@@ -200,7 +200,7 @@ test("the client reads them only once the month is published", async () => {
 
 test("the client cannot write one", async () => {
   const refused = await saveHooks(CLIENT, AUG, [{ body: "Mine now", views: 1 }]);
-  assert.match(refused?.error ?? "", /filled in by your strategist/);
+  assert.match(refused?.error ?? "", /filled in by your Allegro team/);
 
   const stored = await rows(`
     select count(*)::int c from public.report_top_items

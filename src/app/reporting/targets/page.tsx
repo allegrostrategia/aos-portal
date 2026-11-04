@@ -7,6 +7,7 @@ import { TargetsForm, type TargetRow } from "@/components/reporting/targets-form
 import { CATEGORIES, STAGE_3 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getMetrics } from "@/lib/reporting/queries";
+import { visibleMetrics } from "@/lib/reporting/month-figures";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -57,12 +58,17 @@ export default async function TargetsPage({ searchParams }: PageProps<"/reportin
       .map((t) => [t.metric_key, t.target_value]),
   );
 
+  // The same rule the report reads by, so a client who does not track
+  // hours is not offered a target for an hourly rate nobody will ever
+  // see (Nina, 3 November).
+  const visible = visibleMetrics(metrics, ctx.workspace);
+
   const groups = CATEGORIES.filter((c) => c.key !== "overview")
     .filter((c) => !ctx.workspace.hidden_categories.includes(c.key))
     .map((category) => ({
       category: category.key,
       label: category.label,
-      rows: metrics
+      rows: visible
         .filter((m) => m.category === category.key)
         // A target for a figure that is neither good up nor good down is
         // not a target. Nor is one for a figure typed per offer or per

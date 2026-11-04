@@ -87,6 +87,9 @@ export async function saveReportSettings(
       currency,
       target_hourly_rate: rate,
       potential_revenue_price: price,
+      // An unticked checkbox sends nothing at all, which is what makes
+      // this `=== "on"` rather than a truthiness check on the value.
+      track_offer_hours: formData.get("track_offer_hours") === "on",
       // Blank clears them: these are prompts for a benchmark she pastes
       // in, not figures, so an empty one is a real answer.
       benchmark_business_description:
