@@ -596,3 +596,40 @@ test("a launch still running says so on the client's report, and stops when it e
   await expect(page.getByText("Running totals")).toHaveCount(0);
   await shoot(page, TAB, "12-finished-client", w);
 });
+
+/**
+ * The funnel ends in "Bought" even when nobody flagged a selling stage
+ * (Nina, 3 November).
+ *
+ * The step was shown under the main selling stage and nowhere else,
+ * because sales are recorded by price option and by source and never by
+ * stage: the launch's total can honestly sit under one funnel and under
+ * two would read as two sets of sales. A launch with nothing flagged
+ * had it under none, which on a single-stage challenge is the only
+ * funnel there is.
+ */
+test("a launch with no flagged selling stage still shows what was bought", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+
+  const launch = `select l.id from public.report_launches l
+                    join public.report_workspaces w on w.id = l.workspace_id
+                   where w.business_name = 'Northwind Studio' and l.name = 'Autumn challenge'`;
+
+  sql(`update public.report_launch_stages set is_main_selling_stage = false
+        where launch_id = (${launch});`);
+  const id = sql(`${launch} limit 1;`);
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/launches/${id}`);
+
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(text).toContain("Bought");
+  // 30 sales, which is the launch's own total and the figure the cards
+  // at the top of the page show.
+  expect(text).toMatch(/Bought 30|30 Bought/);
+
+  await shoot(page, TAB, "13-bought-without-a-flag", w);
+});
