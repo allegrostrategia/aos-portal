@@ -89,8 +89,18 @@ await check("create_member accepts the named parameters the app sends", async ()
       p_contract_term_months => 6::smallint
     )).contract_term_end_date::text as d`));
   // Default join date is today, so the term should end six months out.
-  const expected = new Date();
-  expected.setMonth(expected.getMonth() + 6);
+  //
+  // **Built in UTC from today's local parts, and that is the whole
+  // point.** `new Date()` then `toISOString()` was right for 23 hours a
+  // day and wrong for the other one: at 00:20 GMT on 4 November 2026
+  // this test failed, because the date six months on lands in BST, so
+  // 2027-05-04T00:20 local is 2027-05-03T23:20 in UTC and the slice took
+  // the wrong day. The database is comparing calendar dates and so
+  // should this.
+  const today = new Date();
+  const expected = new Date(
+    Date.UTC(today.getFullYear(), today.getMonth() + 6, today.getDate()),
+  );
   return r.rows[0].d === expected.toISOString().slice(0, 10);
 });
 
