@@ -120,19 +120,30 @@ async function unstableTieBreakers(db, table, order) {
  * client's whole session to /no-access in a test while working fine live.
  */
 async function foreignKeyBetween(db, fromTable, toTable) {
+  // **`pg_catalog`, not `information_schema`, and that is the whole point.**
+  // The information_schema views are permission-filtered: they show a
+  // constraint only to somebody with a privilege on the table. This lookup
+  // runs on the session rather than inside the shim's own `set local role`
+  // transaction, so when it lands while the session is `set role
+  // authenticated` it found nothing, fell through to the name guess, and
+  // asked for a column called `report_acces_id` — a 42703 that surfaces as
+  // "this login has no workspace" and a redirect to /no-access. Half an hour
+  // on 4 November. `pg_catalog` is readable by everybody and cannot do this.
   const { rows } = await db.query(
-    `select kcu.column_name as local_col, ccu.column_name as foreign_col
-     from information_schema.table_constraints tc
-     join information_schema.key_column_usage kcu
-       on kcu.constraint_name = tc.constraint_name
-      and kcu.table_schema = tc.table_schema
-     join information_schema.constraint_column_usage ccu
-       on ccu.constraint_name = tc.constraint_name
-      and ccu.table_schema = tc.table_schema
-     where tc.constraint_type = 'FOREIGN KEY'
-       and tc.table_schema = 'public'
-       and tc.table_name = $1
-       and ccu.table_name = $2`,
+    `select local_att.attname as local_col, foreign_att.attname as foreign_col
+       from pg_catalog.pg_constraint con
+       join pg_catalog.pg_class rel on rel.oid = con.conrelid
+       join pg_catalog.pg_namespace ns on ns.oid = rel.relnamespace
+       join pg_catalog.pg_class frel on frel.oid = con.confrelid
+       join pg_catalog.pg_namespace fns on fns.oid = frel.relnamespace
+       cross join lateral unnest(con.conkey, con.confkey) as k(local_num, foreign_num)
+       join pg_catalog.pg_attribute local_att
+         on local_att.attrelid = con.conrelid and local_att.attnum = k.local_num
+       join pg_catalog.pg_attribute foreign_att
+         on foreign_att.attrelid = con.confrelid and foreign_att.attnum = k.foreign_num
+      where con.contype = 'f'
+        and ns.nspname = 'public' and fns.nspname = 'public'
+        and rel.relname = $1 and frel.relname = $2`,
     [fromTable, toTable],
   );
   if (rows.length === 0) return null;
