@@ -442,14 +442,30 @@ export default async function CategoryReportPage({
 
           {category.key === "funnels" ? <FunnelTable ctx={ctx} figures={figures} /> : null}
 
-          {category.key === "leads_conversions" ? (
-            <PotentialRevenue
-              price={ctx.workspace.potential_revenue_price}
-              leads={figures.figure("leads_conversions_total_leads")}
-              leadToClientRate={figures.figure("leads_conversions_lead_to_client_rate")}
-              currency={ctx.workspace.currency}
-            />
-          ) : null}
+          {category.key === "leads_conversions"
+            ? (() => {
+                // **The price comes off the chosen offer, never a second
+                // copy of it** (Dom, 4 November). On a published month the
+                // offer's name is the frozen one, because `figures.data`
+                // is the carried snapshot — the price is not frozen, the
+                // same as every other figure the Offers page reads.
+                const offer =
+                  figures.data.entities.find(
+                    (e) => e.id === ctx.workspace.potential_revenue_offer_id,
+                  ) ?? null;
+                return (
+                  <PotentialRevenue
+                    price={offer?.price ?? null}
+                    offerName={offer?.name ?? null}
+                    leads={figures.figure("leads_conversions_total_leads")}
+                    leadToClientRate={figures.figure(
+                      "leads_conversions_lead_to_client_rate",
+                    )}
+                    currency={ctx.workspace.currency}
+                  />
+                );
+              })()
+            : null}
 
           {topItems ? (
             <TopItemsReport thisMonth={topItems.thisMonth} history={topItems.history} />

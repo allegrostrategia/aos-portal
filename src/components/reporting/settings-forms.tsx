@@ -46,7 +46,8 @@ export function BusinessForm({
   businessName,
   currency,
   targetHourlyRate,
-  potentialRevenuePrice,
+  potentialRevenueOfferId,
+  offerChoices,
   trackOfferHours,
   description,
   offers,
@@ -57,7 +58,9 @@ export function BusinessForm({
   businessName: string;
   currency: string;
   targetHourlyRate: number | null;
-  potentialRevenuePrice: number | null;
+  potentialRevenueOfferId: string | null;
+  /** The client's offers, each already labelled with its price. */
+  offerChoices: { id: string; label: string; hasPrice: boolean }[];
   trackOfferHours: boolean;
   description: string | null;
   offers: string | null;
@@ -100,26 +103,44 @@ export function BusinessForm({
           </label>
         </div>
 
-        {/* **What one sale is worth** (Nina, 3 November), for the two
-            potential-revenue lines on Leads & Conversions. Typed rather
-            than taken from an offer, because the figure is for a client
-            who has leads and has not sold anything yet, and every price
-            derived from this month's sales is a dash or a lie for
-            exactly that client. Blank is a real answer: it takes the
-            figure off the page. */}
+        {/* **Which offer the leads are for** (Nina, 3 November; Dom, 4
+            November), for the two potential-revenue lines on Leads &
+            Conversions. The price is not typed here: it is the chosen
+            offer's own price, so the two screens cannot drift apart. A
+            client has several offers and nothing in the figures says
+            which one a lead is a lead for, which is why this is a choice
+            and not a calculation. Blank is a real answer: it takes both
+            lines off the page. */}
         <label className="flex flex-col gap-1.5">
           <span className="text-small font-medium text-ink">
-            Price used for potential revenue{" "}
+            Offer used for potential revenue{" "}
             <span className="text-ink/45">
-              what one sale is worth. Leave blank to show neither line.
+              {offerChoices.length === 0
+                ? "set up an offer first, with a price on it"
+                : "its price is what leads are multiplied by. Leave blank to show neither line."}
             </span>
           </span>
-          <input
-            name="potential_revenue_price"
-            inputMode="decimal"
-            defaultValue={potentialRevenuePrice ?? ""}
-            className={`${field} font-mono`}
-          />
+          <select
+            name="potential_revenue_offer_id"
+            defaultValue={potentialRevenueOfferId ?? ""}
+            disabled={offerChoices.length === 0}
+            className={field}
+          >
+            <option value="">Don&rsquo;t show potential revenue</option>
+            {offerChoices.map((offer) => (
+              <option key={offer.id} value={offer.id}>
+                {offer.label}
+              </option>
+            ))}
+          </select>
+          {/* An offer with no price is choosable and shows nothing, which
+              would be a mystery without this line. */}
+          {offerChoices.some((o) => o.id === potentialRevenueOfferId && !o.hasPrice) ? (
+            <span className="text-small text-ink/60">
+              That offer has no price yet, so the figure is not shown. Add one on the Offers
+              screen.
+            </span>
+          ) : null}
         </label>
 
         {/* **Hours on Offers, per client** (Nina, 3 November). §5.9 asks

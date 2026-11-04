@@ -98,3 +98,67 @@ test("a report cannot be left with no sections at all", async () => {
   })));
   assert.match(result?.error ?? "", /at least one section/i);
 });
+
+/**
+ * The offer behind potential revenue (Nina 3 Nov, as revised by Dom 4 Nov).
+ *
+ * The column holds a CHOICE, not a price — the price stays on the offer
+ * so two screens cannot come to disagree about what a sale is worth.
+ * Which makes "is that choice a real offer, and is it theirs" a database
+ * question: the action posts whatever the form posts, and the form is
+ * not the only way in.
+ */
+const entity = async (workspace, type, name, price = null) =>
+  (await asMember(db, NINA, () => db.query(
+    `insert into public.report_entities (workspace_id, entity_type, name, price)
+     values ('${workspace}', '${type}', '${name}', ${price === null ? "null" : price})
+     returning id`,
+  ))).rows[0].id;
+
+const MY_OFFER = await entity(MINE, "offer", "Signature programme", 500);
+const MY_FUNNEL = await entity(MINE, "funnel", "Webinar funnel");
+const THEIR_OFFER = await entity(THEIRS, "offer", "Northwind retainer", 2000);
+
+const chosenOf = async (id) =>
+  (await db.query(
+    `select coalesce(potential_revenue_offer_id::text, '') as chosen
+       from public.report_workspaces where id = '${id}'`,
+  )).rows[0].chosen;
+
+const settings = (extra) =>
+  form({ workspace_id: MINE, business_name: "Ruth Coaching", currency: "GBP", ...extra });
+
+test("a member picks one of their own offers, and the choice sticks", async () => {
+  await assert.rejects(
+    () => as(MEMBER, () => saveReportSettings(null, settings({
+      potential_revenue_offer_id: MY_OFFER,
+    }))),
+    /NEXT_REDIRECT|redirect/i,
+  );
+  assert.equal(await chosenOf(MINE), MY_OFFER);
+
+  // And blank clears it, which is what takes the figure off the page.
+  await assert.rejects(
+    () => as(MEMBER, () => saveReportSettings(null, settings({
+      potential_revenue_offer_id: "",
+    }))),
+    /NEXT_REDIRECT|redirect/i,
+  );
+  assert.equal(await chosenOf(MINE), "");
+});
+
+test("but not another business's offer, whatever the form posts", async () => {
+  const result = await as(MEMBER, () => saveReportSettings(null, settings({
+    potential_revenue_offer_id: THEIR_OFFER,
+  })));
+  assert.match(result?.error ?? "", /own offer/i);
+  assert.equal(await chosenOf(MINE), "", "and nothing was set");
+});
+
+test("nor a funnel, which has no price to multiply by", async () => {
+  const result = await as(MEMBER, () => saveReportSettings(null, settings({
+    potential_revenue_offer_id: MY_FUNNEL,
+  })));
+  assert.match(result?.error ?? "", /can only be based on an offer/i);
+  assert.equal(await chosenOf(MINE), "");
+});

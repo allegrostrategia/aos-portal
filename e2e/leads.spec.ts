@@ -52,26 +52,32 @@ test("New leads from ads is a card, not a line in the overflow", async ({ page }
  * Two lines, because one of them is a fantasy: leads multiplied by a
  * price assumes every lead buys. The second weights it by the rate at
  * which this client's leads actually become clients, and the caption
- * says both the price and the rate, so nothing on the card is a number
- * the reader has to take on trust.
+ * says the offer, the price and the rate, so nothing on the card is a
+ * number the reader has to take on trust.
  *
- * Driven through the real settings form, because the price is a thing
- * somebody types and the question "does typing it make the figure
- * appear" is the whole feature.
+ * **The price is not typed anywhere** (Dom, 4 November). The settings
+ * screen picks WHICH offer the leads are for; the price comes off that
+ * offer, which is the same number the Offers page shows. Driven through
+ * the real form, because "does choosing it make the figure appear" is
+ * the whole feature.
  */
-test("potential revenue appears once a price is set, and says what it used", async ({
+test("potential revenue appears once an offer is chosen, and says what it used", async ({
   page,
 }, info) => {
   const w = width(info.project.name);
   await signIn(page, "nina");
 
-  // Nothing at all before a price is typed - not a zero, not an empty
-  // card. A missing price is a statement about the setup.
+  // Nothing at all before an offer is chosen - not a zero, not an empty
+  // card. A missing choice is a statement about the setup.
   await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
   await expect(page.getByText("What those leads could be worth")).toHaveCount(0);
 
   await page.goto(`/reporting/settings`);
-  await page.getByLabel(/Price used for potential revenue/i).fill("400");
+  // The option carries the price, so whoever is choosing can see what
+  // they are choosing. Northwind's one offer now sells for £800.
+  await page
+    .getByLabel(/Offer used for potential revenue/i)
+    .selectOption({ label: "Signature programme — £800" });
   await page.getByRole("button", { name: /save/i }).first().click();
   await expect(page.getByText(/saved/i).first()).toBeVisible();
 
@@ -80,12 +86,44 @@ test("potential revenue appears once a price is set, and says what it used", asy
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
 
   // 128 leads in September - 20 social, 8 email, 100 from the Ads tab -
-  // at £400 is £51,200, and 4 of those 128 became clients, which is
-  // 3.1%: £1,600, or four sales, which is the point of the second line.
-  expect(text).toContain("£51,200");
-  expect(text).toContain("£1,600");
-  expect(text).toContain("128 leads at £400 a sale");
+  // at £800 is £102,400, and 4 of those 128 became clients, which is
+  // 3.1%: £3,200, or four sales, which is the point of the second line.
+  expect(text).toContain("£102,400");
+  expect(text).toContain("£3,200");
+  expect(text).toContain("128 leads at £800 a sale");
+  expect(text).toContain("(Signature programme)");
   expect(text).toContain("3.1% of leads became clients");
 
   await shoot(page, TAB, "02-potential-revenue", w);
+});
+
+/**
+ * The reason it is a choice of offer rather than a typed price.
+ *
+ * A second copy of a price drifts: the day the offer goes from £800 to
+ * £900, Offers says one thing and Leads & Conversions goes on quietly
+ * saying the other. Here the offer's price moves and the figure moves
+ * with it, with nobody opening the settings screen.
+ */
+test("the figure follows the offer's price, with nothing else touched", async ({ page }) => {
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+
+  await page.goto(`/reporting/settings`);
+  await page
+    .getByLabel(/Offer used for potential revenue/i)
+    .selectOption({ label: "Signature programme — £800" });
+  await page.getByRole("button", { name: /save/i }).first().click();
+  await expect(page.getByText(/saved/i).first()).toBeVisible();
+
+  await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
+  await expect(page.getByText("£102,400")).toBeVisible();
+
+  // The price rises on the Offers side, which is the only place it lives.
+  sql(`update public.report_entities set price = 900
+        where entity_type = 'offer' and name = 'Signature programme';`);
+
+  await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
+  await expect(page.getByText("£115,200"), "128 x £900").toBeVisible();
+  await expect(page.getByText("£102,400")).toHaveCount(0);
 });

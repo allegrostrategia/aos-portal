@@ -47,7 +47,7 @@ export async function saveReportSettings(
   const businessName = String(formData.get("business_name") ?? "").trim();
   const currency = String(formData.get("currency") ?? "").trim().toUpperCase();
   const rateRaw = String(formData.get("target_hourly_rate") ?? "").trim();
-  const priceRaw = String(formData.get("potential_revenue_price") ?? "").trim();
+  const offerRaw = String(formData.get("potential_revenue_offer_id") ?? "").trim();
 
   if (!workspaceId) return { error: "That was missing something. Reload and try again." };
   if (!businessName) return { error: "What is the business called?" };
@@ -64,19 +64,20 @@ export async function saveReportSettings(
     rate = parsed;
   }
 
-  // What one sale is worth, for the potential revenue figure on Leads &
-  // Conversions. Blank clears it, and clearing it takes the figure off
-  // the page rather than printing £0 - a potential revenue of nothing is
-  // a statement about the business where a missing price is a statement
-  // about the setup. The database refuses zero and negatives too, so the
-  // two agree about what a price is.
-  let price: number | null = null;
-  if (priceRaw !== "") {
-    const parsed = Number(priceRaw.replace(/[£$€,\s]/g, ""));
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      return { error: "A price should be a number above zero, or blank." };
-    }
-    price = parsed;
+  // **Which offer the potential revenue figure multiplies by** (Nina, 3
+  // November; Dom, 4 November). The price itself stays on the offer, so
+  // Offers and Leads & Conversions cannot come to disagree about what a
+  // sale is worth. Blank clears the choice and takes the figure off the
+  // page rather than printing £0: a potential revenue of nothing is a
+  // statement about the business where a missing choice is a statement
+  // about the setup.
+  //
+  // Only the shape is checked here. Whether it is an offer, and whether
+  // it is this client's, is the database's trigger — the one check that
+  // cannot be got round by posting the form by hand.
+  const offerId = offerRaw === "" ? null : offerRaw;
+  if (offerId !== null && !/^[0-9a-f-]{36}$/i.test(offerId)) {
+    return { error: "That offer wasn't one of the choices. Reload and try again." };
   }
 
   const supabase = await createClient();
@@ -86,7 +87,7 @@ export async function saveReportSettings(
       business_name: businessName,
       currency,
       target_hourly_rate: rate,
-      potential_revenue_price: price,
+      potential_revenue_offer_id: offerId,
       // An unticked checkbox sends nothing at all, which is what makes
       // this `=== "on"` rather than a truthiness check on the value.
       track_offer_hours: formData.get("track_offer_hours") === "on",

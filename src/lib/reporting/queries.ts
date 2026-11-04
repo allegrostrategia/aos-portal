@@ -46,7 +46,8 @@ export interface ReportWorkspace {
   first_month: string;
   access_end_date: string | null;
   target_hourly_rate: number | null;
-  potential_revenue_price: number | null;
+  /** Which offer the potential revenue figure multiplies leads by. */
+  potential_revenue_offer_id: string | null;
   track_offer_hours: boolean;
   benchmark_business_description: string | null;
   benchmark_main_offers: string | null;

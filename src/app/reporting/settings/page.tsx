@@ -6,6 +6,9 @@ import { SavedBanner } from "@/components/reporting/saved-banner";
 import { BusinessForm, SectionsForm } from "@/components/reporting/settings-forms";
 import { ENTRY_CATEGORIES, STAGE_5 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
+import { formatValue } from "@/lib/reporting/format";
+import type { ReportEntity } from "@/lib/reporting/queries";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Your report settings — aOS" };
 
@@ -40,6 +43,32 @@ export default async function ReportSettingsPage({
 
   const returnTo = reportHref("/reporting/settings", ctx);
 
+  // The offers, for the potential-revenue picker. **Retired offers are
+  // left out, except the one already chosen** — dropping the current
+  // choice out of the list would make the browser fall back to the first
+  // option, and saving anything else on this form would then silently
+  // clear a setting nobody touched.
+  const supabase = await createClient();
+  const { data: offerRows } = await supabase
+    .from("report_entities")
+    .select("id, name, active, price")
+    .eq("workspace_id", ctx.workspace.id)
+    .eq("entity_type", "offer")
+    .order("sort_order")
+    .returns<Pick<ReportEntity, "id" | "name" | "active" | "price">[]>();
+
+  const chosen = ctx.workspace.potential_revenue_offer_id;
+  const offerChoices = (offerRows ?? [])
+    .filter((offer) => offer.active || offer.id === chosen)
+    .map((offer) => ({
+      id: offer.id,
+      label:
+        offer.price === null
+          ? `${offer.name} — no price yet`
+          : `${offer.name} — ${formatValue(offer.price, "currency", ctx.workspace.currency)}`,
+      hasPrice: offer.price !== null,
+    }));
+
   return (
     <ReportShell
       ctx={ctx}
@@ -56,7 +85,8 @@ export default async function ReportSettingsPage({
         businessName={ctx.workspace.business_name}
         currency={ctx.workspace.currency}
         targetHourlyRate={ctx.workspace.target_hourly_rate}
-        potentialRevenuePrice={ctx.workspace.potential_revenue_price}
+        potentialRevenueOfferId={chosen}
+        offerChoices={offerChoices}
         trackOfferHours={ctx.workspace.track_offer_hours}
         description={ctx.workspace.benchmark_business_description}
         offers={ctx.workspace.benchmark_main_offers}

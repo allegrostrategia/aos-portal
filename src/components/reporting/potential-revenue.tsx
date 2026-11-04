@@ -24,23 +24,36 @@ import { IconCircle } from "./icons";
  * from. Said in the words under the figures rather than left to be
  * inferred.
  *
- * Nothing renders without a price: the price is typed on the settings
- * screen and blank means "do not show this", rather than £0.
+ * **The price is the chosen offer's own** (Dom, 4 November). The settings
+ * screen picks which offer the leads are for; the number comes from
+ * `report_entities.price`, which is the same number the Offers page
+ * shows. A price typed twice is a price that drifts, and the drift shows
+ * up on two screens that are meant to agree.
+ *
+ * Nothing renders without a price: no offer chosen, or an offer with no
+ * price on it, means "do not show this", rather than £0.
  */
 export function PotentialRevenue({
   price,
+  offerName,
   leads,
   leadToClientRate,
   currency,
 }: {
-  /** `report_workspaces.potential_revenue_price` — what one sale is worth. */
+  /** The chosen offer's price — what one sale is worth. */
   price: number | null;
+  /** Its name, so the figure says which offer it assumed. */
+  offerName: string | null;
   leads: number | null;
   /** A percentage, as the page shows it: 12 means 12%. */
   leadToClientRate: number | null;
   currency: string;
 }) {
-  if (price === null || leads === null) return null;
+  // A free offer multiplies every lead into nothing, which reads as a
+  // bug rather than as a fact about the business. The old typed column
+  // refused zero in the database; the price now belongs to the offer,
+  // where zero is a legitimate thing to set, so the refusal lives here.
+  if (price === null || price <= 0 || leads === null) return null;
 
   const ifEveryLeadBought = leads * price;
   const atTheirRate = leadToClientRate === null ? null : ifEveryLeadBought * (leadToClientRate / 100);
@@ -73,6 +86,7 @@ export function PotentialRevenue({
           what it was multiplied by. */}
       <p className="mt-4 text-caption text-ink/60">
         {leads} {leads === 1 ? "lead" : "leads"} at {money(price)} a sale
+        {offerName ? ` (${offerName})` : ""}
         {leadToClientRate === null
           ? ", and no lead to client rate yet for the second figure."
           : `, and ${leadToClientRate.toFixed(1)}% of leads became clients.`}
