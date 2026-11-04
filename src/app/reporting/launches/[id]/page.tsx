@@ -252,21 +252,28 @@ export default async function LaunchPage({
           already said, so it does not get them. */}
       {(() => {
         /**
-         * **Which stage the "Bought" step belongs to** (Nina,
-         * 3 November: the challenge funnel should end in Bought).
+         * **Every funnel ends in "Bought"** (Nina, 3 November, through
+         * Dom on the 4th: the challenge funnel itself should end there).
          *
-         * It was the main selling stage and nothing else, because
-         * sales are recorded by price option and by source and never
-         * by stage — so the launch's own total can honestly sit under
-         * exactly one funnel, and under two it would read as two sets
-         * of sales.
+         * It was the main selling stage and nothing else, because sales
+         * are recorded by price option and by source and never by
+         * stage: there is one total and no honest way to split it
+         * between a challenge and the masterclass that followed it. The
+         * worry was that the same number under two funnels reads as two
+         * sets of sales.
          *
-         * What that missed is a launch with no stage flagged as the
-         * selling one. A single-stage challenge is the ordinary case
-         * of it, and there the step was absent from the only funnel
-         * there was. So: the flagged stage if there is one, otherwise
-         * the last stage with a funnel, which is where a launch that
-         * never said sells from.
+         * **The label carries that instead of the absence.** Under the
+         * selling stage it is "Bought"; under any other stage it is
+         * "Bought (whole launch)", which says in four words what
+         * leaving it out was trying to say by silence — same sales,
+         * counted once, shown here because this stage is part of how
+         * they happened. A reader looking at a challenge funnel that
+         * stopped at "stayed to the pitch" could not tell whether the
+         * challenge sold nothing or whether nobody had said.
+         *
+         * Which stage is "the selling one": the flagged stage if there
+         * is one, otherwise the last stage with a funnel, which is
+         * where a launch that never said sells from.
          */
         const funnels = stages.filter(
           (s) => s.attendeesByDay.some((d) => d !== null) || s.liveAtEndOfPitch !== null,
@@ -315,8 +322,9 @@ export default async function LaunchPage({
                   // one stage §6.4 already measures conversion against.
                   // On any other stage the step is absent rather than
                   // guessed, and the funnel is three deep.
-                  label: "Bought",
-                  value: s.stage.id === sellingStageId ? summary.totalSales : null,
+                  label:
+                    s.stage.id === sellingStageId ? "Bought" : "Bought (whole launch)",
+                  value: summary.totalSales,
                   // **Two shares, and the second is the card's own
                   // number** (Nina, 30 October). The funnel measures every
                   // step against the step above it, so "Bought" lands on
@@ -330,6 +338,12 @@ export default async function LaunchPage({
                   // It is `conversionRate` rendered by the same formatter
                   // the card uses, not the same sum done twice: there is
                   // one value and one rounding, so the two cannot drift.
+                  // **The second share is only ever the selling
+                  // stage's.** `conversionRate` is sales ÷ sign-ups to
+                  // the main selling stage (Nina, 28 October), so
+                  // printing it beside a challenge's funnel would put
+                  // the masterclass's denominator under the challenge's
+                  // numbers.
                   also:
                     s.stage.id === sellingStageId && summary.conversionRate !== null
                       ? {

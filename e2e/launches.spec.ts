@@ -598,6 +598,84 @@ test("a launch still running says so on the client's report, and stops when it e
 });
 
 /**
+ * Every funnel ends in Bought, and says whose sales they are.
+ *
+ * Nina, 3 November, through Dom on the 4th. The Autumn challenge is the
+ * case she is looking at: a challenge and then a masterclass, where the
+ * masterclass is flagged as the selling stage. The challenge's funnel
+ * stopped at "stayed to the pitch", which leaves a reader unable to
+ * tell whether the challenge sold nothing or whether nobody had said.
+ *
+ * There is one sales total and no honest way to split it between the
+ * two, so both funnels show it and the label does the work: "Bought"
+ * under the selling stage, "Bought (whole launch)" under the other.
+ */
+test("every stage's funnel ends in Bought, and the label says whose", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+
+  const launch = `select l.id from public.report_launches l
+                    join public.report_workspaces w on w.id = l.workspace_id
+                   where w.business_name = 'Northwind Studio' and l.name = 'Autumn challenge'`;
+  const id = sql(`${launch} limit 1;`);
+
+  // The fixture is already the shape Nina is looking at - a five day
+  // challenge and then the masterclass - with its own figures on both.
+  // All this needs is for the masterclass to be the stage that sells,
+  // which is the arrangement where the challenge's funnel had nothing
+  // to end with.
+  sql(`update public.report_launch_stages set is_main_selling_stage = (stage_type = 'masterclass')
+        where launch_id = '${id}';`);
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/launches/${id}`);
+
+  // Read per panel rather than off the page, because the whole point is
+  // which funnel says which, and page text would pass with both labels
+  // under the same stage.
+  const panelFor = async (stage: string) => {
+    // `.first()`: the heading's text sits in a span inside the title,
+    // so the string matches the title and its child both.
+    const heading = page.getByText(`${stage}: who turned up`).first();
+    await expect(heading).toBeVisible();
+    return (
+      await heading.evaluate(
+        // `Card` renders a <section> by default, not a div.
+        (el) => el.closest("[class*='rounded-card']")?.textContent ?? "",
+      )
+    ).replace(/\s+/g, " ");
+  };
+
+  const challenge = await panelFor("Five day challenge");
+  const masterclass = await panelFor("The masterclass");
+
+  // The launch's own 30 sales under both, and the challenge - which is
+  // not the selling stage - says whose they are.
+  expect(challenge, "the challenge funnel").toContain("Bought (whole launch)");
+  // Her three steps, in order, on the stage she was looking at: signed
+  // up, attended live, bought. The challenge has no "stayed to the
+  // pitch" figure, so the funnel is three deep and now ends where she
+  // asked it to.
+  // `[\s\S]` rather than the `s` flag, which this tsconfig's target
+  // predates.
+  expect(challenge).toMatch(
+    /Signed up[\s\S]*Attended live[\s\S]*30\s*Bought \(whole launch\)/,
+  );
+  expect(masterclass, "the selling stage says it plainly").toContain("Bought");
+  expect(masterclass).not.toContain("whole launch");
+
+  // And the second share - sales over sign-ups to the SELLING stage -
+  // belongs to the masterclass alone: printed under the challenge it
+  // would put the masterclass's denominator beneath the challenge's
+  // numbers.
+  expect(masterclass).toMatch(/of sign-ups/);
+
+  await shoot(page, TAB, "14-bought-on-both-funnels", w);
+});
+
+/**
  * The funnel ends in "Bought" even when nobody flagged a selling stage
  * (Nina, 3 November).
  *
