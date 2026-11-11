@@ -23,6 +23,8 @@ import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
 import { calculateFunnel } from "@/lib/reporting/calculate";
 import { TopItemsReport } from "@/components/reporting/top-items";
 import { getTargets, getTopItems } from "@/lib/reporting/queries";
+import { getTopPosts } from "@/lib/reporting/top-post-queries";
+import { TopPostsReport } from "@/components/reporting/top-posts";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
 import { OfferCard } from "@/components/reporting/offer-card";
 import { PotentialRevenue } from "@/components/reporting/potential-revenue";
@@ -176,6 +178,14 @@ export default async function CategoryReportPage({
         })
       : new Map<string, (number | null)[]>();
 
+  // This platform's top three, for the card under the figures (Nina,
+  // 11 November). RLS decides whether a client may read them: published
+  // month, or nothing.
+  const topPosts =
+    category.key === "social_media"
+      ? await getTopPosts(ctx.workspace.id, ctx.month.month, figures.platform?.id ?? null)
+      : [];
+
   const notes = figures.data.notes.filter(
     (n) => n.note_type === "strategist" && n.category === category.key,
   );
@@ -201,7 +211,12 @@ export default async function CategoryReportPage({
             ).length
           : 0;
 
-  const empty = headline.length === 0 && rest.length === 0 && entityRows === 0;
+  // **Top posts count as something in the month** (11 November). A
+  // Social Media month with three posts and no typed figures is not an
+  // empty month — and before this line it drew "Nothing for September"
+  // directly above the three links it then rendered.
+  const empty =
+    headline.length === 0 && rest.length === 0 && entityRows === 0 && topPosts.length === 0;
 
   return (
     <ReportShell
@@ -473,6 +488,14 @@ export default async function CategoryReportPage({
                 );
               })()
             : null}
+
+          {topPosts.length > 0 && figures.platform ? (
+            <TopPostsReport
+              posts={topPosts}
+              platformName={figures.platform.name}
+              showPlatform={figures.platforms.length > 1}
+            />
+          ) : null}
 
           {topItems ? (
             <TopItemsReport thisMonth={topItems.thisMonth} history={topItems.history} />

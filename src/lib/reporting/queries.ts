@@ -362,7 +362,7 @@ export async function getTopItems(
   const supabase = await createClient();
   const { data } = await supabase
     .from("report_top_items")
-    .select("id, month, item_type, rank, body, views")
+    .select("id, month, item_type, rank, body, views, url")
     .eq("workspace_id", workspaceId)
     .lte("month", uptoMonth)
     .order("month")

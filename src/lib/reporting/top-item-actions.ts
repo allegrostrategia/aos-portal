@@ -9,6 +9,7 @@ import { fromInputValue } from "./format.ts";
 import { getWorkspace } from "./queries.ts";
 import { canEdit } from "./access.ts";
 import type { TopItemType } from "./top-items.ts";
+import { isSafeUrl } from "./top-posts.ts";
 import { lockedError } from "./locked.ts";
 
 /**
@@ -32,8 +33,8 @@ import { lockedError } from "./locked.ts";
 
 export type TopItemState = { error?: string; notice?: string } | null;
 
-/** `item:<type>:<rank>:body` and `item:<type>:<rank>:views`. */
-const FIELD = /^item:(hook|b_roll):([123]):(body|views)$/;
+/** `item:<type>:<rank>:body`, `:views` and `:url`. */
+const FIELD = /^item:(hook|b_roll):([123]):(body|views|url)$/;
 
 export async function saveTopItems(
   _prev: TopItemState,
@@ -56,7 +57,10 @@ export async function saveTopItems(
   });
   if (!mayEdit) return { error: "Your report is filled in by your Allegro team." };
 
-  const rows = new Map<string, { type: TopItemType; rank: number; body: string; views: number | null }>();
+  const rows = new Map<
+    string,
+    { type: TopItemType; rank: number; body: string; views: number | null; url: string | null }
+  >();
   for (const [field, raw] of formData.entries()) {
     if (typeof raw !== "string") continue;
     const match = FIELD.exec(field);
@@ -69,8 +73,10 @@ export async function saveTopItems(
       rank,
       body: "",
       views: null,
+      url: null,
     };
     if (part === "body") row.body = raw.trim();
+    else if (part === "url") row.url = raw.trim() === "" ? null : raw.trim();
     else row.views = fromInputValue(raw);
     rows.set(key, row);
   }
@@ -126,10 +132,17 @@ export async function saveTopItems(
       continue;
     }
 
+    // A link that is not a link is refused rather than stored and then
+    // drawn as an anchor on a client's report. The column has the same
+    // check, because the form is not the only way in.
+    if (row.url !== null && !isSafeUrl(row.url)) {
+      return { error: `That link should start with https:// (${row.body || "line " + row.rank}).` };
+    }
+
     const { error } = id
       ? await supabase
           .from("report_top_items")
-          .update({ body: row.body, views: row.views })
+          .update({ body: row.body, views: row.views, url: row.url })
           .eq("id", id)
       : await supabase.from("report_top_items").insert({
           workspace_id: workspaceId,
@@ -138,6 +151,7 @@ export async function saveTopItems(
           rank: row.rank,
           body: row.body,
           views: row.views,
+          url: row.url,
         });
 
     if (error) return { error: lockedError(error) ?? `Couldn't save that line: ${error.message}` };

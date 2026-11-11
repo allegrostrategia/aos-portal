@@ -11,6 +11,8 @@ import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
 import { choosePlatform, looksLikeMeta, platformsOf } from "@/lib/reporting/platforms";
 import { PlatformsEntry } from "@/components/reporting/platforms-entry";
+import { SocialEntry } from "@/components/reporting/social-entry";
+import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
 import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
@@ -392,6 +394,12 @@ export default async function EnterCategoryPage({
       })
     : null;
 
+  // This platform's top three, for the card under the figures.
+  const topPosts =
+    category.key === "social_media" && platform
+      ? await getTopPosts(ctx.workspace.id, ctx.month.month, platform.id)
+      : [];
+
   const position = order.findIndex((c) => c.key === category.key);
   const next = position >= 0 ? order[position + 1] : undefined;
 
@@ -463,7 +471,23 @@ export default async function EnterCategoryPage({
           nextLabel: next ? "Save & next section" : null,
         };
 
-        return <EntryForm {...entry} />;
+        // Social Media's two forms are rendered together, because one
+        // upload fills both of them (Nina, 11 November) and a form
+        // cannot contain another.
+        return category.key === "social_media" && platform ? (
+          <SocialEntry
+            entry={entry}
+            posts={{
+              workspaceId: ctx.workspace.id,
+              month: ctx.month.month,
+              platformId: platform.id,
+              platformName: platform.name,
+              posts: topPosts,
+            }}
+          />
+        ) : (
+          <EntryForm {...entry} />
+        );
       })()}
 
       {category.key === "social_media" ? (

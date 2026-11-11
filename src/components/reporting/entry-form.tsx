@@ -10,6 +10,7 @@ import { calculate } from "@/lib/reporting/calculate";
 import type { CategoryKey } from "@/lib/reporting/categories";
 import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/format";
 import { CsvUpload, type UploadPlatform } from "@/components/reporting/csv-upload";
+import type { TopPost } from "@/lib/reporting/top-posts";
 import type { OfferMonth } from "@/lib/reporting/formulas";
 import type { ReportMetric } from "@/lib/reporting/queries";
 
@@ -33,6 +34,14 @@ export interface EntryFormProps {
   platformId?: string | null;
   /** Social Media only: its name, and whether a Meta export suits it. */
   platformFills?: { name: string; takesMeta: boolean } | null;
+  /**
+   * Social Media only: the top posts the uploaded file offers.
+   *
+   * Passed by `SocialEntry`, which holds them for the card below this
+   * form — a form cannot contain another form, and one upload should
+   * not have to be done twice.
+   */
+  onPosts?: (posts: TopPost[]) => void;
   categoryLabel: string;
   workspaceId: string;
   month: string;
@@ -171,6 +180,7 @@ export function EntryForm(props: EntryFormProps) {
           month={props.month}
           monthLabel={props.upload.monthLabel}
           fills={props.platformFills ?? null}
+          onPosts={props.onPosts}
           labels={Object.fromEntries(
             [...props.core, ...props.optional].map((m) => [m.key, m.label]),
           )}

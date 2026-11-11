@@ -6,6 +6,8 @@ import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { readMetaAds } from "@/lib/reporting/csv/meta-ads";
 import { readMetaContent } from "@/lib/reporting/csv/meta-content";
+import { readMetaTopPosts } from "@/lib/reporting/csv/meta-top-posts";
+import type { TopPost } from "@/lib/reporting/top-posts";
 import { buildPreview, type Preview } from "@/lib/reporting/csv/preview";
 
 /**
@@ -36,6 +38,7 @@ export function CsvUpload({
   labels,
   columnMaps,
   onFill,
+  onPosts,
   onImported,
 }: {
   platform: UploadPlatform;
@@ -55,6 +58,16 @@ export function CsvUpload({
   labels: Record<string, string>;
   columnMaps: Record<string, "leads" | "purchases" | "ignored">;
   onFill: (figures: Record<string, number>) => void;
+  /**
+   * Social Media only: the month's top three posts, read out of the
+   * same file (Nina, 11 November).
+   *
+   * A second reader over one upload rather than a second upload: the
+   * Meta content export carries every post's permalink and figures, and
+   * asking for the same file twice to get two things out of it is the
+   * kind of thing nobody does the second time.
+   */
+  onPosts?: (posts: TopPost[]) => void;
   /** What to record once the figures are saved (§9). */
   onImported: (what: { fileName: string; fields: string[] }) => void;
 }) {
@@ -74,6 +87,13 @@ export function CsvUpload({
     setUnknown("unknownConversions" in result ? (result as { unknownConversions: { column: string; total: number }[] }).unknownConversions : []);
     setPreview(buildPreview(result, current, labels));
 
+    // The same file read a second way: the account's figures above, the
+    // month's three best posts here. Handed over as soon as it is read,
+    // because the posts card below has its own "Fill these in" — the
+    // figures and the posts are checked separately and saved separately.
+    if (platform === "meta_content" && onPosts) {
+      onPosts(readMetaTopPosts(text, month));
+    }
   }
 
   function clear() {

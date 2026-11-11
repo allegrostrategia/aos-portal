@@ -24,6 +24,20 @@ export interface TopItem {
   rank: number;
   body: string;
   views: number | null;
+  /**
+   * Where to watch it (Nina, 11 November).
+   *
+   * The same argument as the top posts card: a hook written down is a
+   * line somebody then has to go and find, and a hook with a link is
+   * the reel itself. Optional, because a hook typed from memory has no
+   * link and the ones already saved have none either.
+   *
+   * **Not part of what makes two hooks the same hook.** `normalise`
+   * and `provenness` go on comparing the words alone: the same line
+   * said again next month is the same hook whether or not anybody
+   * pasted a link beside it.
+   */
+  url?: string | null;
 }
 
 /** What two typings of the same hook have in common. */

@@ -102,6 +102,26 @@ export function TopItemsEntry({
                       />
                     </div>
 
+                    <div className="w-56">
+                      <label
+                        htmlFor={`item-${list.type}-${rank}-url`}
+                        className="text-caption text-ink/55"
+                      >
+                        Link <span className="text-ink/40">optional</span>
+                      </label>
+                      {/* **A link, so the client can watch it** (Nina,
+                          11 November). The same argument as the top
+                          posts card: a hook written down is a line
+                          somebody then has to go and find. */}
+                      <input
+                        id={`item-${list.type}-${rank}-url`}
+                        name={`item:${list.type}:${rank}:url`}
+                        defaultValue={item?.url ?? ""}
+                        placeholder="https://…"
+                        className="mt-1 w-full rounded-xl border border-ink/12 bg-cream-deep px-3 py-2.5 text-small text-ink outline-none transition placeholder:text-ink/40 focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+                      />
+                    </div>
+
                     <div className="w-28">
                       <label
                         htmlFor={`item-${list.type}-${rank}-views`}
@@ -190,7 +210,22 @@ export function TopItemsReport({
                         {item.rank}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-body text-ink">{item.body}</p>
+                        {/* `noopener` because the new tab would
+                            otherwise get a handle on this one, and
+                            `noreferrer` because where a client reads
+                            their report is nobody else's business. */}
+                        {item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-body text-ink underline decoration-ink/25 underline-offset-4 transition hover:decoration-ink"
+                          >
+                            {item.body}
+                          </a>
+                        ) : (
+                          <p className="text-body text-ink">{item.body}</p>
+                        )}
                         <p className="mt-0.5 flex flex-wrap items-center gap-2 text-caption text-ink/55">
                           {item.views === null
                             ? null
