@@ -7,11 +7,21 @@
  *
  * **Sales and cash are different questions and this file keeps them
  * apart.** Until now Financials had one revenue figure and nobody had to
- * say which of the two it was. A payment carries the month it was due
- * and the month the money arrived: the first is a sale, counted when the
- * client sold it, and the second is cash, counted when it turned up. A
- * September invoice paid in November is one row that tells the truth
- * about both months.
+ * say which of the two it was.
+ *
+ * A SALE is what was sold, counted in the month it was sold — all of it,
+ * whatever the payment plan. CASH is what arrived, counted in the month
+ * it arrived. So £2,000 sold in September as four £500s reads:
+ *
+ *     September   Sales £2,000   Cash £500
+ *     October     Sales     —    Cash £500
+ *     November    Sales     —    Cash £500
+ *     December    Sales     —    Cash £500
+ *
+ * A dash rather than £0 in October, because nothing being sold is not
+ * the same as selling nothing. (Dom, 11 November: the first draft summed
+ * sales on the instalment month, which was cash wearing the word
+ * "sales".)
  *
  * Relative imports, no database: `node --test "src/**\/*.test.ts"`
  * cannot resolve the `@/` alias, and arithmetic this load-bearing should
@@ -32,15 +42,37 @@ export interface SalesRow {
   active: boolean;
 }
 
-export interface SalePayment {
+/** How a sale is billed, which is where MRR comes from. */
+export type Billing = "one_off" | "monthly" | "annual";
+
+export interface Sale {
+  id: string;
   salesRowId: string;
-  /** The month it was sold for. A sale counts here. */
+  /** The month it was SOLD in. The whole value counts here. */
+  month: string;
+  totalValue: number;
+  /**
+   * **Instalments are not recurrence.** A £2,000 course paid in four
+   * £500s is `one_off`: one is a way of paying, the other is a way of
+   * being sold again next month. Retainers are `monthly` and that is
+   * what fixes MRR — it used to mean "revenue on offers marked
+   * recurring", which dropped every retainer on the floor, and
+   * retainers are the recurring revenue for an agency like Nina's.
+   */
+  billing: Billing;
+  /** Set when the sale fell through. Marked, never deleted (rule 7). */
+  cancelledOn: string | null;
+}
+
+export interface SalePayment {
+  saleId: string;
+  /** The month it was expected. */
   dueMonth: string;
   /** The month the money arrived, or null while it has not. Cash counts here. */
   receivedMonth: string | null;
   amount: number;
-  /** Paid once a year rather than monthly — her Recurring Revenue split. */
-  isAnnual: boolean;
+  /** Set when this instalment was cancelled. It stops counting and stays. */
+  cancelledOn: string | null;
 }
 
 export interface ExpenseRow {
@@ -60,15 +92,19 @@ export interface ClientHours {
 
 const inMonth = (value: string | null, month: string) => value === month;
 
-/** What the client sold this month, whatever has been paid. */
-export function salesIn(payments: SalePayment[], month: string): Result {
-  const mine = payments.filter((p) => inMonth(p.dueMonth, month));
-  return mine.length === 0 ? null : sum(...mine.map((p) => p.amount));
+/** A cancelled sale, and a cancelled instalment, stop counting. */
+const live = <T extends { cancelledOn: string | null }>(rows: T[]) =>
+  rows.filter((row) => row.cancelledOn === null);
+
+/** What the client sold this month, whatever has been paid of it. */
+export function salesIn(sales: Sale[], month: string): Result {
+  const mine = live(sales).filter((s) => s.month === month);
+  return mine.length === 0 ? null : sum(...mine.map((s) => s.totalValue));
 }
 
 /** What arrived in the bank this month, whenever it was sold. */
 export function cashIn(payments: SalePayment[], month: string): Result {
-  const mine = payments.filter((p) => inMonth(p.receivedMonth, month));
+  const mine = live(payments).filter((p) => inMonth(p.receivedMonth, month));
   return mine.length === 0 ? null : sum(...mine.map((p) => p.amount));
 }
 
@@ -81,12 +117,18 @@ export function cashIn(payments: SalePayment[], month: string): Result {
  * have already agreed to pay it.
  */
 export function recurringSplit(
+  sales: Sale[],
   payments: SalePayment[],
   month: string,
 ): { monthly: Result; annual: Result; combined: Result } {
-  const mine = payments.filter((p) => inMonth(p.dueMonth, month));
-  const monthly = mine.filter((p) => !p.isAnnual);
-  const annual = mine.filter((p) => p.isAnnual);
+  const billingOf = new Map(live(sales).map((s) => [s.id, s.billing]));
+  const mine = live(payments)
+    .filter((p) => inMonth(p.dueMonth, month))
+    .map((p) => ({ amount: p.amount, billing: billingOf.get(p.saleId) }))
+    .filter((p) => p.billing !== undefined && p.billing !== "one_off");
+
+  const monthly = mine.filter((p) => p.billing === "monthly");
+  const annual = mine.filter((p) => p.billing === "annual");
   return {
     monthly: monthly.length === 0 ? null : sum(...monthly.map((p) => p.amount)),
     annual: annual.length === 0 ? null : sum(...annual.map((p) => p.amount)),
@@ -102,7 +144,7 @@ export function recurringSplit(
  * would change a client's September every time somebody paid in March.
  */
 export function outstandingBy(payments: SalePayment[], month: string): Result {
-  const late = payments.filter(
+  const late = live(payments).filter(
     (p) => p.dueMonth <= month && (p.receivedMonth === null || p.receivedMonth > month),
   );
   return late.length === 0 ? null : sum(...late.map((p) => p.amount));
@@ -114,7 +156,7 @@ export function scheduledAfter(
   month: string,
 ): { month: string; amount: number }[] {
   const ahead = new Map<string, number>();
-  for (const p of payments) {
+  for (const p of live(payments)) {
     if (p.dueMonth <= month) continue;
     ahead.set(p.dueMonth, (ahead.get(p.dueMonth) ?? 0) + p.amount);
   }
@@ -145,24 +187,24 @@ export function costsByBucket(
  * This month's revenue per linked offer, so the Offers donut, the margin
  * and the hourly rate go on reading the figure they always have.
  *
- * **On the due month**, which is the same choice the Overview makes:
- * every other figure on the report is about the month's activity rather
- * than the month's bank.
+ * **On the month it was sold**, which is the same choice the Overview
+ * makes: every other figure on the report is about the month's activity
+ * rather than the month's bank.
  */
 export function offerRevenue(
   rows: SalesRow[],
-  payments: SalePayment[],
+  sales: Sale[],
   month: string,
 ): Map<string, number> {
   const offerOf = new Map(
     rows.filter((r) => r.offerEntityId !== null).map((r) => [r.id, r.offerEntityId!]),
   );
   const out = new Map<string, number>();
-  for (const p of payments) {
-    if (!inMonth(p.dueMonth, month)) continue;
-    const offer = offerOf.get(p.salesRowId);
+  for (const sale of live(sales)) {
+    if (sale.month !== month) continue;
+    const offer = offerOf.get(sale.salesRowId);
     if (!offer) continue;
-    out.set(offer, (out.get(offer) ?? 0) + p.amount);
+    out.set(offer, (out.get(offer) ?? 0) + sale.totalValue);
   }
   return out;
 }
@@ -179,14 +221,14 @@ export function offerRevenue(
  */
 export function bespokeRevenue(
   rows: SalesRow[],
-  payments: SalePayment[],
+  sales: Sale[],
   month: string,
 ): { total: Result; clients: number } {
   const linked = new Set(rows.filter((r) => r.offerEntityId !== null).map((r) => r.id));
-  const mine = payments.filter((p) => inMonth(p.dueMonth, month) && !linked.has(p.salesRowId));
+  const mine = live(sales).filter((s) => s.month === month && !linked.has(s.salesRowId));
   return {
-    total: mine.length === 0 ? null : sum(...mine.map((p) => p.amount)),
-    clients: new Set(mine.map((p) => p.salesRowId)).size,
+    total: mine.length === 0 ? null : sum(...mine.map((s) => s.totalValue)),
+    clients: new Set(mine.map((s) => s.salesRowId)).size,
   };
 }
 
@@ -216,15 +258,17 @@ export interface ClientProfit {
  */
 export function clientProfitability(
   rows: SalesRow[],
+  sales: Sale[],
   payments: SalePayment[],
   hours: ClientHours[],
   month: string,
 ): ClientProfit[] {
+  const rowOf = new Map(live(sales).map((s) => [s.id, s.salesRowId]));
   return rows
     .filter((row) => row.rowType === "client")
     .map((row) => {
-      const paidRows = payments.filter(
-        (p) => p.salesRowId === row.id && inMonth(p.receivedMonth, month),
+      const paidRows = live(payments).filter(
+        (p) => rowOf.get(p.saleId) === row.id && inMonth(p.receivedMonth, month),
       );
       const mine = hours.filter((h) => h.salesRowId === row.id && h.month === month);
 

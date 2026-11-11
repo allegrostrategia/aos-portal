@@ -1,7 +1,8 @@
 -- aOS Reporting — Financials as a hand-entry ledger.
 --
 -- NOT YET APPLIED TO LIVE. Shown to Dom before applying, as every
--- migration is.
+-- migration is. **Revised 11 November after his review** — the six
+-- changes are marked REVIEW below.
 --
 -- Nina, 11 November, with her own 2025 tracker as the layout reference.
 -- **Nobody uploads anything.** §10's manual-entry rule stands exactly as
@@ -14,9 +15,7 @@
 --   cash figure, and revenue pulled from Offers. That screen goes. The
 --   check that made it safe to go is in the commit message — no real
 --   client has entered a Financials figure, only the three test
---   workspaces — so there is no switch and no backfill, which is a
---   kindness to every screen that would otherwise have to ask which
---   kind of client it was looking at.
+--   workspaces — so there is no switch and no backfill.
 --
 -- SALES ROWS ARE NAMED BY THE CLIENT (Nina, 11 November)
 --   Her tracker has one row per offer OR per customer: offers they sell
@@ -33,12 +32,12 @@
 -- THE GRID IS THE SCREEN, NOT THE STORAGE
 --   Her sheet is one row per client with twelve month columns and a year
 --   total, instalments written across the row as amounts. The entry
---   screen is built to match. Underneath, each cell is a payment row
---   with its own month, because a figure that belongs to a month is how
---   the published-month lock holds anything still (7 Oct).
+--   screen is built to match. Underneath, a sale is one record and the
+--   instalments hang off it, because a figure that belongs to a month is
+--   how the published-month lock holds anything still (7 Oct).
 
 -- =============================================================================
--- Sales
+-- Sales rows — the left-hand column of her grid
 -- =============================================================================
 
 -- Which kind of row this is. Not inferred from whether an offer is
@@ -116,34 +115,125 @@ create trigger report_sales_rows_guard_offer
   before insert or update on public.report_sales_rows
   for each row execute function public.guard_report_sales_row_offer();
 
--- -----------------------------------------------------------------------------
--- One cell of the grid: what this row was due in a month, and when the
--- money actually arrived.
--- -----------------------------------------------------------------------------
+-- =============================================================================
+-- Sales
+-- =============================================================================
 --
--- **Two months, and they answer different questions** (Dom, 11 Nov).
--- `due_month` is the sale: it is what the client sold, counted when they
--- sold it. `received_month` is the cash: it is what arrived, counted
--- when it arrived. A payment due in September and paid in November is
--- one row with September in one column and November in the other, and
--- the report tells the truth about both months without either figure
--- being wrong.
+-- REVIEW 1 (Dom, 11 November): **a sale is its own record now.**
+--   The first draft summed sales on the instalment's due month, so
+--   £2,000 sold in September as four £500s read as £500 of sales in
+--   September and £500 again in each of the next three months. That is
+--   cash wearing the word "sales". A sale is what was sold, counted in
+--   the month it was sold, and the schedule hangs off it:
 --
--- `received_month` null means the money has not come in. Not zero, and
--- not an absence of the sale.
-create table public.report_sale_payments (
+--     September   Sales £2,000   Cash £500
+--     October     Sales     —    Cash £500
+--     November    Sales     —    Cash £500
+--     December    Sales     —    Cash £500
+--
+--   A dash rather than £0 in October: nothing was sold, which is not the
+--   same as selling nothing. The column is `month` rather than
+--   `sold_month` for one reason worth more than the better name — the
+--   shared published-month guard reads `new.month`, so a sale wears the
+--   same lock as every other row of month content without a word of new
+--   code.
+--
+-- REVIEW 2: **how it is billed lives here, not on a linked offer.**
+--   MRR used to mean "revenue on offers marked recurring", which drops
+--   every retainer on the floor — and retainers are the recurring
+--   revenue for an agency like Nina's. Three values, because her
+--   Recurring Revenue tab has exactly three lines: monthly payments,
+--   annual payments, and the two combined.
+--
+--   A £2,000 course paid in four instalments is `one_off`. Instalments
+--   are not recurrence: one is a way of paying, the other is a way of
+--   being sold again next month.
+create type public.report_sale_billing as enum ('one_off', 'monthly', 'annual');
+
+create table public.report_sales (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.report_workspaces (id) on delete cascade,
   sales_row_id uuid not null references public.report_sales_rows (id) on delete restrict,
+
+  -- The month it was SOLD in. Named `month` so the shared guard fits.
+  month date not null,
+  total_value numeric not null,
+  billing public.report_sale_billing not null default 'one_off',
+
+  -- REVIEW 4: rule 7. A sale that falls through is marked, never
+  -- removed — a cancelled £2,000 is a thing that happened to the
+  -- business, and the report should be able to say so.
+  cancelled_on date,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint report_sales_month_is_first check (extract(day from month) = 1),
+  constraint report_sales_value_not_negative check (total_value >= 0),
+  unique (workspace_id, id)
+);
+
+create index report_sales_month_idx on public.report_sales (workspace_id, month);
+create index report_sales_row_idx on public.report_sales (sales_row_id);
+
+create trigger report_sales_set_updated_at
+  before update on public.report_sales
+  for each row execute function public.set_updated_at();
+
+create trigger report_sales_guard_published
+  before insert or update or delete on public.report_sales
+  for each row execute function public.guard_report_published_month();
+
+create or replace function public.guard_report_sale_row()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_workspace uuid;
+begin
+  select workspace_id into v_workspace
+  from public.report_sales_rows where id = new.sales_row_id;
+
+  if v_workspace is distinct from new.workspace_id then
+    raise exception 'A sale can only be against this business''s own row';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger report_sales_guard_row
+  before insert or update on public.report_sales
+  for each row execute function public.guard_report_sale_row();
+
+-- -----------------------------------------------------------------------------
+-- One cell of the grid: what is due in a month, and when it arrived.
+-- -----------------------------------------------------------------------------
+--
+-- `due_month` is when the money was expected; `received_month` is when
+-- it turned up, and that is where cash counts. A payment due in
+-- September and paid in November is one row with September in one column
+-- and November in the other, and the report tells the truth about both
+-- months without either figure being wrong.
+--
+-- `received_month` null means the money has not come in. Not zero, and
+-- not an absence of the sale — the sale was counted the month it was
+-- sold, whatever has been paid since.
+create table public.report_sale_payments (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.report_workspaces (id) on delete cascade,
+  sale_id uuid not null references public.report_sales (id) on delete restrict,
 
   due_month date not null,
   received_month date,
   amount numeric not null,
 
-  -- Her Recurring Revenue tab splits the year into monthly payments,
-  -- annual payments, and the two combined. This is the flag that split
-  -- is drawn from.
-  is_annual boolean not null default false,
+  -- REVIEW 4 again: an instalment that is cancelled stops counting and
+  -- stays on the record. There is no delete policy on this table, so
+  -- this is the only way money leaves the ledger.
+  cancelled_on date,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -152,8 +242,9 @@ create table public.report_sale_payments (
   constraint report_sale_payments_received_is_first
     check (received_month is null or extract(day from received_month) = 1),
   constraint report_sale_payments_amount_not_negative check (amount >= 0),
-  -- One cell per row per month, which is exactly what the grid draws.
-  unique (workspace_id, sales_row_id, due_month)
+  -- One instalment per month per sale. A client row can still show two
+  -- figures in one cell of the grid, because it can have two sales.
+  unique (sale_id, due_month)
 );
 
 create index report_sale_payments_due_idx
@@ -165,13 +256,33 @@ create trigger report_sale_payments_set_updated_at
   before update on public.report_sale_payments
   for each row execute function public.set_updated_at();
 
+create or replace function public.guard_report_sale_payment_sale()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_workspace uuid;
+begin
+  select workspace_id into v_workspace from public.report_sales where id = new.sale_id;
+
+  if v_workspace is distinct from new.workspace_id then
+    raise exception 'A payment can only be against this business''s own sale';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger report_sale_payments_guard_sale
+  before insert or update on public.report_sale_payments
+  for each row execute function public.guard_report_sale_payment_sale();
+
 -- =============================================================================
 -- Expenses
 -- =============================================================================
 
--- Every category maps to one of the four buckets the report has always
--- had, so Total costs, Profit, the margin and the donut keep working
--- without knowing the categories exist.
 create type public.report_expense_bucket as enum (
   'fixed', 'variable', 'team', 'investment'
 );
@@ -213,6 +324,16 @@ create table public.report_expenses (
   month date not null,
   amount numeric not null,
 
+  -- REVIEW 5: **the bucket as it was when this was saved.**
+  --   Total costs, Profit and the margin are built on the four buckets.
+  --   Moving "Software" from Fixed to Team would otherwise rewrite the
+  --   composition of every published month at once. Captured per row
+  --   instead — the same answer §5.5 gives for a funnel's price and the
+  --   same one `rate_used` gives below — so recategorising is
+  --   forward-looking, which is what somebody tidying up actually means.
+  --   Filled by a trigger, never by the app.
+  bucket public.report_expense_bucket not null,
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
@@ -235,12 +356,21 @@ set search_path = ''
 as $$
 declare
   v_workspace uuid;
+  v_bucket public.report_expense_bucket;
 begin
-  select workspace_id into v_workspace
+  select workspace_id, bucket into v_workspace, v_bucket
   from public.report_expense_categories where id = new.category_id;
 
   if v_workspace is distinct from new.workspace_id then
     raise exception 'An expense can only use this business''s own category';
+  end if;
+
+  -- The bucket is the category's, always. An app that sent a different
+  -- one is overruled rather than believed.
+  if tg_op = 'INSERT' or new.category_id is distinct from old.category_id then
+    new.bucket := v_bucket;
+  else
+    new.bucket := old.bucket;
   end if;
 
   return new;
@@ -294,10 +424,12 @@ create table public.report_client_hours (
   month date not null,
   hours numeric not null,
 
-  -- **The rate as it was when the hours were saved**, the same way
-  -- §5.5 captures a funnel's offer price per month. Without it, a pay
-  -- rise would rewrite every month that person has ever worked — and
-  -- some of those months are published.
+  -- REVIEW 6: **filled by the trigger below, never by the app.**
+  --   The rate as it was when the hours were saved, the same way §5.5
+  --   captures a funnel's offer price per month. Without it a pay rise
+  --   rewrites every month that person has ever worked, and some of
+  --   those months are published. With it in the app's hands, two
+  --   screens could save two different numbers for the same hour.
   rate_used numeric not null,
 
   created_at timestamptz not null default now(),
@@ -326,11 +458,12 @@ declare
   v_row_workspace uuid;
   v_row_type public.report_sales_row_type;
   v_staff_workspace uuid;
+  v_rate numeric;
 begin
   select workspace_id, row_type into v_row_workspace, v_row_type
   from public.report_sales_rows where id = new.sales_row_id;
 
-  select workspace_id into v_staff_workspace
+  select workspace_id, hourly_rate into v_staff_workspace, v_rate
   from public.report_staff where id = new.staff_id;
 
   if v_row_workspace is distinct from new.workspace_id
@@ -345,6 +478,15 @@ begin
     raise exception 'Hours are recorded against a client row, not an offer row';
   end if;
 
+  -- The rate comes from the staff member, every time, and an edit to
+  -- the hours leaves the rate where it was: September cost what
+  -- September cost, whatever anybody is paid now.
+  if tg_op = 'INSERT' or new.staff_id is distinct from old.staff_id then
+    new.rate_used := v_rate;
+  else
+    new.rate_used := old.rate_used;
+  end if;
+
   return new;
 end;
 $$;
@@ -354,11 +496,65 @@ create trigger report_client_hours_guard_rows
   for each row execute function public.guard_report_client_hours_rows();
 
 -- =============================================================================
+-- Setup that a published month depends on
+-- =============================================================================
+--
+-- REVIEW 5, the half a captured column cannot answer. A category's
+-- bucket is frozen per expense row above, so recategorising is safe.
+-- A sales row's TYPE and its offer link are not that kind of change:
+-- turning a client row into an offer row moves money between the
+-- bespoke slice and an offer's slice in every month at once, and there
+-- is no per-month capture that makes it mean anything sensible.
+--
+-- So the row is held still once a published month holds money for it.
+-- Admin and the service role pass, as they do on every other published
+-- guard — the honest path for anybody else is unpublish, change,
+-- republish.
+create or replace function public.guard_report_sales_row_published()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_locked boolean;
+begin
+  if public.is_portal_admin() or (select auth.uid()) is null then
+    return new;
+  end if;
+
+  if new.row_type is not distinct from old.row_type
+     and new.offer_entity_id is not distinct from old.offer_entity_id then
+    return new;
+  end if;
+
+  select exists (
+    select 1
+      from public.report_sales s
+     where s.sales_row_id = old.id
+       and public.report_month_is_locked(s.workspace_id, s.month)
+  ) into v_locked;
+
+  if v_locked then
+    raise exception 'That row has sales in a published month. Unpublish it to change what kind of row it is.'
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger report_sales_rows_guard_published
+  before update on public.report_sales_rows
+  for each row execute function public.guard_report_sales_row_published();
+
+-- =============================================================================
 -- The published-month lock
 -- =============================================================================
 --
--- `report_expenses` and `report_client_hours` belong to one month each,
--- so they wear the guard every other table of month content wears.
+-- `report_sales`, `report_expenses` and `report_client_hours` each
+-- belong to one month, so they wear the guard every other table of
+-- month content wears.
 
 create trigger report_expenses_guard_published
   before insert or update or delete on public.report_expenses
@@ -371,13 +567,12 @@ create trigger report_client_hours_guard_published
 -- A payment has TWO months, and the ordinary guard reads one. The rule
 -- it needs is the one late payments are about:
 --
---   · While the DUE month is open, the row is a draft figure and
---     anything about it may change.
---   · Once the due month is published, that month's SALES figure is
---     fixed and so is the row's amount, its due month and its link.
---     **The one thing that may still change is `received_month`** —
---     a September invoice paid in November is not a change to September,
---     it is news about November.
+--   · While the DUE month is open, anything about the row may change.
+--   · Once the due month is published, the amount, the month, the sale
+--     and whether it was cancelled are all part of what that report
+--     said, and are held still. **The one thing that may still change
+--     is `received_month`** — a September invoice paid in November is
+--     not a change to September, it is news about November.
 --   · And the month the cash lands in has to be open itself, in both
 --     directions: moving cash out of a published month is as much a
 --     rewrite of it as moving cash in.
@@ -434,8 +629,8 @@ begin
      or public.report_month_is_locked(v_workspace, new.due_month) then
     if new.amount is distinct from old.amount
        or new.due_month is distinct from old.due_month
-       or new.sales_row_id is distinct from old.sales_row_id
-       or new.is_annual is distinct from old.is_annual
+       or new.sale_id is distinct from old.sale_id
+       or new.cancelled_on is distinct from old.cancelled_on
        or new.workspace_id is distinct from old.workspace_id then
       raise exception 'That month is published. Only when the money arrived can still change.'
         using errcode = 'check_violation';
@@ -454,7 +649,7 @@ create trigger report_sale_payments_guard_published
   for each row execute function public.guard_report_sale_payment_months();
 
 -- =============================================================================
--- Row level security — the same shape every reporting table wears
+-- Row level security
 -- =============================================================================
 --
 -- Setup rows (the sales rows, the categories, the staff) follow
@@ -463,6 +658,7 @@ create trigger report_sale_payments_guard_published
 -- the month is published and not before.
 
 alter table public.report_sales_rows enable row level security;
+alter table public.report_sales enable row level security;
 alter table public.report_sale_payments enable row level security;
 alter table public.report_expense_categories enable row level security;
 alter table public.report_expenses enable row level security;
@@ -480,6 +676,68 @@ create policy report_sales_rows_update_editors on public.report_sales_rows
   for update to authenticated
   using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
 
+create policy report_sales_all_admin on public.report_sales
+  for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+create policy report_sales_select_readers on public.report_sales
+  for select to authenticated using (public.report_can_read_month(workspace_id, month));
+create policy report_sales_write_editors on public.report_sales
+  for insert to authenticated with check (public.report_can_edit(workspace_id));
+create policy report_sales_update_editors on public.report_sales
+  for update to authenticated
+  using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
+
+-- REVIEW 3: **which payments a client may see.**
+--   Reading by the due month alone was wrong twice over. A sale made in
+--   a published September schedules instalments into October, November
+--   and December, and those are part of what September's report says
+--   about the months ahead — hiding them left "scheduled ahead" empty
+--   for the only person it was written for. And an instalment paid
+--   EARLY, into a published month, dropped out of that month's cash
+--   because its due month had not been published yet.
+--
+--   So a payment is readable when any one of the three months it can be
+--   attached to is readable: the month its sale was made, the month it
+--   is due, or the month the money arrived. Each of those is a month
+--   the client has either already been shown or is entitled to.
+create or replace function public.report_can_read_payment(
+  p_workspace uuid,
+  p_sale uuid,
+  p_due date,
+  p_received date
+) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.report_can_read_month(p_workspace, p_due)
+      or (p_received is not null and public.report_can_read_month(p_workspace, p_received))
+      or exists (
+           select 1 from public.report_sales s
+            where s.id = p_sale
+              and public.report_can_read_month(p_workspace, s.month)
+         );
+$$;
+
+comment on function public.report_can_read_payment(uuid, uuid, date, date) is
+  'A payment is readable when the month of its sale, its due month or the month it arrived is readable. Any one of the three is a month the client has been shown (11 Nov 2026).';
+
+create policy report_sale_payments_all_admin on public.report_sale_payments
+  for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+create policy report_sale_payments_select_readers on public.report_sale_payments
+  for select to authenticated
+  using (public.report_can_read_payment(workspace_id, sale_id, due_month, received_month));
+create policy report_sale_payments_write_editors on public.report_sale_payments
+  for insert to authenticated with check (public.report_can_edit(workspace_id));
+create policy report_sale_payments_update_editors on public.report_sale_payments
+  for update to authenticated
+  using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
+-- **No delete policy, on purpose** (REVIEW 4). Money leaves this ledger
+-- by being cancelled, which keeps the record of it; rule 7, applied to
+-- the one table where a removed row is a removed fact about a person.
+
 create policy report_expense_categories_all_admin on public.report_expense_categories
   for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
@@ -490,6 +748,22 @@ create policy report_expense_categories_write_editors on public.report_expense_c
 create policy report_expense_categories_update_editors on public.report_expense_categories
   for update to authenticated
   using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
+
+create policy report_expenses_all_admin on public.report_expenses
+  for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+create policy report_expenses_select_readers on public.report_expenses
+  for select to authenticated using (public.report_can_read_month(workspace_id, month));
+create policy report_expenses_write_editors on public.report_expenses
+  for insert to authenticated with check (public.report_can_edit(workspace_id));
+create policy report_expenses_update_editors on public.report_expenses
+  for update to authenticated
+  using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
+-- An expense cell cleared is a cell nobody meant: there is no
+-- counterparty and no agreement, so the delete that `report_top_items`
+-- already allows for a mistyped line is right here too.
+create policy report_expenses_delete_editors on public.report_expenses
+  for delete to authenticated using (public.report_can_edit(workspace_id));
 
 -- **These are the client's own staff, not Allegro's.** The tracker this
 -- is modelled on belongs to the business being reported on: its own team
@@ -510,35 +784,6 @@ create policy report_staff_update_editors on public.report_staff
   for update to authenticated
   using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
 
--- A payment is read against the month it is DUE: that is the month it
--- is a sale in, and the month whose report draws it. A payment received
--- in a month the reader may not see yet is still their own sale.
-create policy report_sale_payments_all_admin on public.report_sale_payments
-  for all to authenticated
-  using (public.is_portal_admin()) with check (public.is_portal_admin());
-create policy report_sale_payments_select_readers on public.report_sale_payments
-  for select to authenticated using (public.report_can_read_month(workspace_id, due_month));
-create policy report_sale_payments_write_editors on public.report_sale_payments
-  for insert to authenticated with check (public.report_can_edit(workspace_id));
-create policy report_sale_payments_update_editors on public.report_sale_payments
-  for update to authenticated
-  using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
-create policy report_sale_payments_delete_editors on public.report_sale_payments
-  for delete to authenticated using (public.report_can_edit(workspace_id));
-
-create policy report_expenses_all_admin on public.report_expenses
-  for all to authenticated
-  using (public.is_portal_admin()) with check (public.is_portal_admin());
-create policy report_expenses_select_readers on public.report_expenses
-  for select to authenticated using (public.report_can_read_month(workspace_id, month));
-create policy report_expenses_write_editors on public.report_expenses
-  for insert to authenticated with check (public.report_can_edit(workspace_id));
-create policy report_expenses_update_editors on public.report_expenses
-  for update to authenticated
-  using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
-create policy report_expenses_delete_editors on public.report_expenses
-  for delete to authenticated using (public.report_can_edit(workspace_id));
-
 -- Read with the month, like every other figure: a draft is the team's
 -- working-out and a published month is the client's to read. It is
 -- their own business's time against their own business's clients.
@@ -557,9 +802,11 @@ create policy report_client_hours_delete_editors on public.report_client_hours
 
 comment on table public.report_sales_rows is
   'One row per offer or per customer, named by the client. Linking to an offer is optional - plenty of businesses sell bespoke work that is not an offer (Nina, 11 Nov 2026).';
+comment on table public.report_sales is
+  'A sale: what was sold, in the month it was sold. Its instalments hang off it in report_sale_payments, and how it is billed - one off, monthly or annual - is what MRR is drawn from.';
 comment on table public.report_sale_payments is
-  'One cell of the sales grid: what was due in a month, and the month the money actually arrived. Sales count on due_month, cash on received_month.';
+  'One instalment: the month it is due, and the month the money actually arrived. Cash counts on received_month; the sale was already counted when it was made.';
 comment on table public.report_staff is
   'The client''s own team, with the rate each one costs them. Not Allegro''s staff and not Allegro''s hours - §1''s rule about that is untouched.';
 comment on table public.report_client_hours is
-  'Time spent on a bespoke client, for per-client profitability. The rate is captured as it was when the hours were saved, so a pay rise cannot rewrite a published month.';
+  'Time spent on a bespoke client, for per-client profitability. The rate is filled from the staff member by a trigger, so a pay rise cannot rewrite a published month.';
