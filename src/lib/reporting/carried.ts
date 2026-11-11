@@ -53,10 +53,17 @@ export interface Carried {
   benchmarks: Record<string, number>;
   /**
    * The workspace-level settings that change a published figure: the row
-   * labels, and a campaign's goal, which decides whose spend counts towards
-   * cost per lead (§10.2 — £4.50 honest against £6.00 blended).
+   * labels, a campaign's goal, which decides whose spend counts towards
+   * cost per lead (§10.2 — £4.50 honest against £6.00 blended), and an
+   * offer's price.
+   *
+   * **Price is optional, and `undefined` is not `null`.** Snapshots
+   * written before 11 November carry no price at all; those months must
+   * go on reading the live one rather than suddenly showing a dash, so
+   * absent means "not frozen, use what the offer says now" and null
+   * means "frozen, and the offer had no price that day".
    */
-  entities: Record<string, { name: string; goal: string | null }>;
+  entities: Record<string, { name: string; goal: string | null; price?: number | null }>;
 }
 
 export const EMPTY_CARRIED: Carried = {
@@ -113,7 +120,16 @@ export function readCarried(carried: unknown): Carried | null {
       if (!row || typeof row !== "object") continue;
       const r = row as Record<string, unknown>;
       if (typeof r.name !== "string") continue;
-      entities[id] = { name: r.name, goal: typeof r.goal === "string" ? r.goal : null };
+      const frozen: Carried["entities"][string] = {
+        name: r.name,
+        goal: typeof r.goal === "string" ? r.goal : null,
+      };
+      // Only carried forward when the snapshot actually has the key: see
+      // the note on `entities` about absent against null.
+      if ("price" in r && (typeof r.price === "number" || r.price === null)) {
+        frozen.price = r.price;
+      }
+      entities[id] = frozen;
     }
   }
 
@@ -143,7 +159,7 @@ export function buildCarried(input: {
   previousMonth: string | null;
   targets: Record<ValueKey, number>;
   benchmarks: Record<string, number>;
-  entities: { id: string; name: string; campaign_goal: string | null }[];
+  entities: { id: string; name: string; campaign_goal: string | null; price: number | null }[];
 }): Carried {
   return {
     clientsAtStart: typeof input.clientsAtStart === "number" ? input.clientsAtStart : null,
@@ -154,7 +170,7 @@ export function buildCarried(input: {
     targets: input.targets,
     benchmarks: input.benchmarks,
     entities: Object.fromEntries(
-      input.entities.map((e) => [e.id, { name: e.name, goal: e.campaign_goal }]),
+      input.entities.map((e) => [e.id, { name: e.name, goal: e.campaign_goal, price: e.price }]),
     ),
   };
 }

@@ -246,16 +246,24 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
       )
     : data.previous;
 
-  // The row labels and the one setting that changes a number. A campaign's
-  // goal decides whose spend counts towards cost per lead (§10.2), so it
-  // belongs to the report as much as any figure in it.
+  // The row labels and the settings that change a number. A campaign's
+  // goal decides whose spend counts towards cost per lead (§10.2), and an
+  // offer's price is what potential revenue multiplies by, so both belong
+  // to the report as much as any figure in it.
   const entities = carried
-    ? data.entities.map((e) =>
-        carried.entities[e.id]
-          ? { ...e, name: carried.entities[e.id].name,
-              campaign_goal: carried.entities[e.id].goal as typeof e.campaign_goal }
-          : e,
-      )
+    ? data.entities.map((e) => {
+        const frozen = carried.entities[e.id];
+        if (!frozen) return e;
+        return {
+          ...e,
+          name: frozen.name,
+          campaign_goal: frozen.goal as typeof e.campaign_goal,
+          // A snapshot written before 11 November has no price in it, and
+          // a month published then must go on showing the price it showed
+          // rather than a dash. Absent is not null.
+          price: frozen.price === undefined ? e.price : frozen.price,
+        };
+      })
     : data.entities;
   const frozen = { ...data, previous: previousValues, entities };
 

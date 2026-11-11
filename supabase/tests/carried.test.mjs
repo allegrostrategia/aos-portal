@@ -132,7 +132,13 @@ test("the snapshot carries targets, benchmarks and the entity settings", async (
   const carried = await computeCarried(WS, SEP);
   assert.equal(carried.targets["leads_conversions_new_clients|"], 10);
   assert.equal(carried.benchmarks["leads_conversions_new_clients"], 7);
-  assert.deepEqual(carried.entities[campaign], { name: "Spring leads", goal: "leads" });
+  assert.deepEqual(carried.entities[campaign], {
+    name: "Spring leads",
+    goal: "leads",
+    // A campaign has no price, and null is the frozen answer rather than
+    // the absent one: see the test below.
+    price: null,
+  });
 });
 
 test("a month's own target wins over the standing one, as the screen reads it", async () => {
@@ -344,4 +350,95 @@ test("a draft month has no snapshot, and says so as null rather than empty", asy
   assert.equal(readCarried({}), null);
   assert.equal(readCarried(null), null);
   assert.equal(readCarried("nonsense"), null);
+});
+
+/**
+ * An offer's price, frozen with the month (Dom, 11 November, decision 7).
+ *
+ * Potential revenue on Leads & Conversions is leads multiplied by the
+ * chosen offer's price, and the Offers table on the same report prints
+ * that price in its own column. Both read the offer, so without this a
+ * price rise would quietly rewrite a report the client read in September
+ * — the arithmetic would change under a month the lock is supposed to
+ * hold still.
+ *
+ * Checked through `getMonthFigures`, not just the snapshot, because the
+ * snapshot being right is worth nothing if the page does not read it.
+ *
+ * Last in the file: it republishes September, and the tests above walk
+ * the months in a particular order.
+ */
+let OFFER;
+
+/** The same shape the fallback test builds, for a month and its previous. */
+const figuresFor = (month, previous, label) => {
+  configure(db, NINA);
+  return getMonthFigures({
+    workspace: {
+      id: WS, kind: "retainer", currency: "GBP",
+      hidden_categories: [], track_offer_hours: true,
+    },
+    month: { month, previous, label },
+  });
+};
+
+test("an offer's price is frozen too, so a published month keeps the one it used", async () => {
+  await asMember(db, NINA, async () => {
+    OFFER = (
+      await db.query(`insert into public.report_entities
+                        (workspace_id, entity_type, name, price, pricing_model)
+                      values ('${WS}', 'offer', 'Signature programme', 800, 'one_off')
+                      returning id`)
+    ).rows[0].id;
+  });
+
+  // September is published already; republishing is what takes the
+  // snapshot again, with the offer in it this time.
+  assert.equal((await publish(SEP))?.error, undefined);
+  assert.equal((await carriedOn(SEP)).entities[OFFER].price, 800, "frozen at publish");
+
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_entities set price = 900 where id = '${OFFER}'`),
+  );
+
+  const published = await figuresFor(SEP, AUG, "September 2026");
+  assert.equal(
+    published.data.entities.find((e) => e.id === OFFER).price,
+    800,
+    "the published month still multiplies by the price it was published with",
+  );
+
+  const draft = await figuresFor("2026-10-01", SEP, "October 2026");
+  assert.equal(
+    draft.data.entities.find((e) => e.id === OFFER).price,
+    900,
+    "and a month that is not published reads today's price",
+  );
+});
+
+/**
+ * The months published before 11 November have no price in their
+ * snapshot. They must go on showing the price they have always shown
+ * rather than a dash, so an absent price is not a frozen null.
+ */
+test("a snapshot written before prices were frozen still reads the live one", async () => {
+  const [row] = await rows(
+    `select carried from public.report_periods where workspace_id = '${WS}' and month = '${SEP}'`,
+  );
+  const older = structuredClone(row.carried);
+  for (const entity of Object.values(older.entities)) delete entity.price;
+  await asMember(db, NINA, () =>
+    db.query(
+      `update public.report_periods set carried = $1
+        where workspace_id = '${WS}' and month = '${SEP}'`,
+      [JSON.stringify(older)],
+    ),
+  );
+
+  const figures = await figuresFor(SEP, AUG, "September 2026");
+  assert.equal(
+    figures.data.entities.find((e) => e.id === OFFER).price,
+    900,
+    "no price in the snapshot means the live one, not a dash",
+  );
 });

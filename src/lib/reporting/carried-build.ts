@@ -59,9 +59,18 @@ export async function computeCarried(
       .returns<{ metric_key: string; benchmark_value: number }[]>(),
     admin
       .from("report_entities")
-      .select("id, name, campaign_goal")
+      // **The price too, since 11 November** (Dom, per decision 7). A
+      // published month's potential revenue multiplies leads by an
+      // offer's price; without this it would be multiplying by today's
+      // price, and a report the client read in September would quietly
+      // change the day the offer went up. The Offers table on the same
+      // report reads the same frozen price, so the two cannot disagree —
+      // which is the whole reason the price lives on the offer.
+      .select("id, name, campaign_goal, price")
       .eq("workspace_id", workspaceId)
-      .returns<{ id: string; name: string; campaign_goal: string | null }[]>(),
+      .returns<
+        { id: string; name: string; campaign_goal: string | null; price: number | string | null }[]
+      >(),
   ]);
 
   // `numeric` comes back as a string from some drivers, and the formula
@@ -112,7 +121,9 @@ export async function computeCarried(
     previousMonth: Object.keys(previous).length > 0 ? previousMonth : null,
     targets,
     benchmarks,
-    entities: entityRes.data ?? [],
+    // `numeric` arrives as a string from some drivers, the same trap as
+    // every other figure here.
+    entities: (entityRes.data ?? []).map((e) => ({ ...e, price: num(e.price) })),
   });
 }
 
