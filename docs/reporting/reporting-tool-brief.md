@@ -17,8 +17,8 @@ A monthly business reporting tool inside aOS that works like a spreadsheet under
 **Hard rules**
 
 - **No AI anywhere in the tool.** Every insight comes from formulas and fixed rules. No API calls to Claude or any other model.
-- **Numbers only, no people.** The tool stores counts and totals, never names, emails or phone numbers of the client's leads or customers. Named contact lists stay in the client's CRM.
-- **No raw data export.** Clients view their data as a designed report. There is no CSV or spreadsheet download.
+- **Numbers only, no contact details.** The tool stores counts and totals, never emails, phone numbers or addresses. Named contact lists stay in the client's CRM. **Amended 11 November 2026 (Nina):** a Financials sales row may be named after a customer, because a great many businesses sell bespoke work that is not an offer and "Retainer 4" is not a row anybody can use. A name, and nothing else about the person — the spreadsheet's Client Info tab (addresses, invoicing) is deliberately out of scope.
+- **No raw data export.** Clients view their data as a designed report. There is no CSV or spreadsheet download. **One exception, 11 November 2026 (Nina): the Financials CSV** — sales rows by month, expense rows by month, and the totals. Nothing else in the tool exports, and the PDF of the report is a print of the designed page rather than a data download.
 - **Nothing about Allegro's work.** No hours used, no contracted hours, no task lists. That stays in Portal.
 
 ## 2. Where it lives and who sees what
@@ -496,6 +496,8 @@ Manual entry is the default and always works. CSV upload is a shortcut that fill
 | Kit, Flodesk | Email | Parked: added when a client using them joins, built from that client's first export |
 
 **Financials is manual entry only.** No Stripe exports and no bank statement uploads. Payment exports carry customers' names, emails and card details, which breaks the numbers-only rule and puts personal data through aOS. Clients type their totals by hand.
+
+**This rule is untouched by the ledger (11 November 2026).** Financials became a ledger of sales and expenses, modelled on Nina's own tracker — one row per offer or customer, twelve month columns, instalments written across the row. Every cell of it is typed. Nobody uploads anything, and the reason this rule exists is exactly why: a page somebody types into cannot carry a card number into aOS.
 
 The file itself is never stored, only the numbers taken from it. Platforms rename columns without warning, so each column map should be easy to update from a fresh sample file.
 
