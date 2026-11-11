@@ -136,7 +136,7 @@ export function ReportShell({
                 The spec measures behind both. */}
             <div className="flex w-full min-w-0 flex-col justify-end gap-3 sm:w-auto sm:grow sm:items-end">
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
-                {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
+                {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} path={path} /> : null}
                 <MonthPicker ctx={ctx} path={path} />
                 {platforms && platforms.chosen && platforms.all.length > 1 ? (
                   <PlatformPicker ctx={ctx} path={path} {...platforms} />
@@ -605,7 +605,18 @@ function MonthPicker({ ctx, path }: { ctx: ReportContext; path: string }) {
         </span>
       )}
 
-      <details className="group relative">
+      {/* **The key is what closes the menu** (Dom, 11 November).
+          Each picker is a `<details>` and each option is a `<Link>`, so
+          choosing one is a soft navigation: React keeps the same DOM
+          node, the node keeps its `open` attribute, and the menu sits
+          there over the tab row until you click somewhere else. A key
+          that changes with the route and the selection makes React
+          build a fresh `<details>` instead — closed, because that is
+          what a new one is.
+
+          Not an onClick, which would make the whole shell a client
+          component to do something the markup can already say. */}
+      <details key={`${path}|${ctx.month.month}`} className="group relative">
         {/* **The month, larger and in orange** (Nina, 3 November). It is
             the control she uses most and it read as one pill among
             several. Orange-ink rather than the brand orange: #ff6625 is
@@ -676,7 +687,7 @@ function PlatformPicker({
   all: { id: string; name: string }[];
 }) {
   return (
-    <details className="group relative">
+    <details key={`${path}|${chosen?.id ?? ""}`} className="group relative">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 text-small font-medium text-ink">
         <span className="max-w-32 truncate">{chosen?.name ?? "Platform"}</span>
         <Arrow direction="down" className="size-3.5 opacity-60" />
@@ -709,9 +720,10 @@ function PlatformPicker({
  * because a client with one business never reaches this code, and one with two
  * sees only their own two.
  */
-function WorkspacePicker({ ctx }: { ctx: ReportContext }) {
+function WorkspacePicker({ ctx, path }: { ctx: ReportContext; path: string }) {
   return (
-    <details className="group relative">
+    // Closed again on the way out, the same way the month picker is.
+    <details key={`${path}|${ctx.workspace.id}`} className="group relative">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 text-small font-medium text-ink">
         <span className="max-w-32 truncate sm:max-w-40">{ctx.workspace.business_name}</span>
         <Arrow direction="down" className="size-3.5 opacity-60" />

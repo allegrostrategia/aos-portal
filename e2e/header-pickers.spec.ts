@@ -164,3 +164,62 @@ test("the picture is flush with the window's edge", async ({ page }, info) => {
   expect(Math.abs(edge.right - edge.window), `${JSON.stringify(edge)}`).toBeLessThanOrEqual(1);
   expect(edge.overflow, "the page scrolls sideways").toBeLessThanOrEqual(0);
 });
+
+/**
+ * Each pill closes when you choose from it (Dom, 11 November).
+ *
+ * Every option is a `<Link>` inside a `<details>`, so choosing one is a
+ * soft navigation: React keeps the same DOM node, the node keeps its
+ * `open` attribute, and the open menu sits over the tab row until you
+ * click somewhere else. Seen in a screenshot of the platform pill, and
+ * true of all three — the month and business pickers had done it since
+ * they were built.
+ *
+ * Asserted on the attribute rather than on what is visible, because an
+ * open `<details>` whose list happens to be scrolled out of view is
+ * still the bug.
+ */
+test("choosing from a pill closes it, on all three", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { MONTHS, sql } = await import("../scripts/seed-test-db.mjs");
+
+  // A second platform, so the platform pill is drawn at all — it hides
+  // itself for a client with one.
+  sql(`insert into public.report_entities (workspace_id, entity_type, name, sort_order)
+       select id, 'social_platform', 'Instagram', 1 from public.report_workspaces
+        where business_name = 'Northwind Studio';
+       insert into public.report_entities (workspace_id, entity_type, name, sort_order)
+       select id, 'social_platform', 'LinkedIn', 2 from public.report_workspaces
+        where business_name = 'Northwind Studio';`);
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/social-media?month=${MONTHS.sep}`);
+
+  const open = page.locator("details[open]");
+
+  // The month.
+  const months = page.locator("header details").filter({ hasText: "September 2026" });
+  await months.locator("summary").click();
+  await expect(open).toHaveCount(1);
+  await months.getByRole("link", { name: "August 2026" }).click();
+  await page.waitForURL(/month=2026-08/);
+  await expect(open, "the month pill closed itself").toHaveCount(0);
+
+  // The platform.
+  const platforms = page.locator("header details").filter({ hasText: "Instagram" });
+  await platforms.locator("summary").click();
+  await expect(open).toHaveCount(1);
+  await platforms.getByRole("link", { name: "LinkedIn" }).click();
+  await page.waitForURL(/platform=/);
+  await expect(open, "and so did the platform pill").toHaveCount(0);
+
+  // The business. Nina has more than one, so hers is drawn.
+  const businesses = page.locator("header details").filter({ hasText: "Northwind Studio" });
+  await businesses.locator("summary").click();
+  await expect(open).toHaveCount(1);
+  await businesses.locator("ul a").filter({ hasNotText: "Northwind Studio" }).first().click();
+  await page.waitForURL(/workspace=/);
+  await expect(open, "and the business pill").toHaveCount(0);
+
+  await shoot(page, TAB, "05-pills-closed", w);
+});
