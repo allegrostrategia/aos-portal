@@ -19,6 +19,7 @@ import {
 import { readCarried, type Carried } from "./carried.ts";
 import { monthIsLocked } from "./locked.ts";
 import { ValueBag } from "./queries.ts";
+import { choosePlatform, platformsOf, type PlatformRow } from "./platforms.ts";
 import { activeClientsAtStart, openingFigures, type OpeningFigure } from "./client-flow.ts";
 import type { ReportContext } from "./context.ts";
 
@@ -71,6 +72,30 @@ export interface MonthFigures {
    */
   openingClients: { inUse: OpeningFigure | null; unused: OpeningFigure[] };
   byKey: Map<string, ReportMetric>;
+  /**
+   * The social platform these figures are for, and all of the live ones.
+   *
+   * Every Social Media figure hangs off a platform row, so "this month's
+   * reach" is only a question once you know whose. The Overview passes
+   * no `?platform=` and therefore reads the main one; Social Media's two
+   * screens pass the pill's choice.
+   */
+  platform: PlatformRow | null;
+  platforms: PlatformRow[];
+  /**
+   * Every platform's Social Media figures, worked out separately.
+   *
+   * The Overview's Focus areas and target bars judge each platform on
+   * its own (Nina, 11 November), and a platform's calculated figures —
+   * engagement rate, follower growth — cannot be read off another
+   * platform's. No extra query: the rows are already loaded and this is
+   * `calculate()` run once more per platform.
+   */
+  byPlatform: {
+    platform: PlatformRow;
+    figure: (metricKey: string) => number | null;
+    previousFigure: (metricKey: string) => number | null;
+  }[];
 }
 
 function offerRowsFrom(
@@ -270,13 +295,14 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   const byKey = new Map(metrics.map((m) => [m.key, m]));
   const metricEntityType = new Map(metrics.map((m) => [m.key, m.entity_type]));
 
-  // Which entity holds a given kind of figure. Only one platform exists in
-  // this build; offers, funnels and campaigns are addressed per row instead,
-  // so they have no single answer and are read directly.
-  const platformId =
-    frozen.entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
+  // Which entity holds a given kind of figure. Social Media's hang off
+  // the platform on screen — the main one unless the pill says otherwise
+  // (11 November); offers, funnels and campaigns are addressed per row
+  // instead, so they have no single answer and are read directly.
+  const platform = choosePlatform(frozen.entities, ctx.platformRequested);
+  const platforms = platformsOf(frozen.entities);
   const entityFor = (entityType: string) =>
-    entityType === "social_platform" ? platformId : null;
+    entityType === "social_platform" ? (platform?.id ?? null) : null;
 
   const value: Lookup = entityAwareLookup(
     (key, entityId) => frozen.values.get(key, entityId),
@@ -330,6 +356,49 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     );
   }
 
+  /**
+   * One platform's Social Media figures, typed and calculated.
+   *
+   * Everything outside Social Media is passed through unchanged — the
+   * offer rows and the client flow are the month's, not a platform's —
+   * so this differs from the main pass in exactly one thing: which
+   * platform row the lookups resolve to.
+   */
+  const socialFigures = (platformId: string) => {
+    const bound = (entityType: string) =>
+      entityType === "social_platform" ? platformId : null;
+    const mine = entityAwareLookup(
+      (key, entityId) => frozen.values.get(key, entityId),
+      metricEntityType,
+      bound,
+    );
+    const mineBefore = entityAwareLookup(
+      (key, entityId) => frozen.previous.get(key, entityId),
+      metricEntityType,
+      bound,
+    );
+    const now = calculate("social_media", {
+      value: mine,
+      previous: mineBefore,
+      offerRows,
+      adCampaigns: campaignRows,
+      clientsAtStart,
+    });
+    const before = calculate("social_media", {
+      value: mineBefore,
+      previous: () => null,
+      offerRows: previousOfferRows,
+      adCampaigns: previousCampaignRows,
+      clientsAtStart: previousClientsAtStart,
+    });
+    return {
+      figure: (key: string) => (key in now ? now[key] : (mine(key) ?? null)),
+      previousFigure: (key: string) => (key in before ? before[key] : (mineBefore(key) ?? null)),
+    };
+  };
+
+  const byPlatform = platforms.map((row) => ({ platform: row, ...socialFigures(row.id) }));
+
   const figure = (metricKey: string): number | null =>
     metricKey in results ? results[metricKey] : value(metricKey) ?? null;
 
@@ -346,6 +415,9 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     previousResults,
     figure,
     previousFigure,
+    platform,
+    platforms,
+    byPlatform,
     offerRows,
     campaignRows,
     funnelRows,

@@ -17,7 +17,7 @@ export interface CompletionInput {
     input_type: string;
     entity_type: string | null;
   }[];
-  /** A month-level figure, already resolving the single social platform. */
+  /** A month-level figure. Social Media's are counted per platform below. */
   figure: (key: string) => number | null;
   /** §5.8's opening figure: non-null once it has been answered, in any month. */
   openingClients: { inUse: unknown };
@@ -70,12 +70,18 @@ const ASKED_ONCE = "client_experience_clients_at_start_opening";
 /**
  * Categories whose figures are stored per row the member sets up.
  *
- * `social_platform` is deliberately absent: its metrics carry an entity
- * type too, but there is exactly one platform row and `figure()` already
- * resolves through it, so treating it as row-backed would ask the same
- * question twice and get a worse answer.
+ * **`social_platform` joined this list on 11 November**, when a client
+ * could first have more than one. It was deliberately absent before,
+ * and the reasoning was sound at the time: there was exactly one
+ * platform row and `figure()` resolved through it. With three platforms
+ * that rule says a section is finished when Instagram is, and LinkedIn
+ * and TikTok go unfilled with a tick beside them — the one thing a
+ * completion marker must never do.
+ *
+ * So Social Media is counted the way Offers and Ads are: a core figure
+ * counts as filled when EVERY live platform has it.
  */
-const ROW_BACKED = new Set(["offer", "funnel", "ad_campaign"]);
+const ROW_BACKED = new Set(["offer", "funnel", "ad_campaign", "social_platform"]);
 
 export function categoryCompletion(
   figures: CompletionInput,
@@ -87,10 +93,23 @@ export function categoryCompletion(
   if (core.length === 0) return { filled: 0, total: 0 };
 
   const entityType = core[0].entity_type;
-  const rows =
+  const found =
     entityType && ROW_BACKED.has(entityType)
       ? figures.data.entities.filter((e) => e.entity_type === entityType && e.active)
       : null;
+
+  /**
+   * **No platforms is not the same as no funnels.**
+   *
+   * A member with no funnels has nothing to fill in, and saying so is
+   * the whole reason `total: 0` exists. A client with no platform row
+   * has simply never saved a Social Media figure — the first save
+   * creates the row — so "nothing owed" would mark the section finished
+   * for somebody who has entered nothing at all. Asked at month level
+   * instead, which is exactly what this did before a client could have
+   * a second platform.
+   */
+  const rows = found && found.length === 0 && entityType === "social_platform" ? null : found;
 
   // Nothing set up is nothing owed — not a section that can never finish.
   if (rows && rows.length === 0) return { filled: 0, total: 0 };

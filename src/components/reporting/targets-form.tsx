@@ -25,6 +25,15 @@ export interface TargetRow {
   metric: ReportMetric;
   standing: number | null;
   thisMonth: number | null;
+  /**
+   * The platform, offer or campaign this target is for (11 November).
+   *
+   * Null is the month-level target, which is what every target was
+   * before Nina asked for one per platform. The id goes in the field
+   * name rather than in a list beside it, so a form post cannot pair
+   * the wrong figure with the wrong row.
+   */
+  entity?: { id: string; name: string } | null;
 }
 
 export function TargetsForm({
@@ -51,20 +60,27 @@ export function TargetsForm({
         <Card key={group.category}>
           <SectionTitle>{group.label}</SectionTitle>
           <div className="flex flex-col gap-3">
-            {group.rows.map(({ metric, standing, thisMonth }) => {
+            {group.rows.map(({ metric, standing, thisMonth, entity }) => {
               const value = thisMonth ?? standing;
               const scope = thisMonth !== null ? "month" : "standing";
+              // The field name, the input id and the row key all carry
+              // the entity, so three rows of "Posts published" are three
+              // separate controls rather than one shown three times.
+              const field = entity ? `${metric.key}:${entity.id}` : metric.key;
               return (
                 <div
-                  key={metric.key}
+                  key={field}
                   className="flex flex-wrap items-end gap-3 border-t border-ink/8 pt-3 first:border-0 first:pt-0"
                 >
                   <div className="min-w-50 flex-1">
                     <label
-                      htmlFor={`target-${metric.key}`}
+                      htmlFor={`target-${field}`}
                       className="text-small font-medium text-ink"
                     >
                       {metric.label}
+                      {entity ? (
+                        <span className="text-ink/55"> on {entity.name}</span>
+                      ) : null}
                     </label>
                     <p className="text-caption text-ink/55">
                       {metric.good_direction === "up" ? "Higher is better" : "Lower is better"}
@@ -76,8 +92,8 @@ export function TargetsForm({
 
                   <div className="w-32">
                     <input
-                      id={`target-${metric.key}`}
-                      name={`target:${metric.key}`}
+                      id={`target-${field}`}
+                      name={`target:${field}`}
                       defaultValue={toInputValue(value)}
                       inputMode="decimal"
                       autoComplete="off"
@@ -87,12 +103,12 @@ export function TargetsForm({
                   </div>
 
                   <div className="w-44">
-                    <label htmlFor={`scope-${metric.key}`} className="sr-only">
+                    <label htmlFor={`scope-${field}`} className="sr-only">
                       Does this target apply to every month or only {monthLabel}?
                     </label>
                     <select
-                      id={`scope-${metric.key}`}
-                      name={`scope:${metric.key}`}
+                      id={`scope-${field}`}
+                      name={`scope:${field}`}
                       defaultValue={scope}
                       className="w-full rounded-xl border border-ink/12 bg-card px-3 py-2.5 text-small text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                     >

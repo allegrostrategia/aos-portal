@@ -130,7 +130,15 @@ export async function seed({ quiet = false } = {}) {
     delete from public.report_values;
     delete from public.report_notes;
     delete from public.report_top_items;
+    delete from public.report_top_posts;
     delete from public.report_periods;
+    -- Before the entities, and that is not alphabetical tidiness: both
+    -- report_values and report_targets point at report_entities with
+    -- on delete restrict (7 Oct), so an entity with a target against
+    -- it refuses to go. Targets only ever hung off the month until
+    -- 11 November, which is why this line was not needed before.
+    delete from public.report_targets;
+    delete from public.report_benchmarks;
     delete from public.report_entities;
     delete from public.report_access;
     delete from public.report_workspaces;

@@ -31,6 +31,7 @@ export function ReportShell({
   title,
   tagline,
   actions,
+  platforms,
   progress,
   sectionStatus,
   children,
@@ -50,6 +51,15 @@ export function ReportShell({
   title: string;
   tagline?: string;
   actions?: React.ReactNode;
+  /**
+   * Social Media's platform pill, beside the month (the approved
+   * mock-up, built 11 November).
+   *
+   * Only the two Social Media screens pass it, and it draws nothing when
+   * a client has one platform — which is every client today, and the
+   * reason a picker with one option would be furniture.
+   */
+  platforms?: { chosen: { id: string; name: string } | null; all: { id: string; name: string }[] };
   /**
    * The mockups' "6 of 10 sections complete" bar, on the entry screens.
    *
@@ -128,6 +138,9 @@ export function ReportShell({
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
                 {ctx.showWorkspacePicker ? <WorkspacePicker ctx={ctx} /> : null}
                 <MonthPicker ctx={ctx} path={path} />
+                {platforms && platforms.chosen && platforms.all.length > 1 ? (
+                  <PlatformPicker ctx={ctx} path={path} {...platforms} />
+                ) : null}
                 {actions}
                 <SignOut />
               </div>
@@ -192,13 +205,21 @@ function SectionProgress({ done, total }: { done: number; total: number }) {
  * the hidden text — so it survives being read in greyscale, by somebody who
  * cannot separate green from orange, and out loud.
  */
-function SectionMarker({ state }: { state: SectionState }) {
+function SectionMarker({ section, state }: { section: string; state: SectionState }) {
   const label =
     state === "done" ? "complete" : state === "started" ? "in progress" : "not started";
 
   return (
     <>
-      <span aria-hidden="true" title={label} className="shrink-0">
+      {/* Named in the markup so a test can read where a section stands
+          without matching on an SVG path. */}
+      <span
+        aria-hidden="true"
+        title={label}
+        data-section={section}
+        data-state={state}
+        className="shrink-0"
+      >
         {state === "done" ? (
           <svg viewBox="0 0 16 16" className="size-4" fill="none">
             <circle cx="8" cy="8" r="7" fill="#1f7a4d" />
@@ -509,7 +530,10 @@ function TabRow({
                   />
                   {category.label}
                   {sectionStatus?.[category.key] ? (
-                    <SectionMarker state={sectionStatus[category.key]!} />
+                    <SectionMarker
+                      section={category.key}
+                      state={sectionStatus[category.key]!}
+                    />
                   ) : null}
                 </Link>
               </li>
@@ -628,6 +652,51 @@ function MonthPicker({ ctx, path }: { ctx: ReportContext; path: string }) {
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Which social platform, beside the month.
+ *
+ * The same `<details>` the other two pickers are, so it works before
+ * hydration and there is nothing to load. **The platform is in the URL**
+ * (`?platform=`), which is what lets a link to a particular platform's
+ * month be a link at all — and what lets the save know which platform
+ * the person was looking at.
+ */
+function PlatformPicker({
+  ctx,
+  path,
+  chosen,
+  all,
+}: {
+  ctx: ReportContext;
+  path: string;
+  chosen: { id: string; name: string } | null;
+  all: { id: string; name: string }[];
+}) {
+  return (
+    <details className="group relative">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 text-small font-medium text-ink">
+        <span className="max-w-32 truncate">{chosen?.name ?? "Platform"}</span>
+        <Arrow direction="down" className="size-3.5 opacity-60" />
+      </summary>
+      <ul className="absolute right-0 z-20 mt-2 max-h-72 w-52 overflow-y-auto rounded-2xl border border-ink/10 bg-card p-1.5 shadow-lift">
+        {all.map((platform) => (
+          <li key={platform.id}>
+            <Link
+              href={reportHref(path, ctx, { platform: platform.id })}
+              aria-current={platform.id === chosen?.id ? "true" : undefined}
+              className={`block truncate rounded-xl px-3 py-2 text-small transition hover:bg-cream-deep ${
+                platform.id === chosen?.id ? "text-ink" : "text-ink/70"
+              }`}
+            >
+              {platform.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

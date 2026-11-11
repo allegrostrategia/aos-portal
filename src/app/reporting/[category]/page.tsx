@@ -71,6 +71,7 @@ export default async function CategoryReportPage({
   const ctx = await resolveReportContext({
     workspace: typeof search.workspace === "string" ? search.workspace : undefined,
     month: typeof search.month === "string" ? search.month : undefined,
+    platform: typeof search.platform === "string" ? search.platform : undefined,
   });
 
   if (ctx.workspace.hidden_categories.includes(category.key)) notFound();
@@ -139,6 +140,7 @@ export default async function CategoryReportPage({
         months: historyMonths,
         metricKeys: historyKeys,
         metrics: figures.metrics,
+        platform: figures.platform?.id ?? null,
       })
     : new Map<string, (number | null)[]>();
   const axis = historyMonths.map(shortMonthLabel);
@@ -208,6 +210,11 @@ export default async function CategoryReportPage({
       path={`/reporting/${category.slug}`}
       title={category.label}
       tagline={`${category.tagline} · ${ctx.month.label}`}
+      platforms={
+        category.key === "social_media"
+          ? { chosen: figures.platform, all: figures.platforms }
+          : undefined
+      }
       actions={
         <>
           <PublishBadge

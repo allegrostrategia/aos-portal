@@ -25,7 +25,13 @@ import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { TARGET_TONE_FILL, formatValue, targetTone } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { Card, Eyebrow, SectionTitle } from "@/components/ui/card";
-import { ENTRY_CATEGORIES, STAGE_3, STAGE_5, categoryByKey } from "@/lib/reporting/categories";
+import {
+  ENTRY_CATEGORIES,
+  STAGE_3,
+  STAGE_5,
+  categoryByKey,
+  type CategoryKey,
+} from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
 import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
@@ -180,29 +186,77 @@ export default async function ReportingOverviewPage({
   const axis = historyMonths.map(shortMonthLabel);
 
   // §7's two panels. Every word in them is Nina's, from one file.
-  const panels = highlights(
-    figures.metrics
-      .filter((metric) => metric.entity_type === null && metric.good_direction !== "none")
-      .filter((metric) => !ctx.workspace.hidden_categories.includes(metric.category))
-      .map((metric) => ({
-        key: metric.key,
-        label: metric.label,
+  //
+  // **A figure kept per platform is judged per platform** (Nina, 11
+  // November). Until today the filter below was `entity_type === null`,
+  // which quietly meant no Social Media figure could ever reach the
+  // Focus areas, the target bars or the traffic lights — all three read
+  // month-level figures and every social figure hangs off a platform.
+  //
+  // One platform is the normal case and reads exactly as it did: the
+  // key and the label are the metric's own. With two or more, each
+  // platform gets its own entry, keyed `metric|platform` so the panel's
+  // own de-duplication compares Instagram with Instagram, and labelled
+  // "Posts published on LinkedIn" so a reader knows whose news it is.
+  const named = figures.platforms.length > 1;
+  const visibleHere = (metric: { category: CategoryKey; good_direction: string }) =>
+    metric.good_direction !== "none" &&
+    !ctx.workspace.hidden_categories.includes(metric.category);
+
+  const monthLevel = figures.metrics
+    .filter((metric) => metric.entity_type === null && visibleHere(metric))
+    .map((metric) => ({
+      key: metric.key,
+      label: metric.label,
+      unit: metric.unit,
+      goodDirection: metric.good_direction,
+      value: figures.figure(metric.key),
+      previous: figures.previousFigure(metric.key),
+      target: targets.get(`${metric.key}|`) ?? null,
+      currency: ctx.workspace.currency,
+    }));
+
+  const perPlatform = figures.metrics
+    .filter((metric) => metric.entity_type === "social_platform" && visibleHere(metric))
+    .flatMap((metric) =>
+      figures.byPlatform.map(({ platform, figure, previousFigure }) => ({
+        key: named ? `${metric.key}|${platform.id}` : metric.key,
+        label: named ? `${metric.label} on ${platform.name}` : metric.label,
         unit: metric.unit,
         goodDirection: metric.good_direction,
-        value: figures.figure(metric.key),
-        previous: figures.previousFigure(metric.key),
-        target: targets.get(`${metric.key}|`) ?? null,
+        value: figure(metric.key),
+        previous: previousFigure(metric.key),
+        target: targets.get(`${metric.key}|${platform.id}`) ?? null,
         currency: ctx.workspace.currency,
       })),
-  );
+    );
 
-  const targetRows = figures.metrics
-    .filter((metric) => targets.has(`${metric.key}|`))
-    .map((metric) => ({
-      metric,
-      target: targets.get(`${metric.key}|`) as number,
-      value: figures.figure(metric.key),
-    }))
+  const panels = highlights([...monthLevel, ...perPlatform]);
+
+  const targetRows = [
+    ...figures.metrics
+      .filter((metric) => targets.has(`${metric.key}|`))
+      .map((metric) => ({
+        key: metric.key,
+        metric,
+        label: metric.label,
+        target: targets.get(`${metric.key}|`) as number,
+        value: figures.figure(metric.key),
+      })),
+    ...figures.metrics
+      .filter((metric) => metric.entity_type === "social_platform")
+      .flatMap((metric) =>
+        figures.byPlatform
+          .filter(({ platform }) => targets.has(`${metric.key}|${platform.id}`))
+          .map(({ platform, figure }) => ({
+            key: `${metric.key}|${platform.id}`,
+            metric,
+            label: named ? `${metric.label} on ${platform.name}` : metric.label,
+            target: targets.get(`${metric.key}|${platform.id}`) as number,
+            value: figure(metric.key),
+          })),
+      ),
+  ]
     .filter((row) => row.value !== null)
     .slice(0, 5);
 
@@ -303,6 +357,18 @@ export default async function ReportingOverviewPage({
               <KpiCard
                 key={kpi.metricKey}
                 label={kpi.label}
+                // **The main platform, named, never a sum** (Nina via
+                // Dom, 11 November). Followers added across Instagram,
+                // LinkedIn and TikTok counts the same person up to three
+                // times, which is the mistake §10.1 already refuses for
+                // reach. Only said when there is more than one platform:
+                // "on Instagram" under a card on a client who has only
+                // Instagram is a caption about nothing.
+                whose={
+                  metric.entity_type === "social_platform" && figures.platforms.length > 1
+                    ? (figures.platform?.name ?? null)
+                    : null
+                }
                 // The tint rotates across the row rather than each card
                 // choosing, which is what makes six of them read as a set.
                 icon={{ name: kpi.icon, tone: toneFor(index) }}
@@ -411,16 +477,16 @@ export default async function ReportingOverviewPage({
             How this month is going
           </SectionTitle>
           <ul className="mt-1 flex flex-col gap-4">
-            {targetRows.map(({ metric, target, value }) => {
+            {targetRows.map(({ key, metric, label, target, value }) => {
               const share = target > 0 ? ((value ?? 0) / target) * 100 : 0;
               // Four steps rather than two (the mockups): met, close,
               // halfway, far. The percentage is printed beside the bar, so
               // the colour is a second reading of it and never the only one.
               const tone = targetTone(value, target, metric.good_direction);
               return (
-                <li key={metric.key}>
+                <li key={key}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-small text-ink">{metric.label}</span>
+                    <span className="text-small text-ink">{label}</span>
                     <span className="font-mono text-small text-ink/70">
                       {formatValue(value, metric.unit, ctx.workspace.currency)} of{" "}
                       {formatValue(target, metric.unit, ctx.workspace.currency)}

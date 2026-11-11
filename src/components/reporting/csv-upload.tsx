@@ -31,6 +31,7 @@ export function CsvUpload({
   platform,
   month,
   monthLabel,
+  fills,
   current,
   labels,
   columnMaps,
@@ -40,6 +41,15 @@ export function CsvUpload({
   platform: UploadPlatform;
   month: string;
   monthLabel: string;
+  /**
+   * Social Media only: the platform these figures will land on, and
+   * whether a Meta export is the right file for it.
+   *
+   * Said out loud because a client with three platforms has three
+   * identical-looking entry screens, and the file is the one thing on
+   * this page that could plausibly be meant for a different one.
+   */
+  fills?: { name: string; takesMeta: boolean } | null;
   /** What is in the boxes now, so a change can be shown as old → new. */
   current: Record<string, number | null>;
   labels: Record<string, string>;
@@ -63,6 +73,7 @@ export function CsvUpload({
     setFileName(file.name);
     setUnknown("unknownConversions" in result ? (result as { unknownConversions: { column: string; total: number }[] }).unknownConversions : []);
     setPreview(buildPreview(result, current, labels));
+
   }
 
   function clear() {
@@ -82,6 +93,20 @@ export function CsvUpload({
         until you check it and press save — and the file itself is never
         stored, only the numbers you keep.
       </p>
+
+      {fills ? (
+        <p className="mt-2 text-small text-ink/70">
+          {fills.takesMeta ? (
+            <>These figures will fill <strong className="font-medium text-ink">{fills.name}</strong>.</>
+          ) : (
+            <>
+              These figures will fill{" "}
+              <strong className="font-medium text-ink">{fills.name}</strong>, and a Meta export
+              is Instagram&rsquo;s. Switch platform at the top if that is not what you meant.
+            </>
+          )}
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <input

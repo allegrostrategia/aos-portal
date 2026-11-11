@@ -6,8 +6,9 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { TargetsForm, type TargetRow } from "@/components/reporting/targets-form";
 import { CATEGORIES, STAGE_3 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
-import { getMetrics } from "@/lib/reporting/queries";
+import { getMetrics, type ReportEntity } from "@/lib/reporting/queries";
 import { visibleMetrics } from "@/lib/reporting/month-figures";
+import { platformsOf } from "@/lib/reporting/platforms";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -40,23 +41,55 @@ export default async function TargetsPage({ searchParams }: PageProps<"/reportin
   if (!ctx.canEdit) redirect(reportHref("/reporting", ctx));
 
   const supabase = await createClient();
-  const [metrics, { data: targets }] = await Promise.all([
+  const [metrics, { data: targets }, { data: entityRows }] = await Promise.all([
     getMetrics(),
     supabase
       .from("report_targets")
-      .select("metric_key, month, target_value")
+      .select("metric_key, entity_id, month, target_value")
       .eq("workspace_id", ctx.workspace.id)
-      .returns<{ metric_key: string; month: string | null; target_value: number }[]>(),
+      .returns<
+        {
+          metric_key: string;
+          entity_id: string | null;
+          month: string | null;
+          target_value: number;
+        }[]
+      >(),
+    // **The rows a target can be set against** (Nina, 11 November: a
+    // target per platform, and the same machinery for offers and
+    // campaigns). Live ones only: a retired campaign is a record, not
+    // something to aim at next month.
+    supabase
+      .from("report_entities")
+      .select("id, name, entity_type, active, sort_order")
+      .eq("workspace_id", ctx.workspace.id)
+      .eq("active", true)
+      .order("sort_order")
+      .returns<
+        Pick<ReportEntity, "id" | "name" | "entity_type" | "active" | "sort_order">[]
+      >(),
   ]);
 
+  const key = (metricKey: string, entityId: string | null) => `${metricKey}|${entityId ?? ""}`;
   const standing = new Map(
-    (targets ?? []).filter((t) => t.month === null).map((t) => [t.metric_key, t.target_value]),
+    (targets ?? [])
+      .filter((t) => t.month === null)
+      .map((t) => [key(t.metric_key, t.entity_id), t.target_value]),
   );
   const thisMonth = new Map(
     (targets ?? [])
       .filter((t) => t.month === ctx.month.month)
-      .map((t) => [t.metric_key, t.target_value]),
+      .map((t) => [key(t.metric_key, t.entity_id), t.target_value]),
   );
+
+  // Platforms in the pill's order, so the blocks on this screen and the
+  // tabs on Social Media name them in the same order.
+  const entitiesByType = (type: string) =>
+    type === "social_platform"
+      ? platformsOf(entityRows ?? []).map((p) => ({ id: p.id, name: p.name }))
+      : (entityRows ?? [])
+          .filter((e) => e.entity_type === type)
+          .map((e) => ({ id: e.id, name: e.name }));
 
   // The same rule the report reads by, so a client who does not track
   // hours is not offered a target for an hourly rate nobody will ever
@@ -68,19 +101,33 @@ export default async function TargetsPage({ searchParams }: PageProps<"/reportin
     .map((category) => ({
       category: category.key,
       label: category.label,
+      // A target for a figure that is neither good up nor good down is
+      // not a target, it is a number sitting there.
+      //
+      // **A per-row figure gets one target per row** (11 November). It
+      // used to get none at all: the filter below said `entity_type ===
+      // null`, which quietly meant Social Media — every one of whose
+      // figures hangs off a platform — could not be given a target by
+      // anybody. Nina asking for a target per platform is what found it.
       rows: visible
-        .filter((m) => m.category === category.key)
-        // A target for a figure that is neither good up nor good down is
-        // not a target. Nor is one for a figure typed per offer or per
-        // campaign — those belong to the row, and §7's bar is one figure.
-        .filter((m) => m.good_direction !== "none" && m.entity_type === null)
-        .map(
-          (metric): TargetRow => ({
+        .filter((m) => m.category === category.key && m.good_direction !== "none")
+        .flatMap((metric): TargetRow[] => {
+          if (metric.entity_type === null) {
+            return [
+              {
+                metric,
+                standing: standing.get(key(metric.key, null)) ?? null,
+                thisMonth: thisMonth.get(key(metric.key, null)) ?? null,
+              },
+            ];
+          }
+          return entitiesByType(metric.entity_type).map((entity) => ({
             metric,
-            standing: standing.get(metric.key) ?? null,
-            thisMonth: thisMonth.get(metric.key) ?? null,
-          }),
-        ),
+            entity,
+            standing: standing.get(key(metric.key, entity.id)) ?? null,
+            thisMonth: thisMonth.get(key(metric.key, entity.id)) ?? null,
+          }));
+        }),
     }))
     .filter((group) => group.rows.length > 0);
 

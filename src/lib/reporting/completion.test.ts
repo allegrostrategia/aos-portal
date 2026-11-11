@@ -179,16 +179,79 @@ test("Ads and Offers are row-backed too, which only Offers used to be", () => {
   }
 });
 
-test("Social Media is not row-backed, because one platform row resolves itself", () => {
+test("Social Media with no platform row yet is asked at month level", () => {
   const metrics: Metric[] = [
     { key: "social_media_followers_at_month_end", category: "social_media", input_type: "core", entity_type: "social_platform" },
   ];
-  // No entities at all, and still asked — `figure()` resolves the single
-  // platform, so treating it as row-backed would wrongly say "nothing owed".
+  // No entities at all, and still asked. A client with no platform has
+  // never saved a Social Media figure — the first save makes the row —
+  // so "nothing set up, nothing owed" would tick a section nobody has
+  // touched. That is the one way Social Media differs from Funnels.
   const figures = figuresWith({
     metrics,
     monthValues: { social_media_followers_at_month_end: 1200 },
     entities: [],
   });
   assert.deepEqual(categoryCompletion(figures, "social_media"), { filled: 1, total: 1 });
+});
+
+test("and with three platforms, a figure counts only when all three have it", () => {
+  // Nina, 11 November: a target per platform, which means a section
+  // finished per platform too. Before today this read "filled" as soon
+  // as Instagram was done, and LinkedIn and TikTok sat empty with a tick
+  // beside them.
+  const metrics: Metric[] = [
+    { key: "social_media_followers_at_month_end", category: "social_media", input_type: "core", entity_type: "social_platform" },
+    { key: "social_media_posts_published", category: "social_media", input_type: "core", entity_type: "social_platform" },
+  ];
+  const entities = [
+    { id: "ig", entity_type: "social_platform", active: true },
+    { id: "li", entity_type: "social_platform", active: true },
+    { id: "tt", entity_type: "social_platform", active: true },
+  ];
+
+  const partly = figuresWith({
+    metrics,
+    entities,
+    entityValues: {
+      "social_media_followers_at_month_end|ig": 26420,
+      "social_media_followers_at_month_end|li": 3120,
+      "social_media_posts_published|ig": 22,
+      "social_media_posts_published|li": 9,
+      "social_media_posts_published|tt": 4,
+    },
+  });
+  assert.deepEqual(
+    categoryCompletion(partly, "social_media"),
+    { filled: 1, total: 2 },
+    "TikTok has no followers figure, so that one is not filled",
+  );
+
+  const all = figuresWith({
+    metrics,
+    entities,
+    entityValues: {
+      "social_media_followers_at_month_end|ig": 26420,
+      "social_media_followers_at_month_end|li": 3120,
+      "social_media_followers_at_month_end|tt": 800,
+      "social_media_posts_published|ig": 22,
+      "social_media_posts_published|li": 9,
+      "social_media_posts_published|tt": 4,
+    },
+  });
+  assert.deepEqual(categoryCompletion(all, "social_media"), { filled: 2, total: 2 });
+
+  // A retired platform is not chased: it is the record of somewhere they
+  // used to post, which is what retiring means everywhere else.
+  const retired = figuresWith({
+    metrics,
+    entities: [...entities.slice(0, 2), { id: "tt", entity_type: "social_platform", active: false }],
+    entityValues: {
+      "social_media_followers_at_month_end|ig": 26420,
+      "social_media_followers_at_month_end|li": 3120,
+      "social_media_posts_published|ig": 22,
+      "social_media_posts_published|li": 9,
+    },
+  });
+  assert.deepEqual(categoryCompletion(retired, "social_media"), { filled: 2, total: 2 });
 });

@@ -29,8 +29,16 @@ import { canEdit } from "./access.ts";
 
 export type TargetState = { error?: string; notice?: string } | null;
 
-/** `target:<metric key>` and `scope:<metric key>` = "standing" | "month". */
-const FIELD = /^target:([a-z0-9_]+)$/;
+/**
+ * `target:<metric key>`, or `target:<metric key>:<entity id>` for a
+ * figure that is kept per platform, per offer or per campaign (11
+ * November). `scope:<the same>` is "standing" | "month".
+ *
+ * **The entity is in the field name, not in a parallel list**, because a
+ * form posts a flat bag and two lists that have to line up by index is
+ * how the wrong offer gets the wrong target.
+ */
+const FIELD = /^target:([a-z0-9_]+)(?::([0-9a-f-]{36}))?$/;
 
 export async function saveTargets(
   _prev: TargetState,
@@ -63,28 +71,46 @@ export async function saveTargets(
 
   const { data: existingRows, error: readError } = await supabase
     .from("report_targets")
-    .select("id, metric_key, month")
+    .select("id, metric_key, entity_id, month")
     .eq("workspace_id", workspaceId)
-    .returns<{ id: string; metric_key: string; month: string | null }[]>();
+    .returns<
+      { id: string; metric_key: string; entity_id: string | null; month: string | null }[]
+    >();
 
   if (readError) return { error: `Couldn't read the targets: ${readError.message}` };
 
   const existing = new Map(
-    (existingRows ?? []).map((row) => [`${row.metric_key}|${row.month ?? ""}`, row.id]),
+    (existingRows ?? []).map((row) => [
+      `${row.metric_key}|${row.entity_id ?? ""}|${row.month ?? ""}`,
+      row.id,
+    ]),
   );
+
+  // The rows a target may be set against: this client's own, and live.
+  // A field naming somebody else's offer is ignored rather than written
+  // — the database would refuse it, and ignoring it keeps the rest of
+  // the form saving.
+  const { data: entityRows } = await supabase
+    .from("report_entities")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .returns<{ id: string }[]>();
+  const ours = new Set((entityRows ?? []).map((e) => e.id));
 
   let changed = 0;
   for (const [field, raw] of formData.entries()) {
     if (typeof raw !== "string") continue;
     const match = FIELD.exec(field);
     if (!match) continue;
-    const [, metricKey] = match;
+    const [, metricKey, entityId] = match;
     if (!known.has(metricKey)) continue;
+    if (entityId && !ours.has(entityId)) continue;
 
-    const forThisMonth = String(formData.get(`scope:${metricKey}`) ?? "standing") === "month";
+    const scopeField = entityId ? `scope:${metricKey}:${entityId}` : `scope:${metricKey}`;
+    const forThisMonth = String(formData.get(scopeField) ?? "standing") === "month";
     const targetMonth = forThisMonth ? month : null;
     const value = fromInputValue(raw);
-    const id = existing.get(`${metricKey}|${targetMonth ?? ""}`);
+    const id = existing.get(`${metricKey}|${entityId ?? ""}|${targetMonth ?? ""}`);
 
     if (value === null) {
       if (!id) continue;
@@ -109,6 +135,7 @@ export async function saveTargets(
       : await supabase.from("report_targets").insert({
           workspace_id: workspaceId,
           metric_key: metricKey,
+          entity_id: entityId ?? null,
           month: targetMonth,
           target_value: value,
         });

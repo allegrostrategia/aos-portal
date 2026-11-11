@@ -9,6 +9,8 @@ import { TopItemsEntry } from "@/components/reporting/top-items";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
+import { choosePlatform, looksLikeMeta, platformsOf } from "@/lib/reporting/platforms";
+import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
 import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
@@ -54,6 +56,7 @@ export default async function EnterCategoryPage({
   const ctx = await resolveReportContext({
     workspace: typeof search.workspace === "string" ? search.workspace : undefined,
     month: typeof search.month === "string" ? search.month : undefined,
+    platform: typeof search.platform === "string" ? search.platform : undefined,
   });
 
   // A retainer client has no entry screen at all (§2: they view and comment).
@@ -309,8 +312,13 @@ export default async function EnterCategoryPage({
   // after a save, and "Worked out for you" showed dashes beside a report
   // full of figures. §9's disagreement, live since Stage 2, found 6 Oct by
   // the figure-agreement test on its first run.
-  const platformId =
-    data.entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
+  // **The platform the pill is showing**, not "the first one there is"
+  // (11 November). Everything on this screen — the boxes, last month's
+  // hints, the upload card and the save — has to agree about which
+  // platform it is working on, so they all read this one answer.
+  const platform = choosePlatform(data.entities, ctx.platformRequested);
+  const platformId = platform?.id ?? null;
+  const platformPills = { chosen: platform, all: platformsOf(data.entities) };
   const entityOf = (metric: { entity_type: string | null }) =>
     metric.entity_type === "social_platform" ? platformId : null;
 
@@ -372,6 +380,18 @@ export default async function EnterCategoryPage({
       : [];
   const takingItBackWarning = unpublishWarning(laterPublished, data.values.size > 0);
 
+  // Hoisted out of the JSX, which now chooses between two components.
+  const uploadCard = STAGE_6
+    ? await uploadFor({
+        category: category.key,
+        locked,
+        canEdit: ctx.canEdit,
+        kind: ctx.workspace.kind,
+        workspaceId: ctx.workspace.id,
+        monthLabel: ctx.month.label,
+      })
+    : null;
+
   const position = order.findIndex((c) => c.key === category.key);
   const next = position >= 0 ? order[position + 1] : undefined;
 
@@ -384,6 +404,7 @@ export default async function EnterCategoryPage({
       progress={shellProgress}
       sectionStatus={states}
       tagline={`${category.label} · ${ctx.month.label}`}
+      platforms={category.key === "social_media" ? platformPills : undefined}
       actions={
         <PublishBadge
           kind={ctx.workspace.kind}
@@ -413,41 +434,45 @@ export default async function EnterCategoryPage({
           The database refuses these writes independently. This is the
           half that means nobody is invited to make one. */}
       <fieldset disabled={locked} className="contents">
-      <EntryForm
-        upload={
-          STAGE_6
-            ? await uploadFor({
-                category: category.key,
-                locked,
-                canEdit: ctx.canEdit,
-                kind: ctx.workspace.kind,
-                workspaceId: ctx.workspace.id,
-                monthLabel: ctx.month.label,
-              })
-            : null
-        }
-        offerRows={offerRowsForEntry}
-        elsewhere={elsewhere}
-        clientsAtStart={clientsAtStart}
-        openingAppliesHere={openingAppliesHere}
-        category={category.key}
-        categoryLabel={category.label}
-        workspaceId={ctx.workspace.id}
-        month={ctx.month.month}
-        previousLabel={previousLabel}
-        currency={ctx.workspace.currency}
-        core={core}
-        optional={optional}
-        calculated={calculated}
-        initial={initial}
-        previous={previous}
-        nextHref={
-          next ? reportHref(`/reporting/enter/${next.slug}`, ctx) : null
-        }
-        // "Save & Email" reads as emailing the report rather than moving
-        // to the Email section. The mockup's own wording avoids that.
-        nextLabel={next ? "Save & next section" : null}
-      />
+      {(() => {
+        const entry = {
+          upload: uploadCard,
+          offerRows: offerRowsForEntry,
+          elsewhere,
+          clientsAtStart,
+          openingAppliesHere,
+          category: category.key,
+          platformId: category.key === "social_media" ? platformId : null,
+          platformFills:
+            category.key === "social_media" && platform && platformPills.all.length > 1
+              ? { name: platform.name, takesMeta: looksLikeMeta(platform.name) }
+              : null,
+          categoryLabel: category.label,
+          workspaceId: ctx.workspace.id,
+          month: ctx.month.month,
+          previousLabel,
+          currency: ctx.workspace.currency,
+          core,
+          optional,
+          calculated,
+          initial,
+          previous,
+          nextHref: next ? reportHref(`/reporting/enter/${next.slug}`, ctx) : null,
+          // "Save & Email" reads as emailing the report rather than moving
+          // to the Email section. The mockup's own wording avoids that.
+          nextLabel: next ? "Save & next section" : null,
+        };
+
+        return <EntryForm {...entry} />;
+      })()}
+
+      {category.key === "social_media" ? (
+        <PlatformsEntry
+          workspaceId={ctx.workspace.id}
+          platforms={platformsOf(data.entities, { includeRetired: true })}
+          chosenId={platformId}
+        />
+      ) : null}
 
       {topItems ? (
         <TopItemsEntry

@@ -43,6 +43,16 @@ export interface ReportContext {
   showWorkspacePicker: boolean;
   /** Everything this login may open, which RLS has already filtered. */
   choices: { id: string; business_name: string }[];
+  /**
+   * The social platform `?platform=` asked for, unresolved.
+   *
+   * Not looked up here: every page that cares already loads the month's
+   * entities, and a round trip on Financials to answer a question only
+   * Social Media asks would be a round trip on every screen.
+   * `choosePlatform()` turns this into a row, and an id that is not
+   * theirs falls back to the main platform rather than erroring.
+   */
+  platformRequested: string | null;
 }
 
 /**
@@ -74,7 +84,7 @@ export async function getVisibleWorkspaces(): Promise<
  * confirms the other workspace exists.
  */
 export async function resolveReportContext(
-  searchParams: { workspace?: string; month?: string },
+  searchParams: { workspace?: string; month?: string; platform?: string },
   today = new Date().toISOString().slice(0, 10),
 ): Promise<ReportContext> {
   const reportUser = await requireReportUser();
@@ -122,6 +132,7 @@ export async function resolveReportContext(
     showDraftState: mayEdit,
     showWorkspacePicker: choices.length > 1,
     choices,
+    platformRequested: searchParams.platform ?? null,
   };
 }
 
@@ -129,7 +140,7 @@ export async function resolveReportContext(
 export function reportHref(
   path: string,
   ctx: Pick<ReportContext, "workspace" | "month"> & { showWorkspacePicker?: boolean },
-  overrides: { month?: string; workspace?: string } = {},
+  overrides: { month?: string; workspace?: string; platform?: string | null } = {},
 ): string {
   const params = new URLSearchParams();
   // Only carried when there is a choice to preserve — a client with one
@@ -139,6 +150,10 @@ export function reportHref(
 
   const month = overrides.month ?? ctx.month.month;
   params.set("month", month.slice(0, 7));
+
+  // Only Social Media's two screens pass one, and only when the client
+  // has more than one platform — so every other URL stays as it was.
+  if (overrides.platform) params.set("platform", overrides.platform);
 
   const query = params.toString();
   return query ? `${path}?${query}` : path;

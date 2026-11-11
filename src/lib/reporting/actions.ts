@@ -95,9 +95,20 @@ export async function saveCategoryValues(
   // platform on first save rather than leaving the figures at account level
   // means the second platform is a new row and not a backfill of everything
   // entered before it.
+  //
+  // **Which platform is the form's to say** (11 November). The entry
+  // screen shows one platform at a time and posts the one it was
+  // showing, so a save can never land on a platform the person was not
+  // looking at. A posted id that is not one of this client's platforms
+  // is refused rather than quietly redirected to the first — the one
+  // case where falling back would write somebody's figures into the
+  // wrong row.
   let entityId: string | null = null;
   if (categoryKey === "social_media") {
-    entityId = await ensurePrimaryPlatform(workspaceId);
+    const asked = String(formData.get("platform_id") ?? "").trim();
+    entityId = asked
+      ? await platformOfWorkspace(workspaceId, asked)
+      : await ensurePrimaryPlatform(workspaceId);
     if (!entityId) {
       return { error: "Couldn't set up the social platform for this client." };
     }
@@ -218,6 +229,27 @@ export async function saveCategoryValues(
   };
 }
 
+
+/**
+ * A platform id posted by the form, confirmed to be this client's.
+ *
+ * Returns null when it is not, which the caller turns into a refusal.
+ */
+async function platformOfWorkspace(
+  workspaceId: string,
+  platformId: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("report_entities")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("entity_type", "social_platform")
+    .eq("id", platformId)
+    .maybeSingle<{ id: string }>();
+
+  return data?.id ?? null;
+}
 
 /**
  * The workspace's main social platform, created once.

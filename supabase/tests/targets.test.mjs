@@ -131,3 +131,116 @@ test("the client can read the target that applies to them", async () => {
   // They cannot set one, but the bar on their Overview is drawn from it.
   assert.equal(await targetFor(CLIENT, AUG), 7);
 });
+
+/**
+ * A target per platform, per offer, per campaign (Nina, 11 November).
+ *
+ * **The storage was always there** — `report_targets.entity_id` has had
+ * a foreign key and a unique index per (workspace, metric, entity,
+ * month) since 30 September. What was missing was a screen that could
+ * write one, and the screen's filter (`entity_type === null`) meant no
+ * Social Media figure could be given a target by anybody, since every
+ * one of them hangs off a platform.
+ *
+ * These drive the real action, because the thing worth proving is that
+ * two platforms keep two separate targets rather than overwriting each
+ * other — which is what a single `metric_key` key would have done.
+ */
+const POSTS = "social_media_posts_published";
+
+let IG;
+let LI;
+let OFFER;
+await asMember(db, NINA, async () => {
+  const made = await db.query(
+    `insert into public.report_entities (workspace_id, entity_type, name, sort_order)
+     values ('${WS}', 'social_platform', 'Instagram', 1),
+            ('${WS}', 'social_platform', 'LinkedIn', 2),
+            ('${WS}', 'offer', 'Signature programme', 1)
+     returning id, name`,
+  );
+  IG = made.rows.find((r) => r.name === "Instagram").id;
+  LI = made.rows.find((r) => r.name === "LinkedIn").id;
+  OFFER = made.rows.find((r) => r.name === "Signature programme").id;
+});
+
+test("two platforms keep two targets for the same figure", async () => {
+  const result = await save(NINA, SEP, {
+    [`target:${POSTS}:${IG}`]: 20,
+    [`scope:${POSTS}:${IG}`]: "standing",
+    [`target:${POSTS}:${LI}`]: 12,
+    [`scope:${POSTS}:${LI}`]: "standing",
+  });
+  assert.equal(result?.error, undefined, result?.error);
+
+  configure(db, NINA);
+  const targets = await getTargets(WS, SEP);
+  assert.equal(targets.get(`${POSTS}|${IG}`), 20);
+  assert.equal(targets.get(`${POSTS}|${LI}`), 12, "not overwritten by Instagram's");
+  assert.equal(targets.get(`${POSTS}|`), undefined, "and no month-level one was invented");
+});
+
+test("a platform's target can be for one month only, like any other", async () => {
+  const result = await save(NINA, SEP, {
+    [`target:${POSTS}:${LI}`]: 15,
+    [`scope:${POSTS}:${LI}`]: "month",
+  });
+  assert.equal(result?.error, undefined, result?.error);
+
+  configure(db, NINA);
+  assert.equal((await getTargets(WS, SEP)).get(`${POSTS}|${LI}`), 15, "September's own");
+  assert.equal((await getTargets(WS, AUG)).get(`${POSTS}|${LI}`), 12, "August keeps the standing one");
+});
+
+test("clearing one platform's target leaves the other alone", async () => {
+  const result = await save(NINA, SEP, {
+    [`target:${POSTS}:${IG}`]: "",
+    [`scope:${POSTS}:${IG}`]: "standing",
+  });
+  assert.equal(result?.error, undefined, result?.error);
+
+  configure(db, NINA);
+  const targets = await getTargets(WS, SEP);
+  assert.equal(targets.get(`${POSTS}|${IG}`), undefined, "gone");
+  assert.equal(targets.get(`${POSTS}|${LI}`), 15, "LinkedIn's is untouched");
+});
+
+test("the same machinery holds an offer's target", async () => {
+  // Nina asked for platforms; Dom asked for offers and campaigns on the
+  // same machinery. There is nothing platform-shaped in the action, so
+  // this is the test that says so.
+  const result = await save(NINA, SEP, {
+    [`target:offers_units_sold:${OFFER}`]: 8,
+    [`scope:offers_units_sold:${OFFER}`]: "standing",
+  });
+  assert.equal(result?.error, undefined, result?.error);
+
+  configure(db, NINA);
+  assert.equal((await getTargets(WS, SEP)).get(`offers_units_sold|${OFFER}`), 8);
+});
+
+test("a target against another client's row is ignored, not written", async () => {
+  // The database would refuse it anyway — `report_targets.workspace_id`
+  // and the entity's own workspace are both in the policy — but the form
+  // is not the only way in, and ignoring the field keeps the rest of a
+  // perfectly good save working.
+  let theirs;
+  await asMember(db, NINA, async () => {
+    const other = (
+      await db.query(`select (public.create_report_workspace(
+        '${CLIENT}', 'retainer', 'Somebody Else', 'Bella Test', '${AUG}')).id as id`)
+    ).rows[0].id;
+    theirs = (
+      await db.query(`insert into public.report_entities (workspace_id, entity_type, name)
+                      values ('${other}', 'social_platform', 'Instagram') returning id`)
+    ).rows[0].id;
+  });
+
+  const result = await save(NINA, SEP, { [`target:${POSTS}:${theirs}`]: 99 });
+  assert.equal(result?.notice, "Nothing changed.");
+
+  const written = await rows(
+    `select count(*)::int c from public.report_targets where entity_id = '${theirs}'`,
+  );
+  assert.equal(written[0].c, 0);
+});

@@ -428,15 +428,23 @@ export function highlights(inputs: HighlightInput[], perPanel = 3) {
       const key = row.input.key;
       if (!key) return true;
 
+      // **A figure kept per row arrives as `metric|entity`** (11
+      // November), so that three platforms are three separate pieces of
+      // news. The two rules below are about one figure and another, and
+      // they have to compare like with like — Instagram's engagement
+      // rate against Instagram's likes, never LinkedIn's.
+      const [metricKey, entity] = key.split("|");
+      const sameRow = (other: string) => (entity ? `${other}|${entity}` : other);
+
       // The same number in two places: never worth saying twice.
-      const pulled = PULLED_FROM[key];
-      if (pulled && speaking.has(pulled)) return false;
+      const pulled = PULLED_FROM[metricKey];
+      if (pulled && speaking.has(sameRow(pulled))) return false;
 
       // A rate and the count behind it: worth saying twice only when they
       // are telling different stories, which is what different panels
       // mean.
-      const base = DERIVED_FROM[key];
-      return !base || panelOf.get(base) !== row.highlight.panel;
+      const base = DERIVED_FROM[metricKey];
+      return !base || panelOf.get(sameRow(base)) !== row.highlight.panel;
     })
     .map((row) => row.highlight);
 

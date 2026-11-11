@@ -29,6 +29,10 @@ import type { ReportMetric } from "@/lib/reporting/queries";
 
 export interface EntryFormProps {
   category: CategoryKey;
+  /** Social Media only: the platform these boxes are for. */
+  platformId?: string | null;
+  /** Social Media only: its name, and whether a Meta export suits it. */
+  platformFills?: { name: string; takesMeta: boolean } | null;
   categoryLabel: string;
   workspaceId: string;
   month: string;
@@ -153,12 +157,20 @@ export function EntryForm(props: EntryFormProps) {
       <input type="hidden" name="workspace_id" value={props.workspaceId} />
       <input type="hidden" name="month" value={props.month} />
       <input type="hidden" name="category" value={props.category} />
+      {/* **Which platform these boxes belong to** (11 November). Social
+          Media's figures hang off a platform row, and this screen shows
+          one platform at a time — so the save is told which one rather
+          than looking it up again and possibly answering differently. */}
+      {props.platformId ? (
+        <input type="hidden" name="platform_id" value={props.platformId} />
+      ) : null}
 
       {props.upload ? (
         <CsvUpload
           platform={props.upload.platform}
           month={props.month}
           monthLabel={props.upload.monthLabel}
+          fills={props.platformFills ?? null}
           labels={Object.fromEntries(
             [...props.core, ...props.optional].map((m) => [m.key, m.label]),
           )}

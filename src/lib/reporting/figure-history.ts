@@ -8,6 +8,7 @@ import { alignToMonths } from "./history.ts";
 import { previousMonthOf } from "./months.ts";
 import type { AdCampaign, OfferMonth } from "./formulas.ts";
 import type { ReportEntity, ReportMetric } from "./queries.ts";
+import { choosePlatform } from "./platforms.ts";
 
 /**
  * Several months of a workspace's figures — **including the worked-out ones.**
@@ -129,6 +130,7 @@ export async function getFigureHistory({
   months,
   metricKeys,
   metrics,
+  platform,
 }: {
   workspaceId: string;
   /** The axis, oldest first, as `monthsEndingAt` builds it. */
@@ -137,6 +139,16 @@ export async function getFigureHistory({
   metricKeys: string[];
   /** The metric list, for each key's category and whether it is calculated. */
   metrics: ReportMetric[];
+  /**
+   * Whose Social Media history to draw.
+   *
+   * The charts on the Social Media report are the one place this
+   * matters: without it, the pill switched the figures and left the
+   * charts drawing Instagram underneath them. Left out everywhere else,
+   * where it falls back to the main platform — which is what the
+   * Overview wants anyway.
+   */
+  platform?: string | null;
 }): Promise<Map<string, (number | null)[]>> {
   if (metricKeys.length === 0 || months.length === 0) {
     return alignToMonths([], metricKeys, months);
@@ -256,9 +268,9 @@ export async function getFigureHistory({
   }
 
   const metricEntityType = new Map(metrics.map((m) => [m.key, m.entity_type]));
-  // Only one social platform exists in this build, so it has a single
-  // answer; offers, funnels and campaigns are addressed per row.
-  const platformId = entities.find((e) => e.entity_type === "social_platform")?.id ?? null;
+  // The platform the caller asked for, or the main one; offers, funnels
+  // and campaigns are addressed per row and have no single answer.
+  const platformId = choosePlatform(entities, platform)?.id ?? null;
   const entityFor = (entityType: string) =>
     entityType === "social_platform" ? platformId : null;
 

@@ -26,6 +26,7 @@ import { monthOnMonthChange } from "@/lib/reporting/formulas";
  */
 export function KpiCard({
   label,
+  whose,
   value,
   previous,
   unit,
@@ -38,6 +39,16 @@ export function KpiCard({
   history,
 }: {
   label: string;
+  /**
+   * Whose figure this is, when it belongs to one row rather than to the
+   * month — today only the social platform (Nina via Dom, 11 November:
+   * the Overview shows the main platform's Followers, with the platform
+   * named, never a sum across platforms).
+   *
+   * Under the label rather than inside it: "Followers" sits on one line
+   * in a six-across row and "Followers on Instagram" does not.
+   */
+  whose?: string | null;
   value: number | null;
   previous: number | null;
   unit: Unit;
@@ -113,6 +124,9 @@ export function KpiCard({
       ) : (
         <span className="block text-small font-medium text-ink/75">{label}</span>
       )}
+      {whose ? (
+        <span className="mt-0.5 block truncate text-caption text-ink/50">on {whose}</span>
+      ) : null}
       {/* **The display serif, not the mono.** CLAUDE.md gives Cormorant
           "headings and display values" and reserves the mono for numbers
           in running data — a table column, a date beside a label. A
