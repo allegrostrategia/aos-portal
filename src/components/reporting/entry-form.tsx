@@ -12,7 +12,7 @@ import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/forma
 import { CsvUpload, type UploadPlatform } from "@/components/reporting/csv-upload";
 import type { TopPost } from "@/lib/reporting/top-posts";
 import type { OfferMonth } from "@/lib/reporting/formulas";
-import type { Received } from "@/lib/reporting/ledger";
+import type { ExpenseRow, Received } from "@/lib/reporting/ledger";
 import type { ReportMetric } from "@/lib/reporting/queries";
 
 /**
@@ -94,6 +94,8 @@ export interface EntryFormProps {
    * keystroke, and the figure it shows is the one the report will show.
    */
   received?: Received[];
+  /** And what it cost, from the expense grid — the four cost totals. */
+  costs?: ExpenseRow[];
   /**
    * §10's upload card, when this screen has one.
    *
@@ -145,6 +147,7 @@ export function EntryForm(props: EntryFormProps) {
         // type here — but Financials is worked out from them.
         offerRows: props.offerRows,
         received: props.received,
+        costs: props.costs,
         clientsAtStart: props.openingAppliesHere
           ? fromInputValue(values.client_experience_clients_at_start_opening ?? "")
           : (props.clientsAtStart ?? null),
@@ -154,6 +157,7 @@ export function EntryForm(props: EntryFormProps) {
       props.previous,
       props.offerRows,
       props.received,
+      props.costs,
       props.clientsAtStart,
       props.openingAppliesHere,
       props.elsewhere,

@@ -933,6 +933,12 @@ export const PULLED_COVERAGE: Record<string, string> = {
   // Together they are Total revenue, so nothing received is left out.
   financials_revenue_from_offers: "ledger.fromOffers",
   financials_other_income: "ledger.notFromOffers",
+  // The four cost totals, each its bucket's sum over the month's expense
+  // rows — and each row keeps the bucket it was saved with.
+  financials_fixed_costs: "ledger.bucketTotals",
+  financials_variable_costs: "ledger.bucketTotals",
+  financials_team_costs: "ledger.bucketTotals",
+  financials_investment_spend: "ledger.bucketTotals",
 };
 
 /**

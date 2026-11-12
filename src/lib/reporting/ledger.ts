@@ -234,11 +234,20 @@ export function forecastAfter(
     .map(([m, amount]) => ({ month: m, amount }));
 }
 
-/** Each bucket's total for the month, for the four cost figures. */
-export function costsByBucket(
-  expenses: ExpenseRow[],
-  month: string,
-): Record<ExpenseBucket, Result> {
+/** One month's expense rows, the way `receivedThisMonth` reads the grid. */
+export function expensesThisMonth(expenses: ExpenseRow[], month: string): ExpenseRow[] {
+  return inMonth(expenses, month);
+}
+
+/**
+ * Each bucket's total — the four cost figures.
+ *
+ * **The bucket comes off the row, not off its category.** It was
+ * captured when the figure was saved, so moving a category from Fixed
+ * to Team is forward-looking rather than a rewrite of the composition of
+ * every month already published.
+ */
+export function bucketTotals(rows: ExpenseRow[]): Record<ExpenseBucket, Result> {
   const out: Record<ExpenseBucket, Result> = {
     fixed: null,
     variable: null,
@@ -246,9 +255,17 @@ export function costsByBucket(
     investment: null,
   };
   for (const bucket of Object.keys(out) as ExpenseBucket[]) {
-    out[bucket] = total(inMonth(expenses, month).filter((e) => e.bucket === bucket));
+    out[bucket] = total(rows.filter((e) => e.bucket === bucket));
   }
   return out;
+}
+
+/** Each bucket's total for one month, for the screen's own strip. */
+export function costsByBucket(
+  expenses: ExpenseRow[],
+  month: string,
+): Record<ExpenseBucket, Result> {
+  return bucketTotals(expensesThisMonth(expenses, month));
 }
 
 /**
@@ -390,7 +407,9 @@ export function rowsWithFigures(
  */
 export function monthsToShow(
   year: string[],
-  cells: Cell[],
+  // Anything with a month: the expense grid's cells hang off a category
+  // rather than a sales row, and this reads neither.
+  cells: { month: string }[],
   month: string,
 ): string[] {
   const filled = new Set(cells.map((c) => c.month));

@@ -1,5 +1,5 @@
 import type { Figure } from "./formulas.ts";
-import type { Received } from "./ledger.ts";
+import type { ExpenseRow, Received } from "./ledger.ts";
 
 /**
  * What a month was published with, frozen onto that month.
@@ -97,6 +97,16 @@ export interface Carried {
    * **Absent is not empty**, as everywhere else here.
    */
   previousReceived?: Received[];
+  /**
+   * What the month BEFORE this one cost, row by row, with each row's own
+   * bucket.
+   *
+   * The four cost totals are the expense grid's buckets from 13
+   * November, so "profit £1,100, up from £900" is arithmetic over
+   * another month's cells — and that month may still be a draft. Same
+   * rule, same absent-is-not-empty.
+   */
+  previousCosts?: ExpenseRow[];
 }
 
 export const EMPTY_CARRIED: Carried = {
@@ -170,6 +180,27 @@ export function readCarried(carried: unknown): Carried | null {
         recurrence: row.recurrence,
       }));
   };
+  const spending = (v: unknown): ExpenseRow[] | undefined => {
+    if (!Array.isArray(v)) return undefined;
+    return v
+      .filter(
+        (row): row is ExpenseRow =>
+          !!row &&
+          typeof row === "object" &&
+          typeof (row as { categoryId?: unknown }).categoryId === "string" &&
+          typeof (row as { month?: unknown }).month === "string" &&
+          typeof (row as { amount?: unknown }).amount === "number" &&
+          ["fixed", "variable", "team", "investment"].includes(
+            (row as { bucket?: unknown }).bucket as string,
+          ),
+      )
+      .map((row) => ({
+        categoryId: row.categoryId,
+        bucket: row.bucket,
+        month: row.month,
+        amount: row.amount,
+      }));
+  };
   const schedule = (v: unknown): { month: string; amount: number }[] | undefined => {
     if (!Array.isArray(v)) return undefined;
     return v
@@ -219,6 +250,9 @@ export function readCarried(carried: unknown): Carried | null {
     ...("previousReceived" in raw && receipts(raw.previousReceived) !== undefined
       ? { previousReceived: receipts(raw.previousReceived)! }
       : {}),
+    ...("previousCosts" in raw && spending(raw.previousCosts) !== undefined
+      ? { previousCosts: spending(raw.previousCosts)! }
+      : {}),
   };
 }
 
@@ -242,6 +276,8 @@ export function buildCarried(input: {
   forecastAhead: { month: string; amount: number }[];
   /** Already flattened by `receivedThisMonth`, for the month before this. */
   previousReceived: Received[];
+  /** The month before this one's expense rows, each with its own bucket. */
+  previousCosts: ExpenseRow[];
 }): Carried {
   return {
     clientsAtStart: typeof input.clientsAtStart === "number" ? input.clientsAtStart : null,
@@ -256,5 +292,6 @@ export function buildCarried(input: {
     ),
     forecastAhead: input.forecastAhead,
     previousReceived: input.previousReceived,
+    previousCosts: input.previousCosts,
   };
 }

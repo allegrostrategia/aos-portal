@@ -22,8 +22,15 @@ export async function monthIsFinished(
   workspaceId: string,
   month: string,
 ): Promise<boolean> {
-  const [{ data: workspace }, { data: metrics }, { data: values }, { data: entities }, { data: opening }] =
-    await Promise.all([
+  const [
+    { data: workspace },
+    { data: metrics },
+    { data: values },
+    { data: entities },
+    { data: opening },
+    { count: receivedCount },
+    { count: costCount },
+  ] = await Promise.all([
       admin
         .from("report_workspaces")
         .select("hidden_categories")
@@ -49,6 +56,20 @@ export async function monthIsFinished(
         .eq("metric_key", "client_experience_clients_at_start_opening")
         .lte("month", month)
         .limit(1),
+      // Financials' two grids, counted rather than read: every figure on
+      // that section is pulled, so there is no core metric to count and
+      // a month is answered by a cell on either grid — a typed 0
+      // included.
+      admin
+        .from("report_actuals")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("month", month),
+      admin
+        .from("report_expenses")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("month", month),
     ]);
 
   if (!workspace) return false;
@@ -85,6 +106,7 @@ export async function monthIsFinished(
       return null;
     },
     openingClients: { inUse: (opening ?? []).length > 0 ? (opening ?? [])[0] : null },
+    financialsCells: { received: receivedCount ?? 0, costs: costCount ?? 0 },
     data: {
       entities: allEntities,
       values: { get: (key, entityId) => asNumber(byKeyAndEntity.get(`${key}|${entityId}`)) },

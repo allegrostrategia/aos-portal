@@ -351,6 +351,26 @@ because Total costs, Profit and the margin are built on those. The bucket
 is captured on each expense row as it is saved, so recategorising is
 forward-looking rather than a rewrite of every published month.
 
+**Built 13 November.** The same grid as the other two, with the
+categories down the side. Four things about the screen:
+
+- **"Start with the usual list" is a button somebody presses**, not
+  something that happens on its own: the list is examples from Nina's own
+  tracker, and a screen that filled itself in would be making a claim
+  about this business that nobody made. Pressing it twice adds nothing,
+  and it never brings back a name that has been changed.
+- **No Save button on a category row.** The name saves when the field is
+  left, and only if it changed. Twenty rows with a Save each is a wall.
+- **Retiring is not deleting** (rule 7). The category comes off the grid;
+  every figure saved against it stays and goes on counting in the months
+  it was in.
+- **The list folds away** once there is one. The renaming is done in the
+  first month, and this is a screen for entering numbers.
+
+A cost cannot be negative — the constraint has been there since 11
+November, and the screen says so in words rather than letting the
+constraint's own message out.
+
 #### Per-client profitability
 
 Her Client Profitability tab: the client's **own** team with their hourly
@@ -396,18 +416,23 @@ which is a label saying something untrue. The link is still what the
 Offers donut is drawn from — a chart about offer entities rather than
 about a month.
 
-Still typed, until the expense grid lands: the four cost figures and cash
-in bank. Profit, the margin and costs-as-a-percentage are those against
-the revenue above, so they came right the day the revenue did.
+**The four cost totals are the expense grid's four buckets**, from the
+same day. Each figure keeps the bucket it was saved with, so a category
+that moves is forward-looking rather than a rewrite of every published
+month's composition.
+
+**Cash in bank at month end is the one typed figure left** on the
+Financials screen. It is not a cost and it is not money in; Runway is
+what reads it. Everything else on this section is a grid.
 
 | Field | Type | Formula | Good |
 | --- | --- | --- | --- |
 | Revenue from offers | Pulled | Money received on offer rows | Up |
 | Other income | Pulled | Money received on client rows | Up |
-| Fixed costs | Core | Subscriptions, rent, software | Down |
-| Variable costs | Core | Ads, contractors, fees | Down |
-| Team costs | Core | Salaries, VAs, freelancers | Down |
-| Investment spend | Optional | Courses, coaching, events | n/a |
+| Fixed costs | Pulled | The Fixed bucket of the expense grid | Down |
+| Variable costs | Pulled | The Variable bucket of the expense grid | Down |
+| Team costs | Pulled | The Team bucket of the expense grid | Down |
+| Investment spend | Pulled | The Investment bucket of the expense grid | n/a |
 | Cash in bank at month end | Optional |  | Up |
 | Total revenue | Calc | Offers + other income | Up |
 | Total costs | Calc | Fixed + variable + team + investment | Down |

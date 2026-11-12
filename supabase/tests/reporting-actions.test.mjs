@@ -155,10 +155,9 @@ test("the other four categories save, and Social Media gets its platform", async
       leads_conversions_calls_booked: 46, leads_conversions_calls_held: 34,
       leads_conversions_new_clients: 14,
     },
-    financials: {
-      financials_fixed_costs: 3200, financials_variable_costs: 6100,
-      financials_team_costs: 4230, financials_cash_in_bank_at_month_end: 41000,
-    },
+    // Cash in bank is the one typed figure Financials has left: the
+    // four cost totals are the expense grid's buckets since 13 November.
+    financials: { financials_cash_in_bank_at_month_end: 41000 },
   };
 
   for (const [category, fields] of Object.entries(entries)) {
@@ -179,6 +178,32 @@ test("the other four categories save, and Social Media gets its platform", async
     select entity_id from public.report_values
     where workspace_id = '${WS}' and month = '${AUG}' and metric_key = 'social_media_reach'`);
   assert.ok(social[0].entity_id, "social figures hang off the platform");
+});
+
+// ---------------------------------------------------------------------------
+test("and the same costs on the expense grid, which is where they read", async () => {
+  const { saveExpenseCategory, saveExpenses } = await import(
+    "../../src/lib/reporting/expense-actions.ts"
+  );
+  for (const [name, bucket, amount] of [
+    ["Software", "fixed", 3200],
+    ["Ads", "variable", 6100],
+    ["Staff", "team", 4230],
+  ]) {
+    const added = await as(NINA, () =>
+      saveExpenseCategory(null, form({ workspace_id: WS, name, bucket })),
+    );
+    assert.equal(added?.error, undefined, added?.error);
+    const [category] = await rows(NINA,
+      `select id from public.report_expense_categories
+        where workspace_id = '${WS}' and name = '${name}'`);
+    const saved = await as(NINA, () =>
+      saveExpenses(null, form({
+        workspace_id: WS, month: AUG, [`cell:${category.id}:${AUG}`]: amount,
+      })),
+    );
+    assert.equal(saved?.error, undefined, saved?.error);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -229,8 +254,26 @@ test("the Overview's headline figures come out right", async () => {
     recurrence: c.recurrence,
   }));
 
+  // The four cost totals are the expense grid's buckets since 13
+  // November, so the costs come from rows with their own bucket rather
+  // than from four typed figures.
+  const costs = await rows(NINA, `
+    select category_id, month, amount::float v, bucket
+      from public.report_expenses
+     where workspace_id = '${WS}' and month = '${AUG}'`);
+
   const value = (key) => byKey.get(key) ?? null;
-  const fin = calculate("financials", { value, previous: () => null, received });
+  const fin = calculate("financials", {
+    value,
+    previous: () => null,
+    received,
+    costs: costs.map((c) => ({
+      categoryId: c.category_id,
+      bucket: c.bucket,
+      month: AUG,
+      amount: c.v,
+    })),
+  });
   const leads = calculate("leads_conversions", { value, previous: () => null });
 
   // Revenue is what came in — the bug this started as was both of these

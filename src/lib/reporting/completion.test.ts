@@ -25,17 +25,20 @@ function figuresWith({
   entities = [],
   entityValues = {},
   openingInUse = null,
+  financialsCells,
 }: {
   metrics: Metric[];
   monthValues?: Record<string, number | null>;
   entities?: { id: string; entity_type: string; active: boolean }[];
   entityValues?: Record<string, number | null>;
   openingInUse?: unknown;
+  financialsCells?: { received: number; costs: number };
 }) {
   return {
     metrics,
     figure: (key: string) => monthValues[key] ?? null,
     openingClients: { inUse: openingInUse, unused: [] },
+    ...(financialsCells ? { financialsCells } : {}),
     data: {
       entities,
       values: { get: (key: string, entityId: string) => entityValues[`${key}|${entityId}`] ?? null },
@@ -254,4 +257,47 @@ test("and with three platforms, a figure counts only when all three have it", ()
     },
   });
   assert.deepEqual(categoryCompletion(retired, "social_media"), { filled: 2, total: 2 });
+});
+
+
+/**
+ * Financials, which has no core metric left to count.
+ *
+ * Revenue is the Actual grid and the four cost totals are the expense
+ * grid's buckets, so every figure on that section is pulled — and
+ * counting core metrics would mark it finished the moment it is opened,
+ * which is the opposite of the failure the rest of this file is about.
+ */
+const FINANCIALS: Metric[] = [
+  { key: "financials_revenue_from_offers", category: "financials", input_type: "pulled", entity_type: null },
+  { key: "financials_fixed_costs", category: "financials", input_type: "pulled", entity_type: null },
+  { key: "financials_cash_in_bank_at_month_end", category: "financials", input_type: "optional", entity_type: null },
+];
+
+test("Financials is counted by its grids, not by a core field it no longer has", () => {
+  const empty = figuresWith({ metrics: FINANCIALS, financialsCells: { received: 0, costs: 0 } });
+  assert.deepEqual(categoryCompletion(empty, "financials"), { filled: 0, total: 1 });
+
+  const money = figuresWith({ metrics: FINANCIALS, financialsCells: { received: 1, costs: 0 } });
+  assert.deepEqual(categoryCompletion(money, "financials"), { filled: 1, total: 1 });
+
+  const costsOnly = figuresWith({ metrics: FINANCIALS, financialsCells: { received: 0, costs: 2 } });
+  assert.deepEqual(categoryCompletion(costsOnly, "financials"), { filled: 1, total: 1 });
+});
+
+test("a month that genuinely took nothing is answered by a typed zero", () => {
+  // Counted, not summed: a cell holding 0 is somebody saying "nothing
+  // came in", and a sum cannot tell that from nobody having looked.
+  const zeroMonth = figuresWith({
+    metrics: FINANCIALS,
+    financialsCells: { received: 1, costs: 0 },
+  });
+  assert.equal(categoryCompletion(zeroMonth, "financials").filled, 1);
+});
+
+test("a caller that does not count the grids leaves Financials owing nothing", () => {
+  // Every caller written before the grids existed, and the honest answer
+  // for them: not asked is not the same as not done.
+  const old = figuresWith({ metrics: FINANCIALS });
+  assert.deepEqual(categoryCompletion(old, "financials"), { filled: 0, total: 0 });
 });

@@ -103,7 +103,7 @@ const saveFigure = (uid, { workspace = WS, month = AUG, value }) =>
         workspace_id: workspace,
         month,
         category: "financials",
-        "v:financials_fixed_costs": value,
+        "v:financials_cash_in_bank_at_month_end": value,
       }),
     ),
   );
@@ -125,11 +125,17 @@ const figure = async (workspace = WS, month = AUG) => {
   const r = await rows(`
     select value::float v from public.report_values
      where workspace_id = '${workspace}' and month = '${month}'
-       and metric_key = 'financials_fixed_costs'`);
+       and metric_key = 'financials_cash_in_bank_at_month_end'`);
   return r.length ? r[0].v : null;
 };
 
 const LOCKED = /published\. Unpublish it to make changes/i;
+
+// **Cash in bank, because it is the one typed figure Financials has
+// left** (13 November): revenue is the Actual grid and the four cost
+// totals are the expense grid's buckets, so every other figure on this
+// section is pulled and `report_values` refuses to store one. The lock
+// this file is about is the same whichever figure proves it.
 
 // ---------------------------------------------------------------------------
 
@@ -182,7 +188,7 @@ test("the editor cannot add a figure to a published month either", async () => {
         workspace_id: WS,
         month: AUG,
         category: "financials",
-        "v:financials_team_costs": 500,
+        "v:financials_cash_in_bank_at_month_end": 500,
       }),
     ),
   );
@@ -281,7 +287,7 @@ test("the editor cannot drag a figure out of a published month into a draft one"
   const [row] = await rows(`
     select id from public.report_values
      where workspace_id = '${WS}' and month = '${AUG}'
-       and metric_key = 'financials_fixed_costs'`);
+       and metric_key = 'financials_cash_in_bank_at_month_end'`);
 
   await asMember(db, ELIZE, async () => {
     await assert.rejects(
@@ -303,8 +309,8 @@ test("the editor cannot move a target on a published month", async () => {
       form({
         workspace_id: WS,
         month: AUG,
-        "target:financials_fixed_costs": 250,
-        "scope:financials_fixed_costs": "month",
+        "target:financials_cash_in_bank_at_month_end": 250,
+        "scope:financials_cash_in_bank_at_month_end": "month",
       }),
     ),
   );
@@ -327,8 +333,8 @@ test("nor clear one — which an editor could not do at all until now", async ()
       form({
         workspace_id: WS,
         month: SEP,
-        "target:financials_fixed_costs": 400,
-        "scope:financials_fixed_costs": "month",
+        "target:financials_cash_in_bank_at_month_end": 400,
+        "scope:financials_cash_in_bank_at_month_end": "month",
       }),
     ),
   );
@@ -340,8 +346,8 @@ test("nor clear one — which an editor could not do at all until now", async ()
       form({
         workspace_id: WS,
         month: SEP,
-        "target:financials_fixed_costs": "",
-        "scope:financials_fixed_costs": "month",
+        "target:financials_cash_in_bank_at_month_end": "",
+        "scope:financials_cash_in_bank_at_month_end": "month",
       }),
     ),
   );
@@ -367,8 +373,8 @@ test("a STANDING target is not locked, and that is a known hole", async () => {
       form({
         workspace_id: WS,
         month: AUG,
-        "target:financials_fixed_costs": 275,
-        "scope:financials_fixed_costs": "standing",
+        "target:financials_cash_in_bank_at_month_end": 275,
+        "scope:financials_cash_in_bank_at_month_end": "standing",
       }),
     ),
   );
@@ -377,7 +383,7 @@ test("a STANDING target is not locked, and that is a known hole", async () => {
   const [standing] = await rows(`
     select target_value::float v from public.report_targets
      where workspace_id = '${WS}' and month is null
-       and metric_key = 'financials_fixed_costs'`);
+       and metric_key = 'financials_cash_in_bank_at_month_end'`);
   assert.equal(standing.v, 275);
 });
 
@@ -624,7 +630,7 @@ test("the service role passes too — it has no JWT and is not an admin", async 
     await db.query(`
       update public.report_values set value = 301
        where workspace_id = '${WS}' and month = '${AUG}'
-         and metric_key = 'financials_fixed_costs'`);
+         and metric_key = 'financials_cash_in_bank_at_month_end'`);
   });
   assert.equal(await figure(), 301);
   await saveFigure(NINA, { value: 300 });

@@ -2840,9 +2840,43 @@ the Actual grid as a row.
 `financials` is out of `ENTITIES_NEEDED` — Financials reads no offer row
 anywhere now.
 
-**Still to build:** expenses with the default category list and the
-examples panel, the staff/hours grid, the rebuilt Financials report page,
-the bespoke donut slice, the whole-report PDF and the Financials CSV.
-Nina lifted the brief's no-export rule for that CSV alone.
+## The expense grid, and the old Financials card is gone — 13 November 2026
+
+The third grid: categories down the side, months across, the same
+component (`money-grid.tsx`, which all three now are). The tables were
+built on 11 November and survived the 13 November drop, so this is app
+code and two metric migrations, no schema change.
+
+**The four cost totals are the expense grid's four buckets**
+(`20261113160000_costs_from_the_expense_grid.sql`, not yet applied to
+live). With revenue already pulled, that leaves **cash in bank at month
+end as the one typed figure on Financials** — it is not a cost and not
+money in, and Runway is what reads it. The card of four cost boxes is
+off the screen.
+
+Worth knowing:
+
+1. **The bucket is captured on the expense row, and a correction does
+   not recategorise it.** `guard_report_expense_category` writes
+   `old.bucket` on an update, so editing February's amount after moving
+   Software from Fixed to Team leaves February as Fixed. The first
+   version of that test did not catch the difference, because it only
+   ever inserted — the mutation survived until the test corrected an
+   existing row.
+2. **Completion counts the grids now** (`completion.ts`). Those three
+   cost figures were Financials' only `core` metrics, so counting core
+   metrics would have marked the section finished the moment it was
+   opened. It owes one thing: a cell on either grid for the month, a
+   typed 0 included.
+3. **`Carried.previousCosts`** freezes last month's expense rows at
+   publish, for the same reason `previousReceived` does.
+4. The default list is a button somebody presses, the rename saves on
+   blur with no button, retiring keeps every figure, and the list folds
+   away once it exists — twenty rows of setup was nine thousand pixels
+   on a phone.
+
+**Still to build:** the staff/hours grid, the rebuilt Financials report
+page, the bespoke donut slice, the whole-report PDF and the Financials
+CSV. Nina lifted the brief's no-export rule for that CSV alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

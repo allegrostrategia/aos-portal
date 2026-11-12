@@ -239,7 +239,16 @@ export const PULLED_FROM: Record<string, string> = {
  * it duplicates, so there is no sentence to suppress, and it must not be
  * hunted for in `PULLED_FROM`.
  */
-export const PULLED_FROM_NOTHING = new Set(["financials_other_income"]);
+export const PULLED_FROM_NOTHING = new Set([
+  "financials_other_income",
+  // The four cost totals joined them when the expense grid took them
+  // (13 November). Each is its bucket's sum over the month's expense
+  // rows: a figure of its own, not a copy of another metric.
+  "financials_fixed_costs",
+  "financials_variable_costs",
+  "financials_team_costs",
+  "financials_investment_spend",
+]);
 
 export interface HighlightInput {
   /** The metric key, for the derived-figure rule. */

@@ -252,3 +252,90 @@ test("a published month is fixed, and a retainer can still start after it", asyn
   expect(await sidewaysScroll(page)).toBe(0);
   await shoot(page, TAB, "05-retainer-after-publish", w);
 });
+
+/**
+ * The third grid: what it cost.
+ *
+ * Nina's twenty-odd categories, offered as a list and then theirs to
+ * rename and retire — and the rule the other two grids do not have: a
+ * category feeds one of four buckets, which is what Total costs, Profit
+ * and the margin are built on.
+ */
+test("what it cost, by category, in the four buckets", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+
+  // Something to earn against, so the margin on the card is a real one.
+  const setup = card(page, "Your rows");
+  await setup.getByLabel("Name").fill("Signature programme");
+  await setup.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/Signature programme added/i)).toBeVisible();
+
+  const came = card(page, "What came in");
+  await came.getByLabel(/^Signature programme, September 2026$/).fill("4000");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
+
+  // --- the categories ------------------------------------------------------
+  const categories = card(page, "Your cost categories");
+  await expect(categories.getByText(/What a category feeds is set when it/i)).toBeVisible();
+  await categories.getByRole("button", { name: /start with the usual list/i }).click();
+  await expect(page.getByText(/categories added/i)).toBeVisible();
+
+  // The list stays open straight after adding it — they have just made
+  // those rows — and is folded away on the next visit: twenty rows of
+  // setup is not what a screen for entering numbers opens on.
+  await expect(categories.getByLabel(/^Name of Subscriptions$/)).toBeVisible();
+  await page.reload();
+  await expect(categories.getByLabel(/^Name of Subscriptions$/)).toHaveCount(0);
+  await categories.getByRole("button", { name: /rename or retire a category \(21\)/i }).click();
+
+  // **Renaming saves when the field is left** — no Save button on any of
+  // twenty rows, which is the rule the recurring tick above follows.
+  const name = categories.getByLabel(/^Name of Subscriptions$/);
+  await name.fill("Software subscriptions");
+  await name.blur();
+  await expect(page.getByText(/Software subscriptions renamed/i)).toBeVisible();
+  await expect(categories.getByRole("button", { name: /^rename$/i })).toHaveCount(0);
+
+  await shoot(page, TAB, "06-cost-categories", w);
+
+  // --- the grid ------------------------------------------------------------
+  const cost = card(page, "What it cost");
+  await cost.getByLabel(/^Software, September 2026$/).fill("300");
+  await cost.getByLabel(/^Ads, September 2026$/).fill("250");
+  await cost.getByLabel(/^Staff, September 2026$/).fill("500");
+  await cost.getByRole("button", { name: /save what it cost/i }).click();
+  await expect(cost.getByText(/^Saved\.$/)).toBeVisible();
+
+  // The four buckets, which is the whole reason a category has one.
+  // The heading is typeset with a real apostrophe, so it is matched by
+  // shape rather than by a string with a straight one in it.
+  const buckets = (
+    await page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: /month.s costs/i }) })
+      .innerText()
+  ).replace(/\s+/g, " ");
+  expect(buckets, "fixed").toContain("£300");
+  expect(buckets, "variable").toContain("£250");
+  expect(buckets, "team").toContain("£500");
+
+  // **And "Worked out for you" is the same arithmetic.** £4,000 in,
+  // £1,050 out, which is the figure the report will carry.
+  const worked = (
+    await page
+      .locator("aside")
+      .filter({ has: page.getByRole("heading", { name: "Worked out for you" }) })
+      .innerText()
+  ).replace(/\s+/g, " ");
+  expect(worked, "total costs").toContain("£1,050");
+  expect(worked, "profit").toContain("£2,950");
+
+  expect(await whatOverflows(page), "nothing sticks out sideways").toEqual([]);
+  expect(await sidewaysScroll(page)).toBe(0);
+  await shoot(page, TAB, "07-what-it-cost", w);
+});

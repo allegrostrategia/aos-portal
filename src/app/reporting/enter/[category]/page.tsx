@@ -13,6 +13,7 @@ import { choosePlatform, looksLikeMeta, platformsOf } from "@/lib/reporting/plat
 import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { SocialEntry } from "@/components/reporting/social-entry";
 import { SalesGrid } from "@/components/reporting/sales-grid";
+import { ExpenseGrid } from "@/components/reporting/expense-grid";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
@@ -29,6 +30,7 @@ import {
   getTopItems,
 } from "@/lib/reporting/queries";
 import { getMonthFigures, sectionStates } from "@/lib/reporting/month-figures";
+import { expensesThisMonth } from "@/lib/reporting/ledger";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
 import { VISIBLE_OPTIONAL } from "@/lib/reporting/completion";
 import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
@@ -463,9 +465,12 @@ export default async function EnterCategoryPage({
           elsewhere,
           clientsAtStart,
           openingAppliesHere,
-          // §5.10: Financials' revenue is the Actual grid, so the card
-          // that updates as you type needs the month's cells.
+          // §5.10: Financials' revenue is the Actual grid and its costs
+          // are the expense grid, so the card that updates as you type
+          // needs both. Neither is typed on this screen, so the card
+          // follows a save rather than a keystroke.
           received: figures.received,
+          costs: expensesThisMonth(figures.expenses.expenses, ctx.month.month),
           category: category.key,
           platformId: category.key === "social_media" ? platformId : null,
           platformFills:
@@ -541,6 +546,18 @@ export default async function EnterCategoryPage({
           offers={data.entities
             .filter((e) => e.entity_type === "offer" && e.active)
             .map((e) => ({ id: e.id, name: e.name }))}
+          lockedMonths={publishedMonths}
+          locked={locked}
+        />
+      ) : null}
+
+      {ledger ? (
+        <ExpenseGrid
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          currency={ctx.workspace.currency}
+          categories={figures.expenses.categories}
+          expenses={figures.expenses.expenses}
           lockedMonths={publishedMonths}
           locked={locked}
         />

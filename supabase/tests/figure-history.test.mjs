@@ -31,6 +31,9 @@ const { monthsEndingAt } = await import("../../src/lib/reporting/months.ts");
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offer-actions.ts");
 const { saveSalesRow, saveActuals } = await import("../../src/lib/reporting/sales-actions.ts");
+const { saveExpenseCategory, saveExpenses } = await import(
+  "../../src/lib/reporting/expense-actions.ts"
+);
 const { getMetrics } = await import("../../src/lib/reporting/queries.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -110,11 +113,7 @@ for (const [month, scale] of [
     leads_conversions_new_leads_from_email: 6 * scale,
     leads_conversions_new_clients: 4,
   });
-  await save("financials", month, {
-    financials_fixed_costs: 300,
-    financials_variable_costs: 250 * scale,
-    financials_team_costs: 500,
-  });
+
 }
 
 const offerId = await as(NINA, async () => {
@@ -153,6 +152,35 @@ for (const [month, revenue] of [
     ),
   );
 }
+
+/**
+ * And the same costs on the expense grid, which is where the four cost
+ * totals come from since 13 November: £300 fixed, £250 a month of
+ * variable, £500 of team — the figures this file has always charted.
+ */
+await as(NINA, async () => {
+  const made = {};
+  for (const [name, bucket] of [["Software", "fixed"], ["Ads", "variable"], ["Staff", "team"]]) {
+    await saveExpenseCategory(null, form({ workspace_id: WS, name, bucket }));
+    const { rows } = await db.query(
+      `select id from public.report_expense_categories
+        where workspace_id = '${WS}' and name = '${name}'`,
+    );
+    made[bucket] = rows[0].id;
+  }
+  for (const [month, scale] of [[JUL, 1], [AUG, 2], [SEP, 3]]) {
+    await saveExpenses(
+      null,
+      form({
+        workspace_id: WS,
+        month,
+        [`cell:${made.fixed}:${month}`]: 300,
+        [`cell:${made.variable}:${month}`]: 250 * scale,
+        [`cell:${made.team}:${month}`]: 500,
+      }),
+    );
+  }
+});
 
 /**
  * The same money on the Actual grid, which is where revenue and profit
@@ -328,7 +356,12 @@ test("the input keys are read off the formulas, not off a list", async () => {
   assert.ok(social.includes("social_media_reach"));
 
   const financials = inputKeysFor("financials");
-  assert.ok(financials.includes("financials_fixed_costs"));
+  // Cash in bank is the one figure Financials still reads through the
+  // lookup; everything else comes off the two grids and the expense one.
+  assert.ok(
+    financials.includes("financials_cash_in_bank_at_month_end"),
+    financials.join(", "),
+  );
   // **Revenue is not an input key any more**, and that is the point of
   // the routing: it is not typed anywhere, so there is no key to read.
   // It comes off the Actual grid, which `getFigureHistory` loads itself.

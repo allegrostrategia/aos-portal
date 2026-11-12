@@ -32,6 +32,9 @@ const { CATEGORIES } = await import("../../src/lib/reporting/categories.ts");
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offer-actions.ts");
 const { saveSalesRow, saveActuals } = await import("../../src/lib/reporting/sales-actions.ts");
+const { saveExpenseCategory, saveExpenses } = await import(
+  "../../src/lib/reporting/expense-actions.ts"
+);
 const { publishMonth } = await import("../../src/lib/reporting/note-actions.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -100,10 +103,10 @@ await save("social_media", AUG, {
   social_media_shares: 60,
   social_media_posts_published: 12,
 });
+// **Cash in bank is the one typed figure Financials has left.** The four
+// cost totals are the expense grid's buckets from 13 November, so they
+// go in below rather than here.
 await save("financials", AUG, {
-  financials_fixed_costs: 300,
-  financials_variable_costs: 250,
-  financials_team_costs: 500,
   financials_cash_in_bank_at_month_end: 6500,
 });
 
@@ -164,6 +167,25 @@ await as(NINA, async () => {
   );
 });
 
+/** The same £1,050 of costs, on the expense grid where they now live. */
+await as(NINA, async () => {
+  for (const [name, bucket, amount] of [
+    ["Software", "fixed", 300],
+    ["Ads", "variable", 250],
+    ["Staff", "team", 500],
+  ]) {
+    await saveExpenseCategory(null, form({ workspace_id: WS, name, bucket }));
+    const { rows } = await db.query(
+      `select id from public.report_expense_categories
+        where workspace_id = '${WS}' and name = '${name}'`,
+    );
+    await saveExpenses(
+      null,
+      form({ workspace_id: WS, month: AUG, [`cell:${rows[0].id}:${AUG}`]: amount }),
+    );
+  }
+});
+
 /**
  * What the entry screen's live card would show for a category.
  *
@@ -171,7 +193,7 @@ await as(NINA, async () => {
  * values, with the offers and the opening figure passed in. If this and
  * the report ever differ, one of the two is lying to whoever is reading it.
  */
-function entryCard(figures, category) {
+function entryCard(figures, category, month = AUG) {
   // Read the way the entry screen reads, which is not the way the
   // database holds it. Two differences, and both have been bugs:
   //
@@ -216,6 +238,8 @@ function entryCard(figures, category) {
     // without it, and a card that shows dashes beside a report full of
     // figures is §9's disagreement in its commonest form.
     received: figures.received,
+    // The page filters the same way, with the month it is drawing.
+    costs: figures.expenses.expenses.filter((e) => e.month === month),
     clientsAtStart: figures.results.client_experience_active_clients_at_start ?? null,
   });
 }
@@ -282,7 +306,7 @@ test("the client's report matches the admin's, figure for figure", async () => {
 });
 
 test("an unpublished month is not readable to the client at all", async () => {
-  await save("financials", SEP, { financials_fixed_costs: 999 });
+  await save("financials", SEP, { financials_cash_in_bank_at_month_end: 999 });
 
   configure(db, CLIENT);
   const ctx = await resolveReportContext({ workspace: WS, month: "2026-09" }, "2026-10-02");
@@ -290,7 +314,7 @@ test("an unpublished month is not readable to the client at all", async () => {
   assert.equal(ctx.monthPublished, false, "and the page says so rather than showing figures");
   const client = await getMonthFigures(ctx);
   assert.equal(
-    client.figure("financials_fixed_costs"),
+    client.figure("financials_cash_in_bank_at_month_end"),
     null,
     "a draft month's figures are not hidden by the screen — they are unreadable",
   );

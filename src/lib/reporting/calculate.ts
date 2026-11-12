@@ -14,7 +14,14 @@ import {
   type Result,
 } from "./formulas.ts";
 import type { CategoryKey } from "./categories.ts";
-import { fromOffers, notFromOffers, recurringTotal, type Received } from "./ledger.ts";
+import {
+  bucketTotals,
+  fromOffers,
+  notFromOffers,
+  recurringTotal,
+  type ExpenseRow,
+  type Received,
+} from "./ledger.ts";
 
 /**
  * From typed figures to worked-out ones, keyed by metric.
@@ -75,6 +82,15 @@ export interface CalcInput {
    * offer link comes from the row, the recurring setting from the cell.
    */
   received?: Received[];
+  /**
+   * What this month cost, row by row, with each row's own bucket.
+   *
+   * The four cost totals were four typed boxes until 13 November and are
+   * the expense grid's four buckets now — the same move revenue made,
+   * and for the same reason: the figures are already being typed into a
+   * grid, and a box beside it is the same money asked for twice.
+   */
+  costs?: ExpenseRow[];
 }
 
 export type CalcResults = Record<string, Result>;
@@ -328,15 +344,24 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
       const month = {
         revenueFromOffers: fromOffers(received),
         otherIncome: notFromOffers(received),
-        fixedCosts: v("financials_fixed_costs"),
-        variableCosts: v("financials_variable_costs"),
-        teamCosts: v("financials_team_costs"),
-        investmentSpend: v("financials_investment_spend"),
+        ...(() => {
+          const buckets = bucketTotals(input.costs ?? []);
+          return {
+            fixedCosts: buckets.fixed,
+            variableCosts: buckets.variable,
+            teamCosts: buckets.team,
+            investmentSpend: buckets.investment,
+          };
+        })(),
         cashInBank: v("financials_cash_in_bank_at_month_end"),
       };
       return {
         financials_revenue_from_offers: month.revenueFromOffers,
         financials_other_income: month.otherIncome,
+        financials_fixed_costs: month.fixedCosts,
+        financials_variable_costs: month.variableCosts,
+        financials_team_costs: month.teamCosts,
+        financials_investment_spend: month.investmentSpend,
         financials_monthly_recurring_revenue: recurringTotal(received),
         financials_total_revenue: financials.totalRevenue(month),
         financials_total_costs: financials.totalCosts(month),

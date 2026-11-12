@@ -26,8 +26,17 @@ export async function computeCarried(
   const admin = createAdminClient();
   const previousMonth = previousMonthOf(month);
 
-  const [flowRes, previousRes, targetRes, benchmarkRes, entityRes, aheadRes, rowRes, lastRes] =
-    await Promise.all([
+  const [
+    flowRes,
+    previousRes,
+    targetRes,
+    benchmarkRes,
+    entityRes,
+    aheadRes,
+    rowRes,
+    lastRes,
+    costRes,
+  ] = await Promise.all([
     admin
       .from("report_values")
       .select("month, metric_key, value")
@@ -106,6 +115,22 @@ export async function computeCarried(
               month: string;
               amount: number | string;
               recurrence: "none" | "monthly" | "annual";
+            }[]
+          >()
+      : Promise.resolve({ data: [] as const }),
+    // And what that month cost, for the same reason.
+    previousMonth
+      ? admin
+          .from("report_expenses")
+          .select("category_id, month, amount, bucket")
+          .eq("workspace_id", workspaceId)
+          .eq("month", previousMonth)
+          .returns<
+            {
+              category_id: string;
+              month: string;
+              amount: number | string;
+              bucket: "fixed" | "variable" | "team" | "investment";
             }[]
           >()
       : Promise.resolve({ data: [] as const }),
@@ -190,6 +215,12 @@ export async function computeCarried(
           previousMonth,
         )
       : [],
+    previousCosts: (costRes.data ?? []).map((c) => ({
+      categoryId: c.category_id,
+      bucket: c.bucket,
+      month: c.month.slice(0, 10),
+      amount: num(c.amount) ?? 0,
+    })),
   });
 }
 

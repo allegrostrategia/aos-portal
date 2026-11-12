@@ -9,7 +9,14 @@ import { previousMonthOf } from "./months.ts";
 import type { AdCampaign, OfferMonth } from "./formulas.ts";
 import type { ReportEntity, ReportMetric } from "./queries.ts";
 import { choosePlatform } from "./platforms.ts";
-import { receivedThisMonth, type ActualCell, type Received } from "./ledger.ts";
+import {
+  expensesThisMonth,
+  receivedThisMonth,
+  type ActualCell,
+  type ExpenseBucket,
+  type ExpenseRow,
+  type Received,
+} from "./ledger.ts";
 
 /**
  * Several months of a workspace's figures — **including the worked-out ones.**
@@ -122,6 +129,13 @@ const ENTITIES_NEEDED: Partial<Record<CategoryKey, ("offer" | "ad_campaign")[]>>
  * `ValueBag` normalises it at the boundary, which is the one place that
  * has to know.
  */
+interface ExpenseRecord {
+  category_id: string;
+  month: string;
+  amount: number | string;
+  bucket: ExpenseBucket;
+}
+
 interface SalesRowRecord {
   id: string;
   row_type: "offer" | "client";
@@ -239,8 +253,14 @@ export async function getFigureHistory({
    * row.
    */
   const supabase = await createClient();
-  const [valueResult, perRowResult, entityResult, salesRowResult, actualResult] =
-    await Promise.all([
+  const [
+    valueResult,
+    perRowResult,
+    entityResult,
+    salesRowResult,
+    actualResult,
+    expenseResult,
+  ] = await Promise.all([
     supabase
       .from("report_values")
       .select("month, metric_key, entity_id, value")
@@ -301,6 +321,15 @@ export async function getFigureHistory({
             recurrence: ActualCell["recurrence"];
           }[],
         }),
+    needsGrid
+      ? supabase
+          .from("report_expenses")
+          .select("category_id, month, amount, bucket")
+          .eq("workspace_id", workspaceId)
+          .gte("month", from)
+          .lte("month", to)
+          .returns<ExpenseRecord[]>()
+      : Promise.resolve({ data: [] as ExpenseRecord[] }),
     ]);
 
   const rows = [...(valueResult.data ?? []), ...(perRowResult.data ?? [])];
@@ -321,6 +350,14 @@ export async function getFigureHistory({
   }));
   const receivedFor = (month: string): Received[] =>
     receivedThisMonth(salesRows, actualCells, month);
+
+  const expenseRows: ExpenseRow[] = (expenseResult.data ?? []).map((e) => ({
+    categoryId: e.category_id,
+    bucket: e.bucket,
+    month: String(e.month).slice(0, 10),
+    amount: typeof e.amount === "number" ? e.amount : Number(e.amount) || 0,
+  }));
+  const costsFor = (month: string): ExpenseRow[] => expensesThisMonth(expenseRows, month);
 
   // One bag per month, including the extra month at the front, so a
   // formula defined against "last month" has one to read.
@@ -415,6 +452,7 @@ export async function getFigureHistory({
           offerRows,
           adCampaigns,
           received: receivedFor(month),
+          costs: costsFor(month),
         }),
       );
     }

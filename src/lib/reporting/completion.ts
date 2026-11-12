@@ -25,6 +25,19 @@ export interface CompletionInput {
     entities: { id: string; entity_type: string; active: boolean }[];
     values: { get: (key: string, entityId: string) => number | null };
   };
+  /**
+   * How many cells Financials' grids hold for this month.
+   *
+   * **Financials has no core metric left** since 13 November: revenue is
+   * the Actual grid and the four cost totals are the expense grid's
+   * buckets, so every figure on that section is pulled. Counted rather
+   * than summed, because a month that genuinely took nothing is answered
+   * by a typed 0 and a sum cannot tell that from silence.
+   *
+   * Absent means "not asked" and leaves the section owing nothing, which
+   * is what every caller written before this did.
+   */
+  financialsCells?: { received: number; costs: number };
 }
 
 /**
@@ -87,6 +100,22 @@ export function categoryCompletion(
   figures: CompletionInput,
   category: string,
 ): { filled: number; total: number } {
+  /**
+   * **Financials is counted by its grids, not by its metrics.**
+   *
+   * Every figure on that section is pulled since 13 November — revenue
+   * from the Actual grid, the four cost totals from the expense grid's
+   * buckets — so counting core metrics would say the section is
+   * finished the moment it is opened, which is the opposite failure to
+   * the one this module was written for. It owes one thing: the month's
+   * figures. A cell on either grid answers it, including a typed 0.
+   */
+  if (category === "financials") {
+    const cells = figures.financialsCells;
+    if (!cells) return { filled: 0, total: 0 };
+    return { filled: cells.received > 0 || cells.costs > 0 ? 1 : 0, total: 1 };
+  }
+
   const core = figures.metrics.filter(
     (m) => m.category === category && m.input_type === "core",
   );

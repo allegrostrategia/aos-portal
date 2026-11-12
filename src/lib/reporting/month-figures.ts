@@ -17,8 +17,9 @@ import {
   type ReportMetric,
 } from "./queries.ts";
 import { readCarried, type Carried } from "./carried.ts";
-import { receivedThisMonth, type Received } from "./ledger.ts";
+import { expensesThisMonth, receivedThisMonth, type ExpenseRow, type Received } from "./ledger.ts";
 import { getSalesLedger, type SalesLedger } from "./sales-queries.ts";
+import { getExpenseLedger, type ExpenseLedger } from "./expense-queries.ts";
 import { monthIsLocked } from "./locked.ts";
 import { ValueBag } from "./queries.ts";
 import { choosePlatform, platformsOf, type PlatformRow } from "./platforms.ts";
@@ -94,6 +95,13 @@ export interface MonthFigures {
   ledger: SalesLedger;
   /** This month's money received, flattened against the rows it came in on. */
   received: Received[];
+  /** The expense categories and every month's figures (§5.10). */
+  expenses: ExpenseLedger;
+  /**
+   * How many cells the two Financials grids hold for this month, for
+   * "still to fill in". Financials has no core metric left to count.
+   */
+  financialsCells: { received: number; costs: number };
   /**
    * Every platform's Social Media figures, worked out separately.
    *
@@ -221,13 +229,15 @@ export function visibleMetrics(
 }
 
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
-  const [allMetrics, data, flow, ledger] = await Promise.all([
+  const [allMetrics, data, flow, ledger, expenses] = await Promise.all([
     getMetrics(),
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
     getClientFlow(ctx.workspace.id, ctx.month.month),
     // §5.10's two grids. Read for every category, because the Overview's
     // Revenue card is Financials' figure and this is where it comes from.
     getSalesLedger(ctx.workspace.id),
+    // And the third grid: the four cost totals are its buckets' sums.
+    getExpenseLedger(ctx.workspace.id),
   ]);
 
   /**
@@ -347,6 +357,14 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
       ? receivedThisMonth(ledger.rows, ledger.actuals, ctx.month.previous)
       : []);
 
+  // The four cost totals, and last month's for the arrows beside them.
+  // Frozen the same way, for the same reason: Profit's "up from" is
+  // arithmetic over a month that may still be a draft.
+  const costs: ExpenseRow[] = expensesThisMonth(expenses.expenses, ctx.month.month);
+  const previousCosts =
+    carried?.previousCosts ??
+    (ctx.month.previous ? expensesThisMonth(expenses.expenses, ctx.month.previous) : []);
+
   const offerRows = offerRowsFrom(frozen, frozen.values);
   // Last month's offers, worked out the same way. Without these, every
   // figure derived from the offers — Revenue, Profit, the margin — had
@@ -375,6 +393,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         adCampaigns: campaignRows,
         clientsAtStart,
         received,
+        costs,
       }),
     );
     Object.assign(
@@ -386,6 +405,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         adCampaigns: previousCampaignRows,
         clientsAtStart: previousClientsAtStart,
         received: previousReceived,
+        costs: previousCosts,
       }),
     );
   }
@@ -457,6 +477,8 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     funnelRows,
     ledger,
     received,
+    expenses,
+    financialsCells: { received: received.length, costs: costs.length },
     openingClients: openingFigures(flow),
     byKey,
   };

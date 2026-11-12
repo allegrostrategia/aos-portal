@@ -2,7 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 
-import { Button } from "./button";
+import { Button, type ButtonSize, type ButtonVariant } from "./button";
 
 /**
  * Form controls.
@@ -23,16 +23,32 @@ function Wrapper({
   label,
   htmlFor,
   hint,
+  hideLabel,
   children,
 }: {
   label: string;
   htmlFor: string;
   hint?: string;
+  /**
+   * The label is read out but not drawn.
+   *
+   * For a column of identical fields — twenty expense categories, each
+   * with its name in a box — where a visible label above every one is
+   * the same word twenty times and the row beside it already says what
+   * the field is. **Never for a field standing on its own**: that is
+   * placeholder-as-label, which is the failure this file exists to
+   * avoid. The label still exists, still names the row it belongs to,
+   * and is still what a screen reader announces.
+   */
+  hideLabel?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-small font-medium text-ink">
+      <label
+        htmlFor={htmlFor}
+        className={hideLabel ? "sr-only" : "text-small font-medium text-ink"}
+      >
         {label}
       </label>
       {children}
@@ -49,6 +65,7 @@ export function Field({
   label,
   name,
   hint,
+  hideLabel,
   className = "",
   // **The id defaults to the name and is not the same thing.** A screen
   // can carry two fields with one name — two forms, a row of them in a
@@ -57,10 +74,15 @@ export function Field({
   // as one combobox with three names.
   id,
   ...props
-}: React.ComponentProps<"input"> & { label: string; name: string; hint?: string }) {
+}: React.ComponentProps<"input"> & {
+  label: string;
+  name: string;
+  hint?: string;
+  hideLabel?: boolean;
+}) {
   const controlId = id ?? name;
   return (
-    <Wrapper label={label} htmlFor={controlId} hint={hint}>
+    <Wrapper label={label} htmlFor={controlId} hint={hint} hideLabel={hideLabel}>
       <input
         id={controlId}
         name={name}
@@ -160,18 +182,29 @@ export function SubmitButton({
   children,
   full = true,
   disabled = false,
+  // **Quiet submits exist** (13 November, the expense categories): a
+  // list of twenty rows each with its own small action was twenty
+  // orange pills down the screen, which is a wall rather than a list.
+  // The orange one is still the primary action of a form; this is for
+  // the one that belongs to a row.
+  variant,
+  size,
 }: {
   children: React.ReactNode;
   full?: boolean;
   // For work the form is waiting on that `useFormStatus` can't see — a file
   // still uploading, say. Submitting is blocked, not just discouraged.
   disabled?: boolean;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 }) {
   const { pending } = useFormStatus();
 
   return (
     <Button
       type="submit"
+      variant={variant}
+      size={size}
       disabled={pending || disabled}
       className={full ? "w-full" : ""}
     >

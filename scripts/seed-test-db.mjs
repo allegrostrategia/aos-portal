@@ -205,9 +205,10 @@ export async function seed({ quiet = false } = {}) {
     ${v(MONTHS.sep, "client_experience_issues_raised", 1)}
     ${v(MONTHS.sep, "leads_conversions_new_leads_from_social", 20)}
     ${v(MONTHS.sep, "leads_conversions_new_leads_from_email", 8)}
-    ${v(MONTHS.sep, "financials_fixed_costs", 300)}
-    ${v(MONTHS.sep, "financials_variable_costs", 250)}
-    ${v(MONTHS.sep, "financials_team_costs", 500)}
+    -- **No cost figures here.** The four cost totals are the expense
+    -- grid's buckets since 13 November, so report_values refuses one:
+    -- they are pulled, like revenue. A test that wants costs puts them
+    -- on the grid, which is where a person puts them.
 
     -- July and August published, September still a draft: the state the
     -- "client sees dashes while an earlier month is a draft" test needs.

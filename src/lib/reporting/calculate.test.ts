@@ -9,7 +9,7 @@ import {
   type OfferMonth,
 } from "./formulas.ts";
 import { CATEGORIES } from "./categories.ts";
-import type { Received } from "./ledger.ts";
+import type { ExpenseRow, Received } from "./ledger.ts";
 
 /**
  * These tests are about the WIRING, not the arithmetic — formulas.test.ts
@@ -179,9 +179,10 @@ test("financials reads its revenue off the Actual grid, never from a box", () =>
   // bespoke work, which is most of an agency's money — is Other income.
   // Together they are the month, so nothing received is left out.
   const out = calculate("financials", {
-    value: from({ financials_fixed_costs: 3200 }),
+    value: none,
     previous: none,
     received: RECEIVED,
+    costs: [{ categoryId: "c1", bucket: "fixed", month: "2026-01-01", amount: 3200 }],
   });
   assert.equal(out.financials_revenue_from_offers, 20000);
   assert.equal(out.financials_other_income, 4850);
@@ -202,9 +203,10 @@ test("MRR is the money that came in on the cells that recur", () => {
 
 test("with nothing received, revenue is a dash rather than zero", () => {
   const out = calculate("financials", {
-    value: from({ financials_fixed_costs: 3200 }),
+    value: none,
     previous: none,
     received: [],
+    costs: [{ categoryId: "c1", bucket: "fixed", month: "2026-01-01", amount: 3200 }],
   });
   assert.equal(out.financials_revenue_from_offers, null);
   assert.equal(out.financials_other_income, null);
@@ -215,12 +217,8 @@ test("with nothing received, revenue is a dash rather than zero", () => {
 test("financials", () => {
   const out = calculate("financials", {
     received: RECEIVED,
-    value: from({
-      financials_fixed_costs: 3200,
-      financials_variable_costs: 6100,
-      financials_team_costs: 4230,
-      financials_cash_in_bank_at_month_end: 41000,
-    }),
+    costs: COSTS,
+    value: from({ financials_cash_in_bank_at_month_end: 41000 }),
     previous: none,
   });
 
@@ -237,6 +235,16 @@ test("financials", () => {
  * offers fixture does, so the figures below are comparable to the ones
  * this file has always asserted.
  */
+/**
+ * And a month on the expense grid: the same £3,200, £6,100 and £4,230
+ * this file has always asserted, now as rows with their own buckets.
+ */
+const COSTS: ExpenseRow[] = [
+  { categoryId: "c1", bucket: "fixed", month: "2026-01-01", amount: 3200 },
+  { categoryId: "c2", bucket: "variable", month: "2026-01-01", amount: 6100 },
+  { categoryId: "c3", bucket: "team", month: "2026-01-01", amount: 4230 },
+];
+
 const RECEIVED: Received[] = [
   { salesRowId: "row-1", rowType: "offer", offerEntityId: "offer-1", amount: 14500, recurrence: "none" },
   { salesRowId: "row-2", rowType: "offer", offerEntityId: "offer-2", amount: 5500, recurrence: "monthly" },
@@ -304,14 +312,20 @@ test("the entry card and the report cannot disagree — same input, same output"
   // §9's whole promise. The entry screen used to call calculate() without
   // the month's money, so Total revenue, Profit and the margin were
   // dashes there while the report, which passes it, showed real figures.
-  const value = from({
-    financials_fixed_costs: 3200,
-    financials_variable_costs: 6100,
-    financials_team_costs: 4230,
-  });
+  const value = none;
 
-  const report = calculate("financials", { value, previous: none, received: RECEIVED });
-  const entryCard = calculate("financials", { value, previous: none, received: RECEIVED });
+  const report = calculate("financials", {
+    value,
+    previous: none,
+    received: RECEIVED,
+    costs: COSTS,
+  });
+  const entryCard = calculate("financials", {
+    value,
+    previous: none,
+    received: RECEIVED,
+    costs: COSTS,
+  });
 
   assert.deepEqual(entryCard, report);
   assert.equal(report.financials_revenue_from_offers, 20000);
@@ -323,8 +337,7 @@ test("without the grid, every figure derived from it is a dash", () => {
   // Which is exactly what the entry screen showed. Asserted so the
   // difference between "passed them" and "didn't" is visible in a test
   // rather than only on a screen.
-  const value = from({ financials_fixed_costs: 3200 });
-  const starved = calculate("financials", { value, previous: none });
+  const starved = calculate("financials", { value: none, previous: none });
 
   assert.equal(starved.financials_revenue_from_offers, null);
   assert.equal(starved.financials_total_revenue, null);
@@ -345,15 +358,20 @@ test("last month's money gives this month something to compare against", () => {
     { salesRowId: "row-1", rowType: "offer", offerEntityId: "offer-1", amount: 3000, recurrence: "none" },
   ];
 
+  const oneCost: ExpenseRow[] = [
+    { categoryId: "c1", bucket: "fixed", month: "2026-01-01", amount: 1000 },
+  ];
   const prev = calculate("financials", {
-    value: from({ financials_fixed_costs: 1000 }),
+    value: none,
     previous: none,
     received: august,
+    costs: oneCost,
   });
   const now = calculate("financials", {
-    value: from({ financials_fixed_costs: 1000 }),
+    value: none,
     previous: none,
     received: september,
+    costs: oneCost,
   });
 
   assert.equal(prev.financials_total_revenue, 2000);

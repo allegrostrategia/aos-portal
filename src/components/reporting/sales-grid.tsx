@@ -5,10 +5,10 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle, Stat } from "@/components/ui/card";
 import { Field, FormMessage, Select, SubmitButton } from "@/components/ui/form";
-import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/format";
+import { MoneyGrid } from "@/components/reporting/money-grid";
+import { formatValue } from "@/lib/reporting/format";
 import {
   forecastIn,
-  monthsToShow,
   receivedIn,
   recurringSplit,
   rowsWithFigures,
@@ -56,26 +56,6 @@ export interface SalesGridProps {
   /** Whether the month being entered is itself published. */
   locked: boolean;
 }
-
-/** Jan–Dec of the year the month sits in, which is how her grid reads. */
-const yearOf = (month: string) =>
-  Array.from({ length: 12 }, (_, i) => `${month.slice(0, 4)}-${String(i + 1).padStart(2, "0")}-01`);
-
-const shortMonth = (month: string) => monthLabel(month).split(" ")[0].slice(0, 3);
-
-/**
- * One rule for a month column, worn by its heading, its input and its
- * total.
- *
- * Dom, 13 November: the headings and the Total row sat to the right of
- * the inputs they belonged to, so October's figure read as if it were
- * between October and November. The cause was three different paddings
- * and an input narrower than its cell — the heading right-aligned to the
- * cell, the input floated left inside it. A fixed column width plus a
- * full-width input puts all three on the same right edge, and keeps the
- * two grids' columns the same size as each other.
- */
-const MONTH_COL = "px-1.5 text-right";
 
 export function SalesGrid(props: SalesGridProps) {
   const money = (v: number | null) => formatValue(v, "currency", props.currency);
@@ -151,6 +131,12 @@ export function SalesGrid(props: SalesGridProps) {
 // One grid: rows down, months across
 // ---------------------------------------------------------------------------
 
+/**
+ * Both grids are `<MoneyGrid>`, which the expense grid below them is too.
+ *
+ * What differs is five props: the title, the note, the save button, the
+ * action, and whether the grid may run ahead of the month being entered.
+ */
 interface GridProps extends SalesGridProps {
   kind: "actual" | "forecast";
   title: string;
@@ -163,261 +149,56 @@ interface GridProps extends SalesGridProps {
 }
 
 function Grid(props: GridProps) {
-  const [state, action] = useActionState<SalesState, FormData>(props.action, null);
-  const money = (v: number | null) => formatValue(v, "currency", props.currency);
-
-  const year = yearOf(props.month);
-  const [whole, setWhole] = useState(false);
-  const months = whole ? year : monthsToShow(year, props.cells, props.month);
-
-  /**
-   * **What came in cannot run ahead of the month being entered** (Dom, 13
-   * November). October's money has not landed while September is being
-   * typed up, so a figure in that column would be a forecast wearing the
-   * Actual grid's name.
-   *
-   * The column stays rather than being cut, so the two grids line up and
-   * so the heading can say where that money goes instead; the cell is
-   * blank rather than an input. `saveActuals` refuses one as well — this
-   * is the half that means nobody is invited to try.
-   */
-  const ahead = (m: string) => props.kind === "actual" && m > props.month;
-  const entered = year.filter((m) => !ahead(m));
-
-  const [typed, setTyped] = useState<Record<string, string>>(() =>
-    Object.fromEntries(props.cells.map((c) => [`${c.salesRowId}|${c.month}`, toInputValue(c.amount)])),
-  );
-
-  const read = (rowId: string, month: string) =>
-    fromInputValue(typed[`${rowId}|${month}`] ?? "");
-  const set = (rowId: string, month: string, value: string) =>
-    setTyped((was) => ({ ...was, [`${rowId}|${month}`]: value }));
-
-  /**
-   * A row of figures pasted straight in — "typed or pasted by hand into
-   * however many months it lasts" (Nina).
-   *
-   * Tabs, commas or newlines, because what comes off a spreadsheet is
-   * tab-separated and what comes out of a message is not. Anything that
-   * is not a number stops the run rather than being written as a blank,
-   * so a pasted header does not wipe a row.
-   */
-  const paste = (rowId: string, from: string, text: string) => {
-    const values = text
-      .trim()
-      .split(/[\t,\r\n]+/)
-      .map((part) => part.replace(/[£$€\s]/g, ""));
-    if (values.length < 2) return false;
-
-    const start = months.indexOf(from);
-    const next = { ...typed };
-    for (let i = 0; i < values.length && start + i < months.length; i++) {
-      const amount = fromInputValue(values[i]);
-      if (amount === null) break;
-      const month = months[start + i];
-      if (props.lockedMonths.includes(month) || ahead(month)) continue;
-      next[`${rowId}|${month}`] = toInputValue(amount);
-    }
-    setTyped(next);
-    return true;
-  };
-
-  const rowTotal = (rowId: string) =>
-    entered.reduce((t, m) => t + (read(rowId, m) ?? 0), 0);
-  const columnTotal = (month: string) =>
-    ahead(month) ? 0 : props.rows.reduce((t, r) => t + (read(r.id, month) ?? 0), 0);
-
-  if (props.rows.length === 0) {
-    return (
-      <Card className="p-5 sm:p-6">
-        <SectionTitle>{props.title}</SectionTitle>
-        <p className="text-small text-ink/60">
-          Add a row below first — an offer you sell, or a client by name.
-        </p>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="p-5 sm:p-6">
-      <SectionTitle aside={props.month.slice(0, 4)}>{props.title}</SectionTitle>
-
-      <p className="mb-4 text-small text-ink/70">
-        {props.kind === "actual" ? (
+    <MoneyGrid
+      workspaceId={props.workspaceId}
+      month={props.month}
+      currency={props.currency}
+      title={props.title}
+      kind={props.kind}
+      rows={props.rows}
+      cells={props.cells.map((c) => ({ rowId: c.salesRowId, month: c.month, amount: c.amount }))}
+      action={props.action}
+      saveLabel={`Save ${props.title.toLowerCase()}`}
+      empty="Add a row below first — an offer you sell, or a client by name."
+      lockedMonths={props.lockedMonths}
+      locked={props.locked}
+      anchor={props.kind === "forecast" ? "what-you-expect" : undefined}
+      /**
+       * **What came in cannot run ahead of the month being entered**
+       * (Dom, 13 November). October's money has not landed while
+       * September is being typed up, so a figure in that column would be
+       * a forecast wearing the Actual grid's name.
+       *
+       * The column stays rather than being cut, so the two grids line up
+       * and so the heading can say where that money goes instead.
+       * `saveActuals` refuses one as well — this is the half that means
+       * nobody is invited to try.
+       */
+      ahead={props.kind === "actual" ? (m) => m > props.month : undefined}
+      aheadLabel="forecast"
+      note={
+        props.kind === "actual" ? (
           <>
             What actually landed each month, from the bank and Stripe. A refund or a
             chargeback goes in as a minus — it comes off the month.{" "}
-            <strong className="font-medium text-ink">
-              Signed a new retainer client?
-            </strong>{" "}
+            <strong className="font-medium text-ink">Signed a new retainer client?</strong>{" "}
             <a href="#what-you-expect" className="text-ink underline underline-offset-2">
               Add them to your forecast.
             </a>
           </>
         ) : (
           <>What you expect each month. Type it, or paste a row of figures straight in.</>
-        )}
-      </p>
-
-      <form action={action} className="flex flex-col gap-4">
-        <input type="hidden" name="workspace_id" value={props.workspaceId} />
-        {/* Which month is being entered, so the save can refuse money
-            received in a month that has not happened yet. */}
-        <input type="hidden" name="month" value={props.month} />
-
-        {/* The sticky first column is what makes a year readable on a
-            phone: the names stay put and the months scroll under them.
-
-            **`relative` is load-bearing** (Dom, 13 November: a strip of
-            bare background down the right of the phone screenshot). Every
-            cell carries an `sr-only` label, which is `position:
-            absolute` — and an absolutely positioned element is clipped by
-            an ancestor's overflow only when that ancestor is its
-            containing block. Without this, twelve columns of invisible
-            1px labels sat in page coordinates out past the right edge and
-            dragged the whole document sideways with them. */}
-        <div className="relative -mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-          <table
-            id={props.kind === "forecast" ? "what-you-expect" : undefined}
-            className="w-full border-collapse text-small"
-          >
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-10 bg-card py-2 pr-3 text-left text-caption font-medium uppercase tracking-wide text-ink/60">
-                  Row
-                </th>
-                {months.map((m) => (
-                  <th
-                    key={m}
-                    className={`${MONTH_COL} py-2 text-caption font-medium uppercase tracking-wide ${
-                      m === props.month ? "text-ink" : "text-ink/55"
-                    }`}
-                  >
-                    {shortMonth(m)}
-                    {props.lockedMonths.includes(m) ? (
-                      <span className="block text-[0.6rem] font-normal normal-case text-ink/45">
-                        published
-                      </span>
-                    ) : ahead(m) ? (
-                      <span className="block text-[0.6rem] font-normal normal-case text-ink/45">
-                        forecast
-                      </span>
-                    ) : null}
-                  </th>
-                ))}
-                <th className="py-2 pl-3 text-right text-caption font-medium uppercase tracking-wide text-ink/60">
-                  Year
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {props.rows.map((row) => (
-                <tr key={row.id} className="border-t border-ink/8">
-                  <th className="sticky left-0 z-10 max-w-[9rem] truncate bg-card py-2 pr-3 text-left font-medium text-ink">
-                    {row.name}
-                  </th>
-                  {months.map((m) => {
-                    const monthLocked = props.lockedMonths.includes(m);
-                    const value = read(row.id, m);
-                    return (
-                      <td
-                        key={m}
-                        className={`${MONTH_COL} py-1.5 ${m === props.month ? "bg-cream-deep" : ""}`}
-                      >
-                        {ahead(m) ? (
-                          // As wide as the input it stands in for, so the
-                          // column does not change size on the grid that
-                          // cannot take a figure.
-                          <span className="inline-block w-20 py-1.5 font-mono text-small text-ink/30">
-                            &mdash;
-                          </span>
-                        ) : (
-                          <>
-                            {/* **The id carries the grid, the name does not.**
-                                Both grids draw the same rows and the same
-                                months, so a shared id made every forecast
-                                label point at the Actual table's input — one
-                                document, two controls, one `for`. The action
-                                parses `name`, so that stays as it is. */}
-                            <label className="sr-only" htmlFor={`${props.kind}:${row.id}:${m}`}>
-                              {`${row.name}, ${monthLabel(m)}`}
-                            </label>
-                            <input
-                              id={`${props.kind}:${row.id}:${m}`}
-                              name={`cell:${row.id}:${m}`}
-                              type="number"
-                              step="0.01"
-                              inputMode="decimal"
-                              disabled={monthLocked}
-                              value={typed[`${row.id}|${m}`] ?? ""}
-                              onChange={(e) => set(row.id, m, e.target.value)}
-                              onPaste={(e) => {
-                                if (paste(row.id, m, e.clipboardData.getData("text"))) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              className={`w-20 rounded-lg border border-ink/12 bg-cream-deep px-2 py-1.5 text-right text-small tabular-nums outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30 disabled:opacity-50 ${
-                                value !== null && value < 0 ? "text-orange" : "text-ink"
-                              }`}
-                            />
-                          </>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="py-2 pl-3 text-right font-mono tabular-nums text-ink">
-                    {money(rowTotal(row.id) || null)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-t border-ink/15">
-                <th className="sticky left-0 z-10 bg-card py-2.5 pr-3 text-left text-caption font-medium uppercase tracking-wide text-ink/60">
-                  Total
-                </th>
-                {months.map((m) => (
-                  <td
-                    key={m}
-                    className={`${MONTH_COL} py-2.5 font-mono tabular-nums text-ink ${
-                      m === props.month ? "bg-cream-deep" : ""
-                    }`}
-                  >
-                    {money(columnTotal(m) || null)}
-                  </td>
-                ))}
-                <td className="py-2.5 pl-3 text-right font-mono tabular-nums text-ink">
-                  {money(entered.reduce((t, m) => t + columnTotal(m), 0) || null)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {months.length < year.length ? (
-            <Button variant="ghost" size="sm" type="button" onClick={() => setWhole(true)}>
-              Show the whole year
-            </Button>
-          ) : null}
-          {props.hiddenCount > 0 && !props.showAll ? (
-            <Button variant="ghost" size="sm" type="button" onClick={() => props.onShowAll(true)}>
-              {`Show all rows (${props.hiddenCount} with nothing this year)`}
-            </Button>
-          ) : null}
-        </div>
-
-        <FormMessage error={state?.error} notice={state?.notice} />
-        {props.locked ? (
-          <p className="text-caption text-ink/60">
-            {monthLabel(props.month)} is published, so its column is fixed. Unpublish it to
-            make changes.
-          </p>
-        ) : null}
-        {/* **The button says its own grid's name back.** Two grids of
-            identical shape sit one above the other, so "Save" on either
-            would be a button you have to work out. */}
-        <SubmitButton full={false}>{`Save ${props.title.toLowerCase()}`}</SubmitButton>
-      </form>
-    </Card>
+        )
+      }
+      extraToggles={
+        props.hiddenCount > 0 && !props.showAll ? (
+          <Button variant="ghost" size="sm" type="button" onClick={() => props.onShowAll(true)}>
+            {`Show all rows (${props.hiddenCount} with nothing this year)`}
+          </Button>
+        ) : null
+      }
+    />
   );
 }
 
