@@ -101,6 +101,51 @@ test("a cancelled sale and a cancelled instalment stop counting, and stay", () =
   assert.deepEqual(scheduledAfter(stopped, NOV), [], "nor scheduled");
 });
 
+test("a cancellation counts from its own month, so a published September stands", () => {
+  // Dom, 12 November. The guard now lets a September sale be cancelled in
+  // November without September being unpublished — and if this file simply
+  // dropped every cancelled row, that cancellation would blank £2,000 out
+  // of a report the client had already read.
+  const stopped: Sale = { ...course, cancelledOn: "2026-11-14" };
+  const stoppedPlan = plan.map((p) =>
+    p.dueMonth === NOV || p.dueMonth === DEC ? { ...p, cancelledOn: "2026-11-14" } : p,
+  );
+
+  assert.equal(salesIn([stopped], SEP), 2000, "September sold it, and that is permanent");
+  assert.equal(cashIn(stoppedPlan, SEP), 500, "and the money that came in really came in");
+
+  // An invoice still owed in September is still owed in September. This is
+  // the case that forces the whole rule: applied flatly, a November
+  // cancellation would wipe a published month's outstanding figure.
+  const owed: SalePayment[] = [
+    { saleId: "s1", dueMonth: SEP, receivedMonth: null, amount: 800, cancelledOn: "2026-11-14" },
+  ];
+  assert.equal(outstandingBy(owed, SEP), 800, "September's report said £800 was owed");
+  assert.equal(outstandingBy(owed, NOV), null, "and from November it is not owed, it is gone");
+
+  // A retainer that stops in November is in October's MRR and out of
+  // November's.
+  const retainer: Sale = {
+    id: "s9",
+    salesRowId: "r2",
+    month: SEP,
+    totalValue: 300,
+    billing: "monthly",
+    cancelledOn: "2026-11-14",
+  };
+  const dues: SalePayment[] = [
+    { saleId: "s9", dueMonth: OCT, receivedMonth: OCT, amount: 300, cancelledOn: null },
+    { saleId: "s9", dueMonth: NOV, receivedMonth: null, amount: 300, cancelledOn: null },
+  ];
+  assert.equal(recurringSplit([retainer], dues, OCT).monthly, 300);
+  assert.equal(recurringSplit([retainer], dues, NOV).monthly, null, "they left");
+
+  // Scheduled-ahead is the exception: it is about the future rather than
+  // about a month, so it drops a cancelled instalment at once. What holds
+  // a published month still there is the freeze, not this function.
+  assert.deepEqual(scheduledAfter(stoppedPlan, OCT), [], "nothing left to collect");
+});
+
 test("MRR is drawn from how the sale is billed, so retainers are in it", () => {
   // The fix: MRR used to mean "revenue on offers marked recurring",
   // which dropped every retainer client on the floor.

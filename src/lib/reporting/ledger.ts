@@ -60,7 +60,10 @@ export interface Sale {
    * retainers are the recurring revenue for an agency like Nina's.
    */
   billing: Billing;
-  /** Set when the sale fell through. Marked, never deleted (rule 7). */
+  /**
+   * Set when the sale fell through. Marked, never deleted (rule 7), and
+   * **counted from its own month forward** — see `cancelledBy`.
+   */
   cancelledOn: string | null;
 }
 
@@ -71,7 +74,10 @@ export interface SalePayment {
   /** The month the money arrived, or null while it has not. Cash counts here. */
   receivedMonth: string | null;
   amount: number;
-  /** Set when this instalment was cancelled. It stops counting and stays. */
+  /**
+   * Set when this instalment was cancelled. It stops counting from that
+   * month on, and it stays on the record.
+   */
   cancelledOn: string | null;
 }
 
@@ -92,19 +98,50 @@ export interface ClientHours {
 
 const inMonth = (value: string | null, month: string) => value === month;
 
-/** A cancelled sale, and a cancelled instalment, stop counting. */
+/**
+ * A cancellation counts **from its own month forward**, not backwards.
+ *
+ * Dom, 12 November, reviewing the guard that lets a September sale be
+ * cancelled in November without September being unpublished: if the
+ * arithmetic simply dropped every cancelled row, that November
+ * cancellation would blank a published September's £2,000 — the exact
+ * rewrite the published-month lock exists to prevent.
+ *
+ * So in September they sold it, and that is permanent; from November the
+ * money stops being owed, stops being scheduled and stops being MRR. Same
+ * "as of that month" reading `outstandingBy` already takes.
+ */
+const cancelledBy = (cancelledOn: string | null, month: string) =>
+  cancelledOn !== null && cancelledOn.slice(0, 7) <= month.slice(0, 7);
+
+const liveAt = <T extends { cancelledOn: string | null }>(rows: T[], month: string) =>
+  rows.filter((row) => !cancelledBy(row.cancelledOn, month));
+
+/**
+ * The one exception, and the reason it is one.
+ *
+ * Every figure above is ABOUT a month, so it reads a cancellation as of
+ * that month. "Money scheduled ahead" is not about the month — it is
+ * about the future, and the future is now: a draft October should not
+ * promise an instalment the customer cancelled last week.
+ *
+ * What stops that moving a published month is the freeze, not this
+ * filter: `Carried.scheduledAhead` holds what the month was published
+ * with (Dom, 12 November), so a published October goes on saying what it
+ * said while a draft one tells the truth today.
+ */
 const live = <T extends { cancelledOn: string | null }>(rows: T[]) =>
   rows.filter((row) => row.cancelledOn === null);
 
 /** What the client sold this month, whatever has been paid of it. */
 export function salesIn(sales: Sale[], month: string): Result {
-  const mine = live(sales).filter((s) => s.month === month);
+  const mine = liveAt(sales, month).filter((s) => s.month === month);
   return mine.length === 0 ? null : sum(...mine.map((s) => s.totalValue));
 }
 
 /** What arrived in the bank this month, whenever it was sold. */
 export function cashIn(payments: SalePayment[], month: string): Result {
-  const mine = live(payments).filter((p) => inMonth(p.receivedMonth, month));
+  const mine = liveAt(payments, month).filter((p) => inMonth(p.receivedMonth, month));
   return mine.length === 0 ? null : sum(...mine.map((p) => p.amount));
 }
 
@@ -121,8 +158,8 @@ export function recurringSplit(
   payments: SalePayment[],
   month: string,
 ): { monthly: Result; annual: Result; combined: Result } {
-  const billingOf = new Map(live(sales).map((s) => [s.id, s.billing]));
-  const mine = live(payments)
+  const billingOf = new Map(liveAt(sales, month).map((s) => [s.id, s.billing]));
+  const mine = liveAt(payments, month)
     .filter((p) => inMonth(p.dueMonth, month))
     .map((p) => ({ amount: p.amount, billing: billingOf.get(p.saleId) }))
     .filter((p) => p.billing !== undefined && p.billing !== "one_off");
@@ -144,13 +181,22 @@ export function recurringSplit(
  * would change a client's September every time somebody paid in March.
  */
 export function outstandingBy(payments: SalePayment[], month: string): Result {
-  const late = live(payments).filter(
+  const late = liveAt(payments, month).filter(
     (p) => p.dueMonth <= month && (p.receivedMonth === null || p.receivedMonth > month),
   );
   return late.length === 0 ? null : sum(...late.map((p) => p.amount));
 }
 
-/** What is already scheduled into the months after this one, month by month. */
+/**
+ * What is already scheduled into the months after this one, month by month.
+ *
+ * **Frozen into the carried snapshot at publish** (Dom, 12 November), and
+ * the report reads it from there. Two reasons, and the second is the
+ * bigger one: a published month would otherwise change every time
+ * somebody rescheduled an instalment, and answering it from live rows
+ * meant a client's RLS had to let them read payments for months they had
+ * not been shown — received status and cancellations included.
+ */
 export function scheduledAfter(
   payments: SalePayment[],
   month: string,
@@ -200,7 +246,7 @@ export function offerRevenue(
     rows.filter((r) => r.offerEntityId !== null).map((r) => [r.id, r.offerEntityId!]),
   );
   const out = new Map<string, number>();
-  for (const sale of live(sales)) {
+  for (const sale of liveAt(sales, month)) {
     if (sale.month !== month) continue;
     const offer = offerOf.get(sale.salesRowId);
     if (!offer) continue;
@@ -225,7 +271,9 @@ export function bespokeRevenue(
   month: string,
 ): { total: Result; clients: number } {
   const linked = new Set(rows.filter((r) => r.offerEntityId !== null).map((r) => r.id));
-  const mine = live(sales).filter((s) => s.month === month && !linked.has(s.salesRowId));
+  const mine = liveAt(sales, month).filter(
+    (s) => s.month === month && !linked.has(s.salesRowId),
+  );
   return {
     total: mine.length === 0 ? null : sum(...mine.map((s) => s.totalValue)),
     clients: new Set(mine.map((s) => s.salesRowId)).size,
@@ -263,11 +311,11 @@ export function clientProfitability(
   hours: ClientHours[],
   month: string,
 ): ClientProfit[] {
-  const rowOf = new Map(live(sales).map((s) => [s.id, s.salesRowId]));
+  const rowOf = new Map(liveAt(sales, month).map((s) => [s.id, s.salesRowId]));
   return rows
     .filter((row) => row.rowType === "client")
     .map((row) => {
-      const paidRows = live(payments).filter(
+      const paidRows = liveAt(payments, month).filter(
         (p) => rowOf.get(p.saleId) === row.id && inMonth(p.receivedMonth, month),
       );
       const mine = hours.filter((h) => h.salesRowId === row.id && h.month === month);

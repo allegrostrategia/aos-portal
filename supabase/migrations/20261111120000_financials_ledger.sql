@@ -1,8 +1,8 @@
 -- aOS Reporting — Financials as a hand-entry ledger.
 --
--- NOT YET APPLIED TO LIVE. Shown to Dom before applying, as every
--- migration is. **Revised 11 November after his review** — the six
--- changes are marked REVIEW below.
+-- NOT YET APPLIED TO LIVE until Dom's word. Shown to him before applying,
+-- as every migration is. **Revised twice after review** — his six changes
+-- of 11 November and his two of 12 November, marked REVIEW below.
 --
 -- Nina, 11 November, with her own 2025 tracker as the layout reference.
 -- **Nobody uploads anything.** §10's manual-entry rule stands exactly as
@@ -180,9 +180,9 @@ create trigger report_sales_set_updated_at
   before update on public.report_sales
   for each row execute function public.set_updated_at();
 
-create trigger report_sales_guard_published
-  before insert or update or delete on public.report_sales
-  for each row execute function public.guard_report_published_month();
+-- A sale is locked by `guard_report_sale_months()`, in the lock section at
+-- the bottom of this file rather than here: a sale has a month it was sold
+-- in AND a month it was cancelled in, and the shared guard reads one month.
 
 create or replace function public.guard_report_sale_row()
 returns trigger
@@ -564,18 +564,149 @@ create trigger report_client_hours_guard_published
   before insert or update or delete on public.report_client_hours
   for each row execute function public.guard_report_published_month();
 
+-- -----------------------------------------------------------------------------
+-- When a cancellation may be recorded
+-- -----------------------------------------------------------------------------
+--
+-- REVIEW 7 (Dom, 12 November): **a customer who stops paying is news, and
+-- news has to be writable.** The first revision marked a cancellation on
+-- the sale and on the instalment, and then the published-month guard
+-- refused to let anybody set it — a September sale that fell over in
+-- November could not be written down without unpublishing September. The
+-- same mistake the late payment taught us, in a different column.
+--
+-- So a cancellation is treated the way `received_month` is: an event in
+-- its own month, and that month has to be open.
+--
+-- It is slightly stronger than "that month is not published", and it has
+-- to be. A cancellation takes effect from its month FORWARD — the money
+-- stops being owed, stops being scheduled, stops being MRR — so dating one
+-- into an open January with a published December sitting after it would
+-- rewrite December. The rule is therefore that nothing from the
+-- cancellation's month onwards may be published. In practice that is "the
+-- open tail", because months are published in order.
+create or replace function public.report_cancellation_is_open(
+  p_workspace uuid,
+  p_cancelled_on date
+) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select not exists (
+    select 1
+      from public.report_periods p
+      join public.report_workspaces w on w.id = p.workspace_id
+     where p.workspace_id = p_workspace
+       and p.month >= date_trunc('month', p_cancelled_on)::date
+       and p.published_at is not null
+       -- Retainer only, as `report_month_is_locked` is: a self-serve month
+       -- has no "published" to speak of.
+       and w.kind = 'retainer'
+  );
+$$;
+
+comment on function public.report_cancellation_is_open(uuid, date) is
+  'Whether a cancellation dated in this month may be written: it takes effect from its own month forward, so no month from there on may be published (Dom, 12 Nov 2026).';
+
+-- A sale has the month it was sold in and the month it was cancelled in,
+-- and the shared guard reads one month. So:
+--
+--   · A published sold month fixes WHAT WAS SOLD — the row, the value, how
+--     it is billed, the month itself.
+--   · **A cancellation can still be recorded**, dated in an open month,
+--     because a customer walking away in November is not a change to
+--     September. September still sold £2,000; the arithmetic reads a
+--     cancellation as of its own month, so the published figure stands and
+--     November's is the one that drops.
+create or replace function public.guard_report_sale_months()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_workspace uuid;
+begin
+  -- Admin and the service role pass, as they must: the publish job has no
+  -- JWT, so `is_portal_admin()` is false for it.
+  if public.is_portal_admin() or (select auth.uid()) is null then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+
+  v_workspace := case when tg_op = 'DELETE' then old.workspace_id else new.workspace_id end;
+
+  -- Writing a cancellation and taking one back are the same move in two
+  -- directions, and both change every month from that date onwards.
+  if tg_op <> 'DELETE' and new.cancelled_on is not null
+     and (tg_op = 'INSERT' or new.cancelled_on is distinct from old.cancelled_on)
+     and not public.report_cancellation_is_open(v_workspace, new.cancelled_on) then
+    raise exception 'A cancellation can only be dated in a month that is still open. Unpublish it to make changes.'
+      using errcode = 'check_violation';
+  end if;
+
+  if tg_op = 'UPDATE' and old.cancelled_on is not null
+     and new.cancelled_on is distinct from old.cancelled_on
+     and not public.report_cancellation_is_open(v_workspace, old.cancelled_on) then
+    raise exception 'That cancellation falls in a published month. Unpublish it to make changes.'
+      using errcode = 'check_violation';
+  end if;
+
+  if tg_op = 'DELETE' then
+    if public.report_month_is_locked(v_workspace, old.month) then
+      raise exception 'That month is published. Unpublish it to make changes.'
+        using errcode = 'check_violation';
+    end if;
+    return old;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if public.report_month_is_locked(v_workspace, new.month) then
+      raise exception 'That month is published. Unpublish it to make changes.'
+        using errcode = 'check_violation';
+    end if;
+    return new;
+  end if;
+
+  if public.report_month_is_locked(v_workspace, old.month)
+     or public.report_month_is_locked(v_workspace, new.month) then
+    if new.month is distinct from old.month
+       or new.total_value is distinct from old.total_value
+       or new.billing is distinct from old.billing
+       or new.sales_row_id is distinct from old.sales_row_id
+       or new.workspace_id is distinct from old.workspace_id then
+      raise exception 'That month is published. Only a cancellation can still be recorded.'
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.guard_report_sale_months() is
+  'A published month fixes what was sold; a cancellation can still be dated into an open month, because a customer leaving in November is not a change to September (Dom, 12 Nov 2026).';
+
+create trigger report_sales_guard_published
+  before insert or update or delete on public.report_sales
+  for each row execute function public.guard_report_sale_months();
+
 -- A payment has TWO months, and the ordinary guard reads one. The rule
 -- it needs is the one late payments are about:
 --
 --   · While the DUE month is open, anything about the row may change.
---   · Once the due month is published, the amount, the month, the sale
---     and whether it was cancelled are all part of what that report
---     said, and are held still. **The one thing that may still change
---     is `received_month`** — a September invoice paid in November is
---     not a change to September, it is news about November.
+--   · Once the due month is published, the amount, the month and the sale
+--     are part of what that report said, and are held still. **Two things
+--     may still change: `received_month` and `cancelled_on`** — a
+--     September invoice paid in November is not a change to September, it
+--     is news about November, and an instalment the customer stopped
+--     paying in November is the same kind of news (REVIEW 7).
 --   · And the month the cash lands in has to be open itself, in both
 --     directions: moving cash out of a published month is as much a
---     rewrite of it as moving cash in.
+--     rewrite of it as moving cash in. A cancellation's month has the
+--     stronger test — `report_cancellation_is_open` — because unlike a
+--     payment it reaches every month after itself too.
 create or replace function public.guard_report_sale_payment_months()
 returns trigger
 language plpgsql
@@ -592,6 +723,23 @@ begin
   end if;
 
   v_workspace := case when tg_op = 'DELETE' then old.workspace_id else new.workspace_id end;
+
+  -- A cancellation, and taking one back, both reach from their own month
+  -- forward. REVIEW 7: this is what makes a September instalment
+  -- cancellable in November without September being unpublished.
+  if tg_op <> 'DELETE' and new.cancelled_on is not null
+     and (tg_op = 'INSERT' or new.cancelled_on is distinct from old.cancelled_on)
+     and not public.report_cancellation_is_open(v_workspace, new.cancelled_on) then
+    raise exception 'A cancellation can only be dated in a month that is still open. Unpublish it to make changes.'
+      using errcode = 'check_violation';
+  end if;
+
+  if tg_op = 'UPDATE' and old.cancelled_on is not null
+     and new.cancelled_on is distinct from old.cancelled_on
+     and not public.report_cancellation_is_open(v_workspace, old.cancelled_on) then
+    raise exception 'That cancellation falls in a published month. Unpublish it to make changes.'
+      using errcode = 'check_violation';
+  end if;
 
   -- Cash may not be moved into or out of a published month.
   if tg_op <> 'INSERT' and old.received_month is not null
@@ -623,16 +771,15 @@ begin
   end if;
 
   -- UPDATE on a published due month: everything but the received month
-  -- is held still, and moving the row to a different due month is a
-  -- change to both of them.
+  -- and the cancellation is held still, and moving the row to a different
+  -- due month is a change to both of them.
   if public.report_month_is_locked(v_workspace, old.due_month)
      or public.report_month_is_locked(v_workspace, new.due_month) then
     if new.amount is distinct from old.amount
        or new.due_month is distinct from old.due_month
        or new.sale_id is distinct from old.sale_id
-       or new.cancelled_on is distinct from old.cancelled_on
        or new.workspace_id is distinct from old.workspace_id then
-      raise exception 'That month is published. Only when the money arrived can still change.'
+      raise exception 'That month is published. Only when the money arrived, or that it was cancelled, can still change.'
         using errcode = 'check_violation';
     end if;
   end if;
@@ -642,7 +789,7 @@ end;
 $$;
 
 comment on function public.guard_report_sale_payment_months() is
-  'A payment belongs to the month it was due and to the month it was paid. A published due month fixes everything but received_month, so a late payment can still be recorded against an open month (11 Nov 2026).';
+  'A payment belongs to the month it was due, the month it was paid and the month it was cancelled in. A published due month fixes everything but those last two, so a late payment and a customer who stopped paying can both still be recorded (12 Nov 2026).';
 
 create trigger report_sale_payments_guard_published
   before insert or update or delete on public.report_sale_payments
@@ -687,22 +834,25 @@ create policy report_sales_update_editors on public.report_sales
   for update to authenticated
   using (public.report_can_edit(workspace_id)) with check (public.report_can_edit(workspace_id));
 
--- REVIEW 3: **which payments a client may see.**
---   Reading by the due month alone was wrong twice over. A sale made in
---   a published September schedules instalments into October, November
---   and December, and those are part of what September's report says
---   about the months ahead — hiding them left "scheduled ahead" empty
---   for the only person it was written for. And an instalment paid
---   EARLY, into a published month, dropped out of that month's cash
---   because its due month had not been published yet.
+-- REVIEW 3, then REVIEW 8: **which payments a client may see.**
+--   Reading by the due month alone was wrong, because an instalment paid
+--   EARLY — into a published month, while its own due month is still a
+--   draft — dropped out of that month's cash. So the month the money
+--   arrived in counts as well as the month it was due.
 --
---   So a payment is readable when any one of the three months it can be
---   attached to is readable: the month its sale was made, the month it
---   is due, or the month the money arrived. Each of those is a month
---   the client has either already been shown or is entitled to.
+--   REVIEW 3 added a third clause, "or the month its sale was made", so
+--   that a published September could show the instalments it had
+--   scheduled into October, November and December. **Dom removed it on
+--   12 November**, and chose the other answer he had offered: that figure
+--   is frozen into the month's carried snapshot at publish instead. The
+--   clause was handing a client live draft rows — including whether a
+--   future instalment has been paid, and whether it has been cancelled —
+--   for months they have not been shown, and a frozen figure is what a
+--   published report is supposed to be made of anyway.
+--
+--   So: two clauses, and "money scheduled ahead" comes from the freeze.
 create or replace function public.report_can_read_payment(
   p_workspace uuid,
-  p_sale uuid,
   p_due date,
   p_received date
 ) returns boolean
@@ -712,23 +862,18 @@ security definer
 set search_path = ''
 as $$
   select public.report_can_read_month(p_workspace, p_due)
-      or (p_received is not null and public.report_can_read_month(p_workspace, p_received))
-      or exists (
-           select 1 from public.report_sales s
-            where s.id = p_sale
-              and public.report_can_read_month(p_workspace, s.month)
-         );
+      or (p_received is not null and public.report_can_read_month(p_workspace, p_received));
 $$;
 
-comment on function public.report_can_read_payment(uuid, uuid, date, date) is
-  'A payment is readable when the month of its sale, its due month or the month it arrived is readable. Any one of the three is a month the client has been shown (11 Nov 2026).';
+comment on function public.report_can_read_payment(uuid, date, date) is
+  'A payment is readable when its due month or the month it arrived is readable. What a published month scheduled into later months comes from the carried snapshot, not from live rows (Dom, 12 Nov 2026).';
 
 create policy report_sale_payments_all_admin on public.report_sale_payments
   for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
 create policy report_sale_payments_select_readers on public.report_sale_payments
   for select to authenticated
-  using (public.report_can_read_payment(workspace_id, sale_id, due_month, received_month));
+  using (public.report_can_read_payment(workspace_id, due_month, received_month));
 create policy report_sale_payments_write_editors on public.report_sale_payments
   for insert to authenticated with check (public.report_can_edit(workspace_id));
 create policy report_sale_payments_update_editors on public.report_sale_payments

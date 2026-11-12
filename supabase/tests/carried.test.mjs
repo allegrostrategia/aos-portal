@@ -442,3 +442,78 @@ test("a snapshot written before prices were frozen still reads the live one", as
     "no price in the snapshot means the live one, not a dash",
   );
 });
+
+/**
+ * Money scheduled into the months after this one, frozen with the month
+ * (Dom, 12 November).
+ *
+ * The only forward-looking figure on the report, and the only reason a
+ * client would otherwise need to read payment rows for months they have
+ * not been shown. Live, it would also move a published September every
+ * time somebody rescheduled an instalment — the rewrite the lock exists
+ * to prevent, arriving through a table the lock does not cover.
+ */
+test("what a month had scheduled ahead is frozen, so rescheduling cannot rewrite it", async () => {
+  let SALE;
+  await asMember(db, NINA, async () => {
+    const row = (
+      await db.query(`insert into public.report_sales_rows (workspace_id, name, row_type)
+                      values ('${WS}', 'Signature programme', 'offer') returning id`)
+    ).rows[0].id;
+    SALE = (
+      await db.query(`insert into public.report_sales
+                        (workspace_id, sales_row_id, month, total_value)
+                      values ('${WS}', '${row}', '${SEP}', 2000) returning id`)
+    ).rows[0].id;
+    await db.query(`insert into public.report_sale_payments
+                      (workspace_id, sale_id, due_month, received_month, amount)
+                    values ('${WS}', '${SALE}', '${SEP}', '${SEP}', 500),
+                           ('${WS}', '${SALE}', '2026-10-01', null, 500),
+                           ('${WS}', '${SALE}', '2026-11-01', null, 500),
+                           ('${WS}', '${SALE}', '2026-12-01', null, 500)`);
+  });
+
+  assert.equal((await publish(SEP))?.error, undefined);
+  const published = [
+    { month: "2026-10-01", amount: 500 },
+    { month: "2026-11-01", amount: 500 },
+    { month: "2026-12-01", amount: 500 },
+  ];
+  assert.deepEqual(
+    (await carriedOn(SEP)).scheduledAhead,
+    published,
+    "the three instalments September had scheduled",
+  );
+
+  // December's instalment slips to January. Both months are drafts, so
+  // the move is allowed — and September must not notice.
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_sale_payments set due_month = '2027-01-01'
+               where sale_id = '${SALE}' and due_month = '2026-12-01'`),
+  );
+  assert.deepEqual(
+    (await carriedOn(SEP)).scheduledAhead,
+    published,
+    "still the three it was published with",
+  );
+});
+
+/**
+ * And the months published before 12 November have no `scheduledAhead`
+ * key at all. Absent is not empty: they must fall back to the live
+ * schedule rather than reading as "nothing scheduled" (the same
+ * distinction `entities.price` makes).
+ */
+test("a snapshot written before scheduled-ahead was frozen reads as absent, not empty", async () => {
+  const [row] = await rows(
+    `select carried from public.report_periods where workspace_id = '${WS}' and month = '${SEP}'`,
+  );
+  const older = structuredClone(row.carried);
+  delete older.scheduledAhead;
+  assert.equal(readCarried(older).scheduledAhead, undefined, "absent stays absent");
+  assert.deepEqual(
+    readCarried({ ...older, scheduledAhead: [] }).scheduledAhead,
+    [],
+    "and a frozen empty schedule is a different answer",
+  );
+});

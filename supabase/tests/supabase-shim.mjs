@@ -642,6 +642,10 @@ export function createShimClient(db, uid) {
         state.filters.push([column, value]);
         return api;
       },
+      gt(column, value) {
+        state.filters.push([column, value, ">"]);
+        return api;
+      },
       gte(column, value) {
         state.filters.push([column, value, ">="]);
         return api;

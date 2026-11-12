@@ -511,24 +511,24 @@ test("a client reads their own figures once the month is published", async () =>
     "September's own",
   );
 
-  // **The first half of the fix** (Dom, 11 November). The course was
-  // sold in September, so the instalments it schedules into October,
-  // November and December are part of what September's report says —
-  // and reading by due month alone left "scheduled ahead" empty for the
-  // only person it was written for.
+  // **What they may NOT read** (Dom, 12 November). Reading by due month
+  // alone left "money scheduled ahead" empty, and the 11 November fix
+  // was a third clause — "or the month its sale was made" — which handed
+  // a client live draft rows for months they had not been shown, whether
+  // each future instalment had been paid and whether it had been
+  // cancelled included. He chose the other answer: the figure is frozen
+  // into the published month's carried snapshot, and the rows stay the
+  // team's. `supabase/tests/carried.test.mjs` is where the figure is
+  // proved; here is where the rows are proved absent.
   const ahead = await asClient(
-    `select due_month::text m, amount::float a from public.report_sale_payments
-      where sale_id = '${COURSE}' and due_month > '${SEP}' order by due_month`,
+    `select count(*)::int c from public.report_sale_payments
+      where sale_id = '${COURSE}' and due_month > '${SEP}'`,
   );
-  assert.deepEqual(
-    ahead.map((r) => [r.m, r.a]),
-    [[OCT, 500], [NOV, 500], [DEC, 500]],
-    "the rest of a September sale, scheduled ahead",
-  );
+  assert.equal(ahead[0].c, 0, "the months after September are not theirs to read yet");
 
-  // **The second half.** An instalment paid early into a published
-  // month belongs in that month's cash, even though the month it is due
-  // in is still a draft — which the old policy dropped on the floor.
+  // An instalment paid early into a published month belongs in that
+  // month's cash, even though the month it is due in is still a draft —
+  // which reading by due month alone dropped on the floor.
   const early = await asClient(
     `select count(*)::int c from public.report_sale_payments
       where received_month = '${SEP}' and due_month = '${NOV}'`,
@@ -556,4 +556,90 @@ test("a client cannot write a sales row of their own", async () => {
       ),
     /row-level security|violates/i,
   );
+});
+
+/**
+ * REVIEW 7 (Dom, 12 November).
+ *
+ * A customer who stops paying after September has gone out is a thing
+ * that happened, and the first revision of this migration made it
+ * unwritable: `cancelled_on` was held still by the published month, so
+ * the only way to record it was to unpublish the report the client had
+ * already read.
+ *
+ * So a cancellation is treated the way a late payment is — an event in
+ * its own month — with one extra turn of the screw. It reaches every
+ * month after itself as well (the money stops being owed, stops being
+ * scheduled, stops being MRR), so it may only be dated where nothing
+ * from there on has been published. In practice: the open tail.
+ */
+test("a September sale can be cancelled in November without unpublishing September", async () => {
+  let gone;
+  await as(ELIZE, async () => {
+    gone = (
+      await db.query(`insert into public.report_sales
+                        (workspace_id, sales_row_id, month, total_value, billing)
+                      values ('${WS}', '${CLIENT_ROW}', '${SEP}', 400, 'monthly')
+                      returning id`)
+    ).rows[0].id;
+    await db.query(`insert into public.report_sale_payments
+                      (workspace_id, sale_id, due_month, received_month, amount)
+                    values ('${WS}', '${gone}', '${SEP}', '${SEP}', 400),
+                           ('${WS}', '${gone}', '${OCT}', null, 400),
+                           ('${WS}', '${gone}', '${NOV}', null, 400)`);
+  });
+
+  await publish(SEP);
+
+  // Dating it inside the published month is still refused, and should be:
+  // September sold £400 and said so.
+  await assert.rejects(
+    () =>
+      as(ELIZE, () =>
+        db.query(`update public.report_sales set cancelled_on = '2026-09-20'
+                   where id = '${gone}'`),
+      ),
+    /still open/i,
+    "a cancellation cannot be backdated into a report that has gone out",
+  );
+
+  // November is open, so the news goes in — on the sale, and on the
+  // instalment they will not be paying.
+  await as(ELIZE, () =>
+    db.query(`update public.report_sales set cancelled_on = '2026-11-14' where id = '${gone}'`),
+  );
+  await as(ELIZE, () =>
+    db.query(`update public.report_sale_payments set cancelled_on = '2026-11-14'
+               where sale_id = '${gone}' and due_month = '${NOV}'`),
+  );
+
+  const [marked] = await rows(
+    `select total_value::float v, cancelled_on::text c
+       from public.report_sales where id = '${gone}'`,
+  );
+  assert.equal(marked.v, 400, "nothing about what was sold moved");
+  assert.equal(marked.c, "2026-11-14", "and the month it stopped is on the record");
+
+  // Everything else about the row is still held still.
+  await assert.rejects(
+    () =>
+      as(ELIZE, () =>
+        db.query(`update public.report_sales set total_value = 1 where id = '${gone}'`),
+      ),
+    /only a cancellation/i,
+  );
+
+  // Once November is published too, the cancellation is part of a report
+  // that has gone out, and taking it back is refused the same way.
+  await publish(NOV);
+  await assert.rejects(
+    () =>
+      as(ELIZE, () =>
+        db.query(`update public.report_sales set cancelled_on = null where id = '${gone}'`),
+      ),
+    /published month/i,
+  );
+
+  await publish(NOV, false);
+  await publish(SEP, false);
 });

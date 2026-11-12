@@ -64,6 +64,24 @@ export interface Carried {
    * means "frozen, and the offer had no price that day".
    */
   entities: Record<string, { name: string; goal: string | null; price?: number | null }>;
+  /**
+   * What this month had already scheduled into the months after it —
+   * Financials' "money scheduled ahead", month by month.
+   *
+   * **Frozen rather than read live, on Dom's decision of 12 November**,
+   * and it is the only forward-looking figure on the report. Live, it
+   * would change a published September every time somebody rescheduled an
+   * instalment. It also made `report_can_read_payment` hand a client
+   * draft rows for months they had not been shown, to answer this one
+   * question; narrowing that policy and freezing the figure are the same
+   * decision from two sides.
+   *
+   * **Absent is not empty**, the same distinction `entities.price` makes:
+   * a snapshot written before 12 November has no key at all and must go
+   * on reading the live schedule, while `[]` means it was frozen and
+   * nothing was scheduled.
+   */
+  scheduledAhead?: { month: string; amount: number }[];
 }
 
 export const EMPTY_CARRIED: Carried = {
@@ -113,6 +131,18 @@ export function readCarried(carried: unknown): Carried | null {
     );
   };
   const figure = (v: unknown): number | null => (typeof v === "number" ? v : null);
+  const schedule = (v: unknown): { month: string; amount: number }[] | undefined => {
+    if (!Array.isArray(v)) return undefined;
+    return v
+      .filter(
+        (row): row is { month: string; amount: number } =>
+          !!row &&
+          typeof row === "object" &&
+          typeof (row as { month?: unknown }).month === "string" &&
+          typeof (row as { amount?: unknown }).amount === "number",
+      )
+      .map((row) => ({ month: row.month, amount: row.amount }));
+  };
 
   const entities: Carried["entities"] = {};
   if (raw.entities && typeof raw.entities === "object" && !Array.isArray(raw.entities)) {
@@ -141,6 +171,12 @@ export function readCarried(carried: unknown): Carried | null {
     targets: numbers(raw.targets),
     benchmarks: numbers(raw.benchmarks),
     entities,
+    // Only when the key is there: absent means "not frozen, walk the
+    // live schedule", which is what every month published before
+    // 12 November looks like.
+    ...("scheduledAhead" in raw && schedule(raw.scheduledAhead) !== undefined
+      ? { scheduledAhead: schedule(raw.scheduledAhead)! }
+      : {}),
   };
 }
 
@@ -160,6 +196,8 @@ export function buildCarried(input: {
   targets: Record<ValueKey, number>;
   benchmarks: Record<string, number>;
   entities: { id: string; name: string; campaign_goal: string | null; price: number | null }[];
+  /** Already summed per month by `scheduledAfter`. */
+  scheduledAhead: { month: string; amount: number }[];
 }): Carried {
   return {
     clientsAtStart: typeof input.clientsAtStart === "number" ? input.clientsAtStart : null,
@@ -172,5 +210,6 @@ export function buildCarried(input: {
     entities: Object.fromEntries(
       input.entities.map((e) => [e.id, { name: e.name, goal: e.campaign_goal, price: e.price }]),
     ),
+    scheduledAhead: input.scheduledAhead,
   };
 }
