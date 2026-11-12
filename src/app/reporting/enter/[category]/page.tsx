@@ -12,6 +12,9 @@ import { monthIsLocked } from "@/lib/reporting/locked";
 import { choosePlatform, looksLikeMeta, platformsOf } from "@/lib/reporting/platforms";
 import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { SocialEntry } from "@/components/reporting/social-entry";
+import { SalesGrid } from "@/components/reporting/sales-grid";
+import { getSalesLedger } from "@/lib/reporting/sales-queries";
+import { nextOpenMonth } from "@/lib/reporting/months";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
@@ -394,6 +397,20 @@ export default async function EnterCategoryPage({
       })
     : null;
 
+  // Financials' sales ledger (Nina, 11 November). The whole workspace,
+  // because her grid is a year: see `getSalesLedger`.
+  //
+  // Read here rather than inside the component because it is a Server
+  // Component read and the grid is a form — and the published months come
+  // with it, since a cell in a published month goes read-only while a
+  // cancellation dated in an open one does not.
+  const ledger =
+    category.key === "financials" ? await getSalesLedger(ctx.workspace.id) : null;
+  const publishedMonths =
+    category.key === "financials" && ctx.workspace.kind === "retainer"
+      ? await getPublishedMonths(ctx.workspace.id)
+      : [];
+
   // This platform's top three, for the card under the figures.
   const topPosts =
     category.key === "social_media" && platform
@@ -498,6 +515,11 @@ export default async function EnterCategoryPage({
         />
       ) : null}
 
+      {/* **Outside the disabled fieldset, on purpose.** A published month
+          fixes what was sold and what came in, and the grid says so itself
+          — but a cancellation dated in an open month is still allowed, and
+          a blanket `disabled` would take the one affordance the guard
+          exists to leave open. */}
       {topItems ? (
         <TopItemsEntry
           workspaceId={ctx.workspace.id}
@@ -507,6 +529,23 @@ export default async function EnterCategoryPage({
         />
       ) : null}
       </fieldset>
+
+      {ledger ? (
+        <SalesGrid
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          currency={ctx.workspace.currency}
+          rows={ledger.rows}
+          sales={ledger.sales}
+          payments={ledger.payments}
+          offers={data.entities
+            .filter((e) => e.entity_type === "offer" && e.active)
+            .map((e) => ({ id: e.id, name: e.name }))}
+          lockedMonths={publishedMonths}
+          locked={locked}
+          openMonth={nextOpenMonth(publishedMonths, ctx.month.month)}
+        />
+      ) : null}
     </ReportShell>
   );
 }

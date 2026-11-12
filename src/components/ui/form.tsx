@@ -67,6 +67,37 @@ export function Field({
   );
 }
 
+/**
+ * A dropdown, wearing the same well as every other field.
+ *
+ * Added for the sales ledger (12 November), which asks three of these —
+ * which row a sale is against, how it is billed, and which offer a row
+ * links to. Hand-rolled classes on each one is how a screen ends up with
+ * fields that nearly match, so it lives here with the rest.
+ */
+export function Select({
+  label,
+  name,
+  hint,
+  children,
+  className = "",
+  ...props
+}: React.ComponentProps<"select"> & { label: string; name: string; hint?: string }) {
+  return (
+    <Wrapper label={label} htmlFor={name} hint={hint}>
+      <select
+        id={name}
+        name={name}
+        className={`${CONTROL} ${className}`}
+        aria-describedby={hint ? `${name}-hint` : undefined}
+        {...props}
+      >
+        {children}
+      </select>
+    </Wrapper>
+  );
+}
+
 export function TextArea({
   label,
   name,

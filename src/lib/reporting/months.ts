@@ -237,3 +237,33 @@ export function monthsEndingAt(month: string, count: number): string[] {
 export function shortMonthLabel(month: string): string {
   return MONTH_NAMES[Number(month.split("-")[1]) - 1].slice(0, 3);
 }
+
+/**
+ * The first month a cancellation may be dated in.
+ *
+ * `report_cancellation_is_open` refuses one dated at or before a published
+ * month, because a cancellation takes effect from its own month forward
+ * and would otherwise rewrite a report that has gone out. So the answer is
+ * the month after the last published one — or this month, when nothing
+ * after it is published.
+ *
+ * Offered by the form rather than left to be refused: a field that
+ * suggests a value the database will reject teaches whoever is looking at
+ * it that the screen is broken.
+ */
+export function nextOpenMonth(published: string[], month: string): string | null {
+  const latest = published.reduce<string | null>(
+    (best, m) => (best === null || m > best ? m : best),
+    null,
+  );
+  if (latest === null) return month;
+  return month > latest ? month : nextMonthOf(latest);
+}
+
+/** The month after this one, crossing a year end. */
+export function nextMonthOf(month: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return monthNumber === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(monthNumber + 1).padStart(2, "0")}-01`;
+}

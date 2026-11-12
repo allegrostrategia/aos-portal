@@ -6,6 +6,8 @@ import {
   lastDayOf,
   latestReportableMonth,
   monthLabel,
+  nextMonthOf,
+  nextOpenMonth,
   previousMonthOf,
   resolveMonth,
 } from "./months.ts";
@@ -212,4 +214,32 @@ test("the month before, across a year boundary", () => {
   assert.equal(previousMonthOf("2026-09-01"), "2026-08-01");
   assert.equal(previousMonthOf("2026-01-01"), "2025-12-01");
   assert.equal(previousMonthOf("2026-03-01"), "2026-02-01");
+});
+
+test("the next month crosses a year end", () => {
+  assert.equal(nextMonthOf("2026-11-01"), "2026-12-01");
+  assert.equal(nextMonthOf("2026-12-01"), "2027-01-01");
+});
+
+test("a cancellation is offered the first month nothing published sits after", () => {
+  // `report_cancellation_is_open` refuses one dated at or before a
+  // published month: a cancellation reaches every month from its own date
+  // forward, so one dated in September would rewrite a published
+  // September. The form has to offer a month that will be accepted.
+  assert.equal(nextOpenMonth([], "2026-09-01"), "2026-09-01", "nothing published");
+  assert.equal(
+    nextOpenMonth(["2026-09-01"], "2026-09-01"),
+    "2026-10-01",
+    "looking at a published September, the answer is October",
+  );
+  assert.equal(
+    nextOpenMonth(["2026-07-01", "2026-12-01"], "2026-09-01"),
+    "2027-01-01",
+    "a published month LATER than this one still moves it: the cancellation would reach it",
+  );
+  assert.equal(
+    nextOpenMonth(["2026-07-01"], "2026-09-01"),
+    "2026-09-01",
+    "and a published month before it leaves this one alone",
+  );
 });

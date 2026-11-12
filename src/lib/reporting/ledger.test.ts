@@ -8,9 +8,12 @@ import {
   costsByBucket,
   offerRevenue,
   outstandingBy,
+  instalmentPlan,
+  monthsFrom,
   recurringSplit,
   salesIn,
   scheduledAfter,
+  unscheduledOf,
   type ExpenseRow,
   type Sale,
   type SalePayment,
@@ -266,4 +269,45 @@ test("a client who was quiet this month is not on this month's card", () => {
     [],
     "a quiet row is not a profit of zero",
   );
+});
+
+test("a sale whose instalments do not add up says what is left", () => {
+  // Dom, 12 November: a figure the grid has to show. Half a payment plan
+  // is a normal thing to be looking at mid-typing, so it is a line on the
+  // screen rather than something the database refuses.
+  const half: SalePayment[] = plan.slice(0, 3);
+  assert.equal(unscheduledOf(course, half), 500, "£500 not yet scheduled");
+  assert.equal(unscheduledOf(course, plan), null, "and nothing to say once it adds up");
+
+  // Over-scheduled is worth saying too, and the sign says which way.
+  assert.equal(unscheduledOf(course, [...plan, { ...plan[0], dueMonth: "2027-01-01" }]), -500);
+
+  // A cancelled instalment is not scheduled money: it is not coming.
+  const stopped = plan.map((p, i) => (i === 3 ? { ...p, cancelledOn: "2026-11-30" } : p));
+  assert.equal(unscheduledOf(course, stopped), 500);
+});
+
+test("the suggested plan puts the remainder on the first instalment", () => {
+  assert.deepEqual(instalmentPlan(1000, 3, SEP), [
+    { month: SEP, amount: 333.34 },
+    { month: OCT, amount: 333.33 },
+    { month: NOV, amount: 333.33 },
+  ]);
+  assert.equal(
+    instalmentPlan(1000, 3, SEP).reduce((t, p) => t + p.amount, 0),
+    1000,
+    "and it adds up, which is the whole point of putting it somewhere",
+  );
+
+  assert.deepEqual(instalmentPlan(500, 1, SEP), [{ month: SEP, amount: 500 }]);
+  assert.deepEqual(instalmentPlan(500, 0, SEP), [], "nothing to split across no months");
+});
+
+test("a plan crossing a year end keeps counting", () => {
+  assert.deepEqual(monthsFrom("2026-11-01", 4), [
+    "2026-11-01",
+    "2026-12-01",
+    "2027-01-01",
+    "2027-02-01",
+  ]);
 });

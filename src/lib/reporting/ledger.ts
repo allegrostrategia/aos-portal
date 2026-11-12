@@ -355,3 +355,62 @@ function difference(paid: Result, cost: Result): Result {
   if (paid === null && cost === null) return null;
   return (paid ?? 0) - (cost ?? 0);
 }
+
+/**
+ * What is left of a sale that nobody has put in a month yet.
+ *
+ * Dom, 12 November: **the grid has to say so.** A £2,000 sale with three
+ * £500s against it is not an error the database should refuse — somebody
+ * typing a payment plan across a row is half-done for as long as it takes
+ * them to type it, and a constraint there would make the screen
+ * unusable — but it is a figure that will quietly never arrive. So it is
+ * a line on the screen: "£500 not yet scheduled".
+ *
+ * Cancelled instalments do not count as scheduled, which is the same
+ * reading `scheduledAfter` takes: that money is not coming.
+ */
+export function unscheduledOf(sale: Sale, payments: SalePayment[]): Result {
+  const mine = live(payments).filter((p) => p.saleId === sale.id);
+  const scheduled = mine.reduce((total, p) => total + p.amount, 0);
+  const left = round(sale.totalValue - scheduled);
+  return left === 0 ? null : left;
+}
+
+/**
+ * Split a total across a number of months, starting at one.
+ *
+ * The remainder goes on the FIRST instalment, not the last: £1,000 over
+ * three months is £333.34 then £333.33 twice. Nina's own tracker does it
+ * that way round, and so does every payment plan anybody has actually
+ * been sold — the deposit is the odd one, not the final collection.
+ *
+ * A suggestion, never a rule. The grid fills the cells in and every one
+ * of them stays editable, because a real plan is often £500 down and the
+ * rest over two months.
+ */
+export function instalmentPlan(
+  total: number,
+  count: number,
+  firstMonth: string,
+): { month: string; amount: number }[] {
+  if (!Number.isFinite(total) || count < 1) return [];
+  const each = round(total / count);
+  const months = monthsFrom(firstMonth, count);
+  return months.map((month, i) => ({
+    month,
+    amount: i === 0 ? round(total - each * (count - 1)) : each,
+  }));
+}
+
+/** `count` consecutive first-of-months, starting at `from`. */
+export function monthsFrom(from: string, count: number): string[] {
+  const [year, month] = from.split("-").map(Number);
+  return Array.from({ length: count }, (_, i) => {
+    const m = month - 1 + i;
+    const y = year + Math.floor(m / 12);
+    return `${y}-${String((m % 12) + 1).padStart(2, "0")}-01`;
+  });
+}
+
+/** Pennies, so a third of £1,000 does not arrive as £333.3333333333333. */
+const round = (n: number) => Math.round(n * 100) / 100;
