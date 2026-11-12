@@ -13,7 +13,6 @@ import { choosePlatform, looksLikeMeta, platformsOf } from "@/lib/reporting/plat
 import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { SocialEntry } from "@/components/reporting/social-entry";
 import { SalesGrid } from "@/components/reporting/sales-grid";
-import { getSalesLedger } from "@/lib/reporting/sales-queries";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
@@ -396,15 +395,14 @@ export default async function EnterCategoryPage({
       })
     : null;
 
-  // Financials' sales ledger (Nina, 11 November). The whole workspace,
-  // because her grid is a year: see `getSalesLedger`.
+  // Financials' two grids (Nina, 11 and 13 November). The whole
+  // workspace, because her grid is a year: see `getSalesLedger`.
   //
-  // Read here rather than inside the component because it is a Server
-  // Component read and the grid is a form — and the published months come
-  // with it, since a cell in a published month goes read-only while a
-  // cancellation dated in an open one does not.
-  const ledger =
-    category.key === "financials" ? await getSalesLedger(ctx.workspace.id) : null;
+  // **From `getMonthFigures`, not a read of its own.** Revenue, other
+  // income and MRR are worked out from these cells, so the grid somebody
+  // types into and the card that says what it comes to must be one read —
+  // two would be two answers waiting to disagree.
+  const ledger = category.key === "financials" ? figures.ledger : null;
   const publishedMonths =
     category.key === "financials" && ctx.workspace.kind === "retainer"
       ? await getPublishedMonths(ctx.workspace.id)
@@ -465,6 +463,9 @@ export default async function EnterCategoryPage({
           elsewhere,
           clientsAtStart,
           openingAppliesHere,
+          // §5.10: Financials' revenue is the Actual grid, so the card
+          // that updates as you type needs the month's cells.
+          received: figures.received,
           category: category.key,
           platformId: category.key === "social_media" ? platformId : null,
           platformFills:

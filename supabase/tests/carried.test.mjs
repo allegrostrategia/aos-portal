@@ -511,3 +511,114 @@ test("a snapshot written before the forecast was frozen reads as absent, not emp
     "and a frozen empty forecast is a different answer",
   );
 });
+
+/**
+ * Last month's money received, frozen with the month (13 November).
+ *
+ * Financials' revenue is the Actual grid now, so "£2,150, up from £1,900"
+ * is arithmetic over ANOTHER month's cells — and another month's cells can
+ * still be edited while this one is published, if that month was never
+ * published itself. The same rule as `previous`, for the same reason.
+ */
+test("last month's money received is frozen, so a draft month cannot move a published arrow", async () => {
+  const OCT = "2026-10-01";
+  const NOV = "2026-11-01";
+  let ROW;
+  let OFFER_ROW;
+  await asMember(db, NINA, async () => {
+    const offer = (
+      await db.query(`insert into public.report_entities (workspace_id, entity_type, name, price)
+                      values ('${WS}', 'offer', 'A second offer', 2000) returning id`)
+    ).rows[0].id;
+    const made = await db.query(
+      `insert into public.report_sales_rows (workspace_id, name, row_type, offer_entity_id, recurrence)
+       values ('${WS}', 'Bella Ltd', 'client', null, 'monthly'),
+              ('${WS}', 'Signature programme', 'offer', '${offer}', 'none')
+       returning id, row_type`,
+    );
+    ROW = made.rows.find((r) => r.row_type === "client").id;
+    OFFER_ROW = made.rows.find((r) => r.row_type === "offer").id;
+    // October is a draft, so these are figures that can still change.
+    await db.query(`insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+                    values ('${WS}', '${ROW}', '${OCT}', 400),
+                           ('${WS}', '${OFFER_ROW}', '${OCT}', 2000)`);
+  });
+
+  const published = await as(NINA, () =>
+    publishMonth(null, form({ workspace_id: WS, month: NOV, confirm: "1" })),
+  );
+  await flushAfter();
+  assert.equal(published?.error, undefined);
+
+  const frozen = (await carriedOn(NOV)).previousReceived;
+  assert.deepEqual(
+    [...frozen].sort((a, b) => a.amount - b.amount),
+    [
+      {
+        salesRowId: ROW,
+        rowType: "client",
+        offerEntityId: null,
+        amount: 400,
+        recurrence: "monthly",
+      },
+      {
+        salesRowId: OFFER_ROW,
+        rowType: "offer",
+        offerEntityId: frozen.find((r) => r.amount === 2000).offerEntityId,
+        amount: 2000,
+        recurrence: "none",
+      },
+    ],
+    "the row's kind and its offer link, and the recurring setting off the cell",
+  );
+  assert.notEqual(
+    frozen.find((r) => r.amount === 2000).offerEntityId,
+    null,
+    "an offer row's money is revenue from offers, and the link says so",
+  );
+
+  // **And the page reads it**, which is the half that matters: a
+  // snapshot that is right and unread is a published arrow that still
+  // moves. November's "up from" is £2,400 — October's two cells.
+  const before = await figuresFor(NOV, OCT, "November 2026");
+  assert.equal(before.previousResults.financials_total_revenue, 2400);
+  assert.equal(before.previousResults.financials_revenue_from_offers, 2000);
+  assert.equal(before.previousResults.financials_monthly_recurring_revenue, 400);
+
+  // October is corrected after November goes out. It is a draft, so the
+  // correction is allowed — and November must not notice.
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_actuals set amount = 4000
+               where sales_row_id = '${OFFER_ROW}' and month = '${OCT}'`),
+  );
+  assert.equal(
+    (await carriedOn(NOV)).previousReceived.find((r) => r.salesRowId === OFFER_ROW)?.amount,
+    2000,
+    "still what November was published with",
+  );
+  const after = await figuresFor(NOV, OCT, "November 2026");
+  assert.equal(
+    after.previousResults.financials_total_revenue,
+    2400,
+    "and the page still shows what November went out with, not 4,400",
+  );
+});
+
+/**
+ * And a month published before 13 November has no `previousReceived` key.
+ * Absent is not empty: it falls back to the live read rather than showing
+ * a month that received nothing.
+ */
+test("a snapshot written before the grids reads as absent, not empty", async () => {
+  const [row] = await rows(
+    `select carried from public.report_periods where workspace_id = '${WS}' and month = '${SEP}'`,
+  );
+  const older = structuredClone(row.carried);
+  delete older.previousReceived;
+  assert.equal(readCarried(older).previousReceived, undefined, "absent stays absent");
+  assert.deepEqual(
+    readCarried({ ...older, previousReceived: [] }).previousReceived,
+    [],
+    "and a month that genuinely received nothing is a different answer",
+  );
+});

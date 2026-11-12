@@ -3,7 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeClientsAtStart } from "./client-flow.ts";
 import { buildCarried, type Carried } from "./carried.ts";
-import { forecastAfter } from "./ledger.ts";
+import { forecastAfter, receivedThisMonth } from "./ledger.ts";
 import { previousMonthOf } from "./months.ts";
 
 /**
@@ -26,7 +26,8 @@ export async function computeCarried(
   const admin = createAdminClient();
   const previousMonth = previousMonthOf(month);
 
-  const [flowRes, previousRes, targetRes, benchmarkRes, entityRes, aheadRes] = await Promise.all([
+  const [flowRes, previousRes, targetRes, benchmarkRes, entityRes, aheadRes, rowRes, lastRes] =
+    await Promise.all([
     admin
       .from("report_values")
       .select("month, metric_key, value")
@@ -82,7 +83,33 @@ export async function computeCarried(
       .eq("workspace_id", workspaceId)
       .gt("month", month)
       .returns<{ month: string; amount: number | string }[]>(),
-  ]);
+    // **Last month's money received**, for the same reason `previous`
+    // exists: Financials' revenue is the Actual grid from 13 November, so
+    // "up from £1,900" is arithmetic over a month that may still be a
+    // draft and may still change.
+    admin
+      .from("report_sales_rows")
+      .select("id, row_type, offer_entity_id")
+      .eq("workspace_id", workspaceId)
+      .returns<
+        { id: string; row_type: "offer" | "client"; offer_entity_id: string | null }[]
+      >(),
+    previousMonth
+      ? admin
+          .from("report_actuals")
+          .select("sales_row_id, month, amount, recurrence")
+          .eq("workspace_id", workspaceId)
+          .eq("month", previousMonth)
+          .returns<
+            {
+              sales_row_id: string;
+              month: string;
+              amount: number | string;
+              recurrence: "none" | "monthly" | "annual";
+            }[]
+          >()
+      : Promise.resolve({ data: [] as const }),
+    ]);
 
   // `numeric` comes back as a string from some drivers, and the formula
   // module tests `typeof value === "number"` — the same trap `ValueBag`
@@ -145,6 +172,24 @@ export async function computeCarried(
       })),
       month,
     ),
+    // Flattened by the same function the screens use, so the frozen
+    // figure and the live one cannot be arrived at two ways.
+    previousReceived: previousMonth
+      ? receivedThisMonth(
+          (rowRes.data ?? []).map((r) => ({
+            id: r.id,
+            rowType: r.row_type,
+            offerEntityId: r.offer_entity_id,
+          })),
+          (lastRes.data ?? []).map((c) => ({
+            salesRowId: c.sales_row_id,
+            month: c.month.slice(0, 10),
+            amount: num(c.amount) ?? 0,
+            recurrence: c.recurrence,
+          })),
+          previousMonth,
+        )
+      : [],
   });
 }
 

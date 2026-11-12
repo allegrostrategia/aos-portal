@@ -31,6 +31,7 @@ const { calculate } = await import("../../src/lib/reporting/calculate.ts");
 const { CATEGORIES } = await import("../../src/lib/reporting/categories.ts");
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offer-actions.ts");
+const { saveSalesRow, saveActuals } = await import("../../src/lib/reporting/sales-actions.ts");
 const { publishMonth } = await import("../../src/lib/reporting/note-actions.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -139,6 +140,31 @@ await as(NINA, () =>
 );
 
 /**
+ * The same money on the Actual grid, which is where Financials reads its
+ * revenue from since 13 November — a row linked to the offer, and what
+ * landed on it in August.
+ */
+await as(NINA, async () => {
+  await saveSalesRow(
+    null,
+    form({
+      workspace_id: WS,
+      name: "1:1 Coaching",
+      row_type: "offer",
+      offer_entity_id: offerId,
+      recurrence: "none",
+    }),
+  );
+  const { rows } = await db.query(
+    `select id from public.report_sales_rows where workspace_id = '${WS}'`,
+  );
+  await saveActuals(
+    null,
+    form({ workspace_id: WS, month: AUG, [`cell:${rows[0].id}:${AUG}`]: 3000 }),
+  );
+});
+
+/**
  * What the entry screen's live card would show for a category.
  *
  * The same call the client component makes: `calculate()` over the typed
@@ -185,6 +211,11 @@ function entryCard(figures, category) {
     value,
     previous: (key) => figures.data.previous.get(key, entityFor(key)) ?? null,
     offerRows: figures.offerRows,
+    // The page passes the month's money the same way, for the same
+    // reason the offers are passed: the card cannot work Financials out
+    // without it, and a card that shows dashes beside a report full of
+    // figures is §9's disagreement in its commonest form.
+    received: figures.received,
     clientsAtStart: figures.results.client_experience_active_clients_at_start ?? null,
   });
 }
@@ -218,7 +249,7 @@ test("the card is not agreeing by being empty", async () => {
   const card = entryCard(figures, "financials");
   const real = Object.values(card).filter((v) => v !== null);
   assert.ok(real.length >= 4, `expected real figures, got ${JSON.stringify(card)}`);
-  assert.equal(card.financials_total_revenue, 3000, "pulled from the offers, not typed");
+  assert.equal(card.financials_total_revenue, 3000, "read off the Actual grid, not typed");
   assert.equal(card.financials_profit, 1950);
 });
 

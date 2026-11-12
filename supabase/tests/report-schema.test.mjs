@@ -743,7 +743,9 @@ await rejects("the same reminder cannot be logged twice", async () => {
 // metric list. A typo in it is not an error anywhere — it is a sentence
 // that quietly never gets suppressed, or one that quietly disappears. This
 // is the only place the two can be put side by side.
-const { DERIVED_FROM, PULLED_FROM } = await import("../../src/lib/reporting/highlights.ts");
+const { DERIVED_FROM, PULLED_FROM, PULLED_FROM_NOTHING } = await import(
+  "../../src/lib/reporting/highlights.ts"
+);
 
 await check("every derived-figure pair is a real metric that reaches a panel", async () => {
   const keys = [...Object.entries(DERIVED_FROM).flat(), ...Object.entries(PULLED_FROM).flat()];
@@ -794,7 +796,9 @@ await check("every pulled pair matches what the metric list says is pulled", asy
     select key from public.report_metrics
      where input_type = 'pulled' and entity_type is null and good_direction <> 'none'`);
   for (const row of pulled.rows) {
-    if (!(row.key in PULLED_FROM)) problems.push(`${row.key}: pulled, reaches a panel, not in the map`);
+    if (!(row.key in PULLED_FROM) && !PULLED_FROM_NOTHING.has(row.key)) {
+      problems.push(`${row.key}: pulled, reaches a panel, not in the map`);
+    }
   }
 
   if (problems.length) console.log("   ", problems.join("\n    "));

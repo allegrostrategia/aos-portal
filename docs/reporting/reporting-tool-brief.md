@@ -378,17 +378,32 @@ a filing cabinet aOS has no reason to be.
 
 **The table below is generated from, not just documentation of, the metric
 seed** (`scripts/generate-report-metrics-seed.mjs` checks it both ways), so
-it says what the figures are today and is re-pointed as the grids take
-them over. The grids landed first, on 13 November, and the five figures
-below still read what they always read; routing them through — revenue
-from the Actual grid rather than pulled from Offers, the four cost totals
-from the expense rows, MRR from the cells that recur — is the next piece,
-and this table moves with it.
+it says what the figures are today.
+
+**The revenue side reads the grids, from 13 November.** Revenue from
+offers is what came in on the rows called offers; Other income is what
+came in on the client rows, which in an agency is most of the money. Both
+are *pulled* — neither is typed, and the database refuses to store a
+figure for a pulled metric, so there is no box to disagree with the grid.
+Total revenue is the two added up, which is the month. MRR is the
+recurring part of the same money, read off each cell's own copy of the
+setting rather than the row's.
+
+**The split is the row's kind, not its offer link.** Linking a row to an
+offer is optional and plenty of clients never do it; splitting on the
+link read "Other income £2,150" on a month whose money was a programme,
+which is a label saying something untrue. The link is still what the
+Offers donut is drawn from — a chart about offer entities rather than
+about a month.
+
+Still typed, until the expense grid lands: the four cost figures and cash
+in bank. Profit, the margin and costs-as-a-percentage are those against
+the revenue above, so they came right the day the revenue did.
 
 | Field | Type | Formula | Good |
 | --- | --- | --- | --- |
-| Revenue from offers | Pulled | Sum of all offers' revenue | Up |
-| Other income | Optional |  | Up |
+| Revenue from offers | Pulled | Money received on offer rows | Up |
+| Other income | Pulled | Money received on client rows | Up |
 | Fixed costs | Core | Subscriptions, rent, software | Down |
 | Variable costs | Core | Ads, contractors, fees | Down |
 | Team costs | Core | Salaries, VAs, freelancers | Down |
@@ -398,7 +413,7 @@ and this table moves with it.
 | Total costs | Calc | Fixed + variable + team + investment | Down |
 | Profit | Calc | Total revenue − total costs | Up |
 | Profit margin | Calc | Profit ÷ total revenue | Up |
-| Monthly recurring revenue | Calc | Sum of revenue from recurring offers | Up |
+| Monthly recurring revenue | Calc | Money received this month on cells that recur | Up |
 | Costs as % of revenue | Calc | Total costs ÷ total revenue | Down |
 | Runway | Calc | Cash in bank ÷ average monthly costs (last 3 months) | Up |
 

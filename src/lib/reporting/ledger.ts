@@ -96,6 +96,87 @@ const inMonth = <T extends { month: string }>(cells: T[], month: string) =>
 const total = <T extends { amount: number }>(cells: T[]): Result =>
   cells.length === 0 ? null : sum(...cells.map((c) => c.amount));
 
+/**
+ * One row's money received in a month, with everything a figure needs
+ * to be worked out from.
+ *
+ * **The join is done once, here.** Whether money is "from an offer"
+ * belongs to the row; whether it recurs belongs to the cell, captured as
+ * it was written. Two callers need both — the server, for the report and
+ * the published freeze, and the browser, for the card that updates as you
+ * type — and §9's rule is that two implementations of one piece of
+ * arithmetic will disagree sooner or later.
+ */
+export interface Received {
+  salesRowId: string;
+  /** What the row is: the split Revenue from offers and Other income make. */
+  rowType: SalesRowType;
+  /** The offer this row is linked to, for the Offers donut. Often null. */
+  offerEntityId: string | null;
+  amount: number;
+  recurrence: Recurrence;
+}
+
+/** This month's received money, flattened against the rows it came in on. */
+export function receivedThisMonth(
+  // Only the three things a figure is worked out from, so the
+  // publish-time freeze can pass what it reads rather than inventing a
+  // whole row.
+  rows: Pick<SalesRow, "id" | "rowType" | "offerEntityId">[],
+  actuals: ActualCell[],
+  month: string,
+): Received[] {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return inMonth(actuals, month)
+    // A cell whose row has gone is not a figure anybody can explain, and
+    // rows are never removed (rule 7), so this only ever drops a cell
+    // written against a row from another workspace.
+    .filter((c) => byId.has(c.salesRowId))
+    .map((c) => ({
+      salesRowId: c.salesRowId,
+      rowType: byId.get(c.salesRowId)!.rowType,
+      offerEntityId: byId.get(c.salesRowId)!.offerEntityId,
+      amount: c.amount,
+      recurrence: c.recurrence,
+    }));
+}
+
+/**
+ * What came in on offer rows — Revenue from offers.
+ *
+ * **The row's kind, not its offer link.** A row is one offer or one
+ * customer, and linking it to the Offers screen is optional — plenty of
+ * clients never do it. Splitting on the link read "Other income £2,150"
+ * on a month whose money was a programme, which is the label saying
+ * something untrue. The link is still what the Offers donut is drawn
+ * from, which is a chart about offer entities rather than about a month.
+ */
+export function fromOffers(received: Received[]): Result {
+  return total(received.filter((c) => c.rowType === "offer"));
+}
+
+/**
+ * What came in on client rows — Other income.
+ *
+ * Retainers and bespoke work, which is most of the money in an agency
+ * like Nina's. It is the other half of Revenue from offers, so the two
+ * add up to the month and nothing received is left out of the report.
+ */
+export function notFromOffers(received: Received[]): Result {
+  return total(received.filter((c) => c.rowType !== "offer"));
+}
+
+/**
+ * The recurring part of what came in — her MRR line.
+ *
+ * **Money received, not money expected**, and read off each cell's own
+ * copy of the setting rather than the row's: a client who paid one-off in
+ * January and went onto a retainer in April is one row that is both.
+ */
+export function recurringTotal(received: { amount: number; recurrence: Recurrence }[]): Result {
+  return total(received.filter((c) => c.recurrence !== "none"));
+}
+
 /** What actually landed this month. The headline figure on Overview. */
 export function receivedIn(actuals: ActualCell[], month: string): Result {
   return total(inMonth(actuals, month));
@@ -120,11 +201,13 @@ export function recurringSplit(
   actuals: ActualCell[],
   month: string,
 ): { monthly: Result; annual: Result; combined: Result } {
-  const mine = inMonth(actuals, month).filter((c) => c.recurrence !== "none");
+  const mine = inMonth(actuals, month);
   return {
     monthly: total(mine.filter((c) => c.recurrence === "monthly")),
     annual: total(mine.filter((c) => c.recurrence === "annual")),
-    combined: total(mine),
+    // The same function the report's MRR goes through, so the strip on
+    // the entry screen and the figure in the report are one number.
+    combined: recurringTotal(mine),
   };
 }
 

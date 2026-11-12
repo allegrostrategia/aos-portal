@@ -1,4 +1,5 @@
 import type { Figure } from "./formulas.ts";
+import type { Received } from "./ledger.ts";
 
 /**
  * What a month was published with, frozen onto that month.
@@ -80,6 +81,22 @@ export interface Carried {
    * while `[]` means it was frozen and nothing was forecast.
    */
   forecastAhead?: { month: string; amount: number }[];
+  /**
+   * What came in the month BEFORE this one, row by row.
+   *
+   * Financials' revenue is the Actual grid from 13 November, so "£2,150,
+   * up from £1,900" is now arithmetic over another month's cells — and
+   * another month's cells can still be edited while this one is
+   * published, if that month was never published itself. Same rule as
+   * `previous`: what comes from another month is frozen.
+   *
+   * The row's offer link and the cell's recurring setting come with it,
+   * because the comparison needs the same three figures this month shows
+   * — revenue from offers, other income and MRR.
+   *
+   * **Absent is not empty**, as everywhere else here.
+   */
+  previousReceived?: Received[];
 }
 
 export const EMPTY_CARRIED: Carried = {
@@ -129,6 +146,30 @@ export function readCarried(carried: unknown): Carried | null {
     );
   };
   const figure = (v: unknown): number | null => (typeof v === "number" ? v : null);
+  const receipts = (v: unknown): Received[] | undefined => {
+    if (!Array.isArray(v)) return undefined;
+    return v
+      .filter(
+        (row): row is Received =>
+          !!row &&
+          typeof row === "object" &&
+          typeof (row as { salesRowId?: unknown }).salesRowId === "string" &&
+          typeof (row as { amount?: unknown }).amount === "number" &&
+          ["none", "monthly", "annual"].includes(
+            (row as { recurrence?: unknown }).recurrence as string,
+          ),
+      )
+      .map((row) => ({
+        salesRowId: row.salesRowId,
+        // A snapshot written before the kind mattered reads as a client
+        // row, which is the half that is not "revenue from offers" — the
+        // safer way round, and the commoner one.
+        rowType: row.rowType === "offer" ? ("offer" as const) : ("client" as const),
+        offerEntityId: typeof row.offerEntityId === "string" ? row.offerEntityId : null,
+        amount: row.amount,
+        recurrence: row.recurrence,
+      }));
+  };
   const schedule = (v: unknown): { month: string; amount: number }[] | undefined => {
     if (!Array.isArray(v)) return undefined;
     return v
@@ -175,6 +216,9 @@ export function readCarried(carried: unknown): Carried | null {
     ...("forecastAhead" in raw && schedule(raw.forecastAhead) !== undefined
       ? { forecastAhead: schedule(raw.forecastAhead)! }
       : {}),
+    ...("previousReceived" in raw && receipts(raw.previousReceived) !== undefined
+      ? { previousReceived: receipts(raw.previousReceived)! }
+      : {}),
   };
 }
 
@@ -196,6 +240,8 @@ export function buildCarried(input: {
   entities: { id: string; name: string; campaign_goal: string | null; price: number | null }[];
   /** Already summed per month by `forecastAfter`. */
   forecastAhead: { month: string; amount: number }[];
+  /** Already flattened by `receivedThisMonth`, for the month before this. */
+  previousReceived: Received[];
 }): Carried {
   return {
     clientsAtStart: typeof input.clientsAtStart === "number" ? input.clientsAtStart : null,
@@ -209,5 +255,6 @@ export function buildCarried(input: {
       input.entities.map((e) => [e.id, { name: e.name, goal: e.campaign_goal, price: e.price }]),
     ),
     forecastAhead: input.forecastAhead,
+    previousReceived: input.previousReceived,
   };
 }

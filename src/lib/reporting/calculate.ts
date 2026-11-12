@@ -14,6 +14,7 @@ import {
   type Result,
 } from "./formulas.ts";
 import type { CategoryKey } from "./categories.ts";
+import { fromOffers, notFromOffers, recurringTotal, type Received } from "./ledger.ts";
 
 /**
  * From typed figures to worked-out ones, keyed by metric.
@@ -61,6 +62,19 @@ export interface CalcInput {
    * to store a value for a pulled metric at all.
    */
   clientsAtStart?: Figure;
+  /**
+   * What came in this month, row by row (§5.10, from 13 November).
+   *
+   * Financials' revenue used to be pulled from the Offers screen, which
+   * meant a business selling mostly bespoke work reported a revenue that
+   * left most of its money out. It is the Actual grid now — what Nina
+   * reads off the bank and Stripe — and the three figures built on it
+   * read nothing else.
+   *
+   * Flattened by `receivedThisMonth()` so this file does no joining: the
+   * offer link comes from the row, the recurring setting from the cell.
+   */
+  received?: Received[];
 }
 
 export type CalcResults = Record<string, Result>;
@@ -290,24 +304,30 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
 
     case "offers": {
       const rows = input.offerRows ?? [];
+      // **MRR is not here any more** (13 November). It was the revenue on
+      // offers marked recurring, which dropped every retainer client on
+      // the floor; it is the Actual grid's recurring cells now, and it
+      // belongs to the category that owns that grid. Two categories
+      // answering one key is how two screens disagree.
       return {
         offers_total_revenue_from_offers: offers.totalRevenue(rows),
         offers_overall_margin: offers.overallMargin(rows),
         offers_total_hours_spent_delivering: offers.totalHours(rows),
         offers_overall_effective_hourly_rate: offers.overallEffectiveHourlyRate(rows),
-        financials_monthly_recurring_revenue: offers.monthlyRecurringRevenue(rows),
       };
     }
 
     case "financials": {
+      // **Revenue is the money that came in**, from the Actual grid
+      // (Nina, 13 November). Both halves are PULLED, never typed: the
+      // database refuses to store a value for a pulled metric, so reading
+      // the metric keys here would always be null — and a business that
+      // sells mostly bespoke work would report a revenue missing most of
+      // its money, which is what "pulled from Offers" did.
+      const received = input.received ?? [];
       const month = {
-        // PULLED from Offers, never typed (§5.10's own table, and §4's
-        // "enter once, use everywhere"). Reading the metric key here would
-        // always be null, because report_values refuses to store a pulled
-        // figure — so Revenue and Profit would be a dash on every month that
-        // had offers entered perfectly well.
-        revenueFromOffers: offers.totalRevenue(input.offerRows ?? []),
-        otherIncome: v("financials_other_income"),
+        revenueFromOffers: fromOffers(received),
+        otherIncome: notFromOffers(received),
         fixedCosts: v("financials_fixed_costs"),
         variableCosts: v("financials_variable_costs"),
         teamCosts: v("financials_team_costs"),
@@ -316,6 +336,8 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
       };
       return {
         financials_revenue_from_offers: month.revenueFromOffers,
+        financials_other_income: month.otherIncome,
+        financials_monthly_recurring_revenue: recurringTotal(received),
         financials_total_revenue: financials.totalRevenue(month),
         financials_total_costs: financials.totalCosts(month),
         financials_profit: financials.profit(month),

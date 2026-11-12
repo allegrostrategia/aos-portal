@@ -12,6 +12,7 @@ import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/forma
 import { CsvUpload, type UploadPlatform } from "@/components/reporting/csv-upload";
 import type { TopPost } from "@/lib/reporting/top-posts";
 import type { OfferMonth } from "@/lib/reporting/formulas";
+import type { Received } from "@/lib/reporting/ledger";
 import type { ReportMetric } from "@/lib/reporting/queries";
 
 /**
@@ -86,6 +87,14 @@ export interface EntryFormProps {
    */
   elsewhere?: Record<string, number | null>;
   /**
+   * What came in this month, row by row — Financials' revenue (§5.10).
+   *
+   * Not typed on this screen: it is the Actual grid further down the
+   * page, which is its own form. So the card follows a save rather than a
+   * keystroke, and the figure it shows is the one the report will show.
+   */
+  received?: Received[];
+  /**
    * §10's upload card, when this screen has one.
    *
    * Null everywhere else, and on a locked month — a published month's
@@ -135,6 +144,7 @@ export function EntryForm(props: EntryFormProps) {
         // Offers are set on their own screen, so they do not change as you
         // type here — but Financials is worked out from them.
         offerRows: props.offerRows,
+        received: props.received,
         clientsAtStart: props.openingAppliesHere
           ? fromInputValue(values.client_experience_clients_at_start_opening ?? "")
           : (props.clientsAtStart ?? null),
@@ -143,6 +153,7 @@ export function EntryForm(props: EntryFormProps) {
       props.category,
       props.previous,
       props.offerRows,
+      props.received,
       props.clientsAtStart,
       props.openingAppliesHere,
       props.elsewhere,

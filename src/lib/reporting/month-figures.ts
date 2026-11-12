@@ -17,6 +17,8 @@ import {
   type ReportMetric,
 } from "./queries.ts";
 import { readCarried, type Carried } from "./carried.ts";
+import { receivedThisMonth, type Received } from "./ledger.ts";
+import { getSalesLedger, type SalesLedger } from "./sales-queries.ts";
 import { monthIsLocked } from "./locked.ts";
 import { ValueBag } from "./queries.ts";
 import { choosePlatform, platformsOf, type PlatformRow } from "./platforms.ts";
@@ -82,6 +84,16 @@ export interface MonthFigures {
    */
   platform: PlatformRow | null;
   platforms: PlatformRow[];
+  /**
+   * The two grids, whole — Financials reads its revenue off them (§5.10).
+   *
+   * Carried here rather than read a second time by the screen: the entry
+   * grid, the report's own figures and everything derived from them come
+   * from one read and cannot be looking at two different answers.
+   */
+  ledger: SalesLedger;
+  /** This month's money received, flattened against the rows it came in on. */
+  received: Received[];
   /**
    * Every platform's Social Media figures, worked out separately.
    *
@@ -209,10 +221,13 @@ export function visibleMetrics(
 }
 
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
-  const [allMetrics, data, flow] = await Promise.all([
+  const [allMetrics, data, flow, ledger] = await Promise.all([
     getMetrics(),
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
     getClientFlow(ctx.workspace.id, ctx.month.month),
+    // §5.10's two grids. Read for every category, because the Overview's
+    // Revenue card is Financials' figure and this is where it comes from.
+    getSalesLedger(ctx.workspace.id),
   ]);
 
   /**
@@ -315,6 +330,23 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     entityFor,
   );
 
+  /**
+   * What came in this month, and what came in last month.
+   *
+   * **Last month's comes from the snapshot on a published month**, the
+   * same rule every other cross-month figure follows: the arrow on a
+   * published Revenue card must not move because somebody edited an
+   * earlier month that is still a draft. Absent is not empty — a month
+   * published before this existed has no key, and falls back to the live
+   * read rather than suddenly showing a dash.
+   */
+  const received = receivedThisMonth(ledger.rows, ledger.actuals, ctx.month.month);
+  const previousReceived =
+    carried?.previousReceived ??
+    (ctx.month.previous
+      ? receivedThisMonth(ledger.rows, ledger.actuals, ctx.month.previous)
+      : []);
+
   const offerRows = offerRowsFrom(frozen, frozen.values);
   // Last month's offers, worked out the same way. Without these, every
   // figure derived from the offers — Revenue, Profit, the margin — had
@@ -342,6 +374,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         offerRows,
         adCampaigns: campaignRows,
         clientsAtStart,
+        received,
       }),
     );
     Object.assign(
@@ -352,6 +385,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         offerRows: previousOfferRows,
         adCampaigns: previousCampaignRows,
         clientsAtStart: previousClientsAtStart,
+        received: previousReceived,
       }),
     );
   }
@@ -421,6 +455,8 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     offerRows,
     campaignRows,
     funnelRows,
+    ledger,
+    received,
     openingClients: openingFigures(flow),
     byKey,
   };

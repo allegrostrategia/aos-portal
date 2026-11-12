@@ -535,9 +535,11 @@ export const offers = {
     return divide(difference(revenue, other ?? 0), offers.totalHours(all));
   },
 
-  /** Monthly recurring revenue: the revenue from recurring offers only. */
-  monthlyRecurringRevenue: (all: OfferMonth[]): Result =>
-    sum(...all.filter((o) => o.pricingModel === "recurring").map((o) => o.revenue)),
+  // **Monthly recurring revenue is no longer worked out from offers**
+  // (13 November). It was the revenue on offers marked recurring, which
+  // left out every retainer client — most of the recurring money in an
+  // agency. It is the Actual grid's recurring cells now, in
+  // `ledger.recurringTotal`.
 };
 
 // ---------------------------------------------------------------------------
@@ -884,8 +886,10 @@ export const CALC_COVERAGE: Record<string, string> = {
   financials_total_costs: "financials.totalCosts",
   financials_profit: "financials.profit",
   financials_profit_margin: "financials.profitMargin",
-  // Financials pulls it from the offers, which is where recurring is known.
-  financials_monthly_recurring_revenue: "offers.monthlyRecurringRevenue",
+  // The recurring part of the money that came in, read off each cell's
+  // own copy of the setting (13 November). It used to be the revenue on
+  // offers marked recurring, which left every retainer client out of MRR.
+  financials_monthly_recurring_revenue: "ledger.recurringTotal",
   financials_costs_as_percent_of_revenue: "financials.costsAsPercentOfRevenue",
   financials_runway: "financials.runway",
 
@@ -925,7 +929,10 @@ export const PULLED_COVERAGE: Record<string, string> = {
   // §5.8, settled 5 Oct 2026: the opening figure is typed once and every
   // later month carries on from the month before. See client-flow.ts.
   client_experience_active_clients_at_start: "clientFlow.activeClientsAtStart",
-  financials_revenue_from_offers: "offers.totalRevenue",
+  // Both halves of the month's money, from the Actual grid (13 November).
+  // Together they are Total revenue, so nothing received is left out.
+  financials_revenue_from_offers: "ledger.fromOffers",
+  financials_other_income: "ledger.notFromOffers",
 };
 
 /**

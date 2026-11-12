@@ -9,6 +9,7 @@ import {
   type OfferMonth,
 } from "./formulas.ts";
 import { CATEGORIES } from "./categories.ts";
+import type { Received } from "./ledger.ts";
 
 /**
  * These tests are about the WIRING, not the arithmetic — formulas.test.ts
@@ -168,33 +169,52 @@ test("with no opening figure, the whole category is dashes rather than zeros", (
   assert.equal(out.client_experience_upsell_rate, null);
 });
 
-test("financials pulls its revenue from the offers, never from a box", () => {
-  // §5.10's table marks "Revenue from offers" as Pulled, and report_values
-  // refuses to store a pulled metric — so reading it as a typed field would
-  // leave Revenue and Profit as dashes on a month with offers in it.
+test("financials reads its revenue off the Actual grid, never from a box", () => {
+  // §5.10's table marks both halves Pulled, and report_values refuses to
+  // store a pulled metric — so reading them as typed fields would leave
+  // Revenue and Profit as dashes on a month with money in it.
+  //
+  // **And they are two halves of one month.** Revenue from offers is what
+  // came in on rows linked to an offer; everything else — retainers,
+  // bespoke work, which is most of an agency's money — is Other income.
+  // Together they are the month, so nothing received is left out.
   const out = calculate("financials", {
     value: from({ financials_fixed_costs: 3200 }),
     previous: none,
-    offerRows: OFFERS,
+    received: RECEIVED,
   });
-  assert.equal(out.financials_revenue_from_offers, 24850);
+  assert.equal(out.financials_revenue_from_offers, 20000);
+  assert.equal(out.financials_other_income, 4850);
   assert.equal(out.financials_total_revenue, 24850);
   assert.equal(out.financials_profit, 21650);
 });
 
-test("with no offers set up, revenue is a dash rather than zero", () => {
+test("MRR is the money that came in on the cells that recur", () => {
+  // Not "the revenue on offers marked recurring", which is what it was
+  // until 13 November and which left every retainer client out of it.
+  const out = calculate("financials", {
+    value: none,
+    previous: none,
+    received: RECEIVED,
+  });
+  assert.equal(out.financials_monthly_recurring_revenue, 5500);
+});
+
+test("with nothing received, revenue is a dash rather than zero", () => {
   const out = calculate("financials", {
     value: from({ financials_fixed_costs: 3200 }),
     previous: none,
-    offerRows: [],
+    received: [],
   });
   assert.equal(out.financials_revenue_from_offers, null);
+  assert.equal(out.financials_other_income, null);
   assert.equal(out.financials_total_revenue, null);
+  assert.equal(out.financials_monthly_recurring_revenue, null, "not £0 of MRR");
 });
 
 test("financials", () => {
   const out = calculate("financials", {
-    offerRows: OFFERS,
+    received: RECEIVED,
     value: from({
       financials_fixed_costs: 3200,
       financials_variable_costs: 6100,
@@ -211,6 +231,21 @@ test("financials", () => {
 });
 
 // ---------------------------------------------------------------------------
+/**
+ * A month on the Actual grid: £20,000 on rows linked to an offer, £4,850
+ * of bespoke work, £5,500 of it recurring. Adds to the same £24,850 the
+ * offers fixture does, so the figures below are comparable to the ones
+ * this file has always asserted.
+ */
+const RECEIVED: Received[] = [
+  { salesRowId: "row-1", rowType: "offer", offerEntityId: "offer-1", amount: 14500, recurrence: "none" },
+  { salesRowId: "row-2", rowType: "offer", offerEntityId: "offer-2", amount: 5500, recurrence: "monthly" },
+  // A client row, and not linked to an offer — which is the same thing
+  // said twice here, but they are two different questions: the kind
+  // decides which half of revenue it is, the link decides the donut.
+  { salesRowId: "row-3", rowType: "client", offerEntityId: null, amount: 4850, recurrence: "none" },
+];
+
 const OFFERS: OfferMonth[] = [
   { name: "1:1 Coaching", hourlyCost: 60, unitsSold: 4, revenue: 10000, hoursSpent: 20 },
   { name: "Group", hourlyCost: 60, pricingModel: "recurring", unitsSold: 22, revenue: 5500, hoursSpent: 28 },
@@ -218,7 +253,7 @@ const OFFERS: OfferMonth[] = [
   { name: "DWY", hourlyCost: 60, unitsSold: 1, revenue: 4850, hoursSpent: 30, otherDirectCosts: 800 },
 ];
 
-test("the offers summary is weighted, and MRR is the recurring ones only", () => {
+test("the offers summary is weighted over the whole set", () => {
   const out = calculate("offers", {
     value: none,
     previous: none,
@@ -229,7 +264,9 @@ test("the offers summary is weighted, and MRR is the recurring ones only", () =>
   assert.equal(out.offers_total_hours_spent_delivering, 96);
   assert.equal(Number(out.offers_overall_margin!.toFixed(2)), 73.6);
   assert.equal(Number(out.offers_overall_effective_hourly_rate!.toFixed(2)), 250.52);
-  assert.equal(out.financials_monthly_recurring_revenue, 5500);
+  // **MRR is not here any anymore.** It was the revenue on offers marked
+  // recurring; it is the Actual grid's recurring cells, in Financials.
+  assert.equal(out.financials_monthly_recurring_revenue, undefined);
 });
 
 test("one offer's own figures", () => {
@@ -264,25 +301,25 @@ test("overview and launches calculate nothing here", () => {
 // ---------------------------------------------------------------------------
 
 test("the entry card and the report cannot disagree — same input, same output", () => {
-  // §9's whole promise. The entry screen used to call calculate() with no
-  // offerRows, so Total revenue, Profit and the margin were dashes there
-  // while the report, which passes them, showed the real figures.
+  // §9's whole promise. The entry screen used to call calculate() without
+  // the month's money, so Total revenue, Profit and the margin were
+  // dashes there while the report, which passes it, showed real figures.
   const value = from({
     financials_fixed_costs: 3200,
     financials_variable_costs: 6100,
     financials_team_costs: 4230,
   });
 
-  const report = calculate("financials", { value, previous: none, offerRows: OFFERS });
-  const entryCard = calculate("financials", { value, previous: none, offerRows: OFFERS });
+  const report = calculate("financials", { value, previous: none, received: RECEIVED });
+  const entryCard = calculate("financials", { value, previous: none, received: RECEIVED });
 
   assert.deepEqual(entryCard, report);
-  assert.equal(report.financials_revenue_from_offers, 24850);
+  assert.equal(report.financials_revenue_from_offers, 20000);
   assert.equal(report.financials_total_revenue, 24850);
   assert.equal(report.financials_profit, 11320);
 });
 
-test("without the offers, every figure derived from them is a dash", () => {
+test("without the grid, every figure derived from it is a dash", () => {
   // Which is exactly what the entry screen showed. Asserted so the
   // difference between "passed them" and "didn't" is visible in a test
   // rather than only on a screen.
@@ -296,26 +333,27 @@ test("without the offers, every figure derived from them is a dash", () => {
   assert.equal(starved.financials_costs_as_percent_of_revenue, null);
 });
 
-test("last month's offers give this month something to compare against", () => {
-  // Bug 3: previousResults was computed with offerRows: [], so Revenue and
-  // Profit said "No month to compare" on a month whose predecessor had
-  // £2,000 of offers in it.
-  const august: OfferMonth[] = [
-    { name: "Coaching", hourlyCost: 60, unitsSold: 1, revenue: 2000, hoursSpent: 10 },
+test("last month's money gives this month something to compare against", () => {
+  // Bug 3: previousResults was computed with no rows at all, so Revenue
+  // and Profit said "No month to compare" on a month whose predecessor
+  // had £2,000 in it. The grid replaced the offers; the bug it guards
+  // against is the same one.
+  const august: Received[] = [
+    { salesRowId: "row-1", rowType: "offer", offerEntityId: "offer-1", amount: 2000, recurrence: "none" },
   ];
-  const september: OfferMonth[] = [
-    { name: "Coaching", hourlyCost: 60, unitsSold: 2, revenue: 3000, hoursSpent: 15 },
+  const september: Received[] = [
+    { salesRowId: "row-1", rowType: "offer", offerEntityId: "offer-1", amount: 3000, recurrence: "none" },
   ];
 
   const prev = calculate("financials", {
     value: from({ financials_fixed_costs: 1000 }),
     previous: none,
-    offerRows: august,
+    received: august,
   });
   const now = calculate("financials", {
     value: from({ financials_fixed_costs: 1000 }),
     previous: none,
-    offerRows: september,
+    received: september,
   });
 
   assert.equal(prev.financials_total_revenue, 2000);

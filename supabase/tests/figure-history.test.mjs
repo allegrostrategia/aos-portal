@@ -30,6 +30,7 @@ const { getEntityHistory, getFigureHistory, inputKeysFor } = await import(
 const { monthsEndingAt } = await import("../../src/lib/reporting/months.ts");
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offer-actions.ts");
+const { saveSalesRow, saveActuals } = await import("../../src/lib/reporting/sales-actions.ts");
 const { getMetrics } = await import("../../src/lib/reporting/queries.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
@@ -113,7 +114,6 @@ for (const [month, scale] of [
     financials_fixed_costs: 300,
     financials_variable_costs: 250 * scale,
     financials_team_costs: 500,
-    financials_other_income: 100 * scale,
   });
 }
 
@@ -153,6 +153,53 @@ for (const [month, revenue] of [
     ),
   );
 }
+
+/**
+ * The same money on the Actual grid, which is where revenue and profit
+ * come from since 13 November — one row linked to the offer, one not.
+ *
+ * The figures are the ones this file has always charted: £3,000, £4,500
+ * and £6,000 from the offer, and £100, £200, £300 of other income.
+ */
+await as(NINA, async () => {
+  for (const [name, link] of [
+    ["1:1 Coaching", offerId],
+    ["A bespoke client", ""],
+  ]) {
+    await saveSalesRow(
+      null,
+      form({
+        workspace_id: WS,
+        name,
+        row_type: link ? "offer" : "client",
+        offer_entity_id: link,
+        recurrence: "none",
+      }),
+    );
+  }
+  const { rows } = await db.query(
+    `select id, offer_entity_id from public.report_sales_rows
+      where workspace_id = '${WS}' order by sort_order`,
+  );
+  const linked = rows.find((r) => r.offer_entity_id !== null).id;
+  const bespoke = rows.find((r) => r.offer_entity_id === null).id;
+
+  for (const [month, revenue, other] of [
+    [JUL, 3000, 100],
+    [AUG, 4500, 200],
+    [SEP, 6000, 300],
+  ]) {
+    await saveActuals(
+      null,
+      form({
+        workspace_id: WS,
+        month,
+        [`cell:${linked}:${month}`]: revenue,
+        [`cell:${bespoke}:${month}`]: other,
+      }),
+    );
+  }
+});
 
 /** The metrics the Overview and Social Media charts actually draw. */
 const CHARTED = [
@@ -282,7 +329,10 @@ test("the input keys are read off the formulas, not off a list", async () => {
 
   const financials = inputKeysFor("financials");
   assert.ok(financials.includes("financials_fixed_costs"));
-  assert.ok(financials.includes("financials_other_income"));
+  // **Revenue is not an input key any more**, and that is the point of
+  // the routing: it is not typed anywhere, so there is no key to read.
+  // It comes off the Actual grid, which `getFigureHistory` loads itself.
+  assert.ok(!financials.includes("financials_other_income"), financials.join(", "));
 });
 
 test("a client reads their published months and no draft", async () => {

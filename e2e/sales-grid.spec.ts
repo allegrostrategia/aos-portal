@@ -134,6 +134,20 @@ test("what came in, what you expect, and a refund", async ({ page }, info) => {
   expect(stripText, "came in, with the refund off it").toContain("£2,150");
   expect(stripText, "and the retainer is the recurring part").toContain("£400");
 
+  // **And "Worked out for you" says the same thing** (Dom, 13 November).
+  // The card above the grids used to read "Revenue from offers —" with
+  // £2,400 sitting in the grid below it, because revenue was pulled from
+  // the Offers screen. It reads the grid now, so the two cannot differ.
+  const worked = (
+    await page
+      .locator("aside")
+      .filter({ has: page.getByRole("heading", { name: "Worked out for you" }) })
+      .innerText()
+  ).replace(/\s+/g, " ");
+  expect(worked, "revenue from the two offer rows, the refund off it").toContain("£1,750");
+  expect(worked, "the retainer client").toContain("£400");
+  expect(worked, "and the month, which is what the grid totals").toContain("£2,150");
+
   expect(await whatOverflows(page), "nothing sticks out sideways").toEqual([]);
   expect(await sidewaysScroll(page)).toBe(0);
 

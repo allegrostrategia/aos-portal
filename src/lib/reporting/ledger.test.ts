@@ -7,10 +7,14 @@ import {
   costsByBucket,
   forecastAfter,
   forecastIn,
+  fromOffers,
   monthsToShow,
+  notFromOffers,
   offerRevenue,
   receivedIn,
+  receivedThisMonth,
   recurringSplit,
+  recurringTotal,
   rowsWithFigures,
   type ActualCell,
   type Cell,
@@ -147,6 +151,41 @@ test("recurring comes out in her three lines", () => {
     annual: null,
     combined: null,
   });
+});
+
+test("the month's money, flattened against the rows it came in on", () => {
+  // The join the report's three revenue figures are worked out from: the
+  // offer link off the row, the recurring setting off the cell.
+  const actuals = [
+    cell("r1", JAN, 500),
+    cell("r2", JAN, 800, "monthly"),
+    cell("r3", JAN, 400),
+    cell("r1", FEB, 900),
+  ];
+
+  const january = receivedThisMonth(rows, actuals, JAN);
+  assert.deepEqual(january, [
+    { salesRowId: "r1", rowType: "offer", offerEntityId: "offer-1", amount: 500, recurrence: "none" },
+    { salesRowId: "r2", rowType: "client", offerEntityId: null, amount: 800, recurrence: "monthly" },
+    { salesRowId: "r3", rowType: "client", offerEntityId: null, amount: 400, recurrence: "none" },
+  ]);
+
+  // Revenue from offers and Other income are the two halves of it, and
+  // they add up to the month — nothing received is left out of either.
+  assert.equal(fromOffers(january), 500);
+  assert.equal(notFromOffers(january), 1200);
+  assert.equal(fromOffers(january)! + notFromOffers(january)!, receivedIn(actuals, JAN));
+
+  // MRR is the recurring part of what came in, and it is the same
+  // function the entry screen's three lines go through.
+  assert.equal(recurringTotal(january), 800);
+  assert.equal(recurringTotal(january), recurringSplit(actuals, JAN).combined);
+
+  // A month nobody typed into is a dash on all three, never £0.
+  const march = receivedThisMonth(rows, actuals, MAR);
+  assert.equal(fromOffers(march), null);
+  assert.equal(notFromOffers(march), null);
+  assert.equal(recurringTotal(march), null);
 });
 
 test("a linked row feeds the Offers charts; an unlinked one is bespoke", () => {

@@ -23,6 +23,7 @@ process.env.NEXT_PUBLIC_SITE_URL = "https://aos.test";
 
 const { saveCategoryValues } = await import("../../src/lib/reporting/actions.ts");
 const { saveOffer, saveOfferMonth } = await import("../../src/lib/reporting/offer-actions.ts");
+const { saveSalesRow, saveActuals } = await import("../../src/lib/reporting/sales-actions.ts");
 const { saveStrategistNote, publishMonth, unpublishMonth } =
   await import("../../src/lib/reporting/note-actions.ts");
 const { saveWorkspaceSettings } = await import("../../src/lib/admin/report-users.ts");
@@ -181,25 +182,60 @@ test("the other four categories save, and Social Media gets its platform", async
 });
 
 // ---------------------------------------------------------------------------
+test("the same money goes on the Actual grid, which is where revenue reads", async () => {
+  // Nina, 13 November. The Offers screen still holds what each offer sold
+  // and is worth; Financials no longer works the month's revenue out from
+  // it. **The money is what landed**, typed on the Actual grid — so the
+  // row carries the offer link, which is what makes its money "revenue
+  // from offers" rather than other income.
+  const [offer] = await rows(NINA,
+    `select id from public.report_entities where workspace_id = '${WS}' and entity_type = 'offer'`);
+
+  const added = await as(NINA, () =>
+    saveSalesRow(null, form({
+      workspace_id: WS, name: "1:1 Coaching Package",
+      row_type: "offer", offer_entity_id: offer.id, recurrence: "none",
+    })),
+  );
+  assert.equal(added?.error, undefined, added?.error);
+
+  const [row] = await rows(NINA,
+    `select id from public.report_sales_rows where workspace_id = '${WS}'`);
+  const saved = await as(NINA, () =>
+    saveActuals(null, form({
+      workspace_id: WS, month: AUG, [`cell:${row.id}:${AUG}`]: "12500",
+    })),
+  );
+  assert.equal(saved?.error, undefined, saved?.error);
+});
+
+// ---------------------------------------------------------------------------
 test("the Overview's headline figures come out right", async () => {
   const stored = await rows(NINA, `
     select metric_key, value::float v from public.report_values
     where workspace_id = '${WS}' and month = '${AUG}'`);
   const byKey = new Map(stored.map((r) => [r.metric_key, r.v]));
 
-  const offerRows = [{
-    name: "1:1 Coaching Package", hourlyCost: 60, pricingModel: "one_off",
-    unitsSold: byKey.get("offers_units_sold"),
-    revenue: byKey.get("offers_revenue_this_month"),
-    hoursSpent: byKey.get("offers_hours_spent_delivering"),
-  }];
+  const grid = await rows(NINA, `
+    select r.row_type, r.offer_entity_id, a.sales_row_id, a.amount::float v, a.recurrence
+      from public.report_actuals a
+      join public.report_sales_rows r on r.id = a.sales_row_id
+     where a.workspace_id = '${WS}' and a.month = '${AUG}'`);
+  const received = grid.map((c) => ({
+    salesRowId: c.sales_row_id,
+    rowType: c.row_type,
+    offerEntityId: c.offer_entity_id,
+    amount: c.v,
+    recurrence: c.recurrence,
+  }));
 
   const value = (key) => byKey.get(key) ?? null;
-  const fin = calculate("financials", { value, previous: () => null, offerRows });
+  const fin = calculate("financials", { value, previous: () => null, received });
   const leads = calculate("leads_conversions", { value, previous: () => null });
 
-  // Revenue is PULLED from the offers — the bug that had both of these
-  // showing a dash on a month with offers entered.
+  // Revenue is what came in — the bug this started as was both of these
+  // showing a dash on a month with real money in it.
+  assert.equal(fin.financials_revenue_from_offers, 12500);
   assert.equal(fin.financials_total_revenue, 12500);
   assert.equal(fin.financials_profit, 12500 - 13530);
   assert.equal(leads.leads_conversions_total_leads, 234);
@@ -496,14 +532,14 @@ test("a half-filled offer does not count as done", async () => {
   await rows(NINA, `delete from public.report_entities where id <> '${offer.id}' and entity_type = 'offer'`);
 });
 
-test("last month's offers are worked out, so Revenue has something to compare", async () => {
+test("last month's money is worked out, so Revenue has something to compare", async () => {
   // Bug 3. September's figures against August's.
   configure(db, NINA);
   const figures = await figuresFor(SEP, AUG);
 
   assert.ok(
     figures.previousResults.financials_revenue_from_offers !== null,
-    "August's offer revenue is worked out for the comparison",
+    "August's money is worked out for the comparison",
   );
   assert.equal(figures.previousResults.financials_revenue_from_offers, 12500);
 });

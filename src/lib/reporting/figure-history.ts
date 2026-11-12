@@ -9,6 +9,7 @@ import { previousMonthOf } from "./months.ts";
 import type { AdCampaign, OfferMonth } from "./formulas.ts";
 import type { ReportEntity, ReportMetric } from "./queries.ts";
 import { choosePlatform } from "./platforms.ts";
+import { receivedThisMonth, type ActualCell, type Received } from "./ledger.ts";
 
 /**
  * Several months of a workspace's figures — **including the worked-out ones.**
@@ -105,8 +106,11 @@ const ENTITY_KEYS: Record<"offer" | "ad_campaign", string[]> = {
 
 /** Which entity kinds a category's figures hang off. */
 const ENTITIES_NEEDED: Partial<Record<CategoryKey, ("offer" | "ad_campaign")[]>> = {
-  // Revenue is pulled from the offers, so profit is too.
-  financials: ["offer"],
+  // **Financials is not here any more** (13 November). Revenue was pulled
+  // from the offers and is the Actual grid now, so profit over time is
+  // worked out from cells rather than from offer rows — see the grid read
+  // below. Leaving it here would load four offer keys per month for
+  // nothing.
   offers: ["offer"],
   // "New leads from ads" is summed over the campaigns, never typed.
   leads_conversions: ["ad_campaign"],
@@ -118,6 +122,12 @@ const ENTITIES_NEEDED: Partial<Record<CategoryKey, ("offer" | "ad_campaign")[]>>
  * `ValueBag` normalises it at the boundary, which is the one place that
  * has to know.
  */
+interface SalesRowRecord {
+  id: string;
+  row_type: "offer" | "client";
+  offer_entity_id: string | null;
+}
+
 interface RawRow {
   month: string;
   metric_key: string;
@@ -196,6 +206,18 @@ export async function getFigureHistory({
   const to = months[months.length - 1];
 
   /**
+   * Financials reads the Actual grid, so a chart of revenue or profit
+   * over twelve months is twelve months of cells (§5.10, 13 November).
+   *
+   * Only when something asked for a Financials figure: everywhere else
+   * these two reads would be work for nothing. The rows are the whole
+   * workspace — there are tens of them, and the offer link is what makes
+   * a cell "revenue from offers" — while the cells are the window the
+   * chart draws, one month wider at the front like everything else here.
+   */
+  const needsGrid = calcCategories.has("financials");
+
+  /**
    * **Two value queries, not one, because of §13's 1,000-row cap.**
    *
    * PostgREST caps a read and says nothing about having done it, so a
@@ -217,7 +239,8 @@ export async function getFigureHistory({
    * row.
    */
   const supabase = await createClient();
-  const [valueResult, perRowResult, entityResult] = await Promise.all([
+  const [valueResult, perRowResult, entityResult, salesRowResult, actualResult] =
+    await Promise.all([
     supabase
       .from("report_values")
       .select("month, metric_key, entity_id, value")
@@ -248,10 +271,56 @@ export async function getFigureHistory({
       .select("*")
       .eq("workspace_id", workspaceId)
       .returns<ReportEntity[]>(),
-  ]);
+    needsGrid
+      ? supabase
+          .from("report_sales_rows")
+          .select("id, row_type, offer_entity_id")
+          .eq("workspace_id", workspaceId)
+          .returns<SalesRowRecord[]>()
+      : Promise.resolve({ data: [] as SalesRowRecord[] }),
+    needsGrid
+      ? supabase
+          .from("report_actuals")
+          .select("sales_row_id, month, amount, recurrence")
+          .eq("workspace_id", workspaceId)
+          .gte("month", from)
+          .lte("month", to)
+          .returns<
+            {
+              sales_row_id: string;
+              month: string;
+              amount: number | string;
+              recurrence: ActualCell["recurrence"];
+            }[]
+          >()
+      : Promise.resolve({
+          data: [] as {
+            sales_row_id: string;
+            month: string;
+            amount: number | string;
+            recurrence: ActualCell["recurrence"];
+          }[],
+        }),
+    ]);
 
   const rows = [...(valueResult.data ?? []), ...(perRowResult.data ?? [])];
   const entities = entityResult.data ?? [];
+
+  // `numeric` arrives as a string from some drivers, the same trap
+  // `ValueBag` normalises for everything addressed by metric key.
+  const salesRows = (salesRowResult.data ?? []).map((r) => ({
+    id: r.id,
+    rowType: r.row_type,
+    offerEntityId: r.offer_entity_id,
+  }));
+  const actualCells: ActualCell[] = (actualResult.data ?? []).map((c) => ({
+    salesRowId: c.sales_row_id,
+    month: String(c.month).slice(0, 10),
+    amount: typeof c.amount === "number" ? c.amount : Number(c.amount) || 0,
+    recurrence: c.recurrence,
+  }));
+  const receivedFor = (month: string): Received[] =>
+    receivedThisMonth(salesRows, actualCells, month);
 
   // One bag per month, including the extra month at the front, so a
   // formula defined against "last month" has one to read.
@@ -340,7 +409,13 @@ export async function getFigureHistory({
       if (!calcCategories.has(category.key)) continue;
       Object.assign(
         results,
-        calculate(category.key, { value, previous, offerRows, adCampaigns }),
+        calculate(category.key, {
+          value,
+          previous,
+          offerRows,
+          adCampaigns,
+          received: receivedFor(month),
+        }),
       );
     }
 

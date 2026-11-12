@@ -2782,10 +2782,67 @@ shown are those with a figure this year, with "Show all rows" — and a row
 with no figures anywhere is always shown, because that is one somebody has
 just added. A published month's column is disabled and says so.
 
+Four things about that screen were Dom's review on 13 November, and two
+of them are worth keeping:
+
+- **What came in cannot run ahead of the month being entered.** October's
+  money has not landed while September is being typed up, so that column
+  is on screen — so the two grids line up — with no input in it and
+  "forecast" under the heading. `saveActuals` refuses one as well.
+- **A strip of bare background down the right of every phone screenshot**
+  was every cell's `sr-only` label. They are `position: absolute`, and an
+  absolutely positioned element is clipped by an ancestor's overflow only
+  when that ancestor is its containing block — so twelve columns of
+  invisible 1px labels sat in page coordinates past the right edge and
+  dragged the document sideways. The scroller is `relative` now and the
+  browser test asserts the page does not scroll sideways at 390px.
+- The month headings and the Total row were aligned to their columns
+  rather than to the inputs inside them (three paddings, one narrow
+  input). One rule now, worn by all three.
+- "Does it recur?" saves on change, with no button of its own.
+
+## Financials' revenue reads the grids — 13 November 2026
+
+The figures, not just the screen. Four metrics stopped being what they
+were:
+
+| Metric | Was | Is |
+| --- | --- | --- |
+| Revenue from offers | pulled from the Offers screen's per-offer revenue | money received on the Actual grid's **offer rows** |
+| Other income | a typed box | money received on its **client rows** |
+| Total revenue | the two added up | unchanged — but both halves moved |
+| MRR | revenue on offers marked `recurring` | money received on **cells that recur** |
+
+Three things to know:
+
+1. **The split is the row's kind, not its offer link.** Linking a row to
+   an offer is optional and plenty of clients never do it. Splitting on
+   the link put a month's whole programme revenue under "Other income" —
+   caught on a browser screenshot, not by a test. The link still decides
+   the Offers donut, which is a chart about offer entities rather than
+   about a month.
+2. **`Carried.previousReceived`** freezes last month's cells at publish,
+   because "£2,150, up from £1,900" is now arithmetic over another month
+   — and that month may still be a draft and may still change. Absent is
+   not empty. `month-figures.ts` reads the snapshot when there is one.
+3. **The charts load the grid too** (`figure-history.ts`), but only when
+   something asked for a Financials figure. Revenue and profit over
+   twelve months is twelve months of cells.
+
+`financials_other_income` became `pulled` in
+`20261113140000_financials_from_the_grids.sql`, which is what takes its
+box off the screen — `report_values` refuses to store a figure for a
+pulled metric. **Two rows on live hold a typed one** (Test Client, two
+months): left where they are, read by nothing, and that money belongs on
+the Actual grid as a row.
+
+`offers.monthlyRecurringRevenue` is gone from `formulas.ts`, and
+`financials` is out of `ENTITIES_NEEDED` — Financials reads no offer row
+anywhere now.
+
 **Still to build:** expenses with the default category list and the
 examples panel, the staff/hours grid, the rebuilt Financials report page,
-the bespoke donut slice, routing the five existing metrics through the
-grids, the whole-report PDF and the Financials CSV. Nina lifted the
-brief's no-export rule for that CSV alone.
+the bespoke donut slice, the whole-report PDF and the Financials CSV.
+Nina lifted the brief's no-export rule for that CSV alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

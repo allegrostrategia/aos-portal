@@ -334,7 +334,6 @@ test("5.9 the summary cards weight by size, not by offer", () => {
 
   // (24,850 − 800) ÷ 96.
   near(offers.overallEffectiveHourlyRate(OFFER_SET), 250.52);
-  assert.equal(offers.monthlyRecurringRevenue(OFFER_SET), 5500);
 });
 
 test("5.10 financials", () => {
