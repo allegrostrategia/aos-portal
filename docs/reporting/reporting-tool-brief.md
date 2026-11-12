@@ -288,59 +288,59 @@ Any offer under the margin benchmark (default 45%, editable per client) gets an 
 
 ### 5.10 Financials (full P&L)
 
-**Financials is a ledger, from 11 November 2026 (Nina), modelled on her own
-2025 tracker.** It was six typed totals with revenue pulled from Offers;
-it is now sales and expenses entered row by row, because one revenue
-figure could not answer the two questions a business actually asks.
+**Financials is two grids, from 13 November 2026 (Nina), modelled on her
+own 2025 tracker.** It was six typed totals with revenue pulled from
+Offers; it became a ledger of sales with payment plans on 11 November, and
+her review of that screen replaced it with something simpler. **What she
+actually does each month is open the bank account and Stripe and type in
+what landed.**
 
-**Sales and cash are different questions.** A SALE is what was sold,
-counted in the month it was sold — all of it, whatever the payment plan. CASH
-is what arrived, counted in the month it arrived. £2,000 sold in September
-as four £500s reads: September sales £2,000, cash £500; October sales —,
-cash £500; and so on. A dash rather than £0, because nothing being sold is
-not the same as selling nothing.
+- **Actual** is money received: a row name and an amount, per month.
+- **Forecast** is money expected, on its own grid with the same layout,
+  typed or pasted across however many months it lasts.
+
+There is no sale record, no payment plan, no due-versus-received, no
+cancellation and no retiring a row. **Nothing is generated** — a retainer
+runs across six months because somebody typed it across six months. The
+Actual screen carries a note, "Signed a new retainer client? Add them to
+your forecast," linking to the Forecast grid.
 
 #### Sales rows
 
-One row per offer **or** per customer, named by the client: offers they sell
-lots of get a row under the offer's name, and anybody on a retainer or a
-bespoke package gets one under their own. Linking a row to an offer is
-optional — plenty of businesses, Nina's agency among them, sell mostly
+One row per offer **or** per customer, named by the client: offers they
+sell lots of get a row under the offer's name, and anybody on a retainer
+or a bespoke package gets one under their own. Linking a row to an offer
+is optional — plenty of businesses, Nina's agency among them, sell mostly
 bespoke work that is not an offer. A linked row's money reaches the Offers
 charts; everything unlinked is one "bespoke work" slice with its client
 count, so the donut still totals the month's revenue.
 
-A row is retired, never deleted (rule 7), and its kind and its offer link
-are held still once a published month holds money for it.
+**Rows are never removed** (rule 7), and retiring one is gone from the
+screen. A row is hidden from the year's grid when it has no figure in that
+year, with "Show all rows" one click away — and a row with no figures at
+all is always shown, because that is a row somebody has just added.
 
-#### A sale and its instalments
+A row's kind and its offer link are held still once a published month
+holds figures for it.
 
-A sale carries the month it was sold, its total value, and how it is
-billed — **one-off, monthly or annual**, which is where recurring revenue
-comes from. A payment plan is still one-off: instalments are a way of
-paying, recurrence is a way of being sold again next month. The three
-recurring lines are her Recurring Revenue tab's three: monthly, annual,
-and the two combined.
+#### Recurring
 
-Each instalment is a cell: the month it is **due** and the month the money
-**arrived**. A September invoice paid in November is one row with both, so
-neither month's figure is wrong. An instalment paid early into a published
-month counts in that month's cash. Money still owed is counted *as of* a
-month, not as of today, so a published report says what was outstanding
-then.
+A row carries a recurring setting — none, monthly or annual, which are her
+Recurring Revenue tab's three lines. **It is the starting point for new
+months, not a fact about the ones already saved:** each cell of the Actual
+grid keeps its own copy, captured as it is written. So a client who paid
+one-off in January and went onto a retainer in April is both of those
+things in the months they were each, on one row, with nothing to unpublish.
 
-A sale whose instalments do not add up to its total is not refused — half
-a payment plan is a normal thing to be looking at — so the screen says
-"£500 not yet scheduled" instead.
+**MRR is the actual money received that month on cells that recur.**
 
-#### Cancellation (rule 7)
+#### Refunds
 
-A sale that falls through, and an instalment that stops, are **marked and
-kept**, with the month it happened. A cancellation counts from its own
-month forward: a September sale cancelled in November leaves September's
-£2,000 alone and stops counting from November. That is also the rule the
-database enforces — a cancellation can only be dated where nothing from
-that month on has been published.
+An actual figure may be negative. The figure is what landed, and in a
+month with a refund or a chargeback what landed can be less than nothing;
+the grid says so in words — "a refund or a chargeback goes in as a minus,
+it comes off the month" — and draws a negative cell in orange. A forecast
+cannot be negative: nobody forecasts money going out.
 
 #### Expenses
 
@@ -356,23 +356,34 @@ forward-looking rather than a rewrite of every published month.
 Her Client Profitability tab: the client's **own** team with their hourly
 rates, and hours against a client row per month. The rate is captured as it
 was when the hours were saved, so a pay rise cannot rewrite a published
-month. What they paid comes from the grid above — nobody types a figure
+month. What they paid comes from the Actual grid — nobody types a figure
 twice. Only client rows: an offer's hours are already asked for on the
 Offers screen.
 
 Nothing here records Allegro's hours or Allegro's work, which §1's rule is
 about.
 
+#### Baseline
+
+**Baseline waits for twelve months of data** (Nina, 11 November): her
+tracker compares actual sales, expenses and profit to date against a
+baseline and a goal, and a baseline drawn from three months is a number
+that misleads.
+
+Out of scope, deliberately: the tracker's Client Info tab (addresses,
+invoicing). A name on a row is what makes the row findable; an address is
+a filing cabinet aOS has no reason to be.
+
 #### The figures
 
 **The table below is generated from, not just documentation of, the metric
 seed** (`scripts/generate-report-metrics-seed.mjs` checks it both ways), so
-it says what the figures are today and is re-pointed as the ledger takes
-them over. The sales grid landed first, on 12 November, and the five
-figures below still read what they always read; routing them through the
-ledger — revenue from sales rather than pulled from Offers, the four cost
-totals from the expense rows, MRR from `billing` — is the next piece, and
-this table moves with it.
+it says what the figures are today and is re-pointed as the grids take
+them over. The grids landed first, on 13 November, and the five figures
+below still read what they always read; routing them through — revenue
+from the Actual grid rather than pulled from Offers, the four cost totals
+from the expense rows, MRR from the cells that recur — is the next piece,
+and this table moves with it.
 
 | Field | Type | Formula | Good |
 | --- | --- | --- | --- |
@@ -391,11 +402,11 @@ this table moves with it.
 | Costs as % of revenue | Calc | Total costs ÷ total revenue | Down |
 | Runway | Calc | Cash in bank ÷ average monthly costs (last 3 months) | Up |
 
-**Where it is going:** Revenue reads the month's sales, with cash beside
-it on Overview (Nina, 11 November); the four cost totals are the four
-buckets' sums; MRR is the instalments due this month on sales billed
-monthly or annually; and "Still owed" joins them — money due by the end of
-the month that has not arrived.
+**Where it is going:** Revenue reads the month's actual money received,
+with the forecast for that month beside it on Overview (Nina, 13
+November, replacing the 11 November "sales first, cash beside"); the four
+cost totals are the four buckets' sums; and MRR is the actual money
+received on cells that recur.
 
 Charts: revenue vs profit line (12 months), cost breakdown donut, MRR
 trend, and the year grid itself — one row per offer or customer, twelve
@@ -600,7 +611,7 @@ Manual entry is the default and always works. CSV upload is a shortcut that fill
 
 **Financials is manual entry only.** No Stripe exports and no bank statement uploads. Payment exports carry customers' names, emails and card details, which breaks the numbers-only rule and puts personal data through aOS. Clients type their totals by hand.
 
-**This rule is untouched by the ledger (11 November 2026).** Financials became a ledger of sales and expenses, modelled on Nina's own tracker — one row per offer or customer, twelve month columns, instalments written across the row. Every cell of it is typed. Nobody uploads anything, and the reason this rule exists is exactly why: a page somebody types into cannot carry a card number into aOS.
+**This rule is untouched by the grids (11 and 13 November 2026).** Financials became two grids modelled on Nina's own tracker — one row per offer or customer, twelve month columns, one for money received and one for money expected. Every cell of both is typed. Nobody uploads anything, and the reason this rule exists is exactly why: a page somebody types into cannot carry a card number into aOS.
 
 The file itself is never stored, only the numbers taken from it. Platforms rename columns without warning, so each column map should be easy to update from a fresh sample file.
 

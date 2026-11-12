@@ -2704,93 +2704,88 @@ marker still stands there.
 `client_experience_active_clients_at_start`, which §5.8 specifies two
 incompatible ways. See the reporting section.
 
-## Financials became a ledger — 11–12 November 2026
+## Financials became two grids — 11–13 November 2026
 
-**Nina's decision, with her own 2025 tracker as the layout reference.**
-Financials was six typed totals with revenue pulled from Offers. It is now
-sales and expenses entered row by row, because one revenue figure could
-not answer the two questions a business asks. The spreadsheet is a real
-client's file with real names: **it is not in this repo and none of its
-data is in any fixture or screenshot.**
+**Nina's decision, twice.** Financials was six typed totals with revenue
+pulled from Offers. On 11 November it became a ledger modelled on her own
+2025 tracker — a sale with a value, how it was billed, and instalments
+with a due month and a received month. **On 13 November she reviewed that
+screen and replaced it with something simpler**, and the reason is worth
+keeping: the ledger modelled how an accounting system works, and what she
+actually does each month is open the bank account and Stripe and type in
+what landed.
 
-**Sales and cash are different questions, and the code keeps them apart.**
-A sale is what was sold, counted in the month it was sold, all of it,
-whatever the payment plan. Cash is what arrived, in the month it arrived.
-£2,000 sold in September as four £500s reads September £2,000/£500, then
-—/£500 three times. A dash rather than £0, because nothing being sold is
-not the same as selling nothing. Dom caught the first draft summing sales
-on the instalment month, which was cash wearing the word "sales".
+So, now:
 
-**Seven tables**, in `20261111120000_financials_ledger.sql`, applied to
-live on 12 November: `report_sales_rows`, `report_sales`,
-`report_sale_payments`, `report_expense_categories`, `report_expenses`,
-`report_staff`, `report_client_hours`. Live was read back against the
-migrations replayed on disk — ten functions byte-identical by
-`pg_get_functiondef`, 61 columns identical.
+- **Actual** (`report_actuals`) is money received: one figure per row per
+  month.
+- **Forecast** (`report_forecasts`) is money expected, same grid, typed or
+  pasted across however many months it lasts. Retainers live here because
+  somebody puts them here. **Nothing is generated.**
 
-Four things in it are worth knowing before touching it again:
+No sale record, no payment plan, no due-versus-received, no cancellation,
+no retiring a row. The screen is for entering numbers. The spreadsheet
+this is modelled on is a real client's file with real names: **it is not
+in this repo and none of its data is in any fixture or screenshot.**
 
-1. **MRR comes off the sale's `billing`** — `one_off | monthly | annual`,
-   her Recurring Revenue tab's three lines. It used to mean "revenue on
-   offers marked recurring", which dropped every retainer on the floor,
-   and retainers are the recurring revenue for an agency. **A payment plan
-   is still `one_off`:** instalments are a way of paying, recurrence is a
-   way of being sold again next month.
+**The 11 November tables are gone from live.** `report_sales`,
+`report_sale_payments`, the `report_sale_billing` enum and six functions
+(`guard_report_sale_months`, `guard_report_sale_payment_months`,
+`guard_report_sale_payment_sale`, `guard_report_sale_row`,
+`report_can_read_payment`, `report_cancellation_is_open`) were dropped by
+`20261113100000_actual_and_forecast.sql` on 13 November. All seven ledger
+tables held zero rows — reporting has never been switched on — so it
+dropped rather than migrated. `20261112100000_sale_payment_delete.sql` was
+withdrawn and its file deleted, never applied to live.
 
-2. **A payment has three months and the lock knows about all of them.**
-   `guard_report_sale_payment_months` fixes everything on a published due
-   month except `received_month` and `cancelled_on` — a September invoice
-   paid in November is news about November, not a change to September.
-   `report_can_read_payment` lets a client read a payment when its due
-   month or its received month is readable; the third clause ("or the month
-   its sale was made") was removed on 12 November because it handed them
-   live draft rows.
+Three things in the current schema are worth knowing before touching it:
 
-3. **A cancellation counts from its own month forward, and only forward.**
-   `report_cancellation_is_open` refuses one dated anywhere a published
-   month sits at or after it, and `cancelledBy` in `ledger.ts` reads it as
-   of a month. Together those are what let a customer who stops paying in
-   November be recorded without unpublishing September — the first
-   revision made that impossible, which Dom found. **Nothing is deleted:**
-   `cancelled_on` on both the sale and the instalment.
+1. **Recurrence is on the cell, not the row.** `report_sales_rows.
+   recurrence` (`none | monthly | annual`) is the *default* for new cells;
+   `report_actuals.recurrence` is each cell's own copy, filled by
+   `guard_report_actual_recurrence` when the screen does not say. On the
+   row alone, unticking it would rewrite MRR on a published month; locked
+   to the row, a client who paid one-off in January and went onto a
+   retainer in April could not be recorded without an unpublish. Per cell,
+   both just work. **MRR is the actual money received on cells that
+   recur.**
 
-4. **Forward-looking setup changes are captured per row, not locked.** An
-   expense's `bucket` and an hour's `rate_used` are filled by a trigger
-   from the category and the staff member, so recategorising and a pay
-   rise are forward-looking rather than a rewrite of every published month.
-   Where no capture makes sense — a sales row's kind and its offer link —
-   the row is held still instead (`guard_report_sales_row_published`).
+   The first attempt branched on `tg_table_name` inside the shared
+   row-guard, which does not work: plpgsql resolves `new.recurrence` when
+   it compiles the expression, not when the branch is taken, so every
+   forecast insert threw "record new has no field recurrence".
 
-**`Carried.scheduledAhead` is new**, and it is the only forward-looking
-figure on the report. Frozen at publish, so a published month does not
-move when somebody reschedules an instalment, and so the client never
-needs to read draft payment rows to see it. **Absent is not empty**, the
-same distinction `entities.price` makes.
+2. **`report_actuals.amount` has no non-negative check and that is
+   deliberate** (Dom, 13 November). The figure is what landed, and a
+   refund or chargeback month landed less than nothing. `report_forecasts`
+   does have the check: nobody forecasts money going out.
 
-**The sales grid** (`src/components/reporting/sales-grid.tsx`) is her
-year: one row per offer or customer, twelve month columns, a year total,
-the current month highlighted, sticky first column so it reads on a phone.
-Above it, this month's sales with "£500 not yet scheduled" when a payment
-plan does not add up, and this month's cash as a list of tick boxes. A
-published month keeps "they stopped" and loses "Edit" — which is the
-guard, said on screen.
+3. **Both tables wear `guard_report_published_month()` directly.** The two
+   months a payment had were the only reason a custom guard ever existed.
+   `guard_report_sales_row_published` still holds a row's kind and its
+   offer link still once a published month holds figures for it — but not
+   its recurrence, which needs no lock now it is captured per cell.
 
-**One migration is waiting on Dom:**
-`20261112100000_sale_payment_delete.sql`, which puts a DELETE policy back
-on `report_sale_payments`. He told me to remove the delete path on his
-rule-7 review; building the grid turned up the case neither of us had in
-front of us — clearing a cell of the schedule silently did nothing,
-because RLS refusing a delete is a success with no error and no rows. A
-cancellation and a correction are different things: a mistyped instalment
-has no counterparty and no agreement, and `report_top_items` already
-answers that the same way. The guard already refuses a delete on a
-published month, so the line rule 7 draws is drawn by the guard rather
-than by the absence of a policy. **Applied locally only.**
+**`Carried.forecastAhead`** is the only forward-looking figure on the
+report, frozen at publish from `report_forecasts` for the months after
+this one. The report draws actual against forecast across the year, so
+live it would move a published September every time somebody revised
+November. **Absent is not empty**, the same distinction `entities.price`
+makes. (It was `scheduledAhead` for one day, reading instalments.)
+
+**The screen** (`src/components/reporting/sales-grid.tsx`) is two grids of
+the same shape: rows down, months across, a year total, the current month
+highlighted, sticky first column so it reads on a phone. A row of figures
+can be pasted straight into either. Months shown are the filled ones, the
+month being entered and three ahead, with "Show the whole year"; rows
+shown are those with a figure this year, with "Show all rows" — and a row
+with no figures anywhere is always shown, because that is one somebody has
+just added. A published month's column is disabled and says so.
 
 **Still to build:** expenses with the default category list and the
 examples panel, the staff/hours grid, the rebuilt Financials report page,
 the bespoke donut slice, routing the five existing metrics through the
-ledger, the whole-report PDF and the Financials CSV. Nina lifted the
+grids, the whole-report PDF and the Financials CSV. Nina lifted the
 brief's no-export rule for that CSV alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.
