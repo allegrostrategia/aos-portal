@@ -245,12 +245,38 @@ function RowRecurrence({ row, ...props }: SalesGridProps & { row: SalesRow }) {
    */
 
   return (
-    <form action={action} className="flex flex-col items-start gap-1 sm:items-end">
+    <form action={action} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="workspace_id" value={props.workspaceId} />
       <input type="hidden" name="row_id" value={row.id} />
       <input type="hidden" name="name" value={row.name} />
       <input type="hidden" name="row_type" value={row.rowType} />
-      <input type="hidden" name="offer_entity_id" value={row.offerEntityId ?? ""} />
+      {/* **The link is a control on an offer row, not a hidden field.**
+          It is what decides which offer this money is on the Offers
+          page, and until today the only place to set it was the add
+          form — so a row linked to nothing stayed that way. Saved on
+          change, like the tick beside it. */}
+      {row.rowType === "offer" && props.offers.length > 0 ? (
+        <div className="w-44">
+          <Select
+            key={row.offerEntityId ?? "none"}
+            label={`Which offer is ${row.name}?`}
+            name="offer_entity_id"
+            id={`offer-link:${row.id}`}
+            defaultValue={row.offerEntityId ?? ""}
+            className="!py-1.5 text-small"
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
+          >
+            <option value="">Not linked</option>
+            {props.offers.map((offer) => (
+              <option key={offer.id} value={offer.id}>
+                {offer.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : (
+        <input type="hidden" name="offer_entity_id" value={row.offerEntityId ?? ""} />
+      )}
       <div className="w-44">
         <Select
           key={row.recurrence}
@@ -299,6 +325,17 @@ function RowSetup(props: SalesGridProps) {
                     ? ` · linked to ${props.offers.find((o) => o.id === row.offerEntityId)?.name ?? "an offer"}`
                     : ""}
                 </p>
+                {/* **An offer row with no link earns nothing on the
+                    Offers page** (13 November). Its money is in the
+                    month either way — it is revenue from offers, which
+                    is the row's kind — but which offer it was is the
+                    link, and without one that page has nothing to show
+                    for it. */}
+                {row.rowType === "offer" && !row.offerEntityId && props.offers.length > 0 ? (
+                  <p className="mt-1 text-caption text-orange">
+                    Link this to an offer so it shows on your Offers page.
+                  </p>
+                ) : null}
               </div>
               <RowRecurrence {...props} row={row} />
             </li>

@@ -39,6 +39,15 @@ export interface OffersEntryProps {
   values: Record<string, number | null>;
   previous: Record<string, number | null>;
   /**
+   * What each offer took this month, by offer id.
+   *
+   * Money received on the Financials rows linked to it (Nina, 13
+   * November). Not typed here and not typed anywhere else either — the
+   * whole point is that there is one place an offer's money is entered,
+   * and it is the Actual grid.
+   */
+  revenue: Record<string, number | null>;
+  /**
    * Whether this client is asked for hours (Nina, 3 November).
    *
    * False takes the box away as well as the figures: a client selling a
@@ -62,9 +71,14 @@ interface OfferFigure {
 /** The id the month's inputs attach themselves to. */
 const MONTH_FORM = "offers-month";
 
+/**
+ * **Revenue is not here any more** (Nina, 13 November). An offer's
+ * money is what came in on the Financials rows linked to it, so this
+ * screen asks for three numbers a month rather than four — and the one
+ * it stopped asking for is the one that was being typed twice.
+ */
 const ALL_FIGURES: OfferFigure[] = [
   { key: "offers_units_sold", label: "Units sold", recurringLabel: "Members", unit: "count" },
-  { key: "offers_revenue_this_month", label: "Revenue this month", unit: "currency" },
   { key: "offers_hours_spent_delivering", label: "Hours spent delivering", unit: "hours" },
   { key: "offers_other_direct_costs", label: "Other direct costs", unit: "currency", optional: true },
 ];
@@ -100,7 +114,9 @@ export function OffersEntry(props: OffersEntryProps) {
         hourlyCost: offer.hourly_cost,
         pricingModel: offer.pricing_model ?? undefined,
         unitsSold: read("offers_units_sold", offer.id),
-        revenue: read("offers_revenue_this_month", offer.id),
+        // From the Actual grid, through the server. Typed here it would
+        // be a second answer to the same question (§9).
+        revenue: props.revenue[offer.id] ?? null,
         hoursSpent: read("offers_hours_spent_delivering", offer.id),
         otherDirectCosts: read("offers_other_direct_costs", offer.id),
       })),
@@ -193,6 +209,15 @@ export function OffersEntry(props: OffersEntryProps) {
               </div>
 
               <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 rounded-2xl bg-lemon/50 px-4 py-3">
+                {/* **Where the money came from**, said on the screen
+                    that used to ask for it — otherwise the margin below
+                    is worked out from a figure with no visible source. */}
+                <Worked
+                  label="Money received"
+                  value={props.revenue[offer.id] ?? null}
+                  unit="currency"
+                  currency={props.currency}
+                />
                 <Worked label="Delivery cost" value={worked.offers_delivery_cost} unit="currency" currency={props.currency} />
                 <Worked label="Margin" value={worked.offers_margin} unit="percent" currency={props.currency} />
                 {props.trackHours ? (

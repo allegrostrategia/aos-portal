@@ -211,12 +211,11 @@ export const DERIVED_FROM: Record<string, string> = {
  * direction and so never gets a sentence to suppress.
  */
 export const PULLED_FROM: Record<string, string> = {
-  // **Still a pair, for a different reason since 13 November.** Revenue
-  // from offers used to BE the Offers total; it is now what came in on
-  // the Actual grid's offer-linked rows, which is a second answer to the
-  // same question — one typed per offer, one read off the bank. Two
-  // sentences about "revenue from offers" with different figures in them
-  // is worse news than one, so the suppression stands.
+  // **A true pair again, from the end of 13 November.** It stopped
+  // being one that morning, when Financials' revenue moved to the Actual
+  // grid and the Offers screen was still typing its own; it is one again
+  // now that an offer's revenue is money received too. Same figure, two
+  // screens, one sentence.
   financials_revenue_from_offers: "offers_total_revenue_from_offers",
   // Caught today by the label dedupe, because both are called "New
   // clients". Named here as well so a relabel cannot quietly reopen it.

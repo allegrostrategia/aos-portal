@@ -3051,4 +3051,48 @@ anything.
 **Still to build on Financials: nothing.** The section is the three
 grids, the hours, the report page, the PDF and this.
 
+## One place for an offer's revenue — 13 November 2026
+
+Nina's decision, through Dom. Two screens were answering "what did this
+offer earn": the Offers screen, typed per offer, and the Actual grid,
+where every pound that came in is already entered. **Financials is
+money received**, so the grid wins — an offer sold in September and paid
+in October earns in October, and the margin and the effective hourly
+rate on the Offers page move with it. That is the point of the change,
+not a side effect.
+
+- `offers_revenue_this_month` is **pulled**
+  (`20261113220000_offer_revenue_from_the_grid.sql`). The Offers screen
+  asks for three numbers a month and shows the money received beside
+  them, so the margin has a visible source.
+- `ledger.offerTotals()` is the one place it is worked out. Both callers
+  go through it, which matters because **the previous month's copy comes
+  from the published snapshot** (`Carried.previousReceived`), so a
+  published arrow cannot move.
+- `getEntityHistory` special-cases this one metric: a straight query on
+  `report_values` would have come back empty and drawn six months of
+  nothing under a confident title, which is the exact failure
+  `getFigureHistory` exists to prevent.
+- An offer row with no link now says so on the Financials rows card, and
+  carries a select to fix it — until today the only place to set the
+  link was the add form.
+- **"Where the money came from" moved to Offers**, where the brief
+  always put it: one slice per offer plus one for the rest.
+- **Test Client's two typed rows are not migrated** (Dom's call). They
+  stay where they are and nothing reads them.
+
+**Seven browser specs had fixtures that typed a now-pulled figure** and
+had to move to the grids: `published-lock` (which moved to Leads &
+Conversions entirely — Financials is four grids and one box now, so it
+is no longer the screen that best shows a whole-form lock),
+`nina-answers`, `nina-review`, `self-serve`, `mockup-screens`,
+`figure-history` and `reporting-actions`.
+
+Two of those fixtures were asserting something that had quietly
+reversed: `self-serve`'s "a figure pulled into another section survives
+its own being hidden" was Offers → Financials and is now Financials →
+Offers; and `nina-answers`' grey-figure test used Investment spend,
+which is both pulled and drawn by the donut above the list, so it moved
+to Total hours spent delivering — decision 2's own figure.
+
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

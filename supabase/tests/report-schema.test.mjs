@@ -332,13 +332,22 @@ await rejects("a non-offer cannot carry offer setup", () =>
     values ('${WS_R}', 'funnel', 'Priced funnel', 50)`)),
   "report_entities_offer_fields");
 
+// Units sold, not revenue: an offer's revenue is money received on the
+// Financials rows linked to it since 13 November, so it is pulled and
+// `report_values` refuses it — which the check below is about.
 await check("a per-offer figure is stored against its offer", async () => {
   await as(ELIZE, () => db.query(`
     insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
-    values ('${WS_R}', '${MONTH}', 'offers_revenue_this_month', '${OFFER}', 10000, '${ELIZE}')`));
+    values ('${WS_R}', '${MONTH}', 'offers_units_sold', '${OFFER}', 6, '${ELIZE}')`));
   return (await one(ELIZE,
-    `select value::int v from public.report_values where entity_id = '${OFFER}'`)).v === 10000;
+    `select value::int v from public.report_values where entity_id = '${OFFER}'`)).v === 6;
 });
+
+await rejects("and an offer's revenue is not one of them any more", () =>
+  as(ELIZE, () => db.query(`
+    insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
+    values ('${WS_R}', '${MONTH}', 'offers_revenue_this_month', '${OFFER}', 10000, '${ELIZE}')`)),
+  "is pulled");
 
 await rejects("a figure cannot be broken down by the wrong kind of thing", () =>
   as(ELIZE, () => db.query(`

@@ -62,10 +62,6 @@ const FIXTURE_KEYS = [
   "leads_conversions_new_leads_from_social",
   "leads_conversions_new_leads_from_email",
   "leads_conversions_new_clients",
-  "financials_other_income",
-  "financials_fixed_costs",
-  "financials_variable_costs",
-  "financials_team_costs",
 ];
 
 /**
@@ -76,9 +72,6 @@ const SEED_OWNED = new Set([
   "leads_conversions_new_leads_from_social",
   "leads_conversions_new_leads_from_email",
   "leads_conversions_new_clients",
-  "financials_fixed_costs",
-  "financials_variable_costs",
-  "financials_team_costs",
 ]);
 const FIXTURE_ONLY_KEYS = FIXTURE_KEYS.filter((k) => !SEED_OWNED.has(k));
 
@@ -236,30 +229,22 @@ test.describe("the five mockup screens", () => {
       insert into public.report_values
         (workspace_id, month, metric_key, entity_id, value, entered_by)
       select (select id from w), m.month::date, v.key, inserted.id,
-             -- A wobble on the climb. A perfectly straight ramp is the
-             -- one shape real data never has, and two parallel straight
-             -- lines are impossible to judge a chart by.
-             case when v.key = 'offers_revenue_this_month'
-                  then round(v.value * (0.55 + 0.45 * m.ordinality / 12.0)
-                             * case m.ordinality % 4
-                                 when 0 then 1.00 when 1 then 1.09
-                                 when 2 then 0.93 else 1.05 end)
-                  else v.value end,
+             -- The climb and its wobble live on the money now, which is
+             -- the Actual grid below: an offer's revenue is not a typed
+             -- figure since 13 November.
+             v.value,
              (select id from public.members where email = 'nina@aos.test')
       from inserted
       cross join unnest(array[${HISTORY_MONTHS.map((m) => `'${m}'`).join(",")}])
         with ordinality as m(month, ordinality)
       join (values
         ('Signature Programme', 'offers_units_sold', 4),
-        ('Signature Programme', 'offers_revenue_this_month', 10000),
         ('Signature Programme', 'offers_hours_spent_delivering', 20),
         ('Signature Programme', 'offers_other_direct_costs', 400),
         ('The Membership', 'offers_units_sold', 22),
-        ('The Membership', 'offers_revenue_this_month', 5500),
         ('The Membership', 'offers_hours_spent_delivering', 28),
         ('The Membership', 'offers_other_direct_costs', 300),
         ('VIP Day', 'offers_units_sold', 3),
-        ('VIP Day', 'offers_revenue_this_month', 4500),
         ('VIP Day', 'offers_hours_spent_delivering', 18),
         ('VIP Day', 'offers_other_direct_costs', 250),
         -- Deliberately the thin one: 30 hours against £4,850 is £162 an
@@ -267,10 +252,48 @@ test.describe("the five mockup screens", () => {
         -- the bar chart's target line both have something to say. The
         -- mockup's own fourth offer is the same shape.
         ('Done-with-you Launch', 'offers_units_sold', 1),
-        ('Done-with-you Launch', 'offers_revenue_this_month', 4850),
         ('Done-with-you Launch', 'offers_hours_spent_delivering', 30),
         ('Done-with-you Launch', 'offers_other_direct_costs', 0)
       ) as v(name, key, value) on v.name = inserted.name
+      on conflict do nothing;
+    `);
+
+    /**
+     * **And the money, which is the Actual grid** (13 November): an
+     * offer's revenue is what came in on the Financials rows linked to
+     * it, so the four offers get a row each and twelve months of cells.
+     *
+     * The climb and its wobble are here, where the figures are. A
+     * perfectly straight ramp is the one shape real data never has, and
+     * two parallel straight lines are impossible to judge a chart by.
+     */
+    await db(`
+      with w as (
+        select id from public.report_workspaces where business_name = '${RETAINER}'
+      ), rows_in as (
+        insert into public.report_sales_rows
+          (workspace_id, name, row_type, offer_entity_id, sort_order)
+        select (select id from w), e.name, 'offer', e.id, e.sort_order
+          from public.report_entities e
+         where e.workspace_id = (select id from w) and e.entity_type = 'offer'
+        on conflict do nothing
+        returning id, name
+      )
+      insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+      select (select id from w), rows_in.id, m.month::date,
+             round(v.amount * (0.55 + 0.45 * m.ordinality / 12.0)
+                   * case m.ordinality % 4
+                       when 0 then 1.00 when 1 then 1.09
+                       when 2 then 0.93 else 1.05 end)
+        from rows_in
+        cross join unnest(array[${HISTORY_MONTHS.map((m) => `'${m}'`).join(",")}])
+          with ordinality as m(month, ordinality)
+        join (values
+          ('Signature Programme', 10000),
+          ('The Membership', 5500),
+          ('VIP Day', 4500),
+          ('Done-with-you Launch', 4850)
+        ) as v(name, amount) on v.name = rows_in.name
       on conflict do nothing;
     `);
 
@@ -341,6 +364,26 @@ test.describe("the five mockup screens", () => {
             and name in ('Signature Programme', 'The Membership',
                          'VIP Day', 'Done-with-you Launch')
        );
+      -- The grids the fixture wrote, before the offers they point at:
+      -- a sales row holds its offer by foreign key, and an offer with a
+      -- row against it cannot be deleted (which is rule 7 doing its job
+      -- rather than a problem).
+      delete from public.report_actuals
+       where sales_row_id in (
+         select id from public.report_sales_rows
+          where name in ('Signature Programme', 'The Membership', 'VIP Day',
+                         'Done-with-you Launch', 'Retainer clients')
+       );
+      delete from public.report_sales_rows
+       where name in ('Signature Programme', 'The Membership', 'VIP Day',
+                      'Done-with-you Launch', 'Retainer clients');
+      delete from public.report_expenses
+       where category_id in (
+         select id from public.report_expense_categories
+          where name in ('Software and subscriptions', 'Ads and contractors', 'The team')
+       );
+      delete from public.report_expense_categories
+       where name in ('Software and subscriptions', 'Ads and contractors', 'The team');
       delete from public.report_entities
        where entity_type = 'offer'
          and name in ('Signature Programme', 'The Membership',
@@ -426,10 +469,19 @@ test.describe("the five mockup screens", () => {
       ["leads_conversions_new_leads_from_social", 7, 20],
       ["leads_conversions_new_leads_from_email", 3, 8],
       ["leads_conversions_new_clients", 2, 4],
-      ["financials_other_income", 400, 900],
-      ["financials_fixed_costs", 300, 300],
-      ["financials_variable_costs", 180, 250],
-      ["financials_team_costs", 380, 500],
+    ];
+
+    /**
+     * **The money series moved off `report_values`** on 13 November:
+     * other income is a client row on the Actual grid, and the three
+     * cost lines are categories on the expense grid. Same figures, same
+     * climb, same wobble — written into the tables the screens read.
+     */
+    const GRID_SERIES: [string, "client" | "fixed" | "variable" | "team", number, number][] = [
+      ["Retainer clients", "client", 400, 900],
+      ["Software and subscriptions", "fixed", 300, 300],
+      ["Ads and contractors", "variable", 180, 250],
+      ["The team", "team", 380, 500],
     ];
 
     const wobble = [1, 1.04, 0.97, 1.06, 0.99, 1.03, 0.96, 1.05, 1.0, 1.02, 0.98, 1];
@@ -456,6 +508,49 @@ test.describe("the five mockup screens", () => {
       values ${rows.join(",")}
       on conflict do nothing;
     `);
+
+    // The same twelve months, on the two grids.
+    const figure = (start: number, end: number, i: number) => {
+      const t = i / (span.length - 1);
+      const raw = start + (end - start) * t;
+      return i === span.length - 1 ? end : Math.round(raw * wobble[i]);
+    };
+
+    const ws = `(select id from public.report_workspaces where business_name = '${RETAINER}')`;
+    for (const [name, kind, start, end] of GRID_SERIES) {
+      const cells = span
+        .map((month, i) => `('${month}', ${figure(start, end, i)})`)
+        .join(",");
+
+      if (kind === "client") {
+        await db(`
+          insert into public.report_sales_rows (workspace_id, name, row_type, recurrence)
+          select ${ws}, '${name}', 'client', 'monthly'
+           where not exists (select 1 from public.report_sales_rows
+                              where workspace_id = ${ws} and name = '${name}');
+          insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+          select ${ws}, r.id, c.month::date, c.amount
+            from public.report_sales_rows r
+            cross join (values ${cells}) as c(month, amount)
+           where r.workspace_id = ${ws} and r.name = '${name}'
+          on conflict do nothing;
+        `);
+      } else {
+        await db(`
+          insert into public.report_expense_categories (workspace_id, name, bucket)
+          select ${ws}, '${name}', '${kind}'
+           where not exists (select 1 from public.report_expense_categories
+                              where workspace_id = ${ws} and name = '${name}');
+          insert into public.report_expenses
+            (workspace_id, category_id, month, amount, bucket)
+          select ${ws}, c.id, m.month::date, m.amount, '${kind}'
+            from public.report_expense_categories c
+            cross join (values ${cells}) as m(month, amount)
+           where c.workspace_id = ${ws} and c.name = '${name}'
+          on conflict do nothing;
+        `);
+      }
+    }
   });
 
   /**

@@ -19,6 +19,18 @@ import { requireLocalStack, shoot, signIn, takeBackToDraft } from "./helpers.ts"
 requireLocalStack();
 
 const TAB = "published-lock";
+
+/**
+ * **Leads & Conversions, not Financials** (13 November).
+ *
+ * This file is about one thing: an entry screen for a published month
+ * says so, refuses every control, and offers the way out. It used
+ * Financials because it had the most boxes — and Financials now has one
+ * box and four grids, whose columns lock per month rather than the
+ * whole screen locking at once. That is its own behaviour with its own
+ * tests; this one needs a screen that is a form, which is every other
+ * section.
+ */
 const width = (name: string) => (name === "phone" ? "phone" : "desktop") as "phone" | "desktop";
 
 test.beforeEach(async () => {
@@ -31,16 +43,19 @@ test("the entry screen for a published month says so, and offers the way out", a
 }, info) => {
   const w = width(info.project.name);
   await signIn(page, "nina");
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.aug}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.aug}`);
 
   await expect(page.getByText(/has gone out/i)).toBeVisible();
   await expect(page.getByText(/the client has this report, so it is read-only/i)).toBeVisible();
 
   // Every control, not just the save button: the fieldset is what makes
   // that true, and a disabled input is the thing a person actually meets.
-  const figure = page.locator("#v-financials_fixed_costs");
+  const figure = page.locator("#v-leads_conversions_new_leads_from_social");
   await expect(figure).toBeDisabled();
-  await expect(page.getByRole("button", { name: /^save/i })).toBeDisabled();
+  // Both of the bar's buttons: this section has a "Save draft" and a
+  // "Save & next section", and the fieldset is what disables each.
+  await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /save & next/i })).toBeDisabled();
 
   // And the route out is here, not on another screen.
   await expect(page.getByRole("button", { name: /unpublish to make changes/i })).toBeEnabled();
@@ -50,10 +65,10 @@ test("the entry screen for a published month says so, and offers the way out", a
 test("a draft month is untouched by any of it", async ({ page }, info) => {
   const w = width(info.project.name);
   await signIn(page, "nina");
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.sep}`);
 
   await expect(page.getByText(/has gone out/i)).toHaveCount(0);
-  await expect(page.locator("#v-financials_fixed_costs")).toBeEnabled();
+  await expect(page.locator("#v-leads_conversions_new_leads_from_social")).toBeEnabled();
   await expect(page.getByRole("button", { name: /^save/i }).first()).toBeEnabled();
   await shoot(page, TAB, "02-draft-unchanged", w);
 });
@@ -63,13 +78,13 @@ test("Elize is told whose it is, rather than given a button that would refuse he
 }, info) => {
   const w = width(info.project.name);
   await signIn(page, "elize");
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.aug}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.aug}`);
 
   await expect(page.getByText(/has gone out/i)).toBeVisible();
   await expect(page.getByText(/nina can take it back to draft for you/i)).toBeVisible();
   // Unpublishing is Nina's alone, so the button is not drawn for anyone else.
   await expect(page.getByRole("button", { name: /unpublish/i })).toHaveCount(0);
-  await expect(page.locator("#v-financials_fixed_costs")).toBeDisabled();
+  await expect(page.locator("#v-leads_conversions_new_leads_from_social")).toBeDisabled();
   await shoot(page, TAB, "03-locked-editor", w);
 });
 
@@ -94,7 +109,7 @@ test("the Overview's note and objectives are read-only too", async ({ page }, in
 test("unpublish, fix, republish — the whole way round", async ({ page }, info) => {
   const w = width(info.project.name);
   await signIn(page, "nina");
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.aug}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.aug}`);
 
   await page.getByRole("button", { name: /unpublish to make changes/i }).click();
 
@@ -103,7 +118,7 @@ test("unpublish, fix, republish — the whole way round", async ({ page }, info)
   // unmounts. That is the evidence — a working entry screen, on the spot,
   // with no reload and no second navigation.
   await expect(page.getByText(/has gone out/i)).toHaveCount(0);
-  const figure = page.locator("#v-financials_fixed_costs");
+  const figure = page.locator("#v-leads_conversions_new_leads_from_social");
   await expect(figure).toBeEnabled();
   await figure.fill("1234");
   await page.getByRole("button", { name: /^save/i }).first().click();
@@ -121,9 +136,9 @@ test("unpublish, fix, republish — the whole way round", async ({ page }, info)
   await shoot(page, TAB, "06-republished", w);
 
   // And shut again behind her.
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.aug}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.aug}`);
   await expect(page.getByText(/has gone out/i)).toBeVisible();
-  await expect(page.locator("#v-financials_fixed_costs")).toBeDisabled();
+  await expect(page.locator("#v-leads_conversions_new_leads_from_social")).toBeDisabled();
 });
 
 test("the client can still reply to a published month", async ({ page }, info) => {

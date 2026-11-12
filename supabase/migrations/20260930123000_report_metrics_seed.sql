@@ -106,7 +106,7 @@ values
   ('client_experience_issues_per_10_clients', 'client_experience', 'Issues per 10 clients', 'calc', 'ratio', 'down', null, 'Issues raised ÷ active clients at end × 10', 13),
   ('client_experience_average_client_lifetime', 'client_experience', 'Average client lifetime', 'calc', 'months', 'up', null, '1 ÷ average monthly churn (last 12 months), shown once 3 months of data exist', 14),
   ('offers_units_sold', 'offers', 'Units sold', 'core', 'count', 'up', 'offer', null, 1),
-  ('offers_revenue_this_month', 'offers', 'Revenue this month', 'core', 'currency', 'up', 'offer', 'Cash actually received, so discounts and payment plans are right', 2),
+  ('offers_revenue_this_month', 'offers', 'Revenue this month', 'pulled', 'currency', 'up', 'offer', 'Money received on the Financials rows linked to this offer', 2),
   ('offers_hours_spent_delivering', 'offers', 'Hours spent delivering', 'optional', 'hours', 'down', 'offer', null, 3),
   ('offers_other_direct_costs', 'offers', 'Other direct costs', 'optional', 'currency', 'down', 'offer', 'Tools, contractors, materials for this offer', 4),
   ('offers_delivery_cost', 'offers', 'Delivery cost', 'calc', 'currency', 'down', 'offer', 'Hours × hourly cost + other direct costs', 5),

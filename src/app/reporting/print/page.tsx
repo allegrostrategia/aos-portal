@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
-import { costBreakdown, revenueFromWhere } from "@/lib/reporting/chart-data";
+import { costBreakdown, revenueByOffer } from "@/lib/reporting/chart-data";
 import { ENTRY_CATEGORIES } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatChange, formatValue } from "@/lib/reporting/format";
@@ -86,7 +86,7 @@ export default async function ReportPrintPage({
     // the printed version of the same mistake.
     .filter((s) => s.figuresShown.length > 0 || s.notes.length > 0);
 
-  const fromWhere = revenueFromWhere(figures, ctx.month.month, ctx.workspace.currency);
+  const fromWhere = revenueByOffer(figures, ctx.workspace.currency, ctx.month.month);
   const went = costBreakdown(figures, ctx.workspace.currency);
 
   return (
@@ -168,7 +168,7 @@ export default async function ReportPrintPage({
 
           {/* This month's own arithmetic, which prints as well as it
               renders. The twelve-month charts are deliberately not here. */}
-          {category.key === "financials" && fromWhere.length > 0 ? (
+          {category.key === "offers" && fromWhere.length > 0 ? (
             <div className="keep-together mt-5">
               <h3 className="mb-2 font-mono text-eyebrow uppercase text-ink/50">
                 Where the money came from

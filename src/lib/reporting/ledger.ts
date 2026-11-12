@@ -269,24 +269,35 @@ export function costsByBucket(
 }
 
 /**
- * This month's money per linked offer, so the Offers donut, the margin and
- * the hourly rate go on reading the figure they always have.
+ * Money received per offer — what an offer earned this month.
+ *
+ * **The only place an offer's revenue comes from, since 13 November.**
+ * It was typed per offer on the Offers screen and is read off the
+ * Actual grid now: Nina's decision, and the point of it is that
+ * Financials is money received, so an offer sold in September and paid
+ * in October earns in October. The margin and the hourly rate on that
+ * page move with it, which is expected.
+ *
+ * Takes the flattened `Received[]` rather than rows and cells, because
+ * a published month's copy of them is frozen in the snapshot and this
+ * has to work the same on both.
  */
+export function offerTotals(received: Received[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const cell of received) {
+    if (cell.offerEntityId === null) continue;
+    out.set(cell.offerEntityId, (out.get(cell.offerEntityId) ?? 0) + cell.amount);
+  }
+  return out;
+}
+
+/** The same, from a month's rows and cells. */
 export function offerRevenue(
   rows: SalesRow[],
   actuals: ActualCell[],
   month: string,
 ): Map<string, number> {
-  const offerOf = new Map(
-    rows.filter((r) => r.offerEntityId !== null).map((r) => [r.id, r.offerEntityId!]),
-  );
-  const out = new Map<string, number>();
-  for (const cell of inMonth(actuals, month)) {
-    const offer = offerOf.get(cell.salesRowId);
-    if (!offer) continue;
-    out.set(offer, (out.get(offer) ?? 0) + cell.amount);
-  }
-  return out;
+  return offerTotals(receivedThisMonth(rows, actuals, month));
 }
 
 /**

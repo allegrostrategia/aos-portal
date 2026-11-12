@@ -133,11 +133,10 @@ const offerId = await as(NINA, async () => {
   return rows[0].id;
 });
 
-for (const [month, revenue] of [
-  [JUL, 3000],
-  [AUG, 4500],
-  [SEP, 6000],
-]) {
+// **No revenue here since 13 November**: an offer's money is the
+// Financials row linked to it, entered below. The figures are the same
+// 3,000 / 4,500 / 6,000 this file has always charted.
+for (const month of [JUL, AUG, SEP]) {
   await as(NINA, () =>
     saveOfferMonth(
       null,
@@ -145,7 +144,6 @@ for (const [month, revenue] of [
         workspace_id: WS,
         month,
         [`v:offers_units_sold:${offerId}`]: 6,
-        [`v:offers_revenue_this_month:${offerId}`]: revenue,
         [`v:offers_hours_spent_delivering:${offerId}`]: 28,
         [`v:offers_other_direct_costs:${offerId}`]: 200,
       }),
@@ -191,6 +189,8 @@ await as(NINA, async () => {
  */
 await as(NINA, async () => {
   for (const [name, link] of [
+    // Linked to the offer, which is what makes its money that offer's
+    // revenue on the Offers page as well as the month's.
     ["1:1 Coaching", offerId],
     ["A bespoke client", ""],
   ]) {

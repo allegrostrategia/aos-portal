@@ -182,15 +182,31 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await page.getByRole("button", { name: /save/i }).first().click();
   await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
 
+  /**
+   * Financials, which is four grids and one box since 13 November: she
+   * names a row, types what came in, and that is the section answered.
+   * The costs are a grid of their own and are left for the walkthrough
+   * that is about them.
+   */
   await page.goto(`/reporting/enter/financials?month=${CURRENT}`);
-  for (const [label, value] of [
-    [/fixed costs/i, "300"], [/variable costs/i, "250"],
-    [/team costs/i, "500"], [/cash in bank/i, "9000"],
-  ] as const) {
-    await page.getByLabel(label).first().fill(value);
-  }
-  await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  const rowsCard = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Your rows", exact: true }) });
+  await rowsCard.getByLabel("Name", { exact: true }).fill("A retainer client");
+  await rowsCard.getByLabel("What it is").selectOption("client");
+  await rowsCard.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/A retainer client added/i)).toBeVisible();
+
+  const cameCard = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "What came in", exact: true }) });
+  await cameCard.getByLabel(/^A retainer client, /).first().fill("2400");
+  await cameCard.getByRole("button", { name: /save what came in/i }).click();
+  await expect(cameCard.getByText(/^Saved\.$/)).toBeVisible();
+
+  await page.getByLabel(/cash in bank/i).fill("9000");
+  await page.getByLabel(/cash in bank/i).blur();
+  await expect(page.getByText(/saved/i).first()).toBeVisible();
 
   // 5. Her reflection, and next month's objectives.
   await page.goto(`/reporting?month=${CURRENT}`);
@@ -293,39 +309,48 @@ test("hiding a section takes it off, and nothing is lost", async ({ page }, info
 });
 
 test("a figure pulled into another section survives its own being hidden", async ({ page }) => {
-  // `PULLED_FROM` carries Offers' revenue into Financials, so Financials
-  // shows a figure whose source is a section that can be turned off.
-  // Hiding Offers must not blank it (Dom, 9 October).
-  //
-  // The offer is seeded rather than clicked through: the subject here is
-  // the pull, and driving the Offers screen would be testing that
-  // instead.
+  /**
+   * A pulled figure's source is a section that can be turned off, and
+   * hiding it must not blank the figure (Dom, 9 October).
+   *
+   * **The pull runs the other way since 13 November.** It was Offers'
+   * typed revenue carried into Financials; an offer's revenue is money
+   * received on the Financials rows linked to it now, so Financials is
+   * the source and Offers is the page that would blank. Same rule,
+   * pointed at the pair that exists today.
+   *
+   * Seeded rather than clicked through: the subject is the pull, and
+   * driving two entry screens would be testing those instead.
+   */
   const { MONTHS, SELF_SERVE, sql } = await import("../scripts/seed-test-db.mjs");
   const ws = sql(`select id from public.report_workspaces where business_name = '${SELF_SERVE}'`);
   sql(`insert into public.report_entities (workspace_id, entity_type, name)
        values ('${ws}', 'offer', 'Coaching');`);
   const offer = sql(`select id from public.report_entities
                       where workspace_id = '${ws}' and name = 'Coaching'`);
-  sql(`insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
-       select '${ws}', '${MONTHS.sep}', 'offers_revenue_this_month', '${offer}', 4000,
-              (select id from public.members where role = 'admin' limit 1);`);
+  sql(`insert into public.report_sales_rows (workspace_id, name, row_type, offer_entity_id)
+       values ('${ws}', 'Coaching', 'offer', '${offer}');
+       insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+       select '${ws}', id, '${MONTHS.sep}', 4000 from public.report_sales_rows
+        where workspace_id = '${ws}' and name = 'Coaching';`);
 
   await signIn(page, "member");
-  await page.goto(`/reporting/financials?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/offers?month=${MONTHS.sep}`);
   const before = (await page.locator("body").innerText()).replace(/\s+/g, " ");
-  expect(before, "Financials reads it through the pull to begin with").toMatch(/4,000|4000/);
+  expect(before, "Offers reads it through the pull to begin with").toMatch(/4,000|4000/);
 
   await page.goto("/reporting/settings");
-  await page.getByRole("checkbox", { name: "Offers", exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "Financials", exact: true }).uncheck();
   await page.getByRole("button", { name: /save the sections/i }).click();
   await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
 
-  // Offers is gone from the tabs, and Financials still has the figure.
-  await expect(page.locator("[data-tabs]").getByRole("link", { name: "Offers", exact: true }))
-    .toHaveCount(0);
-  await page.goto(`/reporting/financials?month=${MONTHS.sep}`);
+  // Financials is gone from the tabs, and Offers still has the figure.
+  await expect(
+    page.locator("[data-tabs]").getByRole("link", { name: "Financials", exact: true }),
+  ).toHaveCount(0);
+  await page.goto(`/reporting/offers?month=${MONTHS.sep}`);
   const after = (await page.locator("body").innerText()).replace(/\s+/g, " ");
-  expect(after, "and still does with Offers hidden").toMatch(/4,000|4000/);
+  expect(after, "and still does with Financials hidden").toMatch(/4,000|4000/);
 });
 
 test("her reflection and her objectives, where a client reads Nina's note", async ({
@@ -488,15 +513,22 @@ test("a month counts as done when one of its sections has nothing to fill in", a
   await page.getByRole("button", { name: /save the sections/i }).click();
   await expect(page.locator("[data-saved]")).toHaveText("Sections saved.");
 
+  // Financials is answered by a figure on one of its grids.
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
-  for (const [label, value] of [
-    [/fixed costs/i, "300"], [/variable costs/i, "250"],
-    [/team costs/i, "500"], [/cash in bank/i, "9000"],
-  ] as const) {
-    await page.getByLabel(label).first().fill(value);
-  }
-  await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  const rowsCard = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Your rows", exact: true }) });
+  await rowsCard.getByLabel("Name", { exact: true }).fill("A retainer client");
+  await rowsCard.getByLabel("What it is").selectOption("client");
+  await rowsCard.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/A retainer client added/i)).toBeVisible();
+
+  const cameCard = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "What came in", exact: true }) });
+  await cameCard.getByLabel(/^A retainer client, /).first().fill("2400");
+  await cameCard.getByRole("button", { name: /save what came in/i }).click();
+  await expect(cameCard.getByText(/^Saved\.$/)).toBeVisible();
 
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   await expect(page.locator("[data-completion='offers']")).toHaveAttribute("data-total", "0");

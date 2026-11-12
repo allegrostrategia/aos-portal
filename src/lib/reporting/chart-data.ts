@@ -1,5 +1,5 @@
 import { formatValue } from "./format.ts";
-import { bespokeRevenue, forecastAfter, offerRevenue } from "./ledger.ts";
+import { bespokeRevenue, forecastAfter } from "./ledger.ts";
 import { monthLabel } from "./months.ts";
 import { offerResults } from "./calculate.ts";
 import type { MonthFigures } from "./month-figures.ts";
@@ -61,15 +61,36 @@ export function leadsBySource(figures: MonthFigures): BarDatum[] {
  * revenue are dropped, so an offer that earns nothing in September and
  * something in October keeps the same colour in both.
  */
-export function revenueByOffer(figures: MonthFigures, currency: string): Slice[] {
-  return offersOf(figures)
-    .map(({ offer }, index) => ({
-      label: offer.name,
-      value: offer.revenue ?? 0,
-      display: formatValue(offer.revenue, "currency", currency),
-      colorIndex: index,
-    }))
-    .filter((s) => s.value > 0);
+export function revenueByOffer(
+  figures: MonthFigures,
+  currency: string,
+  /**
+   * The month, so the slice for everything not linked to an offer can
+   * be worked out. Given, the donut totals the month's revenue; left
+   * out, it is the offers alone — which is what every caller wanted
+   * before 13 November.
+   */
+  month?: string,
+): Slice[] {
+  const offers = offersOf(figures).map(({ offer }, index) => ({
+    label: offer.name,
+    value: offer.revenue ?? 0,
+    display: formatValue(offer.revenue, "currency", currency),
+    colorIndex: index,
+  }));
+
+  const slices = offers.filter((s) => s.value > 0);
+  if (!month) return slices;
+
+  /**
+   * **And one slice for everything else** (§5.10, and the brief says it
+   * belongs on this chart). Linking a row to an offer is optional and
+   * an agency has dozens of bespoke clients; a slice each would turn a
+   * chart about offers into a client list nobody can read. So the rest
+   * is one slice with its count, and the donut totals the month.
+   */
+  const rest = restOfTheMonth(figures, month, currency, offers.length);
+  return rest ? [...slices, rest] : slices;
 }
 
 /**
@@ -147,25 +168,12 @@ const COST_LINES = [
  * in the chart under the offer's name: the entity is still there, and
  * dropping it would make the donut stop totalling the month.
  */
-export function revenueFromWhere(
+function restOfTheMonth(
   figures: MonthFigures,
   month: string,
   currency: string,
-): Slice[] {
-  const byOffer = offerRevenue(figures.ledger.rows, figures.ledger.actuals, month);
-  const offers = figures.data.entities.filter((e) => e.entity_type === "offer");
-
-  const slices: Slice[] = offers
-    .map((offer, index) => ({
-      label: offer.name,
-      value: byOffer.get(offer.id) ?? 0,
-      display: formatValue(byOffer.get(offer.id) ?? 0, "currency", currency),
-      // The entity's own position, so an offer that earns nothing one
-      // month and something the next keeps its colour in both.
-      colorIndex: index,
-    }))
-    .filter((s) => s.value > 0);
-
+  colorIndex: number,
+): Slice | null {
   const bespoke = bespokeRevenue(figures.ledger.rows, figures.ledger.actuals, month);
   if ((bespoke.total ?? 0) > 0) {
     /**
@@ -191,17 +199,17 @@ export function revenueFromWhere(
     const allClients = inSlice.every((r) => r.rowType === "client");
     const count = bespoke.clients;
 
-    slices.push({
+    return {
       label: allClients
         ? `Bespoke work · ${count} ${count === 1 ? "client" : "clients"}`
         : `Not linked to an offer · ${count} ${count === 1 ? "row" : "rows"}`,
       value: bespoke.total ?? 0,
       display: formatValue(bespoke.total, "currency", currency),
-      colorIndex: offers.length,
-    });
+      colorIndex,
+    };
   }
 
-  return slices;
+  return null;
 }
 
 /**

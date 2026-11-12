@@ -111,12 +111,17 @@ export default async function EnterCategoryPage({
     const offers = data.entities.filter((e) => e.entity_type === "offer");
     const cell = (source: typeof data.values, key: string, id: string) =>
       [`${key}|${id}`, source.get(key, id)] as const;
+    // Three, not four: an offer's revenue is money received on the
+    // Financials rows linked to it, and is passed in below rather than
+    // read from `report_values`, which refuses to store a pulled figure.
     const KEYS = [
       "offers_units_sold",
-      "offers_revenue_this_month",
       "offers_hours_spent_delivering",
       "offers_other_direct_costs",
     ];
+    const offerRevenue = Object.fromEntries(
+      figures.offerRows.map((row) => [row.id, row.revenue ?? null]),
+    );
 
     return (
       <ReportShell
@@ -136,6 +141,7 @@ export default async function EnterCategoryPage({
         }
       >
         <OffersEntry
+          revenue={offerRevenue}
           workspaceId={ctx.workspace.id}
           month={ctx.month.month}
           previousLabel={previousLabel}

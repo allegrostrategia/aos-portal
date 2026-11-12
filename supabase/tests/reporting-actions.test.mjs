@@ -97,17 +97,18 @@ test("Offers: setting one up, then entering its month", async () => {
     saveOfferMonth(null, form({
       workspace_id: WS, month: AUG,
       [`v:offers_units_sold:${offer.id}`]: "4",
-      [`v:offers_revenue_this_month:${offer.id}`]: "10000",
       [`v:offers_hours_spent_delivering:${offer.id}`]: "20",
     })),
   );
   assert.equal(saved?.error, undefined, saved?.error);
 
-  // Against the offer, not the month — the thing a screen cannot show you.
+  // Against the offer, not the month — the thing a screen cannot show
+  // you. Two figures, not three: an offer's revenue is money received
+  // on the Financials rows linked to it since 13 November.
   const stored = await rows(NINA, `
     select metric_key, entity_id, value::float v from public.report_values
     where workspace_id = '${WS}' and month = '${AUG}' and metric_key like 'offers_%'`);
-  assert.equal(stored.length, 3);
+  assert.equal(stored.length, 2);
   assert.ok(stored.every((r) => r.entity_id === offer.id), "every figure hangs off the offer");
 });
 
@@ -550,11 +551,13 @@ test("Offers counts as done once its figures are saved, not 0/3 forever", async 
   const figures = await figuresFor(AUG, "2026-07-01");
   const offers = categoryCompletion(figures, "offers");
 
-  // Two, not three, since Nina's decision 28 made "Hours spent
-  // delivering" optional on 28 October. An optional field keeps its box
-  // and still stores; it stops holding the section orange.
-  assert.equal(offers.total, 2, "two core offer fields");
-  assert.equal(offers.filled, 2, "both entered for the one offer");
+  // **One**, and it has been shrinking for a reason each time: Nina's
+  // decision 28 made "Hours spent delivering" optional on 28 October,
+  // and 13 November made revenue pulled — money received on the
+  // Financials rows linked to that offer. Units sold is what is left
+  // to type.
+  assert.equal(offers.total, 1, "one core offer field");
+  assert.equal(offers.filled, 1, "and it is entered for the one offer");
 });
 
 test("a half-filled offer does not count as done", async () => {

@@ -12,6 +12,7 @@ import { choosePlatform } from "./platforms.ts";
 import {
   expensesThisMonth,
   forecastIn,
+  offerTotals,
   receivedThisMonth,
   type ActualCell,
   type ExpenseBucket,
@@ -96,9 +97,11 @@ export function inputKeysFor(category: CategoryKey): string[] {
  * shows up as a figure that disagrees with the card above the chart.
  */
 const ENTITY_KEYS: Record<"offer" | "ad_campaign", string[]> = {
+  // **No revenue here since 13 November**: an offer's money is the
+  // Actual grid's, loaded below, and asking for a key that cannot be
+  // stored would be one entry in an `in (…)` list that returns nothing.
   offer: [
     "offers_units_sold",
-    "offers_revenue_this_month",
     "offers_hours_spent_delivering",
     "offers_other_direct_costs",
   ],
@@ -230,7 +233,10 @@ export async function getFigureHistory({
    * a cell "revenue from offers" — while the cells are the window the
    * chart draws, one month wider at the front like everything else here.
    */
-  const needsGrid = calcCategories.has("financials");
+  // **Offers too, since 13 November**: an offer's revenue — and so its
+  // margin, its hourly rate and its share — is money received on the
+  // rows linked to it, which lives in the same three tables.
+  const needsGrid = calcCategories.has("financials") || calcCategories.has("offers");
 
   /**
    * **Two value queries, not one, because of §13's 1,000-row cap.**
@@ -410,6 +416,7 @@ export async function getFigureHistory({
 
   const offerRowsFor = (month: string): OfferMonth[] => {
     const bag = bags.get(month);
+    const byOffer = offerTotals(receivedFor(month));
     return entities
       .filter((e) => e.entity_type === "offer")
       .map((offer) => ({
@@ -417,7 +424,7 @@ export async function getFigureHistory({
         hourlyCost: offer.hourly_cost,
         pricingModel: offer.pricing_model ?? undefined,
         unitsSold: bag?.get("offers_units_sold", offer.id) ?? null,
-        revenue: bag?.get("offers_revenue_this_month", offer.id) ?? null,
+        revenue: byOffer.get(offer.id) ?? null,
         hoursSpent: bag?.get("offers_hours_spent_delivering", offer.id) ?? null,
         otherDirectCosts: bag?.get("offers_other_direct_costs", offer.id) ?? null,
       }))
@@ -525,6 +532,18 @@ export async function getEntityHistory({
   );
   if (entityIds.length === 0 || months.length === 0) return series;
 
+  /**
+   * **An offer's revenue is not in `report_values` any more** (13
+   * November): it is money received on the Financials rows linked to
+   * that offer. A straight query would have come back empty and drawn
+   * six months of nothing under a confident title, which is the exact
+   * failure `getFigureHistory` exists to prevent — so this one metric
+   * goes through the grid instead.
+   */
+  if (metricKey === "offers_revenue_this_month") {
+    return offerRevenueHistory(workspaceId, months, entityIds, series);
+  }
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("report_values")
@@ -548,6 +567,66 @@ export async function getEntityHistory({
     if (slot === undefined || !points) continue;
     points[slot] = row.value ?? null;
   }
+
+  return series;
+}
+
+/**
+ * An offer's money, month by month, off the Actual grid.
+ *
+ * Two reads rather than one join, the way `getFigureHistory` splits
+ * its own: the rows are the whole workspace and the cells are the
+ * window. Both go through the member's session, so a client's series
+ * has their published months in it and nothing else.
+ */
+async function offerRevenueHistory(
+  workspaceId: string,
+  months: string[],
+  entityIds: string[],
+  series: Map<string, (number | null)[]>,
+): Promise<Map<string, (number | null)[]>> {
+  const supabase = await createClient();
+  const [rowRes, cellRes] = await Promise.all([
+    supabase
+      .from("report_sales_rows")
+      .select("id, row_type, offer_entity_id")
+      .eq("workspace_id", workspaceId)
+      .returns<SalesRowRecord[]>(),
+    supabase
+      .from("report_actuals")
+      .select("sales_row_id, month, amount, recurrence")
+      .eq("workspace_id", workspaceId)
+      .gte("month", months[0])
+      .lte("month", months[months.length - 1])
+      .returns<
+        {
+          sales_row_id: string;
+          month: string;
+          amount: number | string;
+          recurrence: ActualCell["recurrence"];
+        }[]
+      >(),
+  ]);
+
+  const rows = (rowRes.data ?? []).map((r) => ({
+    id: r.id,
+    rowType: r.row_type,
+    offerEntityId: r.offer_entity_id,
+  }));
+  const cells: ActualCell[] = (cellRes.data ?? []).map((c) => ({
+    salesRowId: c.sales_row_id,
+    month: String(c.month).slice(0, 10),
+    amount: typeof c.amount === "number" ? c.amount : Number(c.amount) || 0,
+    recurrence: c.recurrence,
+  }));
+
+  const wanted = new Set(entityIds);
+  months.forEach((month, at) => {
+    for (const [offerId, amount] of offerTotals(receivedThisMonth(rows, cells, month))) {
+      if (!wanted.has(offerId)) continue;
+      series.get(offerId)![at] = amount;
+    }
+  });
 
   return series;
 }

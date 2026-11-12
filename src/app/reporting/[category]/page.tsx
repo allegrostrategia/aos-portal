@@ -46,7 +46,6 @@ import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import {
   costBreakdown,
   forecastAhead,
-  revenueFromWhere,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -389,18 +388,25 @@ export default async function CategoryReportPage({
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <Card>
                   <SectionTitle icon={<IconCircle name="revenue" tone="gold" />} aside={ctx.month.label}>
-                    Share of revenue
+                    Where the money came from
                   </SectionTitle>
+                  {/* **One slice per offer and one for the rest**, so
+                      the donut totals the month's revenue rather than
+                      the offers' share of it. §5.10: everything not
+                      linked to an offer is one "bespoke work" slice
+                      with its count, because an agency has dozens of
+                      bespoke clients and a slice each would turn a
+                      chart about offers into a client list. */}
                   <DonutChart
-                    slices={revenueByOffer(figures, ctx.workspace.currency)}
-                    total={figures.results.offers_total_revenue_from_offers ?? null}
+                    slices={revenueByOffer(figures, ctx.workspace.currency, ctx.month.month)}
+                    total={figures.results.financials_total_revenue ?? null}
                     totalDisplay={formatValue(
-                      figures.results.offers_total_revenue_from_offers ?? null,
+                      figures.results.financials_total_revenue ?? null,
                       "currency",
                       ctx.workspace.currency,
                     )}
-                    totalLabel="Total"
-                    emptyMessage="No offer revenue entered for this month yet."
+                    totalLabel="Total revenue"
+                    emptyMessage="No money entered for this month yet."
                   />
                 </Card>
                 {/* The whole panel goes when a client does not track
@@ -573,42 +579,11 @@ export default async function CategoryReportPage({
               })()
             : null}
 
-          {category.key === "financials"
-            ? (() => {
-                // **Where it came from, beside where it went.** Each
-                // offer's money and one slice for everything else, off
-                // the Actual grid — so this donut totals the month's
-                // revenue and the card above says the same number.
-                const sources = revenueFromWhere(
-                  figures,
-                  ctx.month.month,
-                  ctx.workspace.currency,
-                );
-                if (sources.length === 0) return null;
-                return (
-                  <Card className="mt-6">
-                    <SectionTitle
-                      icon={<IconCircle name="revenue" tone="gold" />}
-                      aside={ctx.month.label}
-                    >
-                      Where the money came from
-                    </SectionTitle>
-                    <DonutChart
-                      slices={sources}
-                      total={figures.results.financials_total_revenue ?? null}
-                      totalDisplay={formatValue(
-                        figures.results.financials_total_revenue ?? null,
-                        "currency",
-                        ctx.workspace.currency,
-                      )}
-                      totalLabel="Total revenue"
-                      emptyMessage="No money entered for this month yet."
-                    />
-                  </Card>
-                );
-              })()
-            : null}
-
+          {/* **"Where the money came from" lives on Offers** (Dom, 13
+              November), which is where the brief always put it: one
+              slice per offer and one for the rest, totalling the month.
+              It was here for half a day because the Offers donut was
+              drawing typed revenue and the two would have disagreed. */}
           {category.key === "financials" ? (
             <Card className="mt-6">
               <SectionTitle icon={<IconCircle name="calculator" tone="blush" />} aside={ctx.month.label}>

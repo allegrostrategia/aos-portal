@@ -47,7 +47,8 @@ test("the switch takes hours off both screens, and leaves the figures in the dat
   await page.goto(`/reporting/enter/offers?month=${MONTHS.sep}`);
   await expect(page.getByLabel("Hours spent delivering").first()).toBeVisible();
   await page.getByLabel("Hours spent delivering").first().fill("18");
-  await page.getByLabel("Revenue this month").first().fill("4000");
+  // No revenue here since 13 November: an offer's money is on the
+  // Financials grid, and this test is about the hours switch anyway.
   await page.getByLabel("Units sold").first().fill("8");
   await page.getByRole("button", { name: /save/i }).first().click();
   await expect(page.getByText(/saved/i).first()).toBeVisible();

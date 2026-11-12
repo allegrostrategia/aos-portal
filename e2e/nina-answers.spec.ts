@@ -98,13 +98,21 @@ async function seedOfferHours() {
   const admin = `(select id from public.members where role = 'admin' limit 1)`;
   const offer = `(select id from public.report_entities where workspace_id = ${ws}
                     and entity_type = 'offer' and name = 'Signature programme' limit 1)`;
+  // **The money is a Financials row linked to the offer** since 13
+  // November: `offers_revenue_this_month` is pulled, and
+  // `report_values` refuses to store a pulled figure.
+  sql(`insert into public.report_sales_rows
+         (workspace_id, name, row_type, offer_entity_id)
+       select ${ws}, 'Signature programme', 'offer', ${offer}
+        where not exists (select 1 from public.report_sales_rows
+                           where workspace_id = ${ws} and name = 'Signature programme');`);
+
   for (const [month, units, revenue, hours] of [
     [MONTHS.aug, 11, 5500, 38],
     [MONTHS.sep, 14, 7000, 42],
   ] as const) {
     for (const [key, value] of [
       ["offers_units_sold", units],
-      ["offers_revenue_this_month", revenue],
       ["offers_hours_spent_delivering", hours],
     ] as const) {
       sql(`delete from public.report_values where workspace_id = ${ws}
@@ -113,6 +121,13 @@ async function seedOfferHours() {
              (workspace_id, month, metric_key, entity_id, value, entered_by)
            values (${ws}, '${month}-01', '${key}', ${offer}, ${value}, ${admin});`);
     }
+    sql(`delete from public.report_actuals where workspace_id = ${ws}
+           and month = '${month}-01'
+           and sales_row_id = (select id from public.report_sales_rows
+                                where workspace_id = ${ws} and name = 'Signature programme');
+         insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+         select ${ws}, id, '${month}-01', ${revenue} from public.report_sales_rows
+          where workspace_id = ${ws} and name = 'Signature programme';`);
   }
 }
 
@@ -382,23 +397,25 @@ test("decision 28: the four stay in the main list, labelled optional", async ({
 test("decision 28: and they do not hold the section back", async ({ page }) => {
   const { sql } = await import("../scripts/seed-test-db.mjs");
   const ws = `(select id from public.report_workspaces where business_name = 'Northwind Studio')`;
-  const admin = `(select id from public.members where role = 'admin' limit 1)`;
 
-  // Every CORE financials figure entered — there are three; revenue is
-  // pulled from Offers and the rest are worked out — and cash in bank
-  // deliberately left empty. Before decision 28 that was three of four
-  // and the section stayed orange.
-  for (const [key, value] of [
-    ["financials_fixed_costs", 300],
-    ["financials_variable_costs", 250],
-    ["financials_team_costs", 500],
-  ] as const) {
-    sql(`delete from public.report_values where workspace_id = ${ws}
-           and month = '${MONTHS.sep}-01' and metric_key = '${key}' and entity_id is null;
-         insert into public.report_values
-           (workspace_id, month, metric_key, value, entered_by)
-         values (${ws}, '${MONTHS.sep}-01', '${key}', ${value}, ${admin});`);
-  }
+  /**
+   * **What Financials owes is a figure on one of its grids** since 13
+   * November — every metric on that section is pulled now, so there is
+   * no core field to count and completion asks the grids instead.
+   * Cash in bank is deliberately left empty, which is the point of the
+   * test: before decision 28 an empty optional box held the section
+   * orange, and it still must not.
+   */
+  sql(`insert into public.report_sales_rows (workspace_id, name, row_type)
+       select ${ws}, 'A client', 'client'
+        where not exists (select 1 from public.report_sales_rows
+                           where workspace_id = ${ws} and name = 'A client');
+       insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+       select ${ws}, id, '${MONTHS.sep}-01', 1050 from public.report_sales_rows
+        where workspace_id = ${ws} and name = 'A client'
+          and not exists (select 1 from public.report_actuals a
+                           where a.workspace_id = ${ws} and a.month = '${MONTHS.sep}-01'
+                             and a.sales_row_id = public.report_sales_rows.id);`)
 
   await signIn(page, "nina");
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
@@ -506,42 +523,32 @@ test("a figure with no good direction is grey in the list, not green", async ({
   page,
 }, info) => {
   const w = width(info.project.name);
-  const { sql } = await import("../scripts/seed-test-db.mjs");
-  const ws = `(select id from public.report_workspaces where business_name = 'Northwind Studio')`;
-  const admin = `(select id from public.members where role = 'admin' limit 1)`;
 
-  // Investment spend is optional and has no good direction — courses and
-  // coaching going up is neither good news nor bad. It rises here, which
-  // under any "up is good" reading would come out green.
-  for (const [month, value] of [[MONTHS.aug, 400], [MONTHS.sep, 900]] as const) {
-    sql(`delete from public.report_values where workspace_id = ${ws}
-           and month = '${month}-01' and metric_key = 'financials_investment_spend'
-           and entity_id is null;
-         insert into public.report_values
-           (workspace_id, month, metric_key, value, entered_by)
-         values (${ws}, '${month}-01', 'financials_investment_spend', ${value}, ${admin});`);
-    for (const [key, base] of [
-      ["financials_fixed_costs", 300],
-      ["financials_variable_costs", 250],
-      ["financials_team_costs", 500],
-    ] as const) {
-      sql(`delete from public.report_values where workspace_id = ${ws}
-             and month = '${month}-01' and metric_key = '${key}' and entity_id is null;
-           insert into public.report_values
-             (workspace_id, month, metric_key, value, entered_by)
-           values (${ws}, '${month}-01', '${key}', ${base}, ${admin});`);
-    }
-  }
-
+  /**
+   * **Total hours spent delivering**, which is decision 2's figure:
+   * hours going up can be a worse month or a bigger one, and nothing in
+   * the report can tell which — so it reports the change and says
+   * nothing about whether the change is good news.
+   *
+   * It used to be Investment spend, and that stopped working twice over
+   * on 13 November: the figure is pulled from the expense grid now, and
+   * the donut above the list draws it, so it is not in the list at all.
+   * The hours are seeded by `seedOfferHours` — 38 in August, 42 in
+   * September, a rise that any "up is good" reading would paint green.
+   */
+  await seedOfferHours();
   await publishSeptember(page);
   await signIn(page, "client");
-  await page.goto(`/reporting/financials?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/offers?month=${MONTHS.sep}`);
 
   // Wherever it lands — a card or the list — it must not be coloured.
+  // The OUTERMOST element whose text starts with the label, which is
+  // the card or the row: innermost would be the label's own span, and
+  // the change it has to be grey about is that span's sibling.
   const row = page
     .locator("div")
-    .filter({ hasText: /^Investment spend/ })
-    .last();
+    .filter({ hasText: /^Total hours spent delivering/ })
+    .first();
   const html = await row.innerHTML();
   // It still shows the change; it just says nothing about whether the
   // change is good news.

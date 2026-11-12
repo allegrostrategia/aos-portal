@@ -264,7 +264,7 @@ Set up once per offer: name, price, type (one-off or recurring), hourly cost of 
 | Field | Type | Formula | Good |
 | --- | --- | --- | --- |
 | Units sold | Core |  | Up |
-| Revenue this month | Core | Cash actually received, so discounts and payment plans are right | Up |
+| Revenue this month | Pulled | Money received on the Financials rows linked to this offer | Up |
 | Hours spent delivering | Optional |  | Down |
 | Other direct costs | Optional | Tools, contractors, materials for this offer | Down |
 | Delivery cost | Calc | Hours × hourly cost + other direct costs | Down |
@@ -405,20 +405,14 @@ what that month went out with, so revising December cannot rewrite a
 September a client has already read. A month nobody forecast is left
 out rather than drawn as zero.
 
-**"Where the money came from"** is a slice per offer, off the Actual
-grid, plus one slice for everything unlinked — so the donut totals the
-month's revenue and the card above it says the same number. Client rows
-make it "Bespoke work · n clients"; a row typed as an offer that nobody
-linked makes it "Not linked to an offer · n rows", because this chart
-splits on the offer link while the cards split on the row's kind.
+**"Where the money came from" is on Offers**, where this brief always
+put it: a slice per offer plus one for everything unlinked, totalling
+the month's revenue. Client rows make it "Bespoke work · n clients"; a
+row typed as an offer that nobody linked makes it "Not linked to an
+offer · n rows", because the chart splits on the offer link while the
+cards split on the row's kind.
 
-**It is on Financials, not Offers.** The Offers donut draws the revenue
-typed per offer on that screen and totals that screen's figure; grid
-money in it would disagree with the table beside it. One for Nina: the
-two "revenue from offers" figures are the last place two screens can
-answer one question differently.
-
-"Where the money went" is the four buckets as a donut, as before.
+"Where the money went" is the four buckets as a donut, on Financials.
 
 #### Baseline
 

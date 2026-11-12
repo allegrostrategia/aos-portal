@@ -57,6 +57,45 @@ test.beforeEach(async () => {
      insert into public.report_values (workspace_id, month, metric_key, value, entered_by)
      values (${ws}, '${month}-01', '${key}', ${value}, ${admin});`;
 
+  /**
+   * An offer's money, which is a Financials row linked to it.
+   *
+   * **Not `offers_revenue_this_month`** since 13 November: that metric
+   * is pulled, and `report_values` refuses to store one. The row is
+   * created once and the cell per month, which is exactly what somebody
+   * would do on the screens.
+   */
+  const expense = (name: string, bucket: string, month: string, amount: number) => `
+    insert into public.report_expense_categories (workspace_id, name, bucket)
+    select ${ws}, '${name}', '${bucket}'
+     where not exists (select 1 from public.report_expense_categories
+                        where workspace_id = ${ws} and name = '${name}');
+
+    delete from public.report_expenses
+     where workspace_id = ${ws} and month = '${month}-01'
+       and category_id = (select id from public.report_expense_categories
+                           where workspace_id = ${ws} and name = '${name}');
+    insert into public.report_expenses (workspace_id, category_id, month, amount, bucket)
+    select ${ws}, id, '${month}-01', ${amount}, '${bucket}'
+      from public.report_expense_categories
+     where workspace_id = ${ws} and name = '${name}';`;
+
+  const offerMoney = (name: string, month: string, amount: number) => `
+    insert into public.report_sales_rows (workspace_id, name, row_type, offer_entity_id)
+    select ${ws}, '${name}', 'offer',
+           (select id from public.report_entities
+             where workspace_id = ${ws} and entity_type = 'offer' and name = '${name}' limit 1)
+     where not exists (select 1 from public.report_sales_rows
+                        where workspace_id = ${ws} and name = '${name}');
+
+    delete from public.report_actuals
+     where workspace_id = ${ws} and month = '${month}-01'
+       and sales_row_id = (select id from public.report_sales_rows
+                            where workspace_id = ${ws} and name = '${name}');
+    insert into public.report_actuals (workspace_id, sales_row_id, month, amount)
+    select ${ws}, id, '${month}-01', ${amount} from public.report_sales_rows
+     where workspace_id = ${ws} and name = '${name}';`;
+
   /** Figures that hang off a row — an offer, a funnel, a campaign. */
   const ent = (
     type: string,
@@ -128,13 +167,15 @@ test.beforeEach(async () => {
     ${v(MONTHS.sep, "email_average_open_rate", 41)}
     ${v(MONTHS.sep, "email_average_click_rate", 3.8)}
 
-    ${v(MONTHS.aug, "financials_fixed_costs", 2400)}
-    ${v(MONTHS.aug, "financials_variable_costs", 900)}
-    ${v(MONTHS.aug, "financials_team_costs", 3200)}
+    -- The costs are the expense grid's since 13 November, and cash in
+    -- bank is the one figure on that section still typed.
+    ${expense("Software", "fixed", MONTHS.aug, 2400)}
+    ${expense("Ads", "variable", MONTHS.aug, 900)}
+    ${expense("Staff", "team", MONTHS.aug, 3200)}
     ${v(MONTHS.aug, "financials_cash_in_bank_at_month_end", 18500)}
-    ${v(MONTHS.sep, "financials_fixed_costs", 2400)}
-    ${v(MONTHS.sep, "financials_variable_costs", 1100)}
-    ${v(MONTHS.sep, "financials_team_costs", 3200)}
+    ${expense("Software", "fixed", MONTHS.sep, 2400)}
+    ${expense("Ads", "variable", MONTHS.sep, 1100)}
+    ${expense("Staff", "team", MONTHS.sep, 3200)}
     ${v(MONTHS.sep, "financials_cash_in_bank_at_month_end", 24900)}
 
     -- September's per-row figures, so the Ads, Funnels and Offers tabs
@@ -143,14 +184,14 @@ test.beforeEach(async () => {
     -- are a dash.
     ${ent("offer", "Signature programme", MONTHS.sep, [
       ["offers_units_sold", 14],
-      ["offers_revenue_this_month", 7000],
       ["offers_hours_spent_delivering", 42],
     ])}
     ${ent("offer", "Signature programme", MONTHS.aug, [
       ["offers_units_sold", 11],
-      ["offers_revenue_this_month", 5500],
       ["offers_hours_spent_delivering", 38],
     ])}
+    ${offerMoney("Signature programme", MONTHS.sep, 7000)}
+    ${offerMoney("Signature programme", MONTHS.aug, 5500)}
     ${ent("funnel", "Webinar funnel", MONTHS.sep, [
       ["funnels_landing_page_views", 3200],
       ["funnels_opt_ins", 780],

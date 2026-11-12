@@ -6,7 +6,6 @@ import { calculateOffer } from "./calculate.ts";
 import {
   costBreakdown,
   forecastAhead,
-  revenueFromWhere,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -323,10 +322,12 @@ test("a month nobody forecast is left out rather than drawn as nothing", () => {
 
 
 /**
- * Where the money came from: each offer, and one slice for the rest.
+ * Where the money came from — the Offers donut (§5.10).
  *
- * The donut has to total the month's revenue or the card above it and
- * the chart under it are two answers to one question (§9).
+ * One slice per offer and one for everything else, totalling the
+ * month's revenue. Each offer's own figure comes off `offerRows`, which
+ * is money received on the Financials rows linked to it, so this chart
+ * and the Offers table above it cannot differ.
  */
 const WHERE_ROWS = [
   { id: "r1", name: "Signature programme", rowType: "offer" as const, offerEntityId: "o1", active: true, recurrence: "none" as const },
@@ -339,23 +340,25 @@ const WHERE_ACTUALS = [
   { salesRowId: "r2", month: "2026-09-01", amount: 500, recurrence: "none" as const },
   { salesRowId: "r3", month: "2026-09-01", amount: 1200, recurrence: "monthly" as const },
   { salesRowId: "r4", month: "2026-09-01", amount: 800, recurrence: "none" as const },
-  { salesRowId: "r1", month: "2026-10-01", amount: 9000, recurrence: "none" as const },
 ];
 
-const whereFigures = (entities: { id: string; name: string }[]) =>
+/** Offer rows as `month-figures` builds them: revenue off the grid. */
+const whereFigures = (offers: { name: string; revenue: number | null }[], actuals = WHERE_ACTUALS) =>
   ({
-    ledger: { rows: WHERE_ROWS, actuals: WHERE_ACTUALS, forecasts: [] },
-    data: { entities: entities.map((e) => ({ ...e, entity_type: "offer" })) },
+    offerRows: offers.map((o) => ({ ...o, hourlyCost: 40, unitsSold: null, hoursSpent: null })),
+    results: { offers_total_revenue_from_offers: null },
+    ledger: { rows: WHERE_ROWS, actuals, forecasts: [] },
+    carried: null,
   }) as unknown as MonthFigures;
 
 test("each offer's money, and everything else as one slice", () => {
-  const slices = revenueFromWhere(
+  const slices = revenueByOffer(
     whereFigures([
-      { id: "o1", name: "Signature programme" },
-      { id: "o2", name: "Mini course" },
+      { name: "Signature programme", revenue: 4000 },
+      { name: "Mini course", revenue: 500 },
     ]),
-    "2026-09-01",
     "GBP",
+    "2026-09-01",
   );
 
   assert.deepEqual(
@@ -374,18 +377,30 @@ test("each offer's money, and everything else as one slice", () => {
   );
 });
 
-test("an offer that earned nothing this month keeps its colour for the next", () => {
-  const slices = revenueFromWhere(
+test("without a month it is the offers alone, as it was before", () => {
+  // Every caller that wants the offers' own share and nothing else.
+  const slices = revenueByOffer(
     whereFigures([
-      { id: "o0", name: "Retired thing" },
-      { id: "o1", name: "Signature programme" },
-      { id: "o2", name: "Mini course" },
+      { name: "Signature programme", revenue: 4000 },
+      { name: "Mini course", revenue: 500 },
     ]),
-    "2026-09-01",
     "GBP",
   );
-  // The colour index is the entity's own position, so the two offers
-  // that did earn keep 1 and 2 rather than sliding to 0 and 1.
+  assert.deepEqual(slices.map((s) => s.label), ["Signature programme", "Mini course"]);
+});
+
+test("an offer that earned nothing this month keeps its colour for the next", () => {
+  const slices = revenueByOffer(
+    whereFigures([
+      { name: "Retired thing", revenue: null },
+      { name: "Signature programme", revenue: 4000 },
+      { name: "Mini course", revenue: 500 },
+    ]),
+    "GBP",
+    "2026-09-01",
+  );
+  // The colour index is the offer's own position, so the two that did
+  // earn keep 1 and 2 rather than sliding to 0 and 1.
   assert.deepEqual(
     slices.map((s) => s.colorIndex),
     [1, 2, 3],
@@ -393,19 +408,15 @@ test("an offer that earned nothing this month keeps its colour for the next", ()
 });
 
 test("one client on their own is one client, not 1 clients", () => {
-  const one = {
-    ledger: {
-      rows: WHERE_ROWS,
-      actuals: [{ salesRowId: "r3", month: "2026-10-01", amount: 1200, recurrence: "monthly" as const }],
-      forecasts: [],
-    },
-    data: { entities: [] },
-  } as unknown as MonthFigures;
-
-  assert.deepEqual(
-    revenueFromWhere(one, "2026-10-01", "GBP").map((s) => s.label),
-    ["Bespoke work · 1 client"],
+  const slices = revenueByOffer(
+    whereFigures(
+      [],
+      [{ salesRowId: "r3", month: "2026-09-01", amount: 1200, recurrence: "monthly" as const }],
+    ),
+    "GBP",
+    "2026-09-01",
   );
+  assert.deepEqual(slices.map((s) => s.label), ["Bespoke work · 1 client"]);
 });
 
 test("an offer row nobody linked is not called bespoke work", () => {
@@ -414,25 +425,27 @@ test("an offer row nobody linked is not called bespoke work", () => {
   // offer and never linked falls between them, and the label says so
   // rather than calling a programme somebody's bespoke work.
   const unlinked = {
+    offerRows: [],
+    results: {},
     ledger: {
       rows: WHERE_ROWS.map((r) => ({ ...r, offerEntityId: null })),
       actuals: WHERE_ACTUALS,
       forecasts: [],
     },
-    data: { entities: [] },
+    carried: null,
   } as unknown as MonthFigures;
 
   assert.deepEqual(
-    revenueFromWhere(unlinked, "2026-09-01", "GBP").map((s) => [s.label, s.value]),
+    revenueByOffer(unlinked, "GBP", "2026-09-01").map((s) => [s.label, s.value]),
     [["Not linked to an offer · 4 rows", 6500]],
   );
 });
 
 test("a month nobody entered has no donut rather than an empty one", () => {
-  const slices = revenueFromWhere(
-    whereFigures([{ id: "o1", name: "Signature programme" }]),
-    "2026-12-01",
+  const slices = revenueByOffer(
+    whereFigures([{ name: "Signature programme", revenue: null }], []),
     "GBP",
+    "2026-12-01",
   );
   assert.deepEqual(slices, [], "and the page draws nothing at all");
 });

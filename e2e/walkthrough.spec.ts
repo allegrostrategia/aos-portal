@@ -145,10 +145,23 @@ test("a member's whole month, with every stage on", async ({ page }, info) => {
   await expect(page.getByRole("heading", { name: /the sections you use/i })).toBeVisible();
   await shoot(page, TAB, "07-member-settings", w);
 
-  // Stage 3's tabs are theirs too, and Stage 4's launches.
+  // Stage 3's tabs are theirs too, and Stage 4's launches. Financials
+  // is four grids and one box since 13 November, so the walk through it
+  // is a row and what came in on it.
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
-  await page.getByLabel(/fixed costs/i).fill("300");
-  await page.getByRole("button", { name: /^save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  const rows = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Your rows", exact: true }) });
+  await rows.getByLabel("Name", { exact: true }).fill("A retainer client");
+  await rows.getByLabel("What it is").selectOption("client");
+  await rows.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/A retainer client added/i)).toBeVisible();
+
+  const came = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "What came in", exact: true }) });
+  await came.getByLabel(/^A retainer client, /).first().fill("1800");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
   await shoot(page, TAB, "08-member-entry", w);
 });

@@ -83,14 +83,6 @@ test("what came in, what was expected, and what is still to come", async ({ page
   expect(main).toContain("£1,200");
   expect(main).toContain("£2,400");
 
-  // **Where it came from**: the offer row, and the client row as one
-  // bespoke slice, totalling the month's revenue.
-  const from = card(page, "Where the money came from");
-  const fromText = (await from.innerText()).replace(/\s+/g, " ");
-  expect(fromText, "the linked row's own offer").toContain("Signature programme");
-  expect(fromText, "and the client row, counted").toContain("Bespoke work · 1 client");
-  expect(fromText, "the donut totals the month").toContain("£5,200");
-
   // The year, actual against forecast.
   await expect(
     page.getByRole("heading", { name: "What came in, against what you expected" }),
@@ -124,6 +116,21 @@ test("what came in, what was expected, and what is still to come", async ({ page
   expect(overflowText, "no figures last month, so no 'vs.'").not.toContain("vs. August");
 
   await shoot(page, "financials-report", "01-report", w);
+
+  /**
+   * **Where it came from is on Offers**, which is where the brief put
+   * it: the offer row's own slice and the client row as one bespoke
+   * slice, totalling the month's revenue. It was on Financials for half
+   * a day, while the Offers donut was still drawing typed revenue and
+   * the two would have disagreed.
+   */
+  await page.goto(`/reporting/offers?month=${MONTHS.sep}`);
+  const from = card(page, "Where the money came from");
+  const fromText = (await from.innerText()).replace(/\s+/g, " ");
+  expect(fromText, "the linked row's own offer").toContain("Signature programme");
+  expect(fromText, "and the client row, counted").toContain("Bespoke work · 1 client");
+  expect(fromText, "the donut totals the month").toContain("£5,200");
+  await shoot(page, "financials-report", "03-offers-donut", w);
 });
 
 /**

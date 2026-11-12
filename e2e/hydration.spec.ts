@@ -59,22 +59,29 @@ test("no script or stylesheet on a signed-in screen answers 4xx", async ({ page 
 });
 
 test("a control that needs JavaScript actually works", async ({ page }) => {
-  // Financials' live card — the one headed "these update as you type" —
+  // The live card — the one headed "these update as you type" —
   // recalculates in the browser with no save and no navigation.
   //
-  // Financials rather than Client Experience, which was the first
-  // choice and proved nothing: its figures hang off an opening number
-  // that is not set in September, so they are dashes either way and the
-  // card cannot move whether the page is hydrated or not. A probe that
-  // cannot fail is how this whole problem lasted as long as it did.
+  // **Leads & Conversions**, where typing a lead source moves Total
+  // leads and the lead-to-client rate on the spot. It was Financials
+  // until 13 November, when that section became four grids and one box
+  // whose only derived figure is Runway — which needs three months of
+  // costs and would be a dash either way.
+  //
+  // Client Experience was the first choice of all and proved nothing:
+  // its figures hang off an opening number that is not set in
+  // September, so the card cannot move whether the page is hydrated or
+  // not. **A probe that cannot fail is how this problem lasted as long
+  // as it did**, and the rule it left behind is that this test's
+  // subject must be a figure that visibly moves.
   const { MONTHS, seed } = await import("../scripts/seed-test-db.mjs");
   await seed({ quiet: true });
 
   await signIn(page, "nina");
-  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  await page.goto(`/reporting/enter/leads-conversions?month=${MONTHS.sep}`);
 
   const before = (await page.locator("main").innerText()).replace(/\s+/g, " ");
-  await page.getByLabel(/fixed costs/i).fill("1234");
+  await page.getByLabel(/new leads from social/i).fill("1234");
   // No save, no navigation: anything that changes now changed in the
   // browser.
   await expect

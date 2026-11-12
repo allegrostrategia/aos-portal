@@ -20,6 +20,7 @@ import { readCarried, type Carried } from "./carried.ts";
 import {
   expensesThisMonth,
   forecastIn,
+  offerTotals,
   receivedThisMonth,
   type ExpenseRow,
   type Received,
@@ -130,6 +131,17 @@ export interface MonthFigures {
 function offerRowsFrom(
   data: MonthData,
   values: MonthData["values"],
+  /**
+   * What each offer took this month, off the Actual grid.
+   *
+   * **An offer's revenue is not typed anywhere** since 13 November
+   * (Nina): Financials is money received, so an offer sold in September
+   * and paid in October earns in October, and the margin and the hourly
+   * rate on the Offers page move with it. Passed in rather than read
+   * here, because the previous month's copy is frozen in the published
+   * snapshot and this function serves both.
+   */
+  byOffer: Map<string, number>,
 ): (OfferMonth & { id: string; price: number | null })[] {
   return data.entities
     .filter((e) => e.entity_type === "offer")
@@ -140,7 +152,7 @@ function offerRowsFrom(
       hourlyCost: offer.hourly_cost,
       pricingModel: offer.pricing_model ?? undefined,
       unitsSold: values.get("offers_units_sold", offer.id),
-      revenue: values.get("offers_revenue_this_month", offer.id),
+      revenue: byOffer.get(offer.id) ?? null,
       hoursSpent: values.get("offers_hours_spent_delivering", offer.id),
       otherDirectCosts: values.get("offers_other_direct_costs", offer.id),
     }))
@@ -385,12 +397,12 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     carried?.previousCosts ??
     (ctx.month.previous ? expensesThisMonth(expenses.expenses, ctx.month.previous) : []);
 
-  const offerRows = offerRowsFrom(frozen, frozen.values);
+  const offerRows = offerRowsFrom(frozen, frozen.values, offerTotals(received));
   // Last month's offers, worked out the same way. Without these, every
   // figure derived from the offers — Revenue, Profit, the margin — had
   // nothing to compare against, and the Overview said "No month to
   // compare" on a month whose predecessor was full of figures.
-  const previousOfferRows = offerRowsFrom(frozen, frozen.previous);
+  const previousOfferRows = offerRowsFrom(frozen, frozen.previous, offerTotals(previousReceived));
   const campaignRows = campaignRowsFrom(frozen, frozen.values);
   const funnelRows = funnelRowsFrom(frozen, frozen.values);
   const previousCampaignRows = campaignRowsFrom(frozen, frozen.previous);

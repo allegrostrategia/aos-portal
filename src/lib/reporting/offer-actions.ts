@@ -23,10 +23,16 @@ export type OfferState = { error?: string; notice?: string } | null;
 /** Monthly fields are named `v:<metric key>:<offer id>`. */
 const FIELD = /^v:([a-z0-9_]+):([0-9a-f-]{36})$/;
 
-/** The four figures typed against an offer each month (§5.9). */
+/**
+ * The figures typed against an offer each month (§5.9).
+ *
+ * **Three, not four, since 13 November.** An offer's revenue is money
+ * received on the Financials rows linked to it, so it is not typed
+ * here — and `report_values` would refuse it anyway, being pulled. Out
+ * of this set it is refused with a sentence instead of a constraint.
+ */
 const OFFER_METRICS = new Set([
   "offers_units_sold",
-  "offers_revenue_this_month",
   "offers_hours_spent_delivering",
   "offers_other_direct_costs",
 ]);
