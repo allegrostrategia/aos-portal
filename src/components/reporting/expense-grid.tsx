@@ -185,10 +185,11 @@ function CategorySetup(props: ExpenseGridProps) {
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="workspace_id" value={props.workspaceId} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" name="name" required maxLength={120} />
+          <Field label="Name" name="name" id="category-name" required maxLength={120} />
           <Select
             label="What it feeds"
             name="bucket"
+            id="category-bucket"
             defaultValue="fixed"
             hint="Set once, when the category is made."
           >

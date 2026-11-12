@@ -389,3 +389,59 @@ test("what it cost, by category, in the four buckets", async ({ page }, info) =>
   expect(await sidewaysScroll(page)).toBe(0);
   await shoot(page, TAB, "07-what-it-cost", w);
 });
+
+/**
+ * Her Client Profitability tab: hours against a client, and what that
+ * client was worth.
+ *
+ * The member's own team and their own rates (§1: nothing here is
+ * Allegro's time), and what the client paid is never asked for twice —
+ * it comes off the Actual grid.
+ */
+test("hours on each client, and what each client was worth", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+
+  const setup = card(page, "Your rows");
+  await setup.getByLabel("Name").fill("Bella Ltd");
+  await setup.getByLabel("What it is").selectOption("client");
+  await setup.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/Bella Ltd added/i)).toBeVisible();
+
+  const came = card(page, "What came in");
+  await came.getByLabel(/^Bella Ltd, September 2026$/).fill("2000");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
+
+  // --- the team ------------------------------------------------------------
+  const team = card(page, "Who does the work");
+  await expect(team.getByText(/Changing a rate is forward-looking/i)).toBeVisible();
+  await team.getByLabel("Name").fill("Anna");
+  await team.getByLabel("Hourly rate").fill("40");
+  await team.getByRole("button", { name: /add them/i }).click();
+  await expect(page.getByText(/Anna added/i)).toBeVisible();
+
+  // --- the hours -----------------------------------------------------------
+  const hours = card(page, "Hours on each client");
+  await expect(hours.getByText(/already on the Actual grid, so it is not asked for again/i))
+    .toBeVisible();
+  await hours.getByLabel(/^Anna on Bella Ltd, hours$/).fill("12");
+  await hours.getByRole("button", { name: /save the hours/i }).click();
+  await expect(hours.getByText(/^Saved\.$/)).toBeVisible();
+
+  // --- what it came to -----------------------------------------------------
+  // £2,000 paid, 12 hours at the £40 they were saved at: £480 of staff
+  // cost, £1,520 of profit, and £166.67 an hour.
+  const worth = card(page, "What each client was worth");
+  const worthText = (await worth.innerText()).replace(/\s+/g, " ");
+  expect(worthText, "from the Actual grid, not typed here").toContain("£2,000");
+  expect(worthText, "12 hours at 40").toContain("£480");
+  expect(worthText, "the profit between them").toContain("£1,520");
+  expect(worthText, "and what an hour of it earned").toContain("£166.67");
+
+  expect(await sidewaysScroll(page)).toBe(0);
+  await shoot(page, TAB, "08-hours", w);
+});

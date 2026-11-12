@@ -2941,8 +2941,37 @@ forecast at all, and it headlined the wrong six figures.
 match. The sandbox refused the write; `20261113140000` and
 `20261113160000` are applied, with history rows, read back and diffed.
 
-**Still to build:** the staff/hours grid, the bespoke donut slice, the
-whole-report PDF and the Financials CSV. Nina lifted the brief's
-no-export rule for that CSV alone.
+## The hours grid — 13 November 2026
+
+Her Client Profitability tab. The tables were built on 11 November, so
+this is app code only: `staff-queries.ts`, `staff-actions.ts`,
+`hours-grid.tsx`.
+
+**Clients down, people across, one month.** The other three grids are
+rows against months and this one cannot be — the third dimension is who
+did the work. Under it, "What each client was worth" runs
+`clientProfitability()`: paid (from the Actual grid, never typed twice),
+hours, staff cost, profit, margin, and what an hour of it earned.
+
+Two rules, both the database's:
+
+1. **Hours go against a client row, never an offer.** An offer's hours
+   are asked for on the Offers screen.
+2. **The rate is captured when the hours are saved**, and held still
+   when those hours are later corrected. A pay rise costs the months
+   after it. **The first version of that test proved nothing**: it
+   published the month before raising the rate, so the row could not be
+   updated at all and the mutation survived — the same hole the expense
+   bucket's test had, found the same way.
+
+**Three cards on that screen now ask for a name** — a row, a cost
+category, somebody on the team — and `Field` defaults its id to the
+field name, so all three labels pointed at whichever input came first
+in the document. Explicit ids now. This is the third time that default
+has done it (the recurrence selects, the two grids' cells, and this).
+
+**Still to build:** the bespoke donut slice, the whole-report PDF and
+the Financials CSV. Nina lifted the brief's no-export rule for that CSV
+alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

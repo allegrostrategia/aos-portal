@@ -14,6 +14,7 @@ import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { SocialEntry } from "@/components/reporting/social-entry";
 import { SalesGrid } from "@/components/reporting/sales-grid";
 import { ExpenseGrid } from "@/components/reporting/expense-grid";
+import { HoursGrid } from "@/components/reporting/hours-grid";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
@@ -564,6 +565,19 @@ export default async function EnterCategoryPage({
           categories={figures.expenses.categories}
           expenses={figures.expenses.expenses}
           lockedMonths={publishedMonths}
+          locked={locked}
+        />
+      ) : null}
+
+      {ledger ? (
+        <HoursGrid
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          currency={ctx.workspace.currency}
+          rows={ledger.rows}
+          actuals={ledger.actuals}
+          staff={figures.staff.staff}
+          hours={figures.staff.hours}
           locked={locked}
         />
       ) : null}

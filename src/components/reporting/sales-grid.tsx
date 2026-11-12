@@ -309,7 +309,12 @@ function RowSetup(props: SalesGridProps) {
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="workspace_id" value={props.workspaceId} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" name="name" required maxLength={120} />
+          {/* **An explicit id, because three cards on this screen now
+              ask for a name** — a row, a cost category and somebody on
+              the team. `Field` defaults the id to the name, so without
+              this all three labels point at whichever input is first in
+              the document and two of them select nothing. */}
+          <Field label="Name" name="name" id="row-name" required maxLength={120} />
           <Select
             label="What it is"
             name="row_type"

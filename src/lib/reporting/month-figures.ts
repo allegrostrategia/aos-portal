@@ -26,6 +26,7 @@ import {
 } from "./ledger.ts";
 import { getSalesLedger, type SalesLedger } from "./sales-queries.ts";
 import { getExpenseLedger, type ExpenseLedger } from "./expense-queries.ts";
+import { getStaffLedger, type StaffLedger } from "./staff-queries.ts";
 import { monthIsLocked } from "./locked.ts";
 import { ValueBag } from "./queries.ts";
 import { choosePlatform, platformsOf, type PlatformRow } from "./platforms.ts";
@@ -103,6 +104,8 @@ export interface MonthFigures {
   received: Received[];
   /** The expense categories and every month's figures (§5.10). */
   expenses: ExpenseLedger;
+  /** The member's own team and their hours per client (§5.10). */
+  staff: StaffLedger;
   /**
    * How many cells the two Financials grids hold for this month, for
    * "still to fill in". Financials has no core metric left to count.
@@ -235,7 +238,7 @@ export function visibleMetrics(
 }
 
 export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures> {
-  const [allMetrics, data, flow, ledger, expenses] = await Promise.all([
+  const [allMetrics, data, flow, ledger, expenses, staff] = await Promise.all([
     getMetrics(),
     getMonthData(ctx.workspace.id, ctx.month.month, ctx.month.previous),
     getClientFlow(ctx.workspace.id, ctx.month.month),
@@ -244,6 +247,9 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     getSalesLedger(ctx.workspace.id),
     // And the third grid: the four cost totals are its buckets' sums.
     getExpenseLedger(ctx.workspace.id),
+    // Her Client Profitability tab. Read here rather than on the screen
+    // for the same reason as the others: one read, one answer.
+    getStaffLedger(ctx.workspace.id),
   ]);
 
   /**
@@ -494,6 +500,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     ledger,
     received,
     expenses,
+    staff,
     financialsCells: { received: received.length, costs: costs.length },
     openingClients: openingFigures(flow),
     byKey,
