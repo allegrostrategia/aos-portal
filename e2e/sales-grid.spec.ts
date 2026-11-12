@@ -445,3 +445,54 @@ test("hours on each client, and what each client was worth", async ({ page }, in
   expect(await sidewaysScroll(page)).toBe(0);
   await shoot(page, TAB, "08-hours", w);
 });
+
+/**
+ * The one export in the product (§11, Nina's exception of 11 November).
+ *
+ * Asserted through the browser because what matters is the file that
+ * lands in somebody's downloads folder — its name, and that it opens as
+ * the three grids rather than as a database dump.
+ */
+test("the year downloads as a CSV of the three grids", async ({ page }) => {
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  const setup = card(page, "Your rows");
+  await setup.getByLabel("Name").fill("Bella Ltd");
+  await setup.getByLabel("What it is").selectOption("client");
+  await setup.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/Bella Ltd added/i)).toBeVisible();
+
+  const came = card(page, "What came in");
+  await came.getByLabel(/^Bella Ltd, September 2026$/).fill("2000");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: /download 2026 as a csv/i }).click(),
+  ]);
+
+  // The name is what it will be called a year from now.
+  expect(download.suggestedFilename()).toBe("Northwind Studio financials 2026.csv");
+
+  const file = await download.createReadStream();
+  const text = await new Promise<string>((resolve, reject) => {
+    let out = "";
+    file.on("data", (chunk) => (out += chunk));
+    file.on("end", () => resolve(out));
+    file.on("error", reject);
+  });
+
+  expect(text.charCodeAt(0), "a byte-order mark, or Excel mangles the pound signs").toBe(
+    0xfeff,
+  );
+  expect(text).toContain("Northwind Studio — Financials,2026");
+  expect(text).toContain("What came in");
+  expect(text).toContain("What you expect");
+  expect(text).toContain("What it cost");
+  expect(text).toContain("The totals");
+  expect(text, "the row, with its September figure").toContain("Bella Ltd,Client,No,");
+  expect(text).toContain("2000");
+});

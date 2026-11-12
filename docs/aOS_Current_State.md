@@ -3017,7 +3017,32 @@ Two things worth knowing:
 something to print. A client reaching the route for a month that has not
 been shown to them is sent back to the report.
 
-**Still to build:** the Financials CSV. Nina lifted the brief's
-no-export rule for that one alone.
+## The Financials CSV — 13 November 2026
+
+The one export in the product, and the only thing §11's no-export rule
+was ever lifted for (Nina, 11 November). `/reporting/export/financials`,
+linked from the entry screen.
+
+**Shaped like the screens, not like the tables**: the three grids as
+they are drawn — rows down, months across, a year total — then a totals
+block of money in, money expected, the four buckets, total costs and
+profit per month. What she does with it is paste it beside her own
+spreadsheet, and a tidy long format would need a pivot before it meant
+anything.
+
+- **Editors only.** §11's rule is about what a client is handed; the
+  exception is for the person doing the books. A retainer client gets a
+  403, and reading through their own session would hand them an empty
+  file anyway.
+- **Quoting is not optional**: a row is named by the client, and "Bella
+  Ltd, trading as "Crane"" is a name somebody will type. Unquoted it
+  silently becomes two columns.
+- **A byte-order mark**, because Excel reads a plain UTF-8 CSV as
+  Latin-1 and turns every pound sign into Â£.
+- A month nobody typed into is empty, never 0 — the rule every screen
+  keeps, kept here too.
+
+**Still to build on Financials: nothing.** The section is the three
+grids, the hours, the report page, the PDF and this.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

@@ -569,6 +569,22 @@ export default async function EnterCategoryPage({
         />
       ) : null}
 
+      {/* **The one export in the product** (§11, and Nina's exception of
+          11 November). Here rather than on the report, because it is for
+          the person doing the books: the three grids as they are drawn,
+          to paste beside a spreadsheet. */}
+      {ledger ? (
+        <p className="text-small text-ink/70">
+          <a
+            href={`/reporting/export/financials?workspace=${ctx.workspace.id}&month=${ctx.month.month}`}
+            className="text-ink underline underline-offset-2"
+          >
+            Download {ctx.month.month.slice(0, 4)} as a CSV
+          </a>{" "}
+          — the three grids, month by month, with the totals.
+        </p>
+      ) : null}
+
       {ledger ? (
         <HoursGrid
           workspaceId={ctx.workspace.id}
