@@ -194,6 +194,27 @@ async function saveGrid(
   const posted = readGrid(formData);
   if (posted.length === 0) return { notice: "Nothing to save." };
 
+  /**
+   * **Money received cannot run ahead of the month being entered** (Dom,
+   * 13 November). While September is being typed up, a figure in October
+   * is a forecast — and the forecast has its own grid.
+   *
+   * The screen draws those cells blank rather than as inputs, so nothing
+   * normally reaches here; this is the half that holds when something
+   * does. A forecast is the one thing that is *supposed* to run ahead, so
+   * it is not checked.
+   */
+  const entering = String(formData.get("month") ?? "");
+  if (table === "report_actuals" && entering) {
+    const tooLate = posted.find((c) => c.amount !== null && c.month > entering);
+    if (tooLate) {
+      return {
+        error:
+          "What came in only goes up to the month you're entering. Later months belong on the forecast.",
+      };
+    }
+  }
+
   const supabase = await createClient();
   const filled = posted.filter((c) => c.amount !== null);
   const cleared = posted.filter((c) => c.amount === null);

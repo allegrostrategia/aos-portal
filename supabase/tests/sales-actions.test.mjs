@@ -202,6 +202,44 @@ test("clearing a cell takes it away", async () => {
   assert.equal(actuals.length, 2, "and nothing else moved");
 });
 
+test("money received cannot run ahead of the month being entered", async () => {
+  // Dom, 13 November. While January is being typed up, February's money
+  // has not landed — a figure there would be a forecast wearing the
+  // Actual grid's name. The screen draws those cells blank; this is the
+  // half that holds if something posts one anyway.
+  const refused = await as(ELIZE, () =>
+    saveActuals(
+      null,
+      form({ workspace_id: WS, month: JAN, [`cell:${CLIENT_ROW}:${FEB}`]: 400 }),
+    ),
+  );
+  assert.match(refused?.error ?? "", /only goes up to the month you're entering/);
+
+  const { actuals } = await ledger();
+  assert.equal(
+    actuals.filter((c) => c.salesRowId === CLIENT_ROW && c.month === FEB).length,
+    0,
+  );
+
+  // The forecast is the one grid that is *supposed* to run ahead.
+  const fine = await as(ELIZE, () =>
+    saveForecasts(
+      null,
+      form({ workspace_id: WS, month: JAN, [`cell:${CLIENT_ROW}:${FEB}`]: 400 }),
+    ),
+  );
+  assert.equal(fine?.notice, "Saved.");
+
+  // And the month being entered still takes its own figure.
+  const now = await as(ELIZE, () =>
+    saveActuals(
+      null,
+      form({ workspace_id: WS, month: JAN, [`cell:${CLIENT_ROW}:${JAN}`]: 400 }),
+    ),
+  );
+  assert.equal(now?.notice, "Saved.");
+});
+
 test("a refund is a month where less than nothing landed", async () => {
   // Confirmed with Dom, 13 November. No non-negative constraint on an
   // actual: the figure is what landed, and a chargeback is a real thing

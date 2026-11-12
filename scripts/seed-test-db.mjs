@@ -27,7 +27,15 @@ export const PEOPLE = {
 
 export const RETAINER = "Northwind Studio";
 export const SELF_SERVE = "Ruth Test Coaching";
-export const MONTHS = { jul: "2026-07-01", aug: "2026-08-01", sep: "2026-09-01" };
+// October carries no seeded figures: it is here because a test needs a
+// month AFTER the published one to enter money into, now that what came
+// in cannot run ahead of the month being entered.
+export const MONTHS = {
+  jul: "2026-07-01",
+  aug: "2026-08-01",
+  sep: "2026-09-01",
+  oct: "2026-10-01",
+};
 
 export function localConfig() {
   const status = JSON.parse(
