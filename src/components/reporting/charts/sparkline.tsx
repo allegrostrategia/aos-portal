@@ -53,9 +53,17 @@ export function Sparkline({
     .map((value, i) => ({ value, i }))
     .filter((p): p is { value: number; i: number } => p.value !== null);
 
-  // Two points is the least that has a shape. One is a dot that says
-  // nothing, and none is an empty box pretending to be a chart.
-  if (present.length < 2) return null;
+  /**
+   * **Three months is the least that has a shape** (Dom, 14 November:
+   * "with two it's a slash").
+   *
+   * Two points can only ever draw a straight line between them, which
+   * is not a trend — it is the arrow beside it, drawn again and larger.
+   * Three is the first count where the line can bend, and a bend is the
+   * only thing this shape is for. One is a dot that says nothing, and
+   * none is an empty box pretending to be a chart.
+   */
+  if (present.length < 3) return null;
 
   const values = present.map((p) => p.value);
   const low = Math.min(...values);

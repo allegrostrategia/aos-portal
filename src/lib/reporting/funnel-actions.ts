@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
@@ -8,6 +9,7 @@ import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { getWorkspace } from "./queries.ts";
 import { canEdit } from "./access.ts";
+import { isInternalReportPath } from "./paths.ts";
 import { decidePrice, type PriceReason } from "./funnel-price.ts";
 
 /**
@@ -387,6 +389,19 @@ export async function saveFunnelMonth(
   }
 
   revalidatePath("/reporting", "layout");
+
+  /**
+   * "Save & next section", the same as every other entry screen (Dom,
+   * 14 November). Redirecting from the action rather than navigating in
+   * the browser means the move only happens once the save has landed —
+   * a link beside the button would let somebody leave a failed save
+   * behind them. Checked before use; see `paths.ts`.
+   */
+  const next = String(formData.get("next") ?? "");
+  if (next && isInternalReportPath(next)) {
+    redirect(next);
+  }
+
   return {
     notice: captured
       ? `Saved. ${captured === 1 ? "The offer's price was" : "Offer prices were"} captured for this month.`

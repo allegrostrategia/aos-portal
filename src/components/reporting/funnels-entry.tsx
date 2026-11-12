@@ -42,7 +42,9 @@ export interface FunnelsEntryProps {
   offers: { id: string; name: string; price: number | null }[];
   /** `${metricKey}|${funnelId}` → this month's figure. */
   values: Record<string, number | null>;
-  previous: Record<string, number | null>;
+  previous: Record<string, number | null>;  /** Where "Save & next section" goes, as on every other entry screen. */
+  nextHref: string | null;
+  nextLabel: string | null;
 }
 
 const MONTH_FORM = "funnels-month";
@@ -220,7 +222,7 @@ export function FunnelsEntry(props: FunnelsEntryProps) {
               ))}
             </div>
 
-            <MonthFooter state={state} />
+            <MonthFooter state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
           </Card>
 
           <WorkedOut rows={rows} currency={props.currency} />
@@ -403,7 +405,21 @@ function SetupButton({ existing }: { existing: boolean }) {
   );
 }
 
-function MonthFooter({ state }: { state: FunnelState }) {
+/**
+ * The same ending as every other entry screen (Dom, 14 November):
+ * **Save draft, and Save & next section**. The second submit carries
+ * the destination in its own value, so the move happens inside the
+ * action, after the save has landed.
+ */
+function MonthFooter({
+  state,
+  nextHref,
+  nextLabel,
+}: {
+  state: FunnelState;
+  nextHref: string | null;
+  nextLabel: string | null;
+}) {
   const { pending } = useFormStatus();
   return (
     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 pt-4">
@@ -415,9 +431,22 @@ function MonthFooter({ state }: { state: FunnelState }) {
           ? "Saving…"
           : (state?.error ?? state?.notice ?? "Nothing is saved until you press save.")}
       </p>
-      <Button type="submit" form={MONTH_FORM} disabled={pending}>
-        Save this month
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" form={MONTH_FORM} variant="secondary" disabled={pending}>
+          Save draft
+        </Button>
+        {nextHref ? (
+          <Button
+            type="submit"
+            form={MONTH_FORM}
+            name="next"
+            value={nextHref}
+            disabled={pending}
+          >
+            {nextLabel} →
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

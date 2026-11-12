@@ -3051,6 +3051,43 @@ anything.
 **Still to build on Financials: nothing.** The section is the three
 grids, the hours, the report page, the PDF and this.
 
+## Dom's review of the sweep — 14 November 2026
+
+Six, from looking at `docs/screen-sweep/`:
+
+1. **The PDF holds what the report pages hold.** It was figures and
+   notes, so a month of ads printed as a page of averages with no
+   campaign table under it. It now carries the two Overview panels, the
+   leads chart, the entity tables, the trend charts, top posts, "What
+   worked", the offer cards and donuts, and Launches — **the same
+   components the screens draw, fed the same `getMonthFigures`**. Two
+   extractions made that possible without a second implementation:
+   `CampaignTable`/`FunnelTable` moved to `report-tables.tsx`, and the
+   Overview's sixty lines of panel assembly moved to
+   `overview-panels.ts`. What the document leaves out is anything that
+   is a control rather than content — save buttons, the reply box,
+   "still to fill in", the CSV link.
+2. **"Worked out for you" never scrolls inside itself.** The 13
+   November fix counted figures — stick under nine, flow over — and was
+   wrong the same day: Social Media has eight and still clipped,
+   because what matters is the height of the rows, not how many there
+   are. A row with a long label and a hint is twice the height of a
+   short one and no count can know that. It does not stick at all now,
+   which is the one arrangement where nothing can hide at any size.
+   `e2e/entry-panels.spec.ts` asserts it on every entry screen at both
+   widths.
+3. **A sparkline needs three months.** With two it can only draw a
+   straight line, which is the arrow beside it drawn again and larger.
+4. **Every entry screen ends the same way:** Save draft, and Save &
+   next section. Ads, Funnels and Offers each had one button saying
+   "Save this month" and no way on — so the tab row was the only route
+   forward from them. Their three actions now honour `next` the way
+   `saveCategoryValues` does, which is what makes the move happen after
+   the save rather than beside it.
+5. "Where the leads came from" wears the palette on both pages.
+6. The Offers report and the print page agree, which they could not
+   until the offer-revenue move landed.
+
 ## One place for an offer's revenue — 13 November 2026
 
 Nina's decision, through Dom. Two screens were answering "what did this

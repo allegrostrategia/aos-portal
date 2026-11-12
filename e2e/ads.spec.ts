@@ -154,7 +154,7 @@ test("the client cannot reach the entry screen at all", async ({ page }) => {
   // Sent to the report for that category rather than shown a refusal: it
   // is not a screen they should have to think about.
   await expect(page).toHaveURL(/\/reporting\/ads/);
-  await expect(page.getByRole("button", { name: /save this month/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save draft" })).toHaveCount(0);
 });
 
 test("the Leads tab shows the real figure from Ads, not a second box", async ({

@@ -47,6 +47,9 @@ export interface OffersEntryProps {
    * and it is the Actual grid.
    */
   revenue: Record<string, number | null>;
+  /** Where "Save & next section" goes, as on every other entry screen. */
+  nextHref: string | null;
+  nextLabel: string | null;
   /**
    * Whether this client is asked for hours (Nina, 3 November).
    *
@@ -247,7 +250,7 @@ export function OffersEntry(props: OffersEntryProps) {
         <form id={MONTH_FORM} action={action}>
           <input type="hidden" name="workspace_id" value={props.workspaceId} />
           <input type="hidden" name="month" value={props.month} />
-          <SaveBar state={state} />
+          <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
         </form>
       ) : null}
 
@@ -528,7 +531,25 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-function SaveBar({ state }: { state: OfferState }) {
+/**
+ * The same ending as every other entry screen (Dom, 14 November):
+ * **Save draft, and Save & next section**.
+ *
+ * This screen had one button saying "Save this month" and no way on, so
+ * the tab row was the only route forward from it — and a person filling
+ * a month in goes section by section. The second submit carries the
+ * destination in its own value, so the move happens inside the action,
+ * after the save has landed.
+ */
+function SaveBar({
+  state,
+  nextHref,
+  nextLabel,
+}: {
+  state: OfferState;
+  nextHref: string | null;
+  nextLabel: string | null;
+}) {
   const { pending } = useFormStatus();
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-ink/8 bg-card p-4 shadow-soft sm:p-5">
@@ -540,9 +561,16 @@ function SaveBar({ state }: { state: OfferState }) {
           ? "Saving…"
           : (state?.error ?? state?.notice ?? "Nothing is saved until you press save.")}
       </p>
-      <Button type="submit" variant="primary" disabled={pending}>
-        Save this month
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={pending}>
+          Save draft
+        </Button>
+        {nextHref ? (
+          <Button type="submit" name="next" value={nextHref} variant="primary" disabled={pending}>
+            {nextLabel} →
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

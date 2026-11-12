@@ -439,31 +439,30 @@ function WorkedOut({
   if (metrics.length === 0) return null;
 
   /**
-   * **A panel taller than a screen does not stick** (Dom, 13 November:
-   * "Worked out for you is clipped — Profit, Margin, MRR and Runway are
-   * hidden").
+   * **The panel never has its own scroll** (Dom, 13 and 14 November).
    *
-   * Sticking it meant capping it to the viewport with its own scroll,
-   * because a sticky element taller than the screen pins its top and
-   * leaves its bottom below the fold for ever. But that inner scrollbar
-   * is invisible on macOS until you scroll it, so on Financials — which
-   * has thirteen derived figures, 1,388px of them — five hundred pixels
-   * of the card simply were not there. Nothing said so.
+   * Sticking it meant capping it to the viewport, because a sticky
+   * element taller than the screen pins its top and leaves its bottom
+   * below the fold for ever. But that inner scrollbar is invisible on
+   * macOS until you move it, so whatever did not fit simply was not
+   * there and nothing said so: Profit and Runway on Financials, and
+   * non-follower reach on Social Media.
    *
-   * So: short panels stick, long ones scroll with the page. Eight
-   * figures is about 860px, which is what a 900px laptop has left after
-   * the browser's own furniture — so that is where the line is. Counted
-   * rather than measured, because measuring means an effect, a resize
-   * listener and a first paint with the wrong answer.
+   * The first fix counted figures — stick under nine, scroll the page
+   * over — and it was wrong the same day: Social Media has eight and
+   * still clipped, because what matters is the height of the rows, not
+   * how many there are. A row with a long label and a hint wraps to
+   * twice the height of a short one, and no count can know that.
+   *
+   * So it does not stick at all. The panel is as tall as its content
+   * and the page scrolls past it, which is the one arrangement where
+   * nothing can be hidden at any size, on any screen, in any section.
+   * What is lost is the panel following you down a long form; what was
+   * being lost before is figures.
    */
-  const tall = metrics.length > 8;
 
   return (
-    <aside
-      className={
-        tall ? "" : "lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:self-start lg:overflow-y-auto"
-      }
-    >
+    <aside>
       <div className="rounded-card border border-gold/40 bg-lemon/60 p-5 shadow-soft sm:p-6">
         <h2 className="font-display text-heading font-medium text-ink">
           Worked out for you

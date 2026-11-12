@@ -59,6 +59,23 @@ test("the month prints as a document, with its figures and its notes", async ({
   expect(doc, "the note written on them").toContain("Retainer revenue held up.");
   expect(doc, "and how to get the PDF out").toContain("Save as PDF");
 
+  // **And everything their report pages hold** (Dom, 14 November). The
+  // first version was figures and notes, so a month of ads printed as a
+  // page of averages with no campaign table under it.
+  for (const [what, text] of [
+    ["the Overview's own panels", /Look at these first|What went WELL/],
+    ["the leads chart", /Where the leads came from/],
+    ["the Ads campaign table", /Cost per lead|CPM/],
+    ["a trend chart", /The last twelve months|The last six months/],
+  ] as const) {
+    expect(doc, what).toMatch(text);
+  }
+
+  // Drawn as SVG, not described in prose: the charts are the same
+  // components the screens use.
+  const charts = await page.locator("main svg").count();
+  expect(charts, "charts in the document").toBeGreaterThan(2);
+
   // None of the screen's furniture: no tab row, no entry buttons.
   await expect(page.getByRole("link", { name: "Enter data" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Social Media" })).toHaveCount(0);

@@ -44,6 +44,9 @@ export interface CampaignsEntryProps {
   /** `${metricKey}|${campaignId}` → this month's figure. */
   values: Record<string, number | null>;
   previous: Record<string, number | null>;
+  /** Where "Save & next section" goes, as on every other entry screen. */
+  nextHref: string | null;
+  nextLabel: string | null;
 }
 
 const MONTH_FORM = "campaigns-month";
@@ -324,7 +327,7 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
               ))}
             </div>
 
-            <MonthFooter state={state} />
+            <MonthFooter state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
           </Card>
 
           <WorkedOut
@@ -444,7 +447,25 @@ function SetupButton({ existing }: { existing: boolean }) {
   );
 }
 
-function MonthFooter({ state }: { state: CampaignState }) {
+/**
+ * The same ending as every other entry screen (Dom, 14 November):
+ * **Save draft, and Save & next section**.
+ *
+ * This screen had one button saying "Save this month" and no way on, so
+ * the tab row was the only route forward from it — and a person filling
+ * a month in goes section by section. The second submit carries the
+ * destination in its own value, so the move happens inside the action,
+ * after the save has landed.
+ */
+function MonthFooter({
+  state,
+  nextHref,
+  nextLabel,
+}: {
+  state: CampaignState;
+  nextHref: string | null;
+  nextLabel: string | null;
+}) {
   const { pending } = useFormStatus();
   return (
     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 pt-4">
@@ -454,9 +475,22 @@ function MonthFooter({ state }: { state: CampaignState }) {
       >
         {pending ? "Saving…" : (state?.error ?? state?.notice ?? "Nothing is saved until you press save.")}
       </p>
-      <Button type="submit" form={MONTH_FORM} disabled={pending}>
-        Save this month
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" form={MONTH_FORM} variant="secondary" disabled={pending}>
+          Save draft
+        </Button>
+        {nextHref ? (
+          <Button
+            type="submit"
+            form={MONTH_FORM}
+            name="next"
+            value={nextHref}
+            disabled={pending}
+          >
+            {nextLabel} →
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

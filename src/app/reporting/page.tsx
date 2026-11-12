@@ -10,6 +10,7 @@ import { ClientReplies } from "@/components/reporting/replies";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { IconCircle, toneFor } from "@/components/reporting/icons";
 import { leadsBySource } from "@/lib/reporting/chart-data";
+import { overviewPanels } from "@/lib/reporting/overview-panels";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { getFigureHistory } from "@/lib/reporting/figure-history";
 import { TrendPanel } from "@/components/reporting/trend-panel";
@@ -20,7 +21,7 @@ import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
 import { publishWarning } from "@/lib/reporting/publish-warning";
 import { draftMonthsBefore } from "@/lib/reporting/carried-build";
 import { getPublishedMonths } from "@/lib/reporting/queries";
-import { FOCUS_TAG, PANELS, highlights } from "@/lib/reporting/highlights";
+import { FOCUS_TAG, PANELS } from "@/lib/reporting/highlights";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { TARGET_TONE_FILL, formatValue, targetTone } from "@/lib/reporting/format";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
@@ -30,7 +31,6 @@ import {
   STAGE_3,
   STAGE_5,
   categoryByKey,
-  type CategoryKey,
 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
@@ -185,53 +185,19 @@ export default async function ReportingOverviewPage({
     : new Map<string, (number | null)[]>();
   const axis = historyMonths.map(shortMonthLabel);
 
-  // §7's two panels. Every word in them is Nina's, from one file.
-  //
-  // **A figure kept per platform is judged per platform** (Nina, 11
-  // November). Until today the filter below was `entity_type === null`,
-  // which quietly meant no Social Media figure could ever reach the
-  // Focus areas, the target bars or the traffic lights — all three read
-  // month-level figures and every social figure hangs off a platform.
-  //
-  // One platform is the normal case and reads exactly as it did: the
-  // key and the label are the metric's own. With two or more, each
-  // platform gets its own entry, keyed `metric|platform` so the panel's
-  // own de-duplication compares Instagram with Instagram, and labelled
-  // "Posts published on LinkedIn" so a reader knows whose news it is.
+  // §7's two panels. Every word in them is Nina's, from one file, and
+  // built by one function so the printed report says the same.
+  const panels = overviewPanels({ ctx, figures, targets });
+
+  /**
+   * Whether a figure's label has to name its platform.
+   *
+   * One platform is the normal case and reads as it always did; with
+   * two or more, "Posts published on LinkedIn" is the only way a reader
+   * knows whose news it is. The panels work this out for themselves —
+   * this is the target bars' copy of the same question.
+   */
   const named = figures.platforms.length > 1;
-  const visibleHere = (metric: { category: CategoryKey; good_direction: string }) =>
-    metric.good_direction !== "none" &&
-    !ctx.workspace.hidden_categories.includes(metric.category);
-
-  const monthLevel = figures.metrics
-    .filter((metric) => metric.entity_type === null && visibleHere(metric))
-    .map((metric) => ({
-      key: metric.key,
-      label: metric.label,
-      unit: metric.unit,
-      goodDirection: metric.good_direction,
-      value: figures.figure(metric.key),
-      previous: figures.previousFigure(metric.key),
-      target: targets.get(`${metric.key}|`) ?? null,
-      currency: ctx.workspace.currency,
-    }));
-
-  const perPlatform = figures.metrics
-    .filter((metric) => metric.entity_type === "social_platform" && visibleHere(metric))
-    .flatMap((metric) =>
-      figures.byPlatform.map(({ platform, figure, previousFigure }) => ({
-        key: named ? `${metric.key}|${platform.id}` : metric.key,
-        label: named ? `${metric.label} on ${platform.name}` : metric.label,
-        unit: metric.unit,
-        goodDirection: metric.good_direction,
-        value: figure(metric.key),
-        previous: previousFigure(metric.key),
-        target: targets.get(`${metric.key}|${platform.id}`) ?? null,
-        currency: ctx.workspace.currency,
-      })),
-    );
-
-  const panels = highlights([...monthLevel, ...perPlatform]);
 
   const targetRows = [
     ...figures.metrics

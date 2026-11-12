@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { recordCsvImportFromForm } from "./csv/column-map-actions.ts";
 
@@ -10,6 +11,7 @@ import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { getWorkspace } from "./queries.ts";
 import { canEdit } from "./access.ts";
+import { isInternalReportPath } from "./paths.ts";
 import type { CampaignGoal } from "./formulas.ts";
 
 /**
@@ -329,5 +331,18 @@ export async function saveCampaignMonth(
   await recordCsvImportFromForm(formData, workspaceId, month);
 
   revalidatePath("/reporting", "layout");
+
+  /**
+   * "Save & next section", the same as every other entry screen (Dom,
+   * 14 November). Redirecting from the action rather than navigating in
+   * the browser means the move only happens once the save has landed —
+   * a link beside the button would let somebody leave a failed save
+   * behind them. Checked before use; see `paths.ts`.
+   */
+  const next = String(formData.get("next") ?? "");
+  if (next && isInternalReportPath(next)) {
+    redirect(next);
+  }
+
   return { notice: "Saved. Ads is up to date for this month." };
 }

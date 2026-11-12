@@ -103,6 +103,29 @@ export default async function EnterCategoryPage({
   // and Ads each have their own, and the upload card asks this.
   const locked = monthIsLocked(ctx.workspace, data.period?.published_at);
 
+  /**
+   * **Where "Save & next section" goes, for every screen** — including
+   * the three that return early (Dom, 14 November: Ads had "Save this
+   * month" and no way on). Hoisted here for that reason.
+   */
+  const order = ENTRY_CATEGORIES.filter(
+    (c) => !ctx.workspace.hidden_categories.includes(c.key),
+  );
+  const position = order.findIndex((c) => c.key === category.key);
+  const next = position >= 0 ? order[position + 1] : undefined;
+  // The section after the last of those, when this client has it.
+  const launchesNext =
+    !next &&
+    SHIPPED_CATEGORIES.some((c) => c.key === "launches") &&
+    !ctx.workspace.hidden_categories.includes("launches");
+  const nextHref = next
+    ? reportHref(`/reporting/enter/${next.slug}`, ctx)
+    : launchesNext
+      ? reportHref("/reporting/launches", ctx)
+      : null;
+  const nextLabel = nextHref ? "Save & next section" : null;
+  const nextName = next?.label ?? (launchesNext ? "Launches" : null);
+
   // Offers is the one Stage 2 category whose figures hang off a row rather
   // than off the month (§5.9), so it has its own screen. The generic form
   // below would write one figure per metric per month and quietly merge
@@ -142,6 +165,8 @@ export default async function EnterCategoryPage({
       >
         <OffersEntry
           revenue={offerRevenue}
+          nextHref={nextHref}
+          nextLabel={nextLabel}
           workspaceId={ctx.workspace.id}
           month={ctx.month.month}
           previousLabel={previousLabel}
@@ -222,6 +247,8 @@ export default async function EnterCategoryPage({
         }
       >
         <FunnelsEntry
+          nextHref={nextHref}
+          nextLabel={nextLabel}
           workspaceId={ctx.workspace.id}
           month={ctx.month.month}
           monthLabel={ctx.month.label}
@@ -277,6 +304,8 @@ export default async function EnterCategoryPage({
         }
       >
         <CampaignsEntry
+          nextHref={nextHref}
+          nextLabel={nextLabel}
           upload={
             STAGE_6
               ? await uploadFor({
@@ -382,9 +411,6 @@ export default async function EnterCategoryPage({
   );
 
   // "Save & next section" walks the entry categories in tab order.
-  const order = ENTRY_CATEGORIES.filter(
-    (c) => !ctx.workspace.hidden_categories.includes(c.key),
-  );
   // Published and retainer: the same two conditions the database guard
   // applies, from the same helper, so a form never submits into a refusal.
 
@@ -427,13 +453,7 @@ export default async function EnterCategoryPage({
       ? await getTopPosts(ctx.workspace.id, ctx.month.month, platform.id)
       : [];
 
-  const position = order.findIndex((c) => c.key === category.key);
-  const next = position >= 0 ? order[position + 1] : undefined;
-  // The section after the last of those, when this client has it.
-  const launchesNext =
-    !next &&
-    SHIPPED_CATEGORIES.some((c) => c.key === "launches") &&
-    !ctx.workspace.hidden_categories.includes("launches");
+
 
   return (
     <ReportShell
@@ -508,25 +528,13 @@ export default async function EnterCategoryPage({
           calculated,
           initial,
           previous,
-          /**
-           * **And after the last entry section, Launches** (Dom, 13
-           * November). Financials is the end of the tab order, so
-           * "next" was nothing at all — which on the one screen with no
-           * save bar left the tab row as the only way forward. Launches
-           * has its own screens rather than a month of fields, which is
-           * why it is not in that order and has to be named here.
-           */
-          nextHref: next
-            ? reportHref(`/reporting/enter/${next.slug}`, ctx)
-            : launchesNext
-              ? reportHref("/reporting/launches", ctx)
-              : null,
+          nextHref,
           // "Save & Email" reads as emailing the report rather than moving
           // to the Email section. The mockup's own wording avoids that.
-          nextLabel: next ? "Save & next section" : null,
+          nextLabel,
           // The section's own name, for the screens with no save bar —
           // there the link is the only thing saying where "next" goes.
-          nextName: next?.label ?? (launchesNext ? "Launches" : null),
+          nextName,
         };
 
         // Social Media's two forms are rendered together, because one

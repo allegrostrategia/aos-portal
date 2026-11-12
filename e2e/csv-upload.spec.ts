@@ -284,7 +284,7 @@ test("a ticked campaign is created by the save, not before it", async ({ page })
 
   // The month form's own save — this screen has several forms, and
   // `.first()` was the campaign-name one.
-  await page.getByRole("button", { name: /save this month/i }).click();
+  await page.getByRole("button", { name: "Save draft" }).click();
   await expect
     .poll(() => names(), { message: "the save never created it" })
     .toContain("Brand, reels");

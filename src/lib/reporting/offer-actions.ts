@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
+import { isInternalReportPath } from "./paths.ts";
 import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { getWorkspace } from "./queries.ts";
@@ -254,6 +256,18 @@ export async function saveOfferMonth(
   }
 
   revalidatePath("/reporting", "layout");
+
+  /**
+   * "Save & next section", the same as every other entry screen (Dom,
+   * 14 November). Redirecting from the action rather than navigating in
+   * the browser means the move only happens once the save has landed —
+   * a link beside the button would let somebody leave a failed save
+   * behind them. Checked before use; see `paths.ts`.
+   */
+  const next = String(formData.get("next") ?? "");
+  if (next && isInternalReportPath(next)) {
+    redirect(next);
+  }
 
   const changed = inserts.length + updates.length;
   return {
