@@ -542,23 +542,6 @@ export default async function CategoryReportPage({
             <TopItemsReport thisMonth={topItems.thisMonth} history={topItems.history} />
           ) : null}
 
-          {/* **The one export in the product** (§11, and Nina's exception
-              of 11 November), here on the report because it is the
-              client's own money and this is the page they open. RLS
-              decides what is in it: their published months, and a draft
-              one is simply not in the rows. */}
-          {category.key === "financials" ? (
-            <p className="mt-6 text-small text-ink/70">
-              <a
-                href={`/reporting/export/financials?workspace=${ctx.workspace.id}&month=${ctx.month.month}`}
-                className="text-ink underline underline-offset-2"
-              >
-                Download {ctx.month.month.slice(0, 4)} as a CSV
-              </a>{" "}
-              — what came in, what you expect and what it cost, month by month.
-            </p>
-          ) : null}
-
           {category.key === "financials"
             ? (() => {
                 // **What the rest of the year is forecast at** — the one
@@ -716,6 +699,25 @@ export default async function CategoryReportPage({
           ) : null}
         </>
       )}
+
+      {/* **The one export in the product** (§11, and Nina's exception of
+          11 November), here on the report because it is the client's
+          own money and this is the page they open. At the end of the
+          page rather than between two cards: it is what you do after
+          reading, not something to read past. RLS decides what is in
+          it — their published months, and a draft one is not in the
+          rows. */}
+      {category.key === "financials" ? (
+        <p className="mt-6 text-small text-ink/70">
+          <a
+            href={`/reporting/export/financials?workspace=${ctx.workspace.id}&month=${ctx.month.month}`}
+            className="text-ink underline underline-offset-2"
+          >
+            Download {ctx.month.month.slice(0, 4)} as a CSV
+          </a>{" "}
+          — what came in, what you expect and what it cost, month by month.
+        </p>
+      ) : null}
 
       <div className="mt-6">
         <StrategistNotes
