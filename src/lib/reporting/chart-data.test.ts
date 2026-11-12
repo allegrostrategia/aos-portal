@@ -6,6 +6,7 @@ import { calculateOffer } from "./calculate.ts";
 import {
   costBreakdown,
   forecastAhead,
+  revenueFromWhere,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -318,4 +319,120 @@ test("a month nobody forecast is left out rather than drawn as nothing", () => {
     "GBP",
   );
   assert.deepEqual(bars, [], "a zero is not a forecast of nothing");
+});
+
+
+/**
+ * Where the money came from: each offer, and one slice for the rest.
+ *
+ * The donut has to total the month's revenue or the card above it and
+ * the chart under it are two answers to one question (§9).
+ */
+const WHERE_ROWS = [
+  { id: "r1", name: "Signature programme", rowType: "offer" as const, offerEntityId: "o1", active: true, recurrence: "none" as const },
+  { id: "r2", name: "Mini course", rowType: "offer" as const, offerEntityId: "o2", active: true, recurrence: "none" as const },
+  { id: "r3", name: "Bella Ltd", rowType: "client" as const, offerEntityId: null, active: true, recurrence: "monthly" as const },
+  { id: "r4", name: "Crane & Co", rowType: "client" as const, offerEntityId: null, active: true, recurrence: "none" as const },
+];
+const WHERE_ACTUALS = [
+  { salesRowId: "r1", month: "2026-09-01", amount: 4000, recurrence: "none" as const },
+  { salesRowId: "r2", month: "2026-09-01", amount: 500, recurrence: "none" as const },
+  { salesRowId: "r3", month: "2026-09-01", amount: 1200, recurrence: "monthly" as const },
+  { salesRowId: "r4", month: "2026-09-01", amount: 800, recurrence: "none" as const },
+  { salesRowId: "r1", month: "2026-10-01", amount: 9000, recurrence: "none" as const },
+];
+
+const whereFigures = (entities: { id: string; name: string }[]) =>
+  ({
+    ledger: { rows: WHERE_ROWS, actuals: WHERE_ACTUALS, forecasts: [] },
+    data: { entities: entities.map((e) => ({ ...e, entity_type: "offer" })) },
+  }) as unknown as MonthFigures;
+
+test("each offer's money, and everything else as one slice", () => {
+  const slices = revenueFromWhere(
+    whereFigures([
+      { id: "o1", name: "Signature programme" },
+      { id: "o2", name: "Mini course" },
+    ]),
+    "2026-09-01",
+    "GBP",
+  );
+
+  assert.deepEqual(
+    slices.map((s) => [s.label, s.value]),
+    [
+      ["Signature programme", 4000],
+      ["Mini course", 500],
+      // Two clients, one slice — not two, and not forty for an agency.
+      ["Bespoke work · 2 clients", 2000],
+    ],
+  );
+  assert.equal(
+    slices.reduce((t, s) => t + s.value, 0),
+    6500,
+    "the donut totals the month's revenue, or the card above it is a second answer",
+  );
+});
+
+test("an offer that earned nothing this month keeps its colour for the next", () => {
+  const slices = revenueFromWhere(
+    whereFigures([
+      { id: "o0", name: "Retired thing" },
+      { id: "o1", name: "Signature programme" },
+      { id: "o2", name: "Mini course" },
+    ]),
+    "2026-09-01",
+    "GBP",
+  );
+  // The colour index is the entity's own position, so the two offers
+  // that did earn keep 1 and 2 rather than sliding to 0 and 1.
+  assert.deepEqual(
+    slices.map((s) => s.colorIndex),
+    [1, 2, 3],
+  );
+});
+
+test("one client on their own is one client, not 1 clients", () => {
+  const one = {
+    ledger: {
+      rows: WHERE_ROWS,
+      actuals: [{ salesRowId: "r3", month: "2026-10-01", amount: 1200, recurrence: "monthly" as const }],
+      forecasts: [],
+    },
+    data: { entities: [] },
+  } as unknown as MonthFigures;
+
+  assert.deepEqual(
+    revenueFromWhere(one, "2026-10-01", "GBP").map((s) => s.label),
+    ["Bespoke work · 1 client"],
+  );
+});
+
+test("an offer row nobody linked is not called bespoke work", () => {
+  // The cards split revenue by the row's KIND; this chart splits it by
+  // the offer LINK, because a slice is an offer. A row typed as an
+  // offer and never linked falls between them, and the label says so
+  // rather than calling a programme somebody's bespoke work.
+  const unlinked = {
+    ledger: {
+      rows: WHERE_ROWS.map((r) => ({ ...r, offerEntityId: null })),
+      actuals: WHERE_ACTUALS,
+      forecasts: [],
+    },
+    data: { entities: [] },
+  } as unknown as MonthFigures;
+
+  assert.deepEqual(
+    revenueFromWhere(unlinked, "2026-09-01", "GBP").map((s) => [s.label, s.value]),
+    [["Not linked to an offer · 4 rows", 6500]],
+  );
+});
+
+test("a month nobody entered has no donut rather than an empty one", () => {
+  const slices = revenueFromWhere(
+    whereFigures([{ id: "o1", name: "Signature programme" }]),
+    "2026-12-01",
+    "GBP",
+  );
+  assert.deepEqual(slices, [], "and the page draws nothing at all");
 });

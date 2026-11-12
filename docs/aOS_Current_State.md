@@ -2970,8 +2970,27 @@ field name, so all three labels pointed at whichever input came first
 in the document. Explicit ids now. This is the third time that default
 has done it (the recurrence selects, the two grids' cells, and this).
 
-**Still to build:** the bespoke donut slice, the whole-report PDF and
-the Financials CSV. Nina lifted the brief's no-export rule for that CSV
-alone.
+**"Where the money came from"** is on the Financials report: a slice per
+offer from the Actual grid, plus one for everything unlinked, totalling
+the month's revenue — so the donut and the card above it are the same
+number.
+
+**It is not the Offers donut**, and the brief's sentence says "the
+Offers charts". That one draws the revenue typed per offer on the Offers
+screen and totals that screen's own figure; putting grid money into it
+would make it disagree with the table beside it. Worth Nina's eye: the
+two "revenue from offers" figures — typed per offer, and received on
+offer rows — are the last place two screens can answer one question
+differently.
+
+**The slice is named for what is in it.** Client rows give "Bespoke
+work · n clients", as the brief says. A row typed as an offer that
+nobody linked gives "Not linked to an offer · n rows", because calling a
+programme somebody's bespoke work beside a card reading "Revenue from
+offers £4,000" would be the page disagreeing with itself in words. The
+chart splits on the offer LINK; the cards split on the row's KIND.
+
+**Still to build:** the whole-report PDF and the Financials CSV. Nina
+lifted the brief's no-export rule for that CSV alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

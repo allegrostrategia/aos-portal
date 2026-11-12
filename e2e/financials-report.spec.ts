@@ -28,6 +28,9 @@ test("what came in, what was expected, and what is still to come", async ({ page
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
   const setup = page.locator("section").filter({ has: page.getByRole("heading", { name: "Your rows", exact: true }) });
   await setup.getByLabel("Name").fill("Signature programme");
+  // Linked to the offer of the same name, which is what puts its money
+  // in that offer's slice rather than in the catch-all.
+  await setup.getByLabel("Link to an offer").selectOption({ label: "Signature programme" });
   await setup.getByRole("button", { name: /add the row/i }).click();
   await page.getByText(/Signature programme added/i).waitFor();
   await setup.getByLabel("Name").fill("Bella Ltd");
@@ -79,6 +82,14 @@ test("what came in, what was expected, and what is still to come", async ({ page
   expect(main).toContain("£5,200");
   expect(main).toContain("£1,200");
   expect(main).toContain("£2,400");
+
+  // **Where it came from**: the offer row, and the client row as one
+  // bespoke slice, totalling the month's revenue.
+  const from = card(page, "Where the money came from");
+  const fromText = (await from.innerText()).replace(/\s+/g, " ");
+  expect(fromText, "the linked row's own offer").toContain("Signature programme");
+  expect(fromText, "and the client row, counted").toContain("Bespoke work · 1 client");
+  expect(fromText, "the donut totals the month").toContain("£5,200");
 
   // The year, actual against forecast.
   await expect(

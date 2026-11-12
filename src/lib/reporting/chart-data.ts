@@ -1,5 +1,5 @@
 import { formatValue } from "./format.ts";
-import { forecastAfter } from "./ledger.ts";
+import { bespokeRevenue, forecastAfter, offerRevenue } from "./ledger.ts";
 import { monthLabel } from "./months.ts";
 import { offerResults } from "./calculate.ts";
 import type { MonthFigures } from "./month-figures.ts";
@@ -128,6 +128,82 @@ const COST_LINES = [
  * ones are dropped: a month with no team costs must not turn Variable into
  * the colour Team had last month.
  */
+/**
+ * Where the month's money came from: each offer, and one slice for
+ * everything else.
+ *
+ * **Not the Offers donut.** That one draws the revenue typed per offer
+ * on the Offers screen and totals that screen's own figure. This draws
+ * the Actual grid — what landed — so its total is the month's revenue
+ * and the card above it says the same number (§9).
+ *
+ * **One bespoke slice, not forty** (§5.10). Linking a row to an offer is
+ * optional and an agency has dozens of bespoke clients; a slice each
+ * would turn a chart about offers into a client list nobody can read.
+ * So everything unlinked is one slice with its client count beside it,
+ * and who is in it is the per-client card's job.
+ *
+ * A row linked to an offer that has since been retired keeps its money
+ * in the chart under the offer's name: the entity is still there, and
+ * dropping it would make the donut stop totalling the month.
+ */
+export function revenueFromWhere(
+  figures: MonthFigures,
+  month: string,
+  currency: string,
+): Slice[] {
+  const byOffer = offerRevenue(figures.ledger.rows, figures.ledger.actuals, month);
+  const offers = figures.data.entities.filter((e) => e.entity_type === "offer");
+
+  const slices: Slice[] = offers
+    .map((offer, index) => ({
+      label: offer.name,
+      value: byOffer.get(offer.id) ?? 0,
+      display: formatValue(byOffer.get(offer.id) ?? 0, "currency", currency),
+      // The entity's own position, so an offer that earns nothing one
+      // month and something the next keeps its colour in both.
+      colorIndex: index,
+    }))
+    .filter((s) => s.value > 0);
+
+  const bespoke = bespokeRevenue(figures.ledger.rows, figures.ledger.actuals, month);
+  if ((bespoke.total ?? 0) > 0) {
+    /**
+     * **What the slice is called depends on what is in it.**
+     *
+     * The brief's case is client rows: retainers and bespoke work, one
+     * slice with its client count. But a row can be an offer the client
+     * never linked to the Offers screen, and calling that "bespoke
+     * work" beside a card reading "Revenue from offers" would be the
+     * page disagreeing with itself in words. The split on this chart is
+     * the offer LINK, because a slice is an offer; the split on the
+     * cards is the row's KIND. Where the two differ, the label says
+     * which one this is.
+     */
+    const linked = new Set(
+      figures.ledger.rows.filter((r) => r.offerEntityId !== null).map((r) => r.id),
+    );
+    const inSlice = figures.ledger.rows.filter(
+      (r) =>
+        !linked.has(r.id) &&
+        figures.ledger.actuals.some((c) => c.salesRowId === r.id && c.month === month),
+    );
+    const allClients = inSlice.every((r) => r.rowType === "client");
+    const count = bespoke.clients;
+
+    slices.push({
+      label: allClients
+        ? `Bespoke work · ${count} ${count === 1 ? "client" : "clients"}`
+        : `Not linked to an offer · ${count} ${count === 1 ? "row" : "rows"}`,
+      value: bespoke.total ?? 0,
+      display: formatValue(bespoke.total, "currency", currency),
+      colorIndex: offers.length,
+    });
+  }
+
+  return slices;
+}
+
 /**
  * What the rest of the year is forecast at, month by month.
  *

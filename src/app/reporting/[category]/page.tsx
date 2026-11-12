@@ -46,6 +46,7 @@ import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import {
   costBreakdown,
   forecastAhead,
+  revenueFromWhere,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -566,6 +567,42 @@ export default async function CategoryReportPage({
                           ? "What the forecast said when this month was published."
                           : "What the forecast says for the months after this one."
                       }
+                    />
+                  </Card>
+                );
+              })()
+            : null}
+
+          {category.key === "financials"
+            ? (() => {
+                // **Where it came from, beside where it went.** Each
+                // offer's money and one slice for everything else, off
+                // the Actual grid — so this donut totals the month's
+                // revenue and the card above says the same number.
+                const sources = revenueFromWhere(
+                  figures,
+                  ctx.month.month,
+                  ctx.workspace.currency,
+                );
+                if (sources.length === 0) return null;
+                return (
+                  <Card className="mt-6">
+                    <SectionTitle
+                      icon={<IconCircle name="revenue" tone="gold" />}
+                      aside={ctx.month.label}
+                    >
+                      Where the money came from
+                    </SectionTitle>
+                    <DonutChart
+                      slices={sources}
+                      total={figures.results.financials_total_revenue ?? null}
+                      totalDisplay={formatValue(
+                        figures.results.financials_total_revenue ?? null,
+                        "currency",
+                        ctx.workspace.currency,
+                      )}
+                      totalLabel="Total revenue"
+                      emptyMessage="No money entered for this month yet."
                     />
                   </Card>
                 );
