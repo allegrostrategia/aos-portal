@@ -326,11 +326,26 @@ export default async function ReportingOverviewPage({
       title="Monthly Report"
       tagline={ctx.month.label}
       actions={
-        <PublishBadge
-          kind={ctx.workspace.kind}
-          publishedAt={figures.data.period?.published_at ?? null}
-          show={ctx.showDraftState}
-        />
+        <>
+          <PublishBadge
+            kind={ctx.workspace.kind}
+            publishedAt={figures.data.period?.published_at ?? null}
+            show={ctx.showDraftState}
+          />
+          {/* **The whole month as a document** (§11): the browser's own
+              print-to-PDF of a clean page, the same answer the SOP
+              export gave. Offered on a month there is something to
+              print — not on one that is still being prepared, where it
+              would hand a client a PDF of a holding card. */}
+          {ctx.monthPublished || ctx.canEdit ? (
+            <Link
+              href={reportHref("/reporting/print", ctx)}
+              className={buttonClasses("secondary", "sm")}
+            >
+              Save as PDF
+            </Link>
+          ) : null}
+        </>
       }
     >
       {!anyFigures ? (

@@ -2990,7 +2990,34 @@ programme somebody's bespoke work beside a card reading "Revenue from
 offers £4,000" would be the page disagreeing with itself in words. The
 chart splits on the offer LINK; the cards split on the row's KIND.
 
-**Still to build:** the whole-report PDF and the Financials CSV. Nina
-lifted the brief's no-export rule for that CSV alone.
+## The whole-month PDF — 13 November 2026
+
+`/reporting/print`: one clean document of the month, printed by the
+browser. **The same answer the SOP export gave** (`archivio/[id]/print`)
+and for the same reasons — no dependency, no server rendering, no font
+embedding, it works on a phone through the share sheet, and what comes
+out is a real PDF the client owns.
+
+It carries the month's figures in the report's own order with their
+month-on-month change, the strategist's notes, and the two Financials
+donuts — that month's own arithmetic, which costs nothing to draw. The
+twelve-month trend charts are deliberately not in it.
+
+Two things worth knowing:
+
+- **A category with nothing in it is not in the document** (§4), rather
+  than a heading with nothing under it.
+- **`ctx.monthPublished` is not "this month is published."** It is "this
+  viewer may read it", which is true for every editor — so the first
+  version printed "Your month, as published" across the top of a draft
+  Nina was checking. The document reads `period.published_at`; the
+  access check still reads `monthPublished`, which is what it is for.
+
+"Save as PDF" sits in the Overview's actions, on a month there is
+something to print. A client reaching the route for a month that has not
+been shown to them is sent back to the report.
+
+**Still to build:** the Financials CSV. Nina lifted the brief's
+no-export rule for that one alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.
