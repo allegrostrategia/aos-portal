@@ -154,6 +154,23 @@ test("the grid saves in one go, and an empty cell is not a figure of zero", asyn
   );
 });
 
+test("what it cost cannot run ahead of the month being entered", async () => {
+  // The same rule money received wears, for the same reason: there is no
+  // cost forecast, so a figure in a month that has not happened is a
+  // guess sitting in a grid called "what it cost".
+  const refused = await as(ELIZE, () =>
+    saveExpenses(
+      null,
+      form({ workspace_id: WS, month: JAN, [`cell:${ADS}:${FEB}`]: 400 }),
+    ),
+  );
+  assert.match(refused?.error ?? "", /only goes up to the month you're entering/);
+  assert.equal(
+    (await ledger()).expenses.filter((e) => e.month === FEB).length,
+    0,
+  );
+});
+
 test("a cost cannot be less than nothing, and it says so in words", async () => {
   const refused = await as(ELIZE, () =>
     saveExpenses(null, form({ workspace_id: WS, [`cell:${ADS}:${FEB}`]: -50 })),

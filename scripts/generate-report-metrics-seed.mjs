@@ -73,6 +73,15 @@ const KEY_OVERRIDES = {
   // "Costs as % of revenue" — slugifying strips the % and leaves "as_of",
   // which reads as a date.
   financials_costs_as_of_revenue: "financials_costs_as_percent_of_revenue",
+  // **The label changed on 13 November; the key did not.** "Other
+  // income" became "Revenue from clients" because that is what it is —
+  // retainer and bespoke work, which in an agency is the main revenue,
+  // not an afterthought (Dom). The key stays because four tables carry
+  // `metric_key` as a foreign key with no cascade, and renaming it would
+  // be a three-step data migration across `report_values`,
+  // `report_targets`, `report_benchmarks` and `report_launch_values` for
+  // an internal name nobody reads on a screen.
+  financials_revenue_from_clients: "financials_other_income",
 };
 
 /**

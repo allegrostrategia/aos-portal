@@ -108,6 +108,16 @@ export interface EntryFormProps {
     monthLabel: string;
     columnMaps: Record<string, "leads" | "purchases" | "ignored">;
   } | null;
+  /**
+   * No save bar, and every box saves when it is left.
+   *
+   * **Financials, from 13 November.** Three grids sit under this form,
+   * each with its own save, and one box left in the form — cash in bank.
+   * A bar across the bottom saying "nothing is saved until you press
+   * save" then reads as if it were about the grids, which it never was
+   * (Dom, reading the screen). So the box saves itself and the bar goes.
+   */
+  quietSave?: boolean;
   /** Where "Save and next" goes, or null on the last section. */
   nextHref: string | null;
   nextLabel: string | null;
@@ -167,6 +177,20 @@ export function EntryForm(props: EntryFormProps) {
 
   const set = (key: string, raw: string) =>
     setValues((current) => ({ ...current, [key]: raw }));
+
+  /**
+   * Saved when the box is left, on the screens that have no save bar.
+   *
+   * Compared against what is STORED rather than against the input's
+   * `defaultValue`: React owns the value of a controlled input and does
+   * not keep the attribute in step with it, so the DOM's idea of
+   * "unchanged" is whatever it was mounted with — which is why the first
+   * version of this never fired at all.
+   */
+  const commit = (key: string, field: HTMLInputElement) => {
+    if (fromInputValue(values[key] ?? "") === (props.initial[key] ?? null)) return;
+    field.form?.requestSubmit();
+  };
 
   // Any core field still empty keeps the section unfinished (§8.1).
   // **Core only**, although `props.core` also carries decision 28's four
@@ -253,12 +277,14 @@ export function EntryForm(props: EntryFormProps) {
                   metric={metric}
                   value={values[metric.key] ?? ""}
                   onChange={(raw) => set(metric.key, raw)}
+                  onCommit={props.quietSave ? commit : undefined}
                   previous={props.previous[metric.key] ?? null}
                   previousLabel={props.previousLabel}
                   currency={props.currency}
                 />
               ))}
             </div>
+            {props.quietSave ? <QuietSaveNote state={state} /> : null}
           </Card>
 
           {props.optional.length > 0 ? (
@@ -283,6 +309,7 @@ export function EntryForm(props: EntryFormProps) {
                       metric={metric}
                       value={values[metric.key] ?? ""}
                       onChange={(raw) => set(metric.key, raw)}
+                      onCommit={props.quietSave ? commit : undefined}
                       previous={props.previous[metric.key] ?? null}
                       previousLabel={props.previousLabel}
                       currency={props.currency}
@@ -301,7 +328,9 @@ export function EntryForm(props: EntryFormProps) {
         />
       </div>
 
-      <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
+      {props.quietSave ? null : (
+        <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
+      )}
     </form>
   );
 }
@@ -318,6 +347,7 @@ function NumberField({
   metric,
   value,
   onChange,
+  onCommit,
   previous,
   previousLabel,
   currency,
@@ -325,6 +355,8 @@ function NumberField({
   metric: ReportMetric;
   value: string;
   onChange: (raw: string) => void;
+  /** Given on the screens with no save bar: save when the box is left. */
+  onCommit?: (key: string, field: HTMLInputElement) => void;
   previous: number | null;
   previousLabel: string | null;
   currency: string;
@@ -357,6 +389,10 @@ function NumberField({
         inputMode="decimal"
         autoComplete="off"
         aria-describedby={hint ? hintId : undefined}
+        // Only when it changed, so tabbing through a screen does not
+        // write a row that says what it already said. What "changed"
+        // means is decided by the caller, against what is stored.
+        onBlur={(e) => onCommit?.(metric.key, e.currentTarget)}
         className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none transition placeholder:text-ink/40 focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
       />
       {hint ? (
@@ -386,12 +422,32 @@ function WorkedOut({
 }) {
   if (metrics.length === 0) return null;
 
+  /**
+   * **A panel taller than a screen does not stick** (Dom, 13 November:
+   * "Worked out for you is clipped — Profit, Margin, MRR and Runway are
+   * hidden").
+   *
+   * Sticking it meant capping it to the viewport with its own scroll,
+   * because a sticky element taller than the screen pins its top and
+   * leaves its bottom below the fold for ever. But that inner scrollbar
+   * is invisible on macOS until you scroll it, so on Financials — which
+   * has thirteen derived figures, 1,388px of them — five hundred pixels
+   * of the card simply were not there. Nothing said so.
+   *
+   * So: short panels stick, long ones scroll with the page. Eight
+   * figures is about 860px, which is what a 900px laptop has left after
+   * the browser's own furniture — so that is where the line is. Counted
+   * rather than measured, because measuring means an effect, a resize
+   * listener and a first paint with the wrong answer.
+   */
+  const tall = metrics.length > 8;
+
   return (
-  // Sticky only where there is a second column to sit beside; and capped
-    // to the screen with its own scroll, because a sticky element taller
-    // than the viewport sticks with its lower half permanently below the
-    // fold and no way to reach it.
-    <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:self-start lg:overflow-y-auto">
+    <aside
+      className={
+        tall ? "" : "lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:self-start lg:overflow-y-auto"
+      }
+    >
       <div className="rounded-card border border-gold/40 bg-lemon/60 p-5 shadow-soft sm:p-6">
         <h2 className="font-display text-heading font-medium text-ink">
           Worked out for you
@@ -413,6 +469,25 @@ function WorkedOut({
         </dl>
       </div>
     </aside>
+  );
+}
+
+/**
+ * What a screen with no save bar says instead.
+ *
+ * It still has to answer "did that save?", which is the whole job the
+ * bar was doing — just without implying that the button under it is what
+ * saves the three grids further down the page.
+ */
+function QuietSaveNote({ state }: { state: SaveState }) {
+  const { pending } = useFormStatus();
+  return (
+    <p
+      aria-live="polite"
+      className={`mt-4 text-small ${state?.error ? "text-deep-red" : "text-ink/65"}`}
+    >
+      {pending ? "Saving…" : (state?.error ?? state?.notice ?? "Saved as you leave each box.")}
+    </p>
   );
 }
 

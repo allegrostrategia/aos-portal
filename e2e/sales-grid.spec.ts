@@ -33,6 +33,25 @@ const sidewaysScroll = (page: Page) =>
  * What matters is an element past the edge with no clipping ancestor,
  * because that is what drags the page itself sideways.
  */
+/**
+ * Every line of "Worked out for you" is on the page.
+ *
+ * Dom, 13 November: the panel was capped to the viewport with its own
+ * scroll, and that scrollbar is invisible on macOS until you move it —
+ * so five hundred pixels of it, Profit and Runway among them, were
+ * simply not there. Asserted as "nothing is clipped" rather than "the
+ * last line is visible", because an element inside an unscrolled
+ * overflow still reports a box.
+ */
+async function expectNothingHidden(page: Page) {
+  const panel = page
+    .locator("aside")
+    .filter({ has: page.getByRole("heading", { name: "Worked out for you" }) });
+  const hidden = await panel.evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(hidden, "pixels of the panel behind its own scrollbar").toBe(0);
+  await expect(panel.getByText("Runway", { exact: true })).toBeVisible();
+}
+
 const whatOverflows = (page: Page) =>
   page.evaluate(() => {
     const limit = document.documentElement.clientWidth;
@@ -145,8 +164,9 @@ test("what came in, what you expect, and a refund", async ({ page }, info) => {
       .innerText()
   ).replace(/\s+/g, " ");
   expect(worked, "revenue from the two offer rows, the refund off it").toContain("£1,750");
-  expect(worked, "the retainer client").toContain("£400");
+  expect(worked, "the retainer client, which is revenue and not 'other'").toContain("£400");
   expect(worked, "and the month, which is what the grid totals").toContain("£2,150");
+  await expectNothingHidden(page);
 
   expect(await whatOverflows(page), "nothing sticks out sideways").toEqual([]);
   expect(await sidewaysScroll(page)).toBe(0);
@@ -311,6 +331,10 @@ test("what it cost, by category, in the four buckets", async ({ page }, info) =>
   await cost.getByRole("button", { name: /save what it cost/i }).click();
   await expect(cost.getByText(/^Saved\.$/)).toBeVisible();
 
+  // **A cost cannot run ahead of the month being entered either**, so
+  // October is a column with no input in it, as on "What came in".
+  await expect(cost.getByLabel(/^Software, October 2026$/)).toHaveCount(0);
+
   // The four buckets, which is the whole reason a category has one.
   // The heading is typeset with a real apostrophe, so it is matched by
   // shape rather than by a string with a straight one in it.
@@ -334,6 +358,32 @@ test("what it cost, by category, in the four buckets", async ({ page }, info) =>
   ).replace(/\s+/g, " ");
   expect(worked, "total costs").toContain("£1,050");
   expect(worked, "profit").toContain("£2,950");
+  await expectNothingHidden(page);
+
+  // **No save bar on this section.** Three grids with their own saves
+  // sit under the form, so a bar saying nothing is saved until you press
+  // save read as if it were about them.
+  // Cash in bank is the one box left, and it saves itself.
+  const cash = page.getByLabel(/cash in bank at month end/i);
+  await cash.fill("6500");
+  await cash.blur();
+  // The note under the box, not the grid's — which was already saying
+  // "Saved." three cards up, and made the first version of this pass
+  // while nothing had been written at all.
+  await expect(
+    page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: "Financials", exact: true }) })
+      .getByText(/Saved\./),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel(/cash in bank at month end/i)).toHaveValue("6500");
+
+  const main = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(main, "the bar is gone").not.toContain("Nothing is saved until you press save");
+  expect(main, "and so is the offer to start a list that exists").not.toContain(
+    "Start with the usual list",
+  );
 
   expect(await whatOverflows(page), "nothing sticks out sideways").toEqual([]);
   expect(await sidewaysScroll(page)).toBe(0);

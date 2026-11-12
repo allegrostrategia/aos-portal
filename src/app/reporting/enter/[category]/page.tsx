@@ -471,6 +471,11 @@ export default async function EnterCategoryPage({
           // follows a save rather than a keystroke.
           received: figures.received,
           costs: expensesThisMonth(figures.expenses.expenses, ctx.month.month),
+          // **No save bar on Financials** (Dom, 13 November). Three
+          // grids with their own saves sit under this form, and one box
+          // left in it — so a bar saying "nothing is saved until you
+          // press save" reads as if it were about the grids.
+          quietSave: category.key === "financials",
           category: category.key,
           platformId: category.key === "social_media" ? platformId : null,
           platformFills:

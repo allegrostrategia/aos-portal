@@ -217,6 +217,22 @@ export async function saveExpenses(
   }
   if (posted.length === 0) return { notice: "Nothing to save." };
 
+  /**
+   * **And it cannot run ahead of the month being entered** (Dom, 13
+   * November), the same rule money received wears. There is no cost
+   * forecast, so a figure in a month that has not happened is a guess
+   * in a grid called "what it cost".
+   */
+  const entering = String(formData.get("month") ?? "");
+  if (entering) {
+    const tooLate = posted.find((c) => c.amount !== null && c.month > entering);
+    if (tooLate) {
+      return {
+        error: "What it cost only goes up to the month you're entering.",
+      };
+    }
+  }
+
   // An expense is money out, and a negative one is a refund of a cost —
   // which is a thing, but it is not what a mistyped figure looks like,
   // and the database has refused it since 11 November. Said here in

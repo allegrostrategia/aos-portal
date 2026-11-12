@@ -401,13 +401,19 @@ seed** (`scripts/generate-report-metrics-seed.mjs` checks it both ways), so
 it says what the figures are today.
 
 **The revenue side reads the grids, from 13 November.** Revenue from
-offers is what came in on the rows called offers; Other income is what
-came in on the client rows, which in an agency is most of the money. Both
-are *pulled* — neither is typed, and the database refuses to store a
-figure for a pulled metric, so there is no box to disagree with the grid.
-Total revenue is the two added up, which is the month. MRR is the
-recurring part of the same money, read off each cell's own copy of the
-setting rather than the row's.
+offers is what came in on the rows called offers; **Revenue from
+clients** is what came in on the client rows. Both are *pulled* —
+neither is typed, and the database refuses to store a figure for a
+pulled metric, so there is no box to disagree with the grid. Total
+revenue is the two added up, which is the month. MRR is the recurring
+part of the same money, read off each cell's own copy of the setting
+rather than the row's.
+
+**It was called "Other income" until Dom read it on screen.** Retainer
+clients and bespoke work are an agency's main revenue, not an
+afterthought, and a label calling them "other" says the opposite of what
+the business is. The key stays `financials_other_income`: four tables
+carry `metric_key` as a foreign key with no cascade.
 
 **The split is the row's kind, not its offer link.** Linking a row to an
 offer is optional and plenty of clients never do it; splitting on the
@@ -428,13 +434,13 @@ what reads it. Everything else on this section is a grid.
 | Field | Type | Formula | Good |
 | --- | --- | --- | --- |
 | Revenue from offers | Pulled | Money received on offer rows | Up |
-| Other income | Pulled | Money received on client rows | Up |
+| Revenue from clients | Pulled | Money received on client rows | Up |
 | Fixed costs | Pulled | The Fixed bucket of the expense grid | Down |
 | Variable costs | Pulled | The Variable bucket of the expense grid | Down |
 | Team costs | Pulled | The Team bucket of the expense grid | Down |
 | Investment spend | Pulled | The Investment bucket of the expense grid | n/a |
 | Cash in bank at month end | Optional |  | Up |
-| Total revenue | Calc | Offers + other income | Up |
+| Total revenue | Calc | Revenue from offers + revenue from clients | Up |
 | Total costs | Calc | Fixed + variable + team + investment | Down |
 | Profit | Calc | Total revenue − total costs | Up |
 | Profit margin | Calc | Profit ÷ total revenue | Up |

@@ -78,6 +78,15 @@ export function ExpenseGrid(props: ExpenseGridProps) {
         lockedMonths={props.lockedMonths}
         locked={props.locked}
         anchor="what-it-cost"
+        /**
+         * **A cost cannot run ahead of the month being entered either**
+         * (Dom, 13 November), the same rule the Actual grid wears. There
+         * is no cost forecast for launch, so a figure in a month that
+         * has not happened is a guess sitting in a grid called "what it
+         * cost" — and nothing on the report would mark it as one.
+         */
+        ahead={(m) => m > props.month}
+        aheadLabel="to come"
         note={
           <>
             What each category cost, month by month. Type it, or paste a row of figures
@@ -195,19 +204,26 @@ function CategorySetup(props: ExpenseGridProps) {
       </form>
       ) : null}
 
+      {/* **The usual list is offered once.** Once there is a list it is
+          theirs, and a button that says "start with" beside twenty rows
+          they have already renamed is offering to start something that
+          has started (Dom, 13 November). The notice from pressing it
+          stays, because it is what says the twenty rows arrived. */}
       {showList || props.categories.length === 0 ? (
       <div className="mt-6 border-t border-ink/10 pt-5">
         <form action={defaultsAction} className="flex flex-col gap-3">
           <input type="hidden" name="workspace_id" value={props.workspaceId} />
           <div className="flex flex-wrap items-center gap-3">
-            <SubmitButton full={false}>Start with the usual list</SubmitButton>
+            {props.categories.length === 0 ? (
+              <SubmitButton full={false}>Start with the usual list</SubmitButton>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
               type="button"
               onClick={() => setShowExamples((on) => !on)}
             >
-              {showExamples ? "Hide what's in it" : "See what's in it"}
+              {showExamples ? "Hide the usual list" : "See the usual list"}
             </Button>
           </div>
           <FormMessage error={defaults?.error} notice={defaults?.notice} />

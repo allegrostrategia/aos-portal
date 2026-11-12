@@ -2875,6 +2875,43 @@ Worth knowing:
    away once it exists — twenty rows of setup was nine thousand pixels
    on a phone.
 
+### Dom's second read of the screen, same day
+
+Five more, and three of them were things only a person looking at it
+would catch:
+
+1. **"Other income" is "Revenue from clients."** Retainer clients are an
+   agency's main revenue, not an afterthought. The key stays
+   `financials_other_income` — four tables carry `metric_key` as a
+   foreign key with no cascade — and
+   `scripts/generate-report-metrics-seed.mjs` holds the override that
+   keeps the brief's label pointing at it.
+2. **"Worked out for you" was hiding five hundred pixels of itself.**
+   Sticking the panel meant capping it to the viewport with its own
+   scroll, and that scrollbar is invisible on macOS until you move it —
+   so on Financials, which has thirteen derived figures and 1,388px of
+   them, Profit, Margin, MRR and Runway were simply not there. **Short
+   panels stick, long ones scroll with the page** (`metrics.length > 8`,
+   which is about 860px — what a 900px laptop has after its furniture).
+   The browser test asserts `scrollHeight === clientHeight`.
+3. **No save bar on Financials.** Three grids with their own saves sit
+   under that form and one box is left in it, so a bar saying "nothing
+   is saved until you press save" read as if it were about the grids.
+   Cash in bank saves when the box is left. **The first version never
+   fired**: it compared the input's `defaultValue` with its value, and
+   React owns the value of a controlled input without keeping the
+   attribute in step. It compares against what is stored now.
+4. **Costs cannot run ahead of the month being entered either.** There
+   is no cost forecast, so a figure in a month that has not happened is
+   a guess in a grid called "what it cost".
+5. "Start with the usual list" is gone once there is a list.
+
+**Live, as of this change:** `20261113140000` and `20261113160000` are
+applied, with history rows, read back and diffed against the seed — 14
+of 14 financials metrics identical. **`20261113180000_revenue_from_clients.sql`
+is NOT applied**: the sandbox refused the write. Live still reads "Other
+income" on that one label until it is run.
+
 **Still to build:** the staff/hours grid, the rebuilt Financials report
 page, the bespoke donut slice, the whole-report PDF and the Financials
 CSV. Nina lifted the brief's no-export rule for that CSV alone.
