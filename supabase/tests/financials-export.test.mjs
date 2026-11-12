@@ -1,10 +1,12 @@
 /**
  * The one export in the product (§11), and who may have it.
  *
- * The rule §11 states — clients view their data as a designed report,
- * nothing exports — is about what a client is handed. Nina's exception
- * of 11 November is for the person doing the books, so the route
- * refuses a retainer client the way the entry screens do.
+ * **Anyone who can open the workspace can have it** (Nina, 13 November:
+ * "it'd be good for them to be able to export that as a CSV"). It is
+ * their own money. What keeps the month rule is RLS and nothing else —
+ * the file is built through the reader's own session, so a client's
+ * copy holds their published months and a draft one is simply not in
+ * the rows.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -92,10 +94,24 @@ test("a year of figures, as the grids are drawn", async () => {
 });
 
 test("a client's own session puts nothing in it that is not theirs to read", async () => {
-  // January is a draft, so RLS hands the client no rows at all — and the
-  // file is the same walk the screen is, so it comes out empty rather
-  // than full. The route refuses them anyway; this is the other half.
+  // January is a draft, so RLS hands the client no rows at all. The
+  // file is the same walk the screen is, which is the whole reason
+  // there is no second filter in the route: a second one could
+  // disagree with this one.
   const csv = await csvFor(CLIENT);
   assert.doesNotMatch(csv, /Bella Ltd/);
   assert.doesNotMatch(csv, /2000/);
+});
+
+test("and once the month is published it is theirs, figures and all", async () => {
+  await asMember(db, NINA, () =>
+    db.query(
+      `update public.report_periods set published_at = now(), published_by = '${NINA}'
+        where workspace_id = '${WS}' and month = '${JAN}'`,
+    ),
+  );
+
+  const csv = await csvFor(CLIENT);
+  assert.match(csv, /Bella Ltd,Client,No,2000/, "the same row Nina's copy has");
+  assert.match(csv, /^January,2000,/m);
 });

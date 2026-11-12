@@ -381,6 +381,9 @@ test("what it cost, by category, in the four buckets", async ({ page }, info) =>
 
   const main = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   expect(main, "the bar is gone").not.toContain("Nothing is saved until you press save");
+  // **And the way on went with it**, so it is back as a bare link: the
+  // tab row was the only way forward from the longest screen in the tool.
+  await expect(page.getByRole("link", { name: /next: launches/i })).toBeVisible();
   expect(main, "and so is the offer to start a list that exists").not.toContain(
     "Start with the usual list",
   );
@@ -495,4 +498,75 @@ test("the year downloads as a CSV of the three grids", async ({ page }) => {
   expect(text).toContain("The totals");
   expect(text, "the row, with its September figure").toContain("Bella Ltd,Client,No,");
   expect(text).toContain("2000");
+});
+
+
+/**
+ * The client's own copy of it (Nina, 13 November: "it'd be good for
+ * them to be able to export that as a CSV").
+ *
+ * **The month rule is the report's, and RLS keeps it.** A retainer
+ * client gets their published months; a draft one is simply not in the
+ * rows, the same walk the screens make. Asserted with a draft month
+ * that holds a figure nobody should see, because a filter that is never
+ * tested against real draft data is a filter nobody knows works.
+ */
+test("a client downloads their published months, and no draft ones", async ({ page }) => {
+  const { MONTHS } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+
+  // September: money in, then published.
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
+  const setup = card(page, "Your rows");
+  await setup.getByLabel("Name").fill("Bella Ltd");
+  await setup.getByLabel("What it is").selectOption("client");
+  await setup.getByRole("button", { name: /add the row/i }).click();
+  await expect(page.getByText(/Bella Ltd added/i)).toBeVisible();
+
+  const came = card(page, "What came in");
+  await came.getByLabel(/^Bella Ltd, September 2026$/).fill("2000");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
+
+  await page.goto(`/reporting?month=${MONTHS.sep}`);
+  await page.getByRole("button", { name: /publish this month/i }).click();
+  await expect(page.getByText(/^Published$/).first()).toBeVisible();
+
+  // October: a draft, with a figure that must not leave the building.
+  await page.goto(`/reporting/enter/financials?month=${MONTHS.oct}`);
+  const october = card(page, "What came in");
+  await october.getByLabel(/^Bella Ltd, October 2026$/).fill("7777");
+  await october.getByRole("button", { name: /save what came in/i }).click();
+  await expect(october.getByText(/^Saved\.$/)).toBeVisible();
+
+  const csvFrom = async (where: string) => {
+    await page.goto(where);
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("link", { name: /download 2026 as a csv/i }).click(),
+    ]);
+    const file = await download.createReadStream();
+    return new Promise<string>((resolve, reject) => {
+      let out = "";
+      file!.on("data", (chunk) => (out += chunk));
+      file!.on("end", () => resolve(out));
+      file!.on("error", reject);
+    });
+  };
+
+  // **The positive control.** Nina's own copy has both figures in it, so
+  // what the client's copy is missing is missing because of who is
+  // asking — not because nobody saved it.
+  const hers = await csvFrom(`/reporting/financials?month=${MONTHS.sep}`);
+  expect(hers, "the published month").toContain("2000");
+  expect(hers, "and the draft one, which is hers to see").toContain("7777");
+
+  // --- and now the client -------------------------------------------------
+  await signIn(page, "client");
+  const theirs = await csvFrom("/reporting/financials");
+
+  expect(theirs, "their own published month").toContain("2000");
+  expect(theirs, "and not a figure from a month they have not been shown").not.toContain(
+    "7777",
+  );
 });

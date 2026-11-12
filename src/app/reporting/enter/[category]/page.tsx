@@ -20,7 +20,11 @@ import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
 import { unpublishWarning } from "@/lib/reporting/unpublish-warning";
 import { getPublishedMonths } from "@/lib/reporting/queries";
-import { ENTRY_CATEGORIES, categoryBySlug } from "@/lib/reporting/categories";
+import {
+  ENTRY_CATEGORIES,
+  SHIPPED_CATEGORIES,
+  categoryBySlug,
+} from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { monthLabel } from "@/lib/reporting/months";
 import {
@@ -419,6 +423,11 @@ export default async function EnterCategoryPage({
 
   const position = order.findIndex((c) => c.key === category.key);
   const next = position >= 0 ? order[position + 1] : undefined;
+  // The section after the last of those, when this client has it.
+  const launchesNext =
+    !next &&
+    SHIPPED_CATEGORIES.some((c) => c.key === "launches") &&
+    !ctx.workspace.hidden_categories.includes("launches");
 
   return (
     <ReportShell
@@ -493,10 +502,25 @@ export default async function EnterCategoryPage({
           calculated,
           initial,
           previous,
-          nextHref: next ? reportHref(`/reporting/enter/${next.slug}`, ctx) : null,
+          /**
+           * **And after the last entry section, Launches** (Dom, 13
+           * November). Financials is the end of the tab order, so
+           * "next" was nothing at all — which on the one screen with no
+           * save bar left the tab row as the only way forward. Launches
+           * has its own screens rather than a month of fields, which is
+           * why it is not in that order and has to be named here.
+           */
+          nextHref: next
+            ? reportHref(`/reporting/enter/${next.slug}`, ctx)
+            : launchesNext
+              ? reportHref("/reporting/launches", ctx)
+              : null,
           // "Save & Email" reads as emailing the report rather than moving
           // to the Email section. The mockup's own wording avoids that.
           nextLabel: next ? "Save & next section" : null,
+          // The section's own name, for the screens with no save bar —
+          // there the link is the only thing saying where "next" goes.
+          nextName: next?.label ?? (launchesNext ? "Launches" : null),
         };
 
         // Social Media's two forms are rendered together, because one

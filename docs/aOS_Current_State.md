@@ -3030,10 +3030,16 @@ profit per month. What she does with it is paste it beside her own
 spreadsheet, and a tidy long format would need a pivot before it meant
 anything.
 
-- **Editors only.** §11's rule is about what a client is handed; the
-  exception is for the person doing the books. A retainer client gets a
-  403, and reading through their own session would hand them an empty
-  file anyway.
+- **Clients can download it too** (Nina, 13 November: "it'd be good for
+  them to be able to export that as a CSV"). It is their own money. The
+  link is on the Financials report as well as the entry screen, and
+  **RLS is the only thing keeping the month rule** — the file is built
+  through the reader's own session, so a client's copy holds their
+  published months and a draft one is not in the rows. There is no
+  second filter in the route on purpose: a second one could disagree.
+  The browser test has a positive control, Nina's own copy with the
+  draft figure in it, so what the client's copy is missing is missing
+  because of who asked.
 - **Quoting is not optional**: a row is named by the client, and "Bella
   Ltd, trading as "Crane"" is a name somebody will type. Unquoted it
   silently becomes two columns.

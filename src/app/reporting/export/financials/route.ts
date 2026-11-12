@@ -6,14 +6,16 @@ import { resolveReportContext } from "@/lib/reporting/context";
 /**
  * The one export in the product (§11), as a file.
  *
- * **Editors only.** The rule §11 states — clients view their data as a
- * designed report, nothing exports — is about what a client is handed,
- * and the exception Nina made on 11 November is for the person doing
- * the books. A retainer client reaching this gets the same 403 the
- * entry screens give them, not a file.
+ * **Anyone who can open the workspace can have it** (Nina, through Dom,
+ * 13 November: "it'd be good for them to be able to export that as a
+ * CSV"). It is their own money; §11's rule was about the tool not being
+ * a data source, and this is the one thing it was lifted for.
  *
- * Reads through the member's own session, so RLS decides what is in it
- * exactly as it decides what is on the screens.
+ * **The month rule is the report's, and it is RLS's to keep.** Every
+ * read here goes through the member's own session, so a retainer client
+ * gets their published months and a draft one is simply not in the
+ * rows — the same walk the screens make, with the same answer. There is
+ * no second filter here on purpose: a second one could disagree.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -21,10 +23,6 @@ export async function GET(request: Request) {
     workspace: url.searchParams.get("workspace") ?? undefined,
     month: url.searchParams.get("month") ?? undefined,
   });
-
-  if (!ctx.canEdit) {
-    return new Response("Your report is filled in by your Allegro team.", { status: 403 });
-  }
 
   const [ledger, expenses] = await Promise.all([
     getSalesLedger(ctx.workspace.id),

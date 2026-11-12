@@ -121,6 +121,8 @@ export interface EntryFormProps {
   /** Where "Save and next" goes, or null on the last section. */
   nextHref: string | null;
   nextLabel: string | null;
+  /** The next section's own name, for a screen with no save bar. */
+  nextName?: string | null;
 }
 
 export function EntryForm(props: EntryFormProps) {
@@ -328,7 +330,21 @@ export function EntryForm(props: EntryFormProps) {
         />
       </div>
 
-      {props.quietSave ? null : (
+      {props.quietSave ? (
+        /* **A bare link where the save bar was** (Dom, 13 November).
+           The bar carried the way on to the next section as well as its
+           buttons, and taking it off Financials took that with it — so
+           the tab row was the only way forward from the longest screen
+           in the tool. */
+        props.nextHref ? (
+          <p className="text-small">
+            <a
+              href={props.nextHref}
+              className="text-ink underline underline-offset-2"
+            >{`Next: ${props.nextName ?? "next section"} →`}</a>
+          </p>
+        ) : null
+      ) : (
         <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
       )}
     </form>
