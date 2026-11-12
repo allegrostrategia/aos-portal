@@ -2912,8 +2912,37 @@ of 14 financials metrics identical. **`20261113180000_revenue_from_clients.sql`
 is NOT applied**: the sandbox refused the write. Live still reads "Other
 income" on that one label until it is run.
 
-**Still to build:** the staff/hours grid, the rebuilt Financials report
-page, the bespoke donut slice, the whole-report PDF and the Financials
-CSV. Nina lifted the brief's no-export rule for that CSV alone.
+## The Financials report page — 13 November 2026
+
+It was already reading the grids; what it was not doing was showing the
+forecast at all, and it headlined the wrong six figures.
+
+- **`financials_money_expected`** is a new pulled metric: the forecast
+  grid's total for the month. So what somebody typed into that grid
+  reaches the report — a card beside Revenue, a series on the year
+  chart, and a row in the history every other figure already has.
+  (`20261113200000_money_expected.sql`.)
+- **`HEADLINE_METRICS`** in `trends.ts` names Financials' six cards:
+  revenue, expected, costs, profit, margin, MRR. Every other category
+  keeps the general rule — the first six figures the month has, in the
+  metric list's order — which on Financials gave the two revenue halves
+  and three cost buckets, leaving Profit in the overflow panel under a
+  donut already drawing those buckets.
+- **Two twelve-month bar charts**: came in against expected, and revenue
+  against costs.
+- **"Still expected this year"** is the first and only screen that reads
+  `Carried.forecastAhead`. Until it existed the freeze was a snapshot
+  nothing looked at — and the browser test that proves it holds is the
+  one that would have caught that.
+
+**Three migrations are written and NOT applied to live**, all of them
+`report_metrics` rows: `20261113180000_revenue_from_clients.sql`,
+`20261113200000_money_expected.sql`, and the regenerated seed they both
+match. The sandbox refused the write; `20261113140000` and
+`20261113160000` are applied, with history rows, read back and diffed.
+
+**Still to build:** the staff/hours grid, the bespoke donut slice, the
+whole-report PDF and the Financials CSV. Nina lifted the brief's
+no-export rule for that CSV alone.
 
 **To pick this up fresh: `CLAUDE.md` + this file, nothing else needed.** For reporting work also read `docs/reporting/reporting-tool-brief.md`; its §13 is the instruction set for that feature and it is specific.

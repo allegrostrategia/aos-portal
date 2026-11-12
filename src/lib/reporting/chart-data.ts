@@ -1,4 +1,6 @@
 import { formatValue } from "./format.ts";
+import { forecastAfter } from "./ledger.ts";
+import { monthLabel } from "./months.ts";
 import { offerResults } from "./calculate.ts";
 import type { MonthFigures } from "./month-figures.ts";
 import type { BarDatum } from "@/components/reporting/charts/bar-chart";
@@ -126,6 +128,37 @@ const COST_LINES = [
  * ones are dropped: a month with no team costs must not turn Variable into
  * the colour Team had last month.
  */
+/**
+ * What the rest of the year is forecast at, month by month.
+ *
+ * **Frozen on a published month** (`Carried.forecastAhead`). It is the
+ * only forward-looking figure on the report, so live it would move a
+ * published September every time somebody revised November — and
+ * reading it live would mean a client's RLS had to hand them months
+ * they have not been shown. Absent is not empty: a month published
+ * before 13 November has no key at all and falls back to the live read,
+ * which is what it did before the freeze existed.
+ *
+ * Months with no forecast at all are left out rather than drawn as
+ * zero: nobody said that month would earn nothing.
+ */
+export function forecastAhead(
+  figures: MonthFigures,
+  month: string,
+  currency: string,
+): BarDatum[] {
+  const ahead =
+    figures.carried?.forecastAhead ?? forecastAfter(figures.ledger.forecasts, month);
+
+  return ahead
+    .filter((row) => row.amount !== 0)
+    .map((row) => ({
+      label: monthLabel(row.month).split(" ")[0],
+      value: row.amount,
+      display: formatValue(row.amount, "currency", currency),
+    }));
+}
+
 export function costBreakdown(figures: MonthFigures, currency: string): Slice[] {
   return COST_LINES.map(({ key, label }, index) => {
     const value = figures.figure(key);

@@ -383,6 +383,30 @@ Offers screen.
 Nothing here records Allegro's hours or Allegro's work, which §1's rule is
 about.
 
+#### The report page
+
+Six cards, named rather than taken in metric order (`HEADLINE_METRICS`):
+**Total revenue, Money expected, Total costs, Profit, Profit margin,
+MRR** — what a P&L is read for. The order in the metric list put the two
+revenue halves and three cost buckets there instead, which left Profit
+and the margin in the overflow panel under a donut already drawing those
+buckets.
+
+Two charts, both twelve months of bars: **what came in against what you
+expected**, and **revenue against costs** (the gap between them is the
+profit). Bars rather than lines because these are discrete months being
+compared, and side by side rather than stacked because neither series is
+a part of the other.
+
+**"Still expected this year"** is the months after this one, from the
+forecast grid — the only forward-looking figure on the report, and the
+only place `Carried.forecastAhead` is read. On a published month it is
+what that month went out with, so revising December cannot rewrite a
+September a client has already read. A month nobody forecast is left
+out rather than drawn as zero.
+
+"Where the money went" is the four buckets as a donut, as before.
+
 #### Baseline
 
 **Baseline waits for twelve months of data** (Nina, 11 November): her
@@ -431,6 +455,16 @@ month's composition.
 Financials screen. It is not a cost and it is not money in; Runway is
 what reads it. Everything else on this section is a grid.
 
+**Money expected is the forecast grid's total for the month**, so what
+was typed in it reaches the report rather than sitting on the entry
+screen. It is beside Revenue on the card row — "the headline is actual
+money received, with the forecast for the month beside it" (Nina, 13
+November) — and the two are charted against each other across the year.
+
+It is last in the table because it was added last, and the sort order is
+what the entry screen and the overflow panel read; which figures are
+cards is `HEADLINE_METRICS` in `trends.ts`, decided per category.
+
 | Field | Type | Formula | Good |
 | --- | --- | --- | --- |
 | Revenue from offers | Pulled | Money received on offer rows | Up |
@@ -447,6 +481,7 @@ what reads it. Everything else on this section is a grid.
 | Monthly recurring revenue | Calc | Money received this month on cells that recur | Up |
 | Costs as % of revenue | Calc | Total costs ÷ total revenue | Down |
 | Runway | Calc | Cash in bank ÷ average monthly costs (last 3 months) | Up |
+| Money expected | Pulled | The forecast grid's total for this month | Up |
 
 **Where it is going:** Revenue reads the month's actual money received,
 with the forecast for that month beside it on Overview (Nina, 13

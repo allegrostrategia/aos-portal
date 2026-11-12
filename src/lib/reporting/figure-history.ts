@@ -11,6 +11,7 @@ import type { ReportEntity, ReportMetric } from "./queries.ts";
 import { choosePlatform } from "./platforms.ts";
 import {
   expensesThisMonth,
+  forecastIn,
   receivedThisMonth,
   type ActualCell,
   type ExpenseBucket,
@@ -260,6 +261,7 @@ export async function getFigureHistory({
     salesRowResult,
     actualResult,
     expenseResult,
+    forecastResult,
   ] = await Promise.all([
     supabase
       .from("report_values")
@@ -330,6 +332,17 @@ export async function getFigureHistory({
           .lte("month", to)
           .returns<ExpenseRecord[]>()
       : Promise.resolve({ data: [] as ExpenseRecord[] }),
+    needsGrid
+      ? supabase
+          .from("report_forecasts")
+          .select("sales_row_id, month, amount")
+          .eq("workspace_id", workspaceId)
+          .gte("month", from)
+          .lte("month", to)
+          .returns<{ sales_row_id: string; month: string; amount: number | string }[]>()
+      : Promise.resolve({
+          data: [] as { sales_row_id: string; month: string; amount: number | string }[],
+        }),
     ]);
 
   const rows = [...(valueResult.data ?? []), ...(perRowResult.data ?? [])];
@@ -358,6 +371,12 @@ export async function getFigureHistory({
     amount: typeof e.amount === "number" ? e.amount : Number(e.amount) || 0,
   }));
   const costsFor = (month: string): ExpenseRow[] => expensesThisMonth(expenseRows, month);
+
+  const forecastCells = (forecastResult.data ?? []).map((c) => ({
+    salesRowId: c.sales_row_id,
+    month: String(c.month).slice(0, 10),
+    amount: typeof c.amount === "number" ? c.amount : Number(c.amount) || 0,
+  }));
 
   // One bag per month, including the extra month at the front, so a
   // formula defined against "last month" has one to read.
@@ -453,6 +472,7 @@ export async function getFigureHistory({
           adCampaigns,
           received: receivedFor(month),
           costs: costsFor(month),
+          expected: forecastIn(forecastCells, month),
         }),
       );
     }

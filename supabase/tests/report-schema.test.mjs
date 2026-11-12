@@ -94,8 +94,11 @@ await check("no calc metric is missing its formula", async () =>
 // exists because "active clients at start" is pulled and so can never be
 // typed); 176 from 6 Oct (§5.5's captured funnel price, so a price rise
 // cannot rewrite a month the client has read).
+// 175 from the brief's own tables plus section 6's launch keys. The
+// count is the point: a metric that silently fails to seed is a field
+// that never appears on a screen.
 await check("anyone signed in reads the metric list", async () =>
-  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 176);
+  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 177);
 
 await rejects("a client cannot add a metric", () =>
   as(MEMBER, () => db.query(`

@@ -125,6 +125,66 @@ export const TREND_CHARTS: Partial<Record<CategoryKey, TrendChartSpec[]>> = {
         "Two months of save and share rates are needed before there is a trend to draw.",
     },
   ],
+  financials: [
+    {
+      id: "came-in-vs-expected",
+      title: "What came in, against what you expected",
+      icon: "revenue",
+      tone: "gold",
+      months: 12,
+      // **Bars, and side by side.** Two discrete figures being compared
+      // month by month, and what was expected is not a part of what came
+      // in — stacking them would add two numbers that sum to nothing.
+      kind: "bars",
+      unit: "currency",
+      series: [
+        { metricKey: "financials_total_revenue", label: "Came in" },
+        { metricKey: "financials_money_expected", label: "Expected" },
+      ],
+      caption:
+        "The last twelve months. A month nobody typed into is a gap, not a zero — and a month with a forecast and no money yet shows one bar.",
+      emptyMessage:
+        "Two months of figures are needed before there is a comparison to draw.",
+    },
+    {
+      id: "revenue-vs-costs",
+      title: "Revenue and costs",
+      icon: "calculator",
+      tone: "blush",
+      months: 12,
+      kind: "bars",
+      unit: "currency",
+      series: [
+        { metricKey: "financials_total_revenue", label: "Revenue" },
+        { metricKey: "financials_total_costs", label: "Costs" },
+      ],
+      caption: "The last twelve months. The gap between the two is the profit.",
+      emptyMessage: "Two months of figures are needed before there is a comparison to draw.",
+    },
+  ],
+};
+
+/**
+ * Which figures are cards at the top of a category's report.
+ *
+ * **Financials only, and by name.** Everywhere else the rule — the first
+ * six figures this month has, in the metric list's own order — gives the
+ * right six. On Financials it gave Revenue from offers, Revenue from
+ * clients and the three cost buckets, so Profit and the margin, which are
+ * what a P&L is read for, sat in the overflow panel underneath a donut
+ * already showing the buckets (13 November).
+ *
+ * A category not named here keeps the general rule.
+ */
+export const HEADLINE_METRICS: Partial<Record<CategoryKey, string[]>> = {
+  financials: [
+    "financials_total_revenue",
+    "financials_money_expected",
+    "financials_total_costs",
+    "financials_profit",
+    "financials_profit_margin",
+    "financials_monthly_recurring_revenue",
+  ],
 };
 
 /** Every metric key a category's charts need, with no duplicates. */

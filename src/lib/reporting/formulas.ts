@@ -939,6 +939,9 @@ export const PULLED_COVERAGE: Record<string, string> = {
   financials_variable_costs: "ledger.bucketTotals",
   financials_team_costs: "ledger.bucketTotals",
   financials_investment_spend: "ledger.bucketTotals",
+  // The forecast grid's total for the month, so what was typed into it
+  // reaches the report rather than sitting on the entry screen.
+  financials_money_expected: "ledger.forecastIn",
 };
 
 /**

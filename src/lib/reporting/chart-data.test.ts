@@ -5,6 +5,7 @@ import { offers } from "./formulas.ts";
 import { calculateOffer } from "./calculate.ts";
 import {
   costBreakdown,
+  forecastAhead,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -250,4 +251,71 @@ test("the margin the offer card rings is a 0-100 number", () => {
   const margin = calculateOffer(OFFERS[0], offers.totalRevenue(OFFERS)).offers_margin;
   assert.ok(margin !== null && margin > 1, "a proportion would be 0.57, not 57");
   assert.equal(Math.round(margin * 100) / 100, 56.67);
+});
+
+
+/**
+ * What the rest of the year is forecast at, and where that comes from.
+ *
+ * The one place the published freeze is read. Absent is not empty: a
+ * month published before 13 November has no `forecastAhead` key at all
+ * and must fall back to the live forecast rather than draw nothing.
+ */
+const FORECASTS = [
+  { salesRowId: "r1", month: "2026-09-01", amount: 1200 },
+  { salesRowId: "r1", month: "2026-10-01", amount: 1200 },
+  { salesRowId: "r2", month: "2026-10-01", amount: 300 },
+  { salesRowId: "r1", month: "2026-11-01", amount: 1200 },
+];
+
+const withForecast = (
+  forecasts: typeof FORECASTS,
+  carried?: { forecastAhead?: { month: string; amount: number }[] },
+): MonthFigures =>
+  ({
+    ledger: { rows: [], actuals: [], forecasts },
+    carried: carried ?? null,
+  }) as unknown as MonthFigures;
+
+test("the months after this one, summed, and never this one", () => {
+  const bars = forecastAhead(withForecast(FORECASTS), "2026-09-01", "GBP");
+  assert.deepEqual(
+    bars.map((b) => [b.label, b.value, b.display]),
+    [
+      ["October", 1500, "£1,500"],
+      ["November", 1200, "£1,200"],
+    ],
+    "September is the month being reported on, not a month still to come",
+  );
+});
+
+test("a published month draws what it was published with", () => {
+  // The forecast has since been revised to £9,000; the frozen snapshot
+  // is what the client read and is what the report goes on showing.
+  const bars = forecastAhead(
+    withForecast([...FORECASTS, { salesRowId: "r3", month: "2026-12-01", amount: 9000 }], {
+      forecastAhead: [
+        { month: "2026-10-01", amount: 1500 },
+        { month: "2026-11-01", amount: 1200 },
+      ],
+    }),
+    "2026-09-01",
+    "GBP",
+  );
+  assert.deepEqual(bars.map((b) => b.value), [1500, 1200], "not 9,000 of December");
+});
+
+test("a snapshot written before the freeze reads the live forecast", () => {
+  // Absent, not empty — `carried` with no `forecastAhead` key at all.
+  const bars = forecastAhead(withForecast(FORECASTS, {}), "2026-09-01", "GBP");
+  assert.deepEqual(bars.map((b) => b.value), [1500, 1200]);
+});
+
+test("a month nobody forecast is left out rather than drawn as nothing", () => {
+  const bars = forecastAhead(
+    withForecast([{ salesRowId: "r1", month: "2026-12-01", amount: 0 }]),
+    "2026-09-01",
+    "GBP",
+  );
+  assert.deepEqual(bars, [], "a zero is not a forecast of nothing");
 });

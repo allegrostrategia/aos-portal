@@ -7,7 +7,7 @@
 -- schema test runs the generator with --check, so a hand edit here fails the
 -- build rather than quietly disagreeing with the spec.
 --
--- 174 metrics across 10 categories.
+-- 175 metrics across 10 categories.
 
 insert into public.report_metrics
   (key, category, label, input_type, unit, good_direction, entity_type, formula, sort_order)
@@ -128,6 +128,7 @@ values
   ('financials_monthly_recurring_revenue', 'financials', 'Monthly recurring revenue', 'calc', 'currency', 'up', null, 'Money received this month on cells that recur', 12),
   ('financials_costs_as_percent_of_revenue', 'financials', 'Costs as % of revenue', 'calc', 'percent', 'down', null, 'Total costs ÷ total revenue', 13),
   ('financials_runway', 'financials', 'Runway', 'calc', 'months', 'up', null, 'Cash in bank ÷ average monthly costs (last 3 months)', 14),
+  ('financials_money_expected', 'financials', 'Money expected', 'pulled', 'currency', 'up', null, 'The forecast grid''s total for this month', 15),
   ('social_media_reach_from_followers', 'social_media', 'Reach from followers', 'optional', 'count', 'up', 'social_platform', null, 20),
   ('social_media_reach_from_non_followers', 'social_media', 'Reach from non-followers', 'optional', 'count', 'up', 'social_platform', null, 21),
   ('social_media_non_follower_reach', 'social_media', 'Non-follower reach %', 'calc', 'percent', 'up', 'social_platform', 'Reach from non-followers ÷ (reach from followers + reach from non-followers)', 22),

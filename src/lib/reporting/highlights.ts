@@ -248,6 +248,9 @@ export const PULLED_FROM_NOTHING = new Set([
   "financials_variable_costs",
   "financials_team_costs",
   "financials_investment_spend",
+  // And the forecast, which is its own figure and not a copy of the
+  // revenue it sits beside.
+  "financials_money_expected",
 ]);
 
 export interface HighlightInput {

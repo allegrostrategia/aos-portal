@@ -99,6 +99,9 @@ const UNIT_OVERRIDES = {
   email_net_list_growth: "count",
   // "Profit margin" trips the currency words before the percent ones.
   financials_profit_margin: "percent",
+  // "Money expected" has no word in it that says what kind of number it
+  // is, and it is the forecast grid's total — pounds.
+  financials_money_expected: "currency",
   social_media_engagement_rate: "percent",
   social_media_save_rate: "percent",
   social_media_share_rate: "percent",

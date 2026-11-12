@@ -91,6 +91,14 @@ export interface CalcInput {
    * grid, and a box beside it is the same money asked for twice.
    */
   costs?: ExpenseRow[];
+  /**
+   * What the forecast grid says for this month (§5.10).
+   *
+   * Already summed, the way `received` is already flattened: a figure
+   * rather than a grid, because the only thing the report asks of it is
+   * the total beside what actually came in.
+   */
+  expected?: Figure;
 }
 
 export type CalcResults = Record<string, Result>;
@@ -363,6 +371,9 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
         financials_team_costs: month.teamCosts,
         financials_investment_spend: month.investmentSpend,
         financials_monthly_recurring_revenue: recurringTotal(received),
+        // Null and 0 are different answers: nobody forecast this month
+        // is a dash, a forecast of nothing is £0.
+        financials_money_expected: input.expected ?? null,
         financials_total_revenue: financials.totalRevenue(month),
         financials_total_costs: financials.totalCosts(month),
         financials_profit: financials.profit(month),

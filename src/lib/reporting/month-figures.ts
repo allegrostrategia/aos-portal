@@ -17,7 +17,13 @@ import {
   type ReportMetric,
 } from "./queries.ts";
 import { readCarried, type Carried } from "./carried.ts";
-import { expensesThisMonth, receivedThisMonth, type ExpenseRow, type Received } from "./ledger.ts";
+import {
+  expensesThisMonth,
+  forecastIn,
+  receivedThisMonth,
+  type ExpenseRow,
+  type Received,
+} from "./ledger.ts";
 import { getSalesLedger, type SalesLedger } from "./sales-queries.ts";
 import { getExpenseLedger, type ExpenseLedger } from "./expense-queries.ts";
 import { monthIsLocked } from "./locked.ts";
@@ -360,6 +366,14 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   // The four cost totals, and last month's for the arrows beside them.
   // Frozen the same way, for the same reason: Profit's "up from" is
   // arithmetic over a month that may still be a draft.
+  // What the forecast says for this month, and for the month before it.
+  // Read live on both: a forecast cell for a published month is held
+  // still by the same lock every other figure in it wears.
+  const expected = forecastIn(ledger.forecasts, ctx.month.month);
+  const previousExpected = ctx.month.previous
+    ? forecastIn(ledger.forecasts, ctx.month.previous)
+    : null;
+
   const costs: ExpenseRow[] = expensesThisMonth(expenses.expenses, ctx.month.month);
   const previousCosts =
     carried?.previousCosts ??
@@ -394,6 +408,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         clientsAtStart,
         received,
         costs,
+        expected,
       }),
     );
     Object.assign(
@@ -406,6 +421,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         clientsAtStart: previousClientsAtStart,
         received: previousReceived,
         costs: previousCosts,
+        expected: previousExpected,
       }),
     );
   }

@@ -32,13 +32,19 @@ import { GroupedBarChart } from "@/components/reporting/charts/grouped-bar-chart
 import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { metricIcon } from "@/lib/reporting/metric-icons";
 import { TrendPanel } from "@/components/reporting/trend-panel";
-import { TREND_CHARTS, trendMetricKeys, trendMonthsNeeded } from "@/lib/reporting/trends";
+import {
+  HEADLINE_METRICS,
+  TREND_CHARTS,
+  trendMetricKeys,
+  trendMonthsNeeded,
+} from "@/lib/reporting/trends";
 import { ads as adsFormulas, monthOnMonthChange } from "@/lib/reporting/formulas";
 import { GOAL_LABELS } from "@/components/reporting/campaigns-entry";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import {
   costBreakdown,
+  forecastAhead,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -92,7 +98,23 @@ export default async function CategoryReportPage({
   const previousLabel = comparedWith ? monthLabel(comparedWith).split(" ")[0] : null;
 
   const metrics = figures.metrics.filter((m) => m.category === category.key);
-  const headline = metrics
+  /**
+   * **Named, where a category says which six** (13 November). The rule
+   * below gives the right six everywhere else; on Financials it gave
+   * two revenue halves and three cost buckets, leaving Profit and the
+   * margin in the overflow panel under a donut already drawing those
+   * buckets.
+   */
+  const named = HEADLINE_METRICS[category.key];
+  const headline = named
+    ? named
+        .map((key) => metrics.find((m) => m.key === key))
+        .filter((m): m is NonNullable<typeof m> => !!m)
+        // A figure nobody has entered is still not a card: the same
+        // rule the general one applies, so an empty month stays empty
+        // rather than showing six dashes.
+        .filter((m) => figures.figure(m.key) !== null)
+    : metrics
     // **A pulled figure is a headline like any other** (Nina, 3 November:
     // "New leads from ads" on Leads & Conversions). It already existed and
     // was already computed — Ads' campaign totals feed it — and the only
@@ -104,9 +126,9 @@ export default async function CategoryReportPage({
     // cards too and should have been all along; the fourth,
     // "Active clients at start", is unimplemented and so always null,
     // which the next line drops.
-    .filter((m) => ["core", "calc", "pulled"].includes(m.input_type))
-    .filter((m) => figures.figure(m.key) !== null)
-    .slice(0, 6);
+        .filter((m) => ["core", "calc", "pulled"].includes(m.input_type))
+        .filter((m) => figures.figure(m.key) !== null)
+        .slice(0, 6);
   const rest = metrics.filter(
     (m) => !headline.includes(m) && figures.figure(m.key) !== null,
   );
@@ -500,6 +522,37 @@ export default async function CategoryReportPage({
           {topItems ? (
             <TopItemsReport thisMonth={topItems.thisMonth} history={topItems.history} />
           ) : null}
+
+          {category.key === "financials"
+            ? (() => {
+                // **What the rest of the year is forecast at** — the one
+                // place `Carried.forecastAhead` is read, and the only
+                // forward-looking figure on the report. Nothing is
+                // generated: a month is on this list because somebody
+                // typed a figure into the forecast grid for it.
+                const ahead = forecastAhead(figures, ctx.month.month, ctx.workspace.currency);
+                if (ahead.length === 0) return null;
+                const total = ahead.reduce((t, row) => t + (row.value ?? 0), 0);
+                return (
+                  <Card className="mt-6">
+                    <SectionTitle
+                      icon={<IconCircle name="revenue" tone="sky" />}
+                      aside={formatValue(total, "currency", ctx.workspace.currency)}
+                    >
+                      Still expected this year
+                    </SectionTitle>
+                    <BarChart
+                      data={ahead}
+                      caption={
+                        figures.carried
+                          ? "What the forecast said when this month was published."
+                          : "What the forecast says for the months after this one."
+                      }
+                    />
+                  </Card>
+                );
+              })()
+            : null}
 
           {category.key === "financials" ? (
             <Card className="mt-6">
