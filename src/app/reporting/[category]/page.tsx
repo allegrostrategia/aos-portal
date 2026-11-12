@@ -33,6 +33,7 @@ import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/mon
 import { metricIcon } from "@/lib/reporting/metric-icons";
 import { TrendPanel } from "@/components/reporting/trend-panel";
 import {
+  DRAWN_ELSEWHERE,
   HEADLINE_METRICS,
   TREND_CHARTS,
   trendMetricKeys,
@@ -129,9 +130,26 @@ export default async function CategoryReportPage({
         .filter((m) => ["core", "calc", "pulled"].includes(m.input_type))
         .filter((m) => figures.figure(m.key) !== null)
         .slice(0, 6);
+  // **And not what a panel on this page already draws** (13 November):
+  // the four cost buckets sat in this list under a donut whose slices
+  // were those same figures, with the same numbers beside them.
+  const elsewhereOnThisPage = DRAWN_ELSEWHERE[category.key] ?? [];
   const rest = metrics.filter(
-    (m) => !headline.includes(m) && figures.figure(m.key) !== null,
+    (m) =>
+      !headline.includes(m) &&
+      !elsewhereOnThisPage.includes(m.key) &&
+      figures.figure(m.key) !== null,
   );
+
+  /**
+   * **"vs. August" only when August has something to compare.**
+   *
+   * The label came from the month, so a month that exists but holds no
+   * figures put "vs. August" at the top of a panel whose every row said
+   * nothing of the kind, beside cards all reading "No month to compare"
+   * (Dom, 13 November).
+   */
+  const anythingToCompare = rest.some((m) => figures.previousFigure(m.key) !== null);
 
   /**
    * Twelve months behind this one, for the sparklines and this category's
@@ -595,7 +613,9 @@ export default async function CategoryReportPage({
                   page of figures. */}
               <SectionTitle
                 icon={<IconCircle name="financials" tone="gold" />}
-                aside={previousLabel ? `vs. ${previousLabel}` : undefined}
+                aside={
+                  previousLabel && anythingToCompare ? `vs. ${previousLabel}` : undefined
+                }
               >
                 Everything else this month
               </SectionTitle>

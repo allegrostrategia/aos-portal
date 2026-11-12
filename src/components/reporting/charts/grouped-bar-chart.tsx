@@ -118,7 +118,18 @@ export function GroupedBarChart({
   const y = (v: number) => PAD.top + plotH - (v / scaleTop) * plotH;
   const gridlines = [0, 0.25, 0.5, 0.75, 1].map((f) => scaleTop * f);
 
+  /**
+   * **Counted back from the month being reported on**, not forward from
+   * the oldest one (Dom, 13 November: "Aug Sep" crowded at the end).
+   *
+   * Forwards, the last month was labelled because it is the last — on
+   * top of whatever the every-other rule had already put beside it, so
+   * twelve months ended in two labels touching. Backwards, the month the
+   * report is about is always labelled, the gaps are even, and nothing
+   * needs a special case at either end.
+   */
   const labelEvery = months.length > 8 ? 2 : 1;
+  const labelled = (i: number) => (months.length - 1 - i) % labelEvery === 0;
 
   return (
     <figure className="m-0">
@@ -191,7 +202,7 @@ export function GroupedBarChart({
         />
 
         {months.map((label, i) =>
-          i % labelEvery === 0 || i === months.length - 1 ? (
+          labelled(i) ? (
             <text
               key={`${label}-${i}`}
               x={PAD.left + slot * i + slot / 2}

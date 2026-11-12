@@ -176,6 +176,29 @@ export const TREND_CHARTS: Partial<Record<CategoryKey, TrendChartSpec[]>> = {
  *
  * A category not named here keeps the general rule.
  */
+/**
+ * Figures a category's own panels already draw, kept out of "Everything
+ * else this month".
+ *
+ * Dom, 13 November: the four cost buckets were in the overflow list
+ * underneath a donut whose three slices were those same figures, with
+ * the same numbers beside them. The panel is for what has nowhere else
+ * to go on the page.
+ *
+ * All four, not the three that happen to have a figure today —
+ * Investment spend is a slice of that donut the moment somebody enters
+ * one, and leaving it out of this list would mean the bug came back on
+ * the first month a client spent something on a course.
+ */
+export const DRAWN_ELSEWHERE: Partial<Record<CategoryKey, string[]>> = {
+  financials: [
+    "financials_fixed_costs",
+    "financials_variable_costs",
+    "financials_team_costs",
+    "financials_investment_spend",
+  ],
+};
+
 export const HEADLINE_METRICS: Partial<Record<CategoryKey, string[]>> = {
   financials: [
     "financials_total_revenue",

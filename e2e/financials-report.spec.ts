@@ -97,6 +97,21 @@ test("what came in, what was expected, and what is still to come", async ({ page
     "September",
   );
 
+  // **The overflow panel is for what has nowhere else to go.** The four
+  // cost buckets were in it, under a donut drawing those same figures.
+  const overflow = card(page, "Everything else this month");
+  const overflowText = (await overflow.innerText()).replace(/\s+/g, " ");
+  expect(overflowText, "the donut has these three").not.toContain("Fixed costs");
+  expect(overflowText).not.toContain("Variable costs");
+  expect(overflowText).not.toContain("Team costs");
+  expect(overflowText, "and the revenue halves still have nowhere else").toContain(
+    "Revenue from offers",
+  );
+
+  // August exists as a month and holds nothing, so there is nothing to
+  // compare against and the panel does not claim there is.
+  expect(overflowText, "no figures last month, so no 'vs.'").not.toContain("vs. August");
+
   await shoot(page, "financials-report", "01-report", w);
 });
 
