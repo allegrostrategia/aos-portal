@@ -3,7 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeClientsAtStart } from "./client-flow.ts";
 import { buildCarried, type Carried } from "./carried.ts";
-import { scheduledAfter } from "./ledger.ts";
+import { forecastAfter } from "./ledger.ts";
 import { previousMonthOf } from "./months.ts";
 
 /**
@@ -72,17 +72,16 @@ export async function computeCarried(
       .returns<
         { id: string; name: string; campaign_goal: string | null; price: number | string | null }[]
       >(),
-    // **Money scheduled into the months after this one** (Dom, 12
-    // November). The only forward-looking figure on the report, and the
-    // one reason a client would otherwise need to read payment rows for
-    // months they have not been shown. Frozen here; `report_can_read_payment`
-    // narrowed to the due month and the received month in the same breath.
+    // **What the forecast says about the months after this one** (Dom,
+    // 12 and 13 November). The only forward-looking figure on the report,
+    // and the only reason a client would otherwise need to read months
+    // they have not been shown.
     admin
-      .from("report_sale_payments")
-      .select("due_month, amount, cancelled_on")
+      .from("report_forecasts")
+      .select("month, amount")
       .eq("workspace_id", workspaceId)
-      .gt("due_month", month)
-      .returns<{ due_month: string; amount: number | string; cancelled_on: string | null }[]>(),
+      .gt("month", month)
+      .returns<{ month: string; amount: number | string }[]>(),
   ]);
 
   // `numeric` comes back as a string from some drivers, and the formula
@@ -138,13 +137,11 @@ export async function computeCarried(
     entities: (entityRes.data ?? []).map((e) => ({ ...e, price: num(e.price) })),
     // Summed per month by the same function the entry screen draws with,
     // so the frozen figure and the live one cannot be arrived at two ways.
-    scheduledAhead: scheduledAfter(
+    forecastAhead: forecastAfter(
       (aheadRes.data ?? []).map((p) => ({
-        saleId: "",
-        dueMonth: p.due_month,
-        receivedMonth: null,
+        salesRowId: "",
+        month: p.month.slice(0, 10),
         amount: num(p.amount) ?? 0,
-        cancelledOn: p.cancelled_on,
       })),
       month,
     ),

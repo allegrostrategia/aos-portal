@@ -1,37 +1,41 @@
 /**
- * Financials as a ledger: sales, cash, and what it cost to deliver.
+ * Financials as two grids: money received, and money expected.
  *
- * Nina, 11 November, with her own 2025 tracker as the layout reference.
- * Every figure here is typed by somebody — nothing is imported, and §10's
- * manual-entry rule is untouched.
+ * Nina, 13 November, reviewing the first ledger. That one modelled a sale
+ * as a record with a payment plan hanging off it — a month sold, a total
+ * value, instalments with a due month and a received month — which is how
+ * an accounting system works and is not how she works. **What she does
+ * each month is open the bank account and Stripe and type in what
+ * landed.**
  *
- * **Sales and cash are different questions and this file keeps them
- * apart.** Until now Financials had one revenue figure and nobody had to
- * say which of the two it was.
+ * So there is no sale, no schedule, no due date and no cancellation:
  *
- * A SALE is what was sold, counted in the month it was sold — all of it,
- * whatever the payment plan. CASH is what arrived, counted in the month
- * it arrived. So £2,000 sold in September as four £500s reads:
+ *   · **Actual** is money received. A row name and an amount, per month.
+ *   · **Forecast** is money expected, on the same grid, typed or pasted
+ *     across however many months it lasts. Nothing is generated —
+ *     retainers are here because somebody put them here.
  *
- *     September   Sales £2,000   Cash £500
- *     October     Sales     —    Cash £500
- *     November    Sales     —    Cash £500
- *     December    Sales     —    Cash £500
+ * Every figure is typed by a person. §10's manual-entry rule is untouched,
+ * and the reason it exists — payment exports carry card details — is
+ * exactly why a page somebody types into is the right answer.
  *
- * A dash rather than £0 in October, because nothing being sold is not
- * the same as selling nothing. (Dom, 11 November: the first draft summed
- * sales on the instalment month, which was cash wearing the word
- * "sales".)
- *
- * Relative imports, no database: `node --test "src/**\/*.test.ts"`
- * cannot resolve the `@/` alias, and arithmetic this load-bearing should
- * be testable without a Supabase client.
+ * Relative imports, no database: `node --test "src/**\/*.test.ts"` cannot
+ * resolve the `@/` alias, and arithmetic this load-bearing should be
+ * testable without a Supabase client.
  */
 
 import { divide, percentage, sum, type Figure, type Result } from "./formulas.ts";
 
 export type ExpenseBucket = "fixed" | "variable" | "team" | "investment";
 export type SalesRowType = "offer" | "client";
+
+/**
+ * Whether money on a row recurs, and how often.
+ *
+ * Three values rather than a tick, because her Recurring Revenue tab has
+ * three lines: the monthly ones, the annual ones, and the two together.
+ */
+export type Recurrence = "none" | "monthly" | "annual";
 
 export interface SalesRow {
   id: string;
@@ -40,45 +44,28 @@ export interface SalesRow {
   /** Set only on an offer row, and only when they have linked it. */
   offerEntityId: string | null;
   active: boolean;
+  /** The DEFAULT for new cells of the Actual grid, not a fact about them. */
+  recurrence: Recurrence;
 }
 
-/** How a sale is billed, which is where MRR comes from. */
-export type Billing = "one_off" | "monthly" | "annual";
-
-export interface Sale {
-  id: string;
+/** One cell of the Forecast grid. */
+export interface Cell {
   salesRowId: string;
-  /** The month it was SOLD in. The whole value counts here. */
   month: string;
-  totalValue: number;
-  /**
-   * **Instalments are not recurrence.** A £2,000 course paid in four
-   * £500s is `one_off`: one is a way of paying, the other is a way of
-   * being sold again next month. Retainers are `monthly` and that is
-   * what fixes MRR — it used to mean "revenue on offers marked
-   * recurring", which dropped every retainer on the floor, and
-   * retainers are the recurring revenue for an agency like Nina's.
-   */
-  billing: Billing;
-  /**
-   * Set when the sale fell through. Marked, never deleted (rule 7), and
-   * **counted from its own month forward** — see `cancelledBy`.
-   */
-  cancelledOn: string | null;
+  amount: number;
 }
 
-export interface SalePayment {
-  saleId: string;
-  /** The month it was expected. */
-  dueMonth: string;
-  /** The month the money arrived, or null while it has not. Cash counts here. */
-  receivedMonth: string | null;
-  amount: number;
-  /**
-   * Set when this instalment was cancelled. It stops counting from that
-   * month on, and it stays on the record.
-   */
-  cancelledOn: string | null;
+/**
+ * One cell of the Actual grid, which carries its own recurrence.
+ *
+ * Dom, 13 November. On the row alone, unticking "recurring" would rewrite
+ * MRR on a month a client had already read; locked to the row, a client
+ * who paid one-off in January and went onto a retainer in April could not
+ * be recorded without unpublishing January. Per cell, both just work —
+ * January keeps `none` and April is `monthly`, on the same row.
+ */
+export interface ActualCell extends Cell {
+  recurrence: Recurrence;
 }
 
 export interface ExpenseRow {
@@ -96,115 +83,68 @@ export interface ClientHours {
   rateUsed: number;
 }
 
-const inMonth = (value: string | null, month: string) => value === month;
+const inMonth = <T extends { month: string }>(cells: T[], month: string) =>
+  cells.filter((c) => c.month === month);
 
 /**
- * A cancellation counts **from its own month forward**, not backwards.
+ * Missing is a dash, not a zero.
  *
- * Dom, 12 November, reviewing the guard that lets a September sale be
- * cancelled in November without September being unpublished: if the
- * arithmetic simply dropped every cancelled row, that November
- * cancellation would blank a published September's £2,000 — the exact
- * rewrite the published-month lock exists to prevent.
- *
- * So in September they sold it, and that is permanent; from November the
- * money stops being owed, stops being scheduled and stops being MRR. Same
- * "as of that month" reading `outstandingBy` already takes.
+ * A month nobody has typed into is not a month that earned nothing, and
+ * the two must not print the same. Kept in one place so every figure on
+ * the screen agrees about it.
  */
-const cancelledBy = (cancelledOn: string | null, month: string) =>
-  cancelledOn !== null && cancelledOn.slice(0, 7) <= month.slice(0, 7);
+const total = <T extends { amount: number }>(cells: T[]): Result =>
+  cells.length === 0 ? null : sum(...cells.map((c) => c.amount));
 
-const liveAt = <T extends { cancelledOn: string | null }>(rows: T[], month: string) =>
-  rows.filter((row) => !cancelledBy(row.cancelledOn, month));
-
-/**
- * The one exception, and the reason it is one.
- *
- * Every figure above is ABOUT a month, so it reads a cancellation as of
- * that month. "Money scheduled ahead" is not about the month — it is
- * about the future, and the future is now: a draft October should not
- * promise an instalment the customer cancelled last week.
- *
- * What stops that moving a published month is the freeze, not this
- * filter: `Carried.scheduledAhead` holds what the month was published
- * with (Dom, 12 November), so a published October goes on saying what it
- * said while a draft one tells the truth today.
- */
-const live = <T extends { cancelledOn: string | null }>(rows: T[]) =>
-  rows.filter((row) => row.cancelledOn === null);
-
-/** What the client sold this month, whatever has been paid of it. */
-export function salesIn(sales: Sale[], month: string): Result {
-  const mine = liveAt(sales, month).filter((s) => s.month === month);
-  return mine.length === 0 ? null : sum(...mine.map((s) => s.totalValue));
+/** What actually landed this month. The headline figure on Overview. */
+export function receivedIn(actuals: ActualCell[], month: string): Result {
+  return total(inMonth(actuals, month));
 }
 
-/** What arrived in the bank this month, whenever it was sold. */
-export function cashIn(payments: SalePayment[], month: string): Result {
-  const mine = liveAt(payments, month).filter((p) => inMonth(p.receivedMonth, month));
-  return mine.length === 0 ? null : sum(...mine.map((p) => p.amount));
+/** What they expect this month — the figure that sits beside it. */
+export function forecastIn(forecasts: Cell[], month: string): Result {
+  return total(inMonth(forecasts, month));
 }
 
 /**
- * Her Recurring Revenue tab, in three lines: the monthly payments, the
- * annual ones, and the two together.
+ * Her Recurring Revenue tab, in three lines: the monthly ones, the annual
+ * ones, and the two together.
  *
- * On the due month rather than the received month, because the question
- * it answers is what the business is owed each month by the people who
- * have already agreed to pay it.
+ * **Money received, not money expected.** MRR used to mean "revenue on
+ * offers marked recurring", which dropped every retainer on the floor; it
+ * then briefly meant instalments due on a sale billed monthly, which
+ * counted money nobody had sent. This is what arrived, on the cells that
+ * recur.
  */
 export function recurringSplit(
-  sales: Sale[],
-  payments: SalePayment[],
+  actuals: ActualCell[],
   month: string,
 ): { monthly: Result; annual: Result; combined: Result } {
-  const billingOf = new Map(liveAt(sales, month).map((s) => [s.id, s.billing]));
-  const mine = liveAt(payments, month)
-    .filter((p) => inMonth(p.dueMonth, month))
-    .map((p) => ({ amount: p.amount, billing: billingOf.get(p.saleId) }))
-    .filter((p) => p.billing !== undefined && p.billing !== "one_off");
-
-  const monthly = mine.filter((p) => p.billing === "monthly");
-  const annual = mine.filter((p) => p.billing === "annual");
+  const mine = inMonth(actuals, month).filter((c) => c.recurrence !== "none");
   return {
-    monthly: monthly.length === 0 ? null : sum(...monthly.map((p) => p.amount)),
-    annual: annual.length === 0 ? null : sum(...annual.map((p) => p.amount)),
-    combined: mine.length === 0 ? null : sum(...mine.map((p) => p.amount)),
+    monthly: total(mine.filter((c) => c.recurrence === "monthly")),
+    annual: total(mine.filter((c) => c.recurrence === "annual")),
+    combined: total(mine),
   };
 }
 
 /**
- * Money due by the end of this month that has not arrived.
+ * What is forecast for the months after this one, month by month.
  *
- * Counted as of a month rather than as of today, so a published report
- * says what was outstanding then — not what is outstanding now, which
- * would change a client's September every time somebody paid in March.
+ * **Frozen into the carried snapshot at publish** as `forecastAhead` (Dom,
+ * 12 and 13 November). The report draws actual against forecast across the
+ * year, so a published month would otherwise move every time somebody
+ * revised a later forecast — and answering it from live rows would mean a
+ * client's RLS had to let them read months they have not been shown.
  */
-export function outstandingBy(payments: SalePayment[], month: string): Result {
-  const late = liveAt(payments, month).filter(
-    (p) => p.dueMonth <= month && (p.receivedMonth === null || p.receivedMonth > month),
-  );
-  return late.length === 0 ? null : sum(...late.map((p) => p.amount));
-}
-
-/**
- * What is already scheduled into the months after this one, month by month.
- *
- * **Frozen into the carried snapshot at publish** (Dom, 12 November), and
- * the report reads it from there. Two reasons, and the second is the
- * bigger one: a published month would otherwise change every time
- * somebody rescheduled an instalment, and answering it from live rows
- * meant a client's RLS had to let them read payments for months they had
- * not been shown — received status and cancellations included.
- */
-export function scheduledAfter(
-  payments: SalePayment[],
+export function forecastAfter(
+  forecasts: Cell[],
   month: string,
 ): { month: string; amount: number }[] {
   const ahead = new Map<string, number>();
-  for (const p of live(payments)) {
-    if (p.dueMonth <= month) continue;
-    ahead.set(p.dueMonth, (ahead.get(p.dueMonth) ?? 0) + p.amount);
+  for (const cell of forecasts) {
+    if (cell.month <= month) continue;
+    ahead.set(cell.month, (ahead.get(cell.month) ?? 0) + cell.amount);
   }
   return [...ahead.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -223,67 +163,59 @@ export function costsByBucket(
     investment: null,
   };
   for (const bucket of Object.keys(out) as ExpenseBucket[]) {
-    const mine = expenses.filter((e) => e.month === month && e.bucket === bucket);
-    out[bucket] = mine.length === 0 ? null : sum(...mine.map((e) => e.amount));
+    out[bucket] = total(inMonth(expenses, month).filter((e) => e.bucket === bucket));
   }
   return out;
 }
 
 /**
- * This month's revenue per linked offer, so the Offers donut, the margin
- * and the hourly rate go on reading the figure they always have.
- *
- * **On the month it was sold**, which is the same choice the Overview
- * makes: every other figure on the report is about the month's activity
- * rather than the month's bank.
+ * This month's money per linked offer, so the Offers donut, the margin and
+ * the hourly rate go on reading the figure they always have.
  */
 export function offerRevenue(
   rows: SalesRow[],
-  sales: Sale[],
+  actuals: ActualCell[],
   month: string,
 ): Map<string, number> {
   const offerOf = new Map(
     rows.filter((r) => r.offerEntityId !== null).map((r) => [r.id, r.offerEntityId!]),
   );
   const out = new Map<string, number>();
-  for (const sale of liveAt(sales, month)) {
-    if (sale.month !== month) continue;
-    const offer = offerOf.get(sale.salesRowId);
+  for (const cell of inMonth(actuals, month)) {
+    const offer = offerOf.get(cell.salesRowId);
     if (!offer) continue;
-    out.set(offer, (out.get(offer) ?? 0) + sale.totalValue);
+    out.set(offer, (out.get(offer) ?? 0) + cell.amount);
   }
   return out;
 }
 
 /**
- * Everything sold this month that is NOT linked to an offer.
+ * Everything received this month that is NOT linked to an offer.
  *
  * **One slice, not forty.** The Offers donut has to total the same as
  * revenue or the two screens disagree (§9), and a business like Nina's
  * agency has dozens of bespoke clients — a slice each would turn a chart
- * about offers into a client list nobody can read. So the bespoke work
- * is one slice with its count beside it, and who is in it is the
- * per-client card's job.
+ * about offers into a client list nobody can read. So the bespoke work is
+ * one slice with its count beside it, and who is in it is the per-client
+ * card's job.
  */
 export function bespokeRevenue(
   rows: SalesRow[],
-  sales: Sale[],
+  actuals: ActualCell[],
   month: string,
 ): { total: Result; clients: number } {
   const linked = new Set(rows.filter((r) => r.offerEntityId !== null).map((r) => r.id));
-  const mine = liveAt(sales, month).filter(
-    (s) => s.month === month && !linked.has(s.salesRowId),
-  );
+  const mine = inMonth(actuals, month).filter((c) => !linked.has(c.salesRowId));
   return {
-    total: mine.length === 0 ? null : sum(...mine.map((s) => s.totalValue)),
-    clients: new Set(mine.map((s) => s.salesRowId)).size,
+    total: total(mine),
+    clients: new Set(mine.map((c) => c.salesRowId)).size,
   };
 }
 
 export interface ClientProfit {
   salesRowId: string;
   name: string;
-  /** What they paid this month — cash, because profitability is about money in. */
+  /** What they paid this month — the Actual cell, which is money in. */
   paid: Result;
   hours: Result;
   staffCost: Result;
@@ -292,35 +224,23 @@ export interface ClientProfit {
 }
 
 /**
- * Her Client Profitability tab: time spent × rate against what that
- * client paid.
- *
- * **Only what they paid is cash here**, and deliberately: a client who
- * has not paid yet has not made anybody any money, however many hours
- * went into them. That is the figure the tab is for — it is the one
- * that tells you which retainer is quietly costing you.
+ * Her Client Profitability tab: time spent × rate against what that client
+ * paid.
  *
  * Only client rows. An offer's hours are already asked for on the Offers
- * screen, and asking twice is how two answers to one question get
- * stored.
+ * screen, and asking twice is how two answers to one question get stored.
  */
 export function clientProfitability(
   rows: SalesRow[],
-  sales: Sale[],
-  payments: SalePayment[],
+  actuals: ActualCell[],
   hours: ClientHours[],
   month: string,
 ): ClientProfit[] {
-  const rowOf = new Map(liveAt(sales, month).map((s) => [s.id, s.salesRowId]));
   return rows
     .filter((row) => row.rowType === "client")
     .map((row) => {
-      const paidRows = liveAt(payments, month).filter(
-        (p) => rowOf.get(p.saleId) === row.id && inMonth(p.receivedMonth, month),
-      );
-      const mine = hours.filter((h) => h.salesRowId === row.id && h.month === month);
-
-      const paid: Result = paidRows.length === 0 ? null : sum(...paidRows.map((p) => p.amount));
+      const paid = total(inMonth(actuals, month).filter((c) => c.salesRowId === row.id));
+      const mine = inMonth(hours, month).filter((h) => h.salesRowId === row.id);
       const worked: Result = mine.length === 0 ? null : sum(...mine.map((h) => h.hours));
       const cost: Result =
         mine.length === 0 ? null : sum(...mine.map((h) => h.hours * h.rateUsed));
@@ -347,6 +267,58 @@ export function effectiveRate(paid: Figure, hours: Figure): Result {
 }
 
 /**
+ * Which rows to draw in a year's grid.
+ *
+ * **Retiring a row is gone** (Nina, 13 November: keep the screen to
+ * entering numbers), so something else has to stop an agency's three years
+ * of former clients filling it. A row is shown when it has a figure in
+ * this year, in either grid, and "Show all rows" is one click away.
+ *
+ * **A row with no figures at all is always shown**, and that is the part
+ * worth saying out loud: it is a row somebody has just added and is about
+ * to type into, not a client who left. Hiding it the instant it appeared
+ * would read as the add having failed.
+ *
+ * **Either grid, not each.** The two have to line up, or a client would be
+ * in one and missing from the other.
+ */
+export function rowsWithFigures(
+  rows: SalesRow[],
+  actuals: Cell[],
+  forecasts: Cell[],
+  year: string,
+): SalesRow[] {
+  const thisYear = new Set<string>();
+  const everUsed = new Set<string>();
+  for (const cell of [...actuals, ...forecasts]) {
+    everUsed.add(cell.salesRowId);
+    if (cell.month.slice(0, 4) === year) thisYear.add(cell.salesRowId);
+  }
+  return rows.filter((row) => thisYear.has(row.id) || !everUsed.has(row.id));
+}
+
+/**
+ * Which months to draw, before "Show the whole year".
+ *
+ * Dom, 12 November, on the phone: twelve columns is a lot of scrolling
+ * past nothing. So: every month that has a figure, the month being
+ * entered, and three after the last of those to type into — which is the
+ * useful part of the year and never hides something already entered.
+ */
+export function monthsToShow(
+  year: string[],
+  cells: Cell[],
+  month: string,
+): string[] {
+  const filled = new Set(cells.map((c) => c.month));
+  const last = year.reduce(
+    (best, m, i) => (filled.has(m) || m === month ? i : best),
+    year.indexOf(month),
+  );
+  return year.filter((m, i) => filled.has(m) || m === month || (i > last && i <= last + 3));
+}
+
+/**
  * Local rather than imported: `formulas.difference` treats a missing
  * figure as unknown, and a client who paid with nobody's hours against
  * them has a real profit — all of it.
@@ -355,62 +327,3 @@ function difference(paid: Result, cost: Result): Result {
   if (paid === null && cost === null) return null;
   return (paid ?? 0) - (cost ?? 0);
 }
-
-/**
- * What is left of a sale that nobody has put in a month yet.
- *
- * Dom, 12 November: **the grid has to say so.** A £2,000 sale with three
- * £500s against it is not an error the database should refuse — somebody
- * typing a payment plan across a row is half-done for as long as it takes
- * them to type it, and a constraint there would make the screen
- * unusable — but it is a figure that will quietly never arrive. So it is
- * a line on the screen: "£500 not yet scheduled".
- *
- * Cancelled instalments do not count as scheduled, which is the same
- * reading `scheduledAfter` takes: that money is not coming.
- */
-export function unscheduledOf(sale: Sale, payments: SalePayment[]): Result {
-  const mine = live(payments).filter((p) => p.saleId === sale.id);
-  const scheduled = mine.reduce((total, p) => total + p.amount, 0);
-  const left = round(sale.totalValue - scheduled);
-  return left === 0 ? null : left;
-}
-
-/**
- * Split a total across a number of months, starting at one.
- *
- * The remainder goes on the FIRST instalment, not the last: £1,000 over
- * three months is £333.34 then £333.33 twice. Nina's own tracker does it
- * that way round, and so does every payment plan anybody has actually
- * been sold — the deposit is the odd one, not the final collection.
- *
- * A suggestion, never a rule. The grid fills the cells in and every one
- * of them stays editable, because a real plan is often £500 down and the
- * rest over two months.
- */
-export function instalmentPlan(
-  total: number,
-  count: number,
-  firstMonth: string,
-): { month: string; amount: number }[] {
-  if (!Number.isFinite(total) || count < 1) return [];
-  const each = round(total / count);
-  const months = monthsFrom(firstMonth, count);
-  return months.map((month, i) => ({
-    month,
-    amount: i === 0 ? round(total - each * (count - 1)) : each,
-  }));
-}
-
-/** `count` consecutive first-of-months, starting at `from`. */
-export function monthsFrom(from: string, count: number): string[] {
-  const [year, month] = from.split("-").map(Number);
-  return Array.from({ length: count }, (_, i) => {
-    const m = month - 1 + i;
-    const y = year + Math.floor(m / 12);
-    return `${y}-${String((m % 12) + 1).padStart(2, "0")}-01`;
-  });
-}
-
-/** Pennies, so a third of £1,000 does not arrive as £333.3333333333333. */
-const round = (n: number) => Math.round(n * 100) / 100;

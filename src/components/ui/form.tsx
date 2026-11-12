@@ -50,17 +50,24 @@ export function Field({
   name,
   hint,
   className = "",
+  // **The id defaults to the name and is not the same thing.** A screen
+  // can carry two fields with one name — two forms, a row of them in a
+  // table — and a duplicate id silently points every label at the first
+  // one. Found 13 November: three "recurrence" selects on Financials read
+  // as one combobox with three names.
+  id,
   ...props
 }: React.ComponentProps<"input"> & { label: string; name: string; hint?: string }) {
+  const controlId = id ?? name;
   return (
-    <Wrapper label={label} htmlFor={name} hint={hint}>
+    <Wrapper label={label} htmlFor={controlId} hint={hint}>
       <input
-        id={name}
+        id={controlId}
         name={name}
         // Text stays at 16px: below that, iOS Safari zooms the viewport when the
         // field takes focus, which reads as the layout breaking.
         className={`${CONTROL} ${className}`}
-        aria-describedby={hint ? `${name}-hint` : undefined}
+        aria-describedby={hint ? `${controlId}-hint` : undefined}
         {...props}
       />
     </Wrapper>
@@ -81,15 +88,17 @@ export function Select({
   hint,
   children,
   className = "",
+  id,
   ...props
 }: React.ComponentProps<"select"> & { label: string; name: string; hint?: string }) {
+  const controlId = id ?? name;
   return (
-    <Wrapper label={label} htmlFor={name} hint={hint}>
+    <Wrapper label={label} htmlFor={controlId} hint={hint}>
       <select
-        id={name}
+        id={controlId}
         name={name}
         className={`${CONTROL} ${className}`}
-        aria-describedby={hint ? `${name}-hint` : undefined}
+        aria-describedby={hint ? `${controlId}-hint` : undefined}
         {...props}
       >
         {children}

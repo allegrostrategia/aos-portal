@@ -444,33 +444,27 @@ test("a snapshot written before prices were frozen still reads the live one", as
 });
 
 /**
- * Money scheduled into the months after this one, frozen with the month
- * (Dom, 12 November).
+ * What the forecast says about the months after this one, frozen with the
+ * month (Dom, 12 and 13 November).
  *
- * The only forward-looking figure on the report, and the only reason a
- * client would otherwise need to read payment rows for months they have
- * not been shown. Live, it would also move a published September every
- * time somebody rescheduled an instalment — the rewrite the lock exists
- * to prevent, arriving through a table the lock does not cover.
+ * The only forward-looking figure on the report, and the report draws
+ * actual against forecast across the year — so live, a published
+ * September would move every time somebody revised November's forecast.
+ * It is also the only reason a client would need to read months they have
+ * not been shown.
  */
-test("what a month had scheduled ahead is frozen, so rescheduling cannot rewrite it", async () => {
-  let SALE;
+test("what a month forecast ahead is frozen, so a revision cannot rewrite it", async () => {
+  let ROW;
   await asMember(db, NINA, async () => {
-    const row = (
+    ROW = (
       await db.query(`insert into public.report_sales_rows (workspace_id, name, row_type)
-                      values ('${WS}', 'Signature programme', 'offer') returning id`)
+                      values ('${WS}', 'A retainer client', 'client') returning id`)
     ).rows[0].id;
-    SALE = (
-      await db.query(`insert into public.report_sales
-                        (workspace_id, sales_row_id, month, total_value)
-                      values ('${WS}', '${row}', '${SEP}', 2000) returning id`)
-    ).rows[0].id;
-    await db.query(`insert into public.report_sale_payments
-                      (workspace_id, sale_id, due_month, received_month, amount)
-                    values ('${WS}', '${SALE}', '${SEP}', '${SEP}', 500),
-                           ('${WS}', '${SALE}', '2026-10-01', null, 500),
-                           ('${WS}', '${SALE}', '2026-11-01', null, 500),
-                           ('${WS}', '${SALE}', '2026-12-01', null, 500)`);
+    await db.query(`insert into public.report_forecasts (workspace_id, sales_row_id, month, amount)
+                    values ('${WS}', '${ROW}', '${SEP}', 500),
+                           ('${WS}', '${ROW}', '2026-10-01', 500),
+                           ('${WS}', '${ROW}', '2026-11-01', 500),
+                           ('${WS}', '${ROW}', '2026-12-01', 500)`);
   });
 
   assert.equal((await publish(SEP))?.error, undefined);
@@ -480,40 +474,40 @@ test("what a month had scheduled ahead is frozen, so rescheduling cannot rewrite
     { month: "2026-12-01", amount: 500 },
   ];
   assert.deepEqual(
-    (await carriedOn(SEP)).scheduledAhead,
+    (await carriedOn(SEP)).forecastAhead,
     published,
-    "the three instalments September had scheduled",
+    "the three months September forecast ahead of itself — not its own",
   );
 
-  // December's instalment slips to January. Both months are drafts, so
-  // the move is allowed — and September must not notice.
+  // December's forecast is revised upward. It is a draft month, so the
+  // change is allowed — and September must not notice.
   await asMember(db, NINA, () =>
-    db.query(`update public.report_sale_payments set due_month = '2027-01-01'
-               where sale_id = '${SALE}' and due_month = '2026-12-01'`),
+    db.query(`update public.report_forecasts set amount = 900
+               where sales_row_id = '${ROW}' and month = '2026-12-01'`),
   );
   assert.deepEqual(
-    (await carriedOn(SEP)).scheduledAhead,
+    (await carriedOn(SEP)).forecastAhead,
     published,
-    "still the three it was published with",
+    "still what it was published with",
   );
 });
 
 /**
- * And the months published before 12 November have no `scheduledAhead`
- * key at all. Absent is not empty: they must fall back to the live
- * schedule rather than reading as "nothing scheduled" (the same
- * distinction `entities.price` makes).
+ * And a month published before 13 November has no `forecastAhead` key at
+ * all. Absent is not empty: it must fall back to the live forecast rather
+ * than read as "nothing forecast" (the same distinction `entities.price`
+ * makes).
  */
-test("a snapshot written before scheduled-ahead was frozen reads as absent, not empty", async () => {
+test("a snapshot written before the forecast was frozen reads as absent, not empty", async () => {
   const [row] = await rows(
     `select carried from public.report_periods where workspace_id = '${WS}' and month = '${SEP}'`,
   );
   const older = structuredClone(row.carried);
-  delete older.scheduledAhead;
-  assert.equal(readCarried(older).scheduledAhead, undefined, "absent stays absent");
+  delete older.forecastAhead;
+  assert.equal(readCarried(older).forecastAhead, undefined, "absent stays absent");
   assert.deepEqual(
-    readCarried({ ...older, scheduledAhead: [] }).scheduledAhead,
+    readCarried({ ...older, forecastAhead: [] }).forecastAhead,
     [],
-    "and a frozen empty schedule is a different answer",
+    "and a frozen empty forecast is a different answer",
   );
 });

@@ -139,6 +139,16 @@ export async function seed({ quiet = false } = {}) {
     -- 11 November, which is why this line was not needed before.
     delete from public.report_targets;
     delete from public.report_benchmarks;
+    -- The Financials grids, for the same reason: a sales row linked to an
+    -- offer holds that offer with on delete restrict, and the two grids
+    -- hold the row.
+    delete from public.report_actuals;
+    delete from public.report_forecasts;
+    delete from public.report_client_hours;
+    delete from public.report_expenses;
+    delete from public.report_sales_rows;
+    delete from public.report_expense_categories;
+    delete from public.report_staff;
     delete from public.report_entities;
     delete from public.report_access;
     delete from public.report_workspaces;

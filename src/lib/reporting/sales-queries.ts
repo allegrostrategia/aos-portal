@@ -1,34 +1,36 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Billing, Sale, SalePayment, SalesRow, SalesRowType } from "./ledger.ts";
+import type {
+  ActualCell,
+  Cell,
+  Recurrence,
+  SalesRow,
+  SalesRowType,
+} from "./ledger.ts";
 
 /**
- * The sales side of the Financials ledger, read in one go.
+ * The two grids, read in one go.
  *
  * **The whole workspace, not one month.** Nina's tracker is a year grid —
- * one row per offer or customer, twelve month columns, instalments written
- * across the row — and the screen is built to match, so a month's worth of
- * rows would draw eleven empty columns. A sale's instalments also reach
- * past the year it was sold in, and "£500 not yet scheduled" is wrong if
- * the instalment that accounts for it was filtered out by date.
+ * one row per offer or customer, twelve month columns, a year total — so
+ * a month's worth of rows would draw eleven empty columns. A forecast
+ * also runs past the year it was typed in.
  *
- * Three small tables for one small business: a client with forty retainers
- * and three years of history is in the low thousands of rows. If that ever
+ * Three small tables for one small business: a client with forty rows and
+ * three years of history is in the low thousands of cells. If that ever
  * stops being true the fix is a date window with a year of overlap, not a
  * month.
  *
- * RLS does the rest. A retainer client reads a sale when its month is
- * published, and an instalment when its due month or the month the money
- * arrived is published — `report_can_read_payment`, narrowed on
- * 12 November because what a published month scheduled ahead comes from
- * the carried snapshot now.
+ * RLS does the rest: a retainer client reads a cell when its month is
+ * published and not before, which is the rule every other piece of month
+ * content wears.
  */
 
 export interface SalesLedger {
   rows: SalesRow[];
-  sales: Sale[];
-  payments: SalePayment[];
+  actuals: ActualCell[];
+  forecasts: Cell[];
 }
 
 interface RowRecord {
@@ -37,24 +39,17 @@ interface RowRecord {
   row_type: SalesRowType;
   offer_entity_id: string | null;
   active: boolean;
-  sort_order: number;
+  recurrence: Recurrence;
 }
 
-interface SaleRecord {
-  id: string;
+interface CellRecord {
   sales_row_id: string;
   month: string;
-  total_value: number | string;
-  billing: Billing;
-  cancelled_on: string | null;
+  amount: number | string;
 }
 
-interface PaymentRecord {
-  sale_id: string;
-  due_month: string;
-  received_month: string | null;
-  amount: number | string;
-  cancelled_on: string | null;
+interface ActualRecord extends CellRecord {
+  recurrence: Recurrence;
 }
 
 /** `numeric` arrives as a string from some drivers, as everywhere else here. */
@@ -65,33 +60,33 @@ const num = (v: number | string | null): number => {
 };
 
 /** A `date` column can come back with a time on it. Months are days here. */
-const day = (v: string | null): string | null => (v === null ? null : v.slice(0, 10));
+const day = (v: string) => v.slice(0, 10);
 
 export async function getSalesLedger(workspaceId: string): Promise<SalesLedger> {
   const supabase = await createClient();
 
-  const [rowRes, saleRes, paymentRes] = await Promise.all([
+  const [rowRes, actualRes, forecastRes] = await Promise.all([
     supabase
       .from("report_sales_rows")
-      .select("id, name, row_type, offer_entity_id, active, sort_order")
+      .select("id, name, row_type, offer_entity_id, active, recurrence")
       .eq("workspace_id", workspaceId)
       .order("sort_order")
       .order("name")
       .returns<RowRecord[]>(),
+    // No id on either: (row, month) is unique, so that pair is the handle
+    // the grid saves a cell by.
     supabase
-      .from("report_sales")
-      .select("id, sales_row_id, month, total_value, billing, cancelled_on")
+      .from("report_actuals")
+      .select("sales_row_id, month, amount, recurrence")
       .eq("workspace_id", workspaceId)
       .order("month")
-      .returns<SaleRecord[]>(),
+      .returns<ActualRecord[]>(),
     supabase
-      .from("report_sale_payments")
-      // No id: (sale_id, due_month) is unique, so that pair is the handle
-      // the grid updates a cell by.
-      .select("sale_id, due_month, received_month, amount, cancelled_on")
+      .from("report_forecasts")
+      .select("sales_row_id, month, amount")
       .eq("workspace_id", workspaceId)
-      .order("due_month")
-      .returns<PaymentRecord[]>(),
+      .order("month")
+      .returns<CellRecord[]>(),
   ]);
 
   return {
@@ -101,21 +96,18 @@ export async function getSalesLedger(workspaceId: string): Promise<SalesLedger> 
       rowType: r.row_type,
       offerEntityId: r.offer_entity_id,
       active: r.active,
+      recurrence: r.recurrence,
     })),
-    sales: (saleRes.data ?? []).map((s) => ({
-      id: s.id,
-      salesRowId: s.sales_row_id,
-      month: day(s.month)!,
-      totalValue: num(s.total_value),
-      billing: s.billing,
-      cancelledOn: day(s.cancelled_on),
+    actuals: (actualRes.data ?? []).map((c) => ({
+      salesRowId: c.sales_row_id,
+      month: day(c.month),
+      amount: num(c.amount),
+      recurrence: c.recurrence,
     })),
-    payments: (paymentRes.data ?? []).map((p) => ({
-      saleId: p.sale_id,
-      dueMonth: day(p.due_month)!,
-      receivedMonth: day(p.received_month),
-      amount: num(p.amount),
-      cancelledOn: day(p.cancelled_on),
+    forecasts: (forecastRes.data ?? []).map((c) => ({
+      salesRowId: c.sales_row_id,
+      month: day(c.month),
+      amount: num(c.amount),
     })),
   };
 }

@@ -1,16 +1,13 @@
 /**
- * The sales grid's writes, driven the way the screen drives them.
+ * The two grids' writes, driven the way the screen drives them.
  *
- * `ledger.test.mjs` proves what the database refuses. This proves the
- * actions in between: that a sale and its whole schedule go in one save,
- * that clearing a cell removes it, that a refusal is reported rather than
- * swallowed, and that "they stopped" marks the sale AND the instalments
- * still to come while leaving the ones already paid alone.
- *
- * The case that matters is the last one. A customer who stops paying
- * after September is published has to be recordable, and every piece of
- * that — the guard, the arithmetic, this action, the field the form
- * offers — exists for it.
+ * Nina, 13 November: Actual is money received, Forecast is money
+ * expected, and the screen is for entering numbers. So what there is to
+ * prove is small and load-bearing — a grid saves in one go, an empty cell
+ * is removed rather than stored as zero, a published month refuses both
+ * in words somebody can act on, and the thing the whole redesign turns
+ * on: a row that was one-off in January and a retainer from April is both
+ * of those things, with no unpublish.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -21,17 +18,18 @@ import { configure } from "./stubs/supabase-server.mjs";
 
 process.env.NEXT_PUBLIC_SITE_URL = "https://aos.allegrostrategia.com";
 
-const { saveSalesRow, retireSalesRow, saveSale, cancelSale, savePaymentsReceived } =
-  await import("../../src/lib/reporting/sales-actions.ts");
+const { saveSalesRow, saveActuals, saveForecasts } = await import(
+  "../../src/lib/reporting/sales-actions.ts"
+);
 const { getSalesLedger } = await import("../../src/lib/reporting/sales-queries.ts");
 
 const NINA = "11111111-1111-1111-1111-111111111111";
 const ELIZE = "22222222-2222-2222-2222-222222222222";
 const CLIENT = "33333333-3333-3333-3333-333333333333";
-const SEP = "2026-09-01";
-const OCT = "2026-10-01";
-const NOV = "2026-11-01";
-const DEC = "2026-12-01";
+const JAN = "2026-01-01";
+const FEB = "2026-02-01";
+const MAR = "2026-03-01";
+const APR = "2026-04-01";
 
 const db = await createTestDatabase();
 
@@ -49,7 +47,7 @@ let FUNNEL;
 await asMember(db, NINA, async () => {
   WS = (
     await db.query(`select (public.create_report_workspace(
-      '${CLIENT}', 'retainer', 'Northwind Studio', 'Bella Test', '${SEP}')).id as id`)
+      '${CLIENT}', 'retainer', 'Northwind Studio', 'Bella Test', '${JAN}')).id as id`)
   ).rows[0].id;
   await db.query(`select public.assign_report_team_member('${WS}', '${ELIZE}', 'Elize')`);
 
@@ -62,7 +60,7 @@ await asMember(db, NINA, async () => {
   OFFER = made.rows.find((r) => r.entity_type === "offer").id;
   FUNNEL = made.rows.find((r) => r.entity_type === "funnel").id;
 
-  for (const month of [SEP, OCT, NOV, DEC]) {
+  for (const month of [JAN, FEB, MAR, APR]) {
     await db.query(
       `insert into public.report_periods (workspace_id, month) values ('${WS}', '${month}')`,
     );
@@ -91,7 +89,7 @@ const publish = (month, yes = true) =>
 let OFFER_ROW;
 let CLIENT_ROW;
 
-test("a row is named by the client, and a link to an offer is optional", async () => {
+test("a row is named by the client, with the offer link and the recurring tick optional", async () => {
   assert.equal(
     (await as(ELIZE, () =>
       saveSalesRow(null, form({ workspace_id: WS, name: "", row_type: "offer" })),
@@ -103,12 +101,7 @@ test("a row is named by the client, and a link to an offer is optional", async (
     (await as(ELIZE, () =>
       saveSalesRow(
         null,
-        form({
-          workspace_id: WS,
-          name: "Mixed up",
-          row_type: "client",
-          offer_entity_id: OFFER,
-        }),
+        form({ workspace_id: WS, name: "Mixed up", row_type: "client", offer_entity_id: OFFER }),
       ),
     ))?.error,
     "Only an offer row can be linked to an offer.",
@@ -124,6 +117,7 @@ test("a row is named by the client, and a link to an offer is optional", async (
           name: "Signature programme",
           row_type: "offer",
           offer_entity_id: OFFER,
+          recurrence: "none",
         }),
       ),
     ))?.notice,
@@ -131,9 +125,14 @@ test("a row is named by the client, and a link to an offer is optional", async (
   );
   assert.equal(
     (await as(ELIZE, () =>
-      saveSalesRow(null, form({ workspace_id: WS, name: "Bella's retainer", row_type: "client" })),
+      saveSalesRow(
+        null,
+        // One-off to begin with. She goes onto a retainer in April, which
+        // is the case the whole redesign turns on.
+        form({ workspace_id: WS, name: "Bella Ltd", row_type: "client", recurrence: "none" }),
+      ),
     ))?.notice,
-    "Bella's retainer added.",
+    "Bella Ltd added.",
   );
 
   // A funnel is not an offer, and that refusal comes from the guard —
@@ -153,306 +152,234 @@ test("a row is named by the client, and a link to an offer is optional", async (
 
   const { rows } = await ledger();
   assert.deepEqual(
-    rows.map((r) => [r.name, r.rowType, r.offerEntityId !== null, r.active]),
+    rows.map((r) => [r.name, r.rowType, r.offerEntityId !== null, r.recurrence]),
     [
-      ["Signature programme", "offer", true, true],
-      ["Bella's retainer", "client", false, true],
+      ["Signature programme", "offer", true, "none"],
+      ["Bella Ltd", "client", false, "none"],
     ],
     "in the order they go down the grid",
   );
   OFFER_ROW = rows[0].id;
   CLIENT_ROW = rows[1].id;
-
-  // Two rows with the same name would be two rows nobody can tell apart.
-  assert.equal(
-    (await as(ELIZE, () =>
-      saveSalesRow(null, form({ workspace_id: WS, name: "Bella's retainer", row_type: "client" })),
-    ))?.error,
-    'There is already a row called "Bella\'s retainer".',
-  );
 });
 
-test("a sale and its whole schedule go in one save", async () => {
-  // £2,000 sold in September, paid in four £500s. One save, because four
-  // is four chances to leave the last one behind.
+test("a grid saves in one go, and an empty cell is not a figure of zero", async () => {
   const result = await as(ELIZE, () =>
-    saveSale(
+    saveActuals(
       null,
       form({
         workspace_id: WS,
-        sales_row_id: OFFER_ROW,
-        month: SEP,
-        total_value: 2000,
-        billing: "one_off",
-        [`due:${SEP}`]: 500,
-        [`paid:${SEP}`]: SEP,
-        [`due:${OCT}`]: 500,
-        [`due:${NOV}`]: 500,
-        [`due:${DEC}`]: 500,
+        [`cell:${OFFER_ROW}:${JAN}`]: 1200,
+        [`cell:${OFFER_ROW}:${FEB}`]: "",
+        [`cell:${CLIENT_ROW}:${JAN}`]: 400,
+        [`cell:${CLIENT_ROW}:${FEB}`]: 400,
       }),
-    ),
-  );
-  assert.equal(result?.notice, "Sale recorded.");
-
-  const { sales, payments } = await ledger();
-  assert.equal(sales.length, 1);
-  assert.equal(sales[0].totalValue, 2000, "the whole thing, in the month it was sold");
-  assert.equal(sales[0].month, SEP);
-  assert.deepEqual(
-    payments.map((p) => [p.dueMonth, p.amount, p.receivedMonth]),
-    [
-      [SEP, 500, SEP],
-      [OCT, 500, null],
-      [NOV, 500, null],
-      [DEC, 500, null],
-    ],
-  );
-});
-
-test("an empty cell is not an instalment, and clearing one takes it away", async () => {
-  const { sales } = await ledger();
-  const sale = sales[0];
-
-  // December's cell cleared, November's moved to £400. The schedule on
-  // the form IS the schedule — a merge would leave December behind.
-  await as(ELIZE, () =>
-    saveSale(
-      null,
-      form({
-        workspace_id: WS,
-        sale_id: sale.id,
-        sales_row_id: OFFER_ROW,
-        month: SEP,
-        total_value: 2000,
-        billing: "one_off",
-        [`due:${SEP}`]: 500,
-        [`paid:${SEP}`]: SEP,
-        [`due:${OCT}`]: 500,
-        [`due:${NOV}`]: 400,
-        [`due:${DEC}`]: "",
-      }),
-    ),
-  );
-  const { payments } = await ledger();
-  assert.deepEqual(
-    payments.map((p) => [p.dueMonth, p.amount]),
-    [
-      [SEP, 500],
-      [OCT, 500],
-      [NOV, 400],
-    ],
-    "December gone, November corrected",
-  );
-
-  // £600 of the £2,000 is now in no month at all. The database does not
-  // refuse it — half a payment plan is a normal thing to be looking at —
-  // so it is the screen's job to say so, and `unscheduledOf` is what says
-  // it. Here, just that the state is reachable.
-  const { sales: after, payments: left } = await ledger();
-  const scheduled = left.reduce((t, p) => t + p.amount, 0);
-  assert.equal(after[0].totalValue - scheduled, 600);
-});
-
-test("a cell in a published month cannot be cleared, and the save says so", async () => {
-  // The trap this guards against: RLS refusing a delete is a success with
-  // no error and no rows, so the only honest test is whether the row went.
-  // Without that check the form said "Sale updated" to a write the
-  // database had thrown away — which is how the day-7 pairing flag was
-  // silently never set for three weeks.
-  const { sales } = await ledger();
-  const sale = sales[0];
-  await publish(OCT);
-
-  const refused = await as(ELIZE, () =>
-    saveSale(
-      null,
-      form({
-        workspace_id: WS,
-        sale_id: sale.id,
-        sales_row_id: OFFER_ROW,
-        month: SEP,
-        total_value: 2000,
-        billing: "one_off",
-        [`due:${SEP}`]: 500,
-        [`paid:${SEP}`]: SEP,
-        [`due:${OCT}`]: "",
-        [`due:${NOV}`]: 400,
-      }),
-    ),
-  );
-  const { payments } = await ledger();
-  // Put the month back before asserting: a failed assertion would
-  // otherwise leave October published for every test after this one.
-  await publish(OCT, false);
-
-  assert.match(refused?.error ?? "", /instalment in a published month couldn't be cleared/);
-  assert.match(refused?.error ?? "", /mark it cancelled instead/, "and what to do instead");
-  assert.equal(
-    payments.filter((p) => p.dueMonth === OCT).length,
-    1,
-    "October's instalment is still there, which is why the save had to say so",
-  );
-});
-
-test("a sale needs a value, and a row, and a month", async () => {
-  assert.equal(
-    (await as(ELIZE, () => saveSale(null, form({ workspace_id: WS, month: SEP }))))?.error,
-    "Pick which row this sale belongs to.",
-  );
-  assert.equal(
-    (await as(ELIZE, () =>
-      saveSale(null, form({ workspace_id: WS, sales_row_id: OFFER_ROW, month: SEP })),
-    ))?.error,
-    "A sale needs a value.",
-  );
-  assert.equal(
-    (await as(ELIZE, () =>
-      saveSale(
-        null,
-        form({
-          workspace_id: WS,
-          sales_row_id: OFFER_ROW,
-          month: SEP,
-          total_value: -1,
-        }),
-      ),
-    ))?.error,
-    "A sale cannot be worth less than nothing.",
-  );
-});
-
-test("the month's cash is ticked off in one form", async () => {
-  const { sales } = await ledger();
-  const sale = sales[0];
-
-  // October's instalment came in, in October.
-  const result = await as(ELIZE, () =>
-    savePaymentsReceived(
-      null,
-      form({ workspace_id: WS, month: OCT, [`cell:${sale.id}:${OCT}`]: "on" }),
     ),
   );
   assert.equal(result?.notice, "Saved.");
 
-  const { payments } = await ledger();
-  assert.equal(payments.find((p) => p.dueMonth === OCT)?.receivedMonth, OCT);
-
-  // And unticking takes it back out, while the month is still a draft.
-  await as(ELIZE, () =>
-    savePaymentsReceived(
-      null,
-      form({ workspace_id: WS, month: OCT, [`cell:${sale.id}:${OCT}`]: "off" }),
-    ),
+  const { actuals } = await ledger();
+  assert.deepEqual(
+    actuals.map((c) => [c.salesRowId === OFFER_ROW ? "offer" : "client", c.month, c.amount]),
+    [
+      ["offer", JAN, 1200],
+      ["client", JAN, 400],
+      ["client", FEB, 400],
+    ],
+    "February's empty offer cell is not a row at all — a dash, not £0",
   );
-  const { payments: back } = await ledger();
-  assert.equal(back.find((p) => p.dueMonth === OCT)?.receivedMonth, null);
 });
 
-test("a published month's refusal is reported in words somebody can act on", async () => {
-  const { sales } = await ledger();
-  const sale = sales[0];
-  await publish(SEP);
+test("clearing a cell takes it away", async () => {
+  await as(ELIZE, () =>
+    saveActuals(null, form({ workspace_id: WS, [`cell:${CLIENT_ROW}:${FEB}`]: "" })),
+  );
+  const { actuals } = await ledger();
+  assert.equal(
+    actuals.filter((c) => c.salesRowId === CLIENT_ROW && c.month === FEB).length,
+    0,
+  );
+  assert.equal(actuals.length, 2, "and nothing else moved");
+});
 
+test("a refund is a month where less than nothing landed", async () => {
+  // Confirmed with Dom, 13 November. No non-negative constraint on an
+  // actual: the figure is what landed, and a chargeback is a real thing
+  // that happens to a month.
+  await as(ELIZE, () =>
+    saveActuals(null, form({ workspace_id: WS, [`cell:${OFFER_ROW}:${MAR}`]: -250 })),
+  );
+  const { actuals } = await ledger();
+  assert.equal(actuals.find((c) => c.month === MAR)?.amount, -250);
+
+  // A forecast is different: nobody forecasts negative money, so there
+  // the constraint catches a typo without ever refusing a true figure.
   const refused = await as(ELIZE, () =>
-    saveSale(
+    saveForecasts(null, form({ workspace_id: WS, [`cell:${OFFER_ROW}:${MAR}`]: -250 })),
+  );
+  assert.match(refused?.error ?? "", /amount_not_negative|Couldn't save the forecast/);
+});
+
+test("the forecast is its own grid, and nothing in it is generated", async () => {
+  await as(ELIZE, () =>
+    saveForecasts(
       null,
       form({
         workspace_id: WS,
-        sale_id: sale.id,
-        sales_row_id: OFFER_ROW,
-        month: SEP,
-        total_value: 2500,
-        billing: "one_off",
+        [`cell:${CLIENT_ROW}:${FEB}`]: 400,
+        [`cell:${CLIENT_ROW}:${MAR}`]: 400,
+        [`cell:${CLIENT_ROW}:${APR}`]: 400,
       }),
     ),
   );
-  assert.match(refused?.error ?? "", /published, so what was sold is fixed/);
+
+  const { forecasts, actuals } = await ledger();
+  assert.deepEqual(
+    forecasts.filter((c) => c.salesRowId === CLIENT_ROW).map((c) => [c.month, c.amount]),
+    [[FEB, 400], [MAR, 400], [APR, 400]],
+    "a retainer runs across three months because somebody typed three months",
+  );
+  assert.equal(
+    actuals.filter((c) => c.salesRowId === CLIENT_ROW && c.month === MAR).length,
+    0,
+    "and forecasting March did not put money in March",
+  );
+});
+
+test("THE POINT: one-off in January, retainer from April, same row, no unpublish", async () => {
+  // January was saved while the row said 'none'. Publishing it is what
+  // makes the next part mean something.
+  await publish(JAN);
+
+  const beforeTick = await ledger();
+  assert.equal(
+    beforeTick.actuals.find((c) => c.salesRowId === CLIENT_ROW && c.month === JAN)?.recurrence,
+    "none",
+  );
+
+  // They go onto a retainer. The row's tick changes, which is a change to
+  // the DEFAULT for new months and not to anything already saved.
+  assert.equal(
+    (await as(ELIZE, () =>
+      saveSalesRow(
+        null,
+        form({
+          workspace_id: WS,
+          row_id: CLIENT_ROW,
+          name: "Bella Ltd",
+          row_type: "client",
+          recurrence: "monthly",
+        }),
+      ),
+    ))?.notice,
+    "Bella Ltd updated.",
+    "no unpublish message, on a published January",
+  );
+
+  await as(ELIZE, () =>
+    saveActuals(null, form({ workspace_id: WS, [`cell:${CLIENT_ROW}:${APR}`]: 400 })),
+  );
+
+  const { actuals } = await ledger();
+  const janCell = actuals.find((c) => c.salesRowId === CLIENT_ROW && c.month === JAN);
+  const aprCell = actuals.find((c) => c.salesRowId === CLIENT_ROW && c.month === APR);
+  assert.equal(janCell.recurrence, "none", "January is what January was");
+  assert.equal(aprCell.recurrence, "monthly", "and April is a retainer");
+  assert.equal(janCell.amount, 400, "neither figure moved");
+});
+
+test("a published month refuses a figure, in words somebody can act on", async () => {
+  // January is still published from the test above.
+  const refused = await as(ELIZE, () =>
+    saveActuals(null, form({ workspace_id: WS, [`cell:${OFFER_ROW}:${JAN}`]: 9999 })),
+  );
+  assert.match(refused?.error ?? "", /published, so its figures are fixed/);
   assert.doesNotMatch(
     refused?.error ?? "",
-    /check_violation|plpgsql|report_sales/,
+    /check_violation|plpgsql|report_actuals/,
     "and not in the guard's own words",
   );
 
-  // The figure did not move, which is the half that matters.
-  const { sales: after } = await ledger();
-  assert.equal(after[0].totalValue, 2000);
+  const { actuals } = await ledger();
+  assert.equal(
+    actuals.find((c) => c.salesRowId === OFFER_ROW && c.month === JAN)?.amount,
+    1200,
+    "the figure did not move, which is the half that matters",
+  );
+
+  // Clearing one is the same refusal, and reported the same way — a
+  // delete refused by the guard raises rather than silently doing nothing.
+  const cleared = await as(ELIZE, () =>
+    saveActuals(null, form({ workspace_id: WS, [`cell:${OFFER_ROW}:${JAN}`]: "" })),
+  );
+  assert.match(cleared?.error ?? "", /published/i);
+  assert.equal((await ledger()).actuals.filter((c) => c.month === JAN).length, 2);
+
+  await publish(JAN, false);
 });
 
-test("THE POINT: a customer who stops paying after September is published", async () => {
-  const { sales } = await ledger();
-  const sale = sales[0];
+test("a row's kind is held still once a published month holds figures for it", async () => {
+  await publish(JAN);
 
-  // Dated inside the published month: refused, and the wording says what
-  // to do about it rather than what the trigger is called.
-  const tooEarly = await as(ELIZE, () =>
-    cancelSale(null, form({ workspace_id: WS, sale_id: sale.id, cancelled_on: "2026-09" })),
+  const refused = await as(ELIZE, () =>
+    saveSalesRow(
+      null,
+      form({ workspace_id: WS, row_id: CLIENT_ROW, name: "Bella Ltd", row_type: "offer" }),
+    ),
   );
-  assert.match(tooEarly?.error ?? "", /has to be dated in a month that hasn't been published/);
+  assert.match(refused?.error ?? "", /figures in a published month/);
 
-  // November is open, so the news goes in.
-  const marked = await as(ELIZE, () =>
-    cancelSale(null, form({ workspace_id: WS, sale_id: sale.id, cancelled_on: "2026-11" })),
-  );
-  assert.equal(marked?.notice, "Marked as cancelled, and kept on the record.");
-
-  const { sales: after, payments } = await ledger();
-  assert.equal(after[0].cancelledOn, NOV);
-  assert.equal(after[0].totalValue, 2000, "September still sold it");
-
-  // The instalment already paid keeps its place: that money arrived, and
-  // the month that counted it said so. The ones still to come go with the
-  // sale.
-  assert.deepEqual(
-    payments.map((p) => [p.dueMonth, p.receivedMonth, p.cancelledOn]),
-    [
-      [SEP, SEP, null],
-      [OCT, null, NOV],
-      [NOV, null, NOV],
-    ],
-  );
-
-  // And taking the mark off works while November is still a draft.
+  // Renaming is not that kind of change, and stays allowed.
   assert.equal(
     (await as(ELIZE, () =>
-      cancelSale(null, form({ workspace_id: WS, sale_id: sale.id, undo: "true" })),
-    ))?.notice,
-    "Cancellation removed.",
-  );
-  const { sales: undone } = await ledger();
-  assert.equal(undone[0].cancelledOn, null);
-
-  await publish(SEP, false);
-});
-
-test("a row is retired, never deleted", async () => {
-  assert.equal(
-    (await as(ELIZE, () =>
-      retireSalesRow(
+      saveSalesRow(
         null,
-        form({ workspace_id: WS, row_id: CLIENT_ROW, name: "Bella's retainer", active: "false" }),
+        form({
+          workspace_id: WS,
+          row_id: CLIENT_ROW,
+          name: "Bella Ltd (renamed)",
+          row_type: "client",
+          recurrence: "monthly",
+        }),
       ),
     ))?.notice,
-    "Bella's retainer retired.",
+    "Bella Ltd (renamed) updated.",
   );
 
-  const { rows } = await ledger();
-  assert.equal(rows.length, 2, "still there — last year's figures are what they are");
-  assert.equal(rows.find((r) => r.id === CLIENT_ROW)?.active, false);
-
-  assert.equal(
-    (await as(ELIZE, () =>
-      retireSalesRow(
-        null,
-        form({ workspace_id: WS, row_id: CLIENT_ROW, name: "Bella's retainer", active: "true" }),
-      ),
-    ))?.notice,
-    "Bella's retainer is back in the grid.",
-  );
+  await publish(JAN, false);
 });
 
-test("a client cannot write their own ledger", async () => {
+test("a client reads the grids only once the month is published", async () => {
+  const asClient = async (sql) => (await asMember(db, CLIENT, () => db.query(sql))).rows;
+
+  assert.equal(
+    (await asClient(`select count(*)::int c from public.report_actuals`))[0].c,
+    0,
+    "a draft month is the team's",
+  );
+
+  await publish(JAN);
+  assert.equal(
+    (await asClient(`select count(*)::int c from public.report_actuals where month = '${JAN}'`))[0].c,
+    2,
+    "January's two figures, now January is published",
+  );
+  assert.equal(
+    (await asClient(`select count(*)::int c from public.report_actuals where month > '${JAN}'`))[0].c,
+    0,
+    "and nothing after it",
+  );
+  assert.equal(
+    (await asClient(`select count(*)::int c from public.report_forecasts`))[0].c,
+    0,
+    "nor a forecast for months they have not been shown — that comes from the freeze",
+  );
+  await publish(JAN, false);
+});
+
+test("a client cannot write a figure of their own", async () => {
   const refused = await as(CLIENT, () =>
-    saveSalesRow(null, form({ workspace_id: WS, name: "Invented", row_type: "client" })),
+    saveActuals(null, form({ workspace_id: WS, [`cell:${OFFER_ROW}:${FEB}`]: 1 })),
   );
   assert.equal(refused?.error, "Your report is filled in by your Allegro team.");
 });

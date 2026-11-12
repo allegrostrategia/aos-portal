@@ -2,18 +2,19 @@ import { expect, test } from "@playwright/test";
 
 import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
+/** The card with this heading — not the first card that merely mentions it. */
+const card = (page: import("@playwright/test").Page, heading: string) =>
+  page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: heading, exact: true }) });
+
 /**
- * Financials' sales grid: Nina's own tracker as a screen.
+ * Financials: two grids, money received and money expected.
  *
- * The case the whole thing turns on is walked here end to end, in a
- * browser, because it is the one a unit test cannot see: £2,000 sold in
- * September as four £500s has to read as £2,000 of September sales and
- * £500 of September cash, and the two figures have to sit on the screen
- * at the same time saying different things.
- *
- * Then the published month: what was sold goes read-only, and "they
- * stopped" does not — a customer who walks away in November is news
- * about November, not a change to September.
+ * Nina, 13 November. The case the whole redesign turns on is walked here
+ * end to end, because it is the one no unit test can see: a client who
+ * paid one-off in a published January and goes onto a retainer in April,
+ * on the same row, with no unpublish message anywhere.
  */
 
 requireLocalStack();
@@ -26,71 +27,77 @@ test.beforeEach(async () => {
   await seed({ quiet: true });
 });
 
-test("a sale, its instalments, and the month's cash", async ({ page }, info) => {
+test("what came in, what you expect, and a refund", async ({ page }, info) => {
   const w = width(info.project.name);
   const { MONTHS } = await import("../scripts/seed-test-db.mjs");
   await signIn(page, "nina");
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
 
-  // --- a row, named by the client ------------------------------------------
-  const setup = page.locator("section", { hasText: "Your rows" }).first();
+  // --- rows, named by the client -------------------------------------------
+  const setup = card(page, "Your rows");
   await expect(setup.getByText(/List your offers, or list a client by name/i)).toBeVisible();
   await setup.getByLabel("Name").fill("Signature programme");
   await setup.getByRole("button", { name: /add the row/i }).click();
   await expect(page.getByText(/Signature programme added/i)).toBeVisible();
 
-  await setup.getByLabel("Name").fill("Bella's retainer");
+  await setup.getByLabel("Name").fill("Bella Ltd");
   await setup.getByLabel("What it is").selectOption("client");
-  await setup.getByRole("button", { name: /add the row/i }).click();
-  await expect(page.getByText(/Bella's retainer added/i)).toBeVisible();
+  await setup.getByLabel("Does it recur?").selectOption("monthly");
+  // Submitted from the field: on a phone the "added" notice from the
+  // first row can sit over the button between layouts, which is a race in
+  // the test rather than anything the person would hit.
+  await setup.getByLabel("Name").press("Enter");
+  await expect(page.getByText(/Bella Ltd added/i)).toBeVisible();
 
   await shoot(page, TAB, "01-rows", w);
 
-  // --- £2,000 sold in September, paid in four £500s ------------------------
-  const sold = page.locator("section", { hasText: "Sold in September" }).first();
-  await sold.getByRole("button", { name: /record a sale/i }).click();
-  await sold.getByLabel("Row").selectOption({ label: "Signature programme" });
-  await sold.getByLabel("What it is worth").fill("2000");
-  await sold.getByLabel("Spread over").fill("4");
-  await sold.getByRole("button", { name: /fill the months/i }).click();
+  // --- what came in --------------------------------------------------------
+  const came = card(page, "What came in");
+  await expect(came.getByText(/A refund or a chargeback goes in as a minus/i)).toBeVisible();
+  await expect(came.getByText(/Signed a new retainer client\?/i)).toBeVisible();
 
-  // The suggestion, before anything is saved: four £500s, September first.
-  await expect(page.locator('input[name="due:2026-09-01"]')).toHaveValue("500");
-  await expect(page.locator('input[name="due:2026-12-01"]')).toHaveValue("500");
-  await expect(sold.getByText(/The schedule adds up/i)).toBeVisible();
+  const cell = (name: string, month: string) =>
+    came.getByLabel(new RegExp(`^${name}, ${month}$`));
+  await cell("Signature programme", "September 2026").fill("2000");
+  await cell("Bella Ltd", "September 2026").fill("400");
+  // A chargeback: less than nothing landed on that row that month.
+  await cell("Bella Ltd", "October 2026").fill("-250");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
 
-  // September's £500 is in the bank.
-  await page.locator('input[name="paid:2026-09-01"]').check();
-  await shoot(page, TAB, "02-editor", w);
-
-  await sold.getByRole("button", { name: /record it/i }).click();
-  await expect(page.getByText(/Sale recorded/i)).toBeVisible();
-
-  // --- THE POINT: two figures, both right ---------------------------------
-  const strip = page.locator("section", { hasText: "This month" }).first();
-  await expect(strip.getByText("£2,000")).toBeVisible();
-  await expect(strip.getByText("£500").first()).toBeVisible();
+  // The month's three figures, all from what was typed and none derived.
+  const strip = card(page, "This month");
   const stripText = (await strip.innerText()).replace(/\s+/g, " ");
-  expect(stripText, "sold is the whole sale").toContain("£2,000");
-  expect(stripText, "cash is what arrived").toContain("£500");
+  expect(stripText, "came in").toContain("£2,400");
+  expect(stripText, "and the retainer is the recurring part").toContain("£400");
 
-  // Three instalments scheduled into the months ahead.
-  const year = page.locator("section", { hasText: "The year" }).first();
-  await expect(year.getByRole("cell", { name: /£500/ }).first()).toBeVisible();
-  await shoot(page, TAB, "03-month-and-year", w);
+  await shoot(page, TAB, "02-what-came-in", w);
 
-  // --- the half-typed schedule says what is missing ------------------------
-  await sold.getByRole("button", { name: /^edit$/i }).click();
-  await page.locator('input[name="due:2026-12-01"]').fill("");
-  await expect(sold.getByText(/£500\.00 still to put in a month|£500 still to put in a month/i)).toBeVisible();
-  await sold.getByRole("button", { name: /save the sale/i }).click();
-  await expect(page.getByText(/Sale updated/i)).toBeVisible();
-  await expect(sold.getByText(/£500 not yet scheduled into a month/i)).toBeVisible();
-  await shoot(page, TAB, "04-not-yet-scheduled", w);
+  // --- what you expect, pasted across the months ---------------------------
+  const expected = card(page, "What you expect");
+  await expect(expected.getByText(/Type it, or paste a row of figures straight in/i)).toBeVisible();
+
+  const first = expected.getByLabel(/^Bella Ltd, September 2026$/);
+  await first.focus();
+  // "typed or pasted by hand into however many months it lasts" — four
+  // months of a retainer, straight off a spreadsheet row.
+  await page.evaluate(() => {
+    const input = document.activeElement as HTMLInputElement;
+    const event = new ClipboardEvent("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: { getData: () => "400\t400\t400\t400" },
+    });
+    input.dispatchEvent(event);
+  });
+  await expect(expected.getByLabel(/^Bella Ltd, December 2026$/)).toHaveValue("400");
+
+  await expected.getByRole("button", { name: /save the forecast/i }).click();
+  await expect(expected.getByText(/^Saved\.$/)).toBeVisible();
+  await shoot(page, TAB, "03-what-you-expect", w);
 });
 
-test("a published month fixes what was sold, and still takes a cancellation", async ({
+test("a published month is fixed, and a retainer can still start after it", async ({
   page,
 }, info) => {
   const w = width(info.project.name);
@@ -98,52 +105,53 @@ test("a published month fixes what was sold, and still takes a cancellation", as
   await signIn(page, "nina");
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
-  const setup = page.locator("section", { hasText: "Your rows" }).first();
-  await setup.getByLabel("Name").fill("Bella's retainer");
+  const setup = card(page, "Your rows");
+  await setup.getByLabel("Name").fill("Bella Ltd");
   await setup.getByLabel("What it is").selectOption("client");
   await setup.getByRole("button", { name: /add the row/i }).click();
-  await expect(page.getByText(/Bella's retainer added/i)).toBeVisible();
+  await expect(page.getByText(/Bella Ltd added/i)).toBeVisible();
 
-  const sold = page.locator("section", { hasText: "Sold in September" }).first();
-  await sold.getByRole("button", { name: /record a sale/i }).click();
-  await sold.getByLabel("Row").selectOption({ label: "Bella's retainer" });
-  await sold.getByLabel("What it is worth").fill("400");
-  await sold.getByLabel("Billing").selectOption("monthly");
-  await sold.getByLabel("Spread over").fill("1");
-  await sold.getByRole("button", { name: /fill the months/i }).click();
-  await page.locator('input[name="paid:2026-09-01"]').check();
-  await sold.getByRole("button", { name: /record it/i }).click();
-  await expect(page.getByText(/Sale recorded/i)).toBeVisible();
+  // September: a one-off, while the row still says it does not recur.
+  const came = card(page, "What came in");
+  await came.getByLabel(/^Bella Ltd, September 2026$/).fill("1200");
+  await came.getByRole("button", { name: /save what came in/i }).click();
+  await expect(came.getByText(/^Saved\.$/)).toBeVisible();
 
-  // Published.
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   await page.getByRole("button", { name: /publish this month/i }).click();
   await expect(page.getByText(/^Published$/).first()).toBeVisible();
 
   await page.goto(`/reporting/enter/financials?month=${MONTHS.sep}`);
-  const published = page.locator("section", { hasText: "Sold in September" }).first();
-  await expect(
-    published.getByText(/This month is published, so what was sold is fixed/i),
-  ).toBeVisible();
-  await expect(published.getByRole("button", { name: /^edit$/i })).toHaveCount(0);
-  await shoot(page, TAB, "05-published", w);
+  const published = card(page, "What came in");
+  await expect(published.getByLabel(/^Bella Ltd, September 2026$/)).toBeDisabled();
+  await expect(published.getByText(/September 2026 is published, so its column is fixed/i)).toBeVisible();
+  await shoot(page, TAB, "04-published", w);
 
-  // **But "they stopped" is still there**, which is what the guard exists
-  // for. The field offers a month that will be accepted, not one that will
-  // be refused.
-  await published.getByRole("button", { name: /they stopped/i }).click();
-  await expect(published.getByLabel(/month they stopped/i)).toHaveValue("2026-10");
-  await published.getByLabel(/month they stopped/i).fill("2026-11");
-  await published.getByRole("button", { name: /mark it/i }).click();
-  await expect(page.getByText(/Marked as cancelled/i)).toBeVisible();
+  // **They go onto a retainer in October**, with September published.
+  // Ticking the row is a change to the starting point for new months, not
+  // to September — so it goes through, with no unpublish message.
+  const setupAgain = card(page, "Your rows");
+  const tick = setupAgain.getByLabel(/^Does Bella Ltd recur\?$/);
+  await expect(tick).toHaveValue("none");
+  await tick.selectOption("monthly");
+  await setupAgain.getByRole("button", { name: /^save$/i }).click();
+  await expect(page.getByText(/Bella Ltd updated/i)).toBeVisible();
+  // **The control still says what was saved.** React resets an
+  // uncontrolled field once a form action finishes, which left this
+  // reading "No, one-off" beside a notice saying it had been updated.
+  await expect(tick).toHaveValue("monthly");
 
-  // September still sold it. That is the whole point.
-  const strip = page.locator("section", { hasText: "This month" }).first();
-  expect((await strip.innerText()).replace(/\s+/g, " ")).toContain("£400");
-  await expect(
-    published.getByText(/Cancelled November 2026, and kept on the record/i),
-  ).toBeVisible();
-  // The month the sale was in, not a hardcoded one.
-  await expect(published.getByText(/September 2026 sold it/i)).toBeVisible();
-  await shoot(page, TAB, "06-cancelled-after-publish", w);
+  const body = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(body, "nothing was refused, so nothing says so").not.toContain(
+    "figures in a published month",
+  );
+
+  // October is still a draft, so its column takes the retainer's figure.
+  await published.getByLabel(/^Bella Ltd, October 2026$/).fill("400");
+  await published.getByRole("button", { name: /save what came in/i }).click();
+  await expect(published.getByText(/^Saved\.$/)).toBeVisible();
+
+  // And September's figure did not move.
+  await expect(published.getByLabel(/^Bella Ltd, September 2026$/)).toHaveValue("1200");
+  await shoot(page, TAB, "05-retainer-after-publish", w);
 });

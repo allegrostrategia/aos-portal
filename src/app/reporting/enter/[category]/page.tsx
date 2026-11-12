@@ -14,7 +14,6 @@ import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { SocialEntry } from "@/components/reporting/social-entry";
 import { SalesGrid } from "@/components/reporting/sales-grid";
 import { getSalesLedger } from "@/lib/reporting/sales-queries";
-import { nextOpenMonth } from "@/lib/reporting/months";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { STAGE_6 } from "@/lib/reporting/categories";
 import { uploadFor } from "@/lib/reporting/csv/upload-for";
@@ -515,11 +514,6 @@ export default async function EnterCategoryPage({
         />
       ) : null}
 
-      {/* **Outside the disabled fieldset, on purpose.** A published month
-          fixes what was sold and what came in, and the grid says so itself
-          — but a cancellation dated in an open month is still allowed, and
-          a blanket `disabled` would take the one affordance the guard
-          exists to leave open. */}
       {topItems ? (
         <TopItemsEntry
           workspaceId={ctx.workspace.id}
@@ -530,20 +524,24 @@ export default async function EnterCategoryPage({
       ) : null}
       </fieldset>
 
+      {/* **Outside the disabled fieldset, on purpose.** A published month
+          freezes its own column and the grid says so, but the months
+          either side of it are still the team's to fill in — and a blanket
+          `disabled` would lock a whole year because one month of it has
+          gone out. */}
       {ledger ? (
         <SalesGrid
           workspaceId={ctx.workspace.id}
           month={ctx.month.month}
           currency={ctx.workspace.currency}
           rows={ledger.rows}
-          sales={ledger.sales}
-          payments={ledger.payments}
+          actuals={ledger.actuals}
+          forecasts={ledger.forecasts}
           offers={data.entities
             .filter((e) => e.entity_type === "offer" && e.active)
             .map((e) => ({ id: e.id, name: e.name }))}
           lockedMonths={publishedMonths}
           locked={locked}
-          openMonth={nextOpenMonth(publishedMonths, ctx.month.month)}
         />
       ) : null}
     </ReportShell>
