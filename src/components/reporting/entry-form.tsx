@@ -11,7 +11,6 @@ import type { CategoryKey } from "@/lib/reporting/categories";
 import { formatValue, fromInputValue, toInputValue } from "@/lib/reporting/format";
 import { CsvUpload, type UploadPlatform } from "@/components/reporting/csv-upload";
 import type { TopPost } from "@/lib/reporting/top-posts";
-import type { OfferMonth } from "@/lib/reporting/formulas";
 import type { ExpenseRow, Received } from "@/lib/reporting/ledger";
 import type { ReportMetric } from "@/lib/reporting/queries";
 
@@ -52,11 +51,6 @@ export interface EntryFormProps {
   core: ReportMetric[];
   optional: ReportMetric[];
   calculated: ReportMetric[];
-  /**
-   * The month's offers. Financials pulls its revenue from them, so the
-   * live card needs them to work out the same totals the report does.
-   */
-  offerRows?: OfferMonth[];
   initial: Record<string, number | null>;
   previous: Record<string, number | null>;
   /**
@@ -155,9 +149,6 @@ export function EntryForm(props: EntryFormProps) {
         // Some formulas are defined against last month: follower growth, the
         // unsubscribe rate. Those come from the server and never change here.
         previous: (key) => props.previous[key] ?? null,
-        // Offers are set on their own screen, so they do not change as you
-        // type here — but Financials is worked out from them.
-        offerRows: props.offerRows,
         received: props.received,
         costs: props.costs,
         clientsAtStart: props.openingAppliesHere
@@ -167,7 +158,6 @@ export function EntryForm(props: EntryFormProps) {
     [
       props.category,
       props.previous,
-      props.offerRows,
       props.received,
       props.costs,
       props.clientsAtStart,

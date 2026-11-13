@@ -375,23 +375,6 @@ export default async function EnterCategoryPage({
     forEntry.map((m) => [m.key, data.previous.get(m.key, entityOf(m))]),
   );
 
-  // The month's offers, in the shape the formulas take. Financials pulls
-  // its revenue from them (§5.10), so without these the entry card showed
-  // dashes for Total revenue, Profit and the margin while the report —
-  // which does pass them — showed the real figures. §9 says those two must
-  // never disagree.
-  const offerRowsForEntry = data.entities
-    .filter((e) => e.entity_type === "offer")
-    .map((offer) => ({
-      name: offer.name,
-      hourlyCost: offer.hourly_cost,
-      pricingModel: offer.pricing_model ?? undefined,
-      unitsSold: data.values.get("offers_units_sold", offer.id),
-      revenue: data.values.get("offers_revenue_this_month", offer.id),
-      hoursSpent: data.values.get("offers_hours_spent_delivering", offer.id),
-      otherDirectCosts: data.values.get("offers_other_direct_costs", offer.id),
-    }))
-    .filter((r) => r.unitsSold !== null || r.revenue !== null || r.hoursSpent !== null);
 
   // §5.3's two lists are words rather than figures, so they sit under
   // the generic form rather than inside it.
@@ -497,7 +480,6 @@ export default async function EnterCategoryPage({
       {(() => {
         const entry = {
           upload: uploadCard,
-          offerRows: offerRowsForEntry,
           elsewhere,
           clientsAtStart,
           openingAppliesHere,
