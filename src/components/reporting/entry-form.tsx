@@ -51,6 +51,17 @@ export interface EntryFormProps {
   core: ReportMetric[];
   optional: ReportMetric[];
   calculated: ReportMetric[];
+  /**
+   * Where this screen is, so the save can redirect back to it with
+   * `?saved=`, and the sentence that `?saved=` resolved to.
+   *
+   * **The confirmation lives on the page, not in `useActionState`.** A
+   * save that makes a section appear rebuilds this form and takes the
+   * action's return value with it — see `saveCategoryValues`. Null on
+   * the quiet-save screen, which saves on blur and must not navigate.
+   */
+  here?: string | null;
+  saved?: string | null;
   initial: Record<string, number | null>;
   previous: Record<string, number | null>;
   /**
@@ -184,6 +195,10 @@ export function EntryForm(props: EntryFormProps) {
     field.form?.requestSubmit();
   };
 
+  const dirty = Object.keys(values).some(
+    (key) => fromInputValue(values[key] ?? "") !== (props.initial[key] ?? null),
+  );
+
   // Any core field still empty keeps the section unfinished (§8.1).
   // **Core only**, although `props.core` also carries decision 28's four
   // visible optional fields. They are on screen; they do not hold the
@@ -197,6 +212,7 @@ export function EntryForm(props: EntryFormProps) {
       <input type="hidden" name="workspace_id" value={props.workspaceId} />
       <input type="hidden" name="month" value={props.month} />
       <input type="hidden" name="category" value={props.category} />
+      {props.here ? <input type="hidden" name="here" value={props.here} /> : null}
       {/* **Which platform these boxes belong to** (11 November). Social
           Media's figures hang off a platform row, and this screen shows
           one platform at a time — so the save is told which one rather
@@ -335,7 +351,15 @@ export function EntryForm(props: EntryFormProps) {
           </p>
         ) : null
       ) : (
-        <SaveBar state={state} nextHref={props.nextHref} nextLabel={props.nextLabel} />
+        <SaveBar
+          state={state}
+          nextHref={props.nextHref}
+          nextLabel={props.nextLabel}
+          // Only while the boxes still hold what was saved. Typing into
+          // one makes "Saved." untrue, and a stale confirmation over a
+          // changed figure is the same lie in the other direction.
+          saved={dirty ? null : (props.saved ?? null)}
+        />
       )}
     </form>
   );
@@ -500,10 +524,12 @@ function SaveBar({
   state,
   nextHref,
   nextLabel,
+  saved,
 }: {
   state: SaveState;
   nextHref: string | null;
   nextLabel: string | null;
+  saved: string | null;
 }) {
   const { pending } = useFormStatus();
 
@@ -515,7 +541,7 @@ function SaveBar({
       >
         {pending
           ? "Saving…"
-          : (state?.error ?? state?.notice ?? "Nothing is saved until you press save.")}
+          : (state?.error ?? saved ?? state?.notice ?? "Nothing is saved until you press save.")}
       </p>
 
       <div className="flex items-center gap-3">

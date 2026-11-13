@@ -26,6 +26,7 @@ import {
   categoryBySlug,
 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
+import { savedNotice } from "@/lib/reporting/saved-notice";
 import { monthLabel } from "@/lib/reporting/months";
 import {
   getClientFlow,
@@ -493,6 +494,18 @@ export default async function EnterCategoryPage({
           // grids with their own saves sit under this form, and one box
           // left in it — so a bar saying "nothing is saved until you
           // press save" reads as if it were about the grids.
+          /**
+           * Where to come back to with `?saved=`, and what the last
+           * save left there. Not on Financials: it saves on blur, and
+           * a navigation on every box exit is not the same thing.
+           */
+          here:
+            category.key === "financials"
+              ? null
+              : reportHref(`/reporting/enter/${category.slug}`, ctx, {
+                  platform: category.key === "social_media" ? platformId : null,
+                }),
+          saved: savedNotice(search.saved),
           quietSave: category.key === "financials",
           category: category.key,
           platformId: category.key === "social_media" ? platformId : null,

@@ -103,3 +103,28 @@ export async function takeBackToDraft(month: string, business = "Northwind Studi
        and p.month = '${month}-01';
   `);
 }
+
+/**
+ * What a generic entry save leaves on the screen, **anchored to the start**.
+ *
+ * `getByText(/saved/i)` was in thirteen specs, and in almost all of them
+ * it was a wait that passed before the click did anything. The save bar's
+ * own idle text is "Nothing is saved until you press save." — it is on
+ * the page from the first render, on every entry screen, and it matches.
+ * So did "Saved as you leave each box." on Financials, "the months
+ * already saved keep what they were saved with" on the Financials row
+ * form, "Price will be captured when this month is saved" on Funnels,
+ * and "Nothing is saved until you check" on every CSV card.
+ *
+ * The cost is not a false pass on a broken save — the next assertion
+ * usually catches that. It is the **race**: the test walks on while the
+ * action is still in flight, and a navigation cancels it. That failed
+ * one run in two on 13 November and read as a product bug for an hour.
+ *
+ * Anchored, so nothing that merely contains the word can match: the
+ * action says "Saved. <Category> is up to date for this month." when
+ * something changed and "Nothing had changed." when nothing did, and
+ * both are legitimate outcomes of pressing save. Where only one is
+ * possible, the spec asserts that exact sentence instead of this.
+ */
+export const SAVE_CONFIRMED = /^(Saved\.|Nothing had changed\.)/;

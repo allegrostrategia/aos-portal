@@ -580,6 +580,34 @@ test("every ?saved= key the actions send has a sentence to show", async () => {
   assert.equal(savedNotice(undefined), null);
 });
 
+test("an entry screen's ?saved= key resolves to its own sentence", async () => {
+  // Every entry screen's save redirects with `?saved=c:<category>` since
+  // 14 November, so the sentence survives the form being rebuilt. The
+  // category is read from the URL; the WORDING is not, which is the
+  // property worth holding on to.
+  const { savedNotice } = await import("../../src/lib/reporting/saved-notice.ts");
+  // `CATEGORIES`, not `ENTRY_CATEGORIES`: the latter is filtered by the
+  // shipped stage, which is an environment variable — so it is shorter
+  // here than in production and would quietly stop covering anything.
+  const { CATEGORIES } = await import("../../src/lib/reporting/categories.ts");
+  const entryScreens = CATEGORIES.filter((c) => c.entry);
+
+  assert.equal(entryScreens.length, 9, "every entry screen is covered");
+  for (const category of entryScreens) {
+    assert.equal(
+      savedNotice(`c:${category.key}`),
+      `Saved. ${category.label} is up to date for this month.`,
+    );
+  }
+
+  assert.equal(savedNotice("nothing-changed"), "Nothing had changed.");
+  // A category that does not exist is as unrecognised as any other key —
+  // the prefix is not a way in.
+  assert.equal(savedNotice("c:<b>hello</b>"), null);
+  assert.equal(savedNotice("c:constructor"), null);
+  assert.equal(savedNotice("c:"), null);
+});
+
 // --------------------------------------- decision 12: the one launch email
 
 /**

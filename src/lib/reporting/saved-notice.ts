@@ -1,3 +1,5 @@
+import { categoryByKey } from "./categories.ts";
+
 /**
  * The confirmation a save leaves behind, carried in the URL.
  *
@@ -25,6 +27,7 @@
  */
 
 export const SAVED_NOTICES = {
+  "nothing-changed": "Nothing had changed.",
   launch: "Saved.",
   status: "Status saved.",
   stages: "Stages saved.",
@@ -39,13 +42,29 @@ export const SAVED_NOTICES = {
 
 export type SavedKey = keyof typeof SAVED_NOTICES;
 
+/**
+ * An entry screen's own sentence, keyed by category: `?saved=c:offers`.
+ *
+ * The wording is still built here, from the category list — the URL
+ * only chooses which category, and an unknown one is null like any
+ * other unrecognised key. So the rule above holds: nothing a person
+ * pastes into the address bar can put words on the screen.
+ */
+export type CategorySavedKey = `c:${string}`;
+
 /** The sentence for `?saved=`, or null for anything unrecognised. */
 export function savedNotice(raw: string | string[] | undefined): string | null {
   if (typeof raw !== "string") return null;
   // `Object.hasOwn`, never `in`: `in` walks the prototype chain, so
   // `?saved=constructor` came back with the Object constructor itself
   // rather than null — found by a test that tried it.
-  return Object.hasOwn(SAVED_NOTICES, raw) ? SAVED_NOTICES[raw as SavedKey] : null;
+  if (Object.hasOwn(SAVED_NOTICES, raw)) return SAVED_NOTICES[raw as SavedKey];
+
+  if (raw.startsWith("c:")) {
+    const category = categoryByKey(raw.slice(2));
+    return category ? `Saved. ${category.label} is up to date for this month.` : null;
+  }
+  return null;
 }
 
 /**
@@ -55,7 +74,7 @@ export function savedNotice(raw: string | string[] | undefined): string | null {
  * Replaces any `saved` already there rather than appending a second one,
  * so saving twice does not grow the URL.
  */
-export function withSaved(href: string, key: SavedKey): string {
+export function withSaved(href: string, key: SavedKey | CategorySavedKey): string {
   const [path, query = ""] = href.split("?");
   const params = new URLSearchParams(query);
   params.set("saved", key);

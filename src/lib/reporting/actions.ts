@@ -12,6 +12,7 @@ import { getMetrics, getWorkspace } from "./queries.ts";
 import { firstOfMonth } from "./months.ts";
 import { fromInputValue } from "./format.ts";
 import { isInternalReportPath } from "./paths.ts";
+import { withSaved } from "./saved-notice.ts";
 import { canEdit } from "./access.ts";
 import { lockedError } from "./locked.ts";
 
@@ -221,6 +222,35 @@ export async function saveCategoryValues(
   }
 
   const changed = inserts.length + updates.length;
+
+  /**
+   * **The confirmation goes in the URL, not in the action's return
+   * value** (Dom, 14 November) — the fourth time this project has been
+   * caught by a save that works and says nothing, and the reason
+   * `saved-notice.ts` exists at all.
+   *
+   * Social Media's first save of a month makes "Top posts this month"
+   * appear. That rebuilds the form, `useActionState` goes with it, and
+   * the sentence this function worked out is thrown away before anybody
+   * reads it — while the figures are safely in the database. A person's
+   * answer to a screen that says nothing is to press the button again.
+   *
+   * A redirect cannot be lost that way: the **page** renders the
+   * sentence from `?saved=`, so it survives a rebuild, a reload and a
+   * pasted link. The other three places this happened were fixed the
+   * same way.
+   *
+   * `here` is the screen asking for it, and only the save bar sends it.
+   * Financials saves on blur instead, with no bar and no button, and a
+   * navigation on every box exit is not the same thing at all — so that
+   * path keeps the return value below. It is also the one screen this
+   * cannot bite: nothing appears on it after a save.
+   */
+  const here = String(formData.get("here") ?? "");
+  if (here && isInternalReportPath(here)) {
+    redirect(withSaved(here, changed === 0 ? "nothing-changed" : `c:${category.key}`));
+  }
+
   return {
     notice:
       changed === 0
