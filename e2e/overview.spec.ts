@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { MONTHS } from "./guard.ts";
 import {
+  SAVE_CONFIRMED,
   expectNothingAdminish,
   requireLocalStack,
   shoot,
@@ -155,7 +156,7 @@ test("a figure where falling is good reads both ways in Nina's words", async ({ 
   // unhydrated click posted natively and the browser waited for it.
   const saveAndWait = async () => {
     await page.getByRole("button", { name: /^save/i }).first().click();
-    await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+    await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
   };
 
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.aug}`);
@@ -210,7 +211,7 @@ test("the client reads the note and the focus list as words, with nothing to typ
       "September was your best month for leads since we started, and the close rate is the one to work on next.\n\nI have put two things in the focus list below.",
     );
   await page.getByRole("button", { name: /save note/i }).click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Note saved.", { exact: true })).toBeVisible();
 
   await page.getByLabel("Objective 1").fill("Tighten the call booking page");
   await page.getByLabel("Objective 2").fill("Three case studies out by the 20th");

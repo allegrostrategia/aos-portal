@@ -357,7 +357,7 @@ test("typing a launch's figures in, and seeing them on its report", async ({ pag
 
   await page.getByLabel("Replay watchers", { exact: true }).first().fill("310");
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Figures saved.", { exact: true })).toBeVisible();
 
   // And it is there when the screen comes back — which is also the one
   // check that a box's name and its lookup still agree. Name them

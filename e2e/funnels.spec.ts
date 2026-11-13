@@ -63,7 +63,7 @@ test("re-saving September does not move July — December does not rewrite June"
   const purchases = page.getByLabel("Purchases", { exact: true }).first();
   await purchases.fill("9");
   await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText(/^Saved\. Funnels is up to date for this month\.$/)).toBeVisible();
 
   // September keeps the price it captured, not today's £800.
   await expect(page.getByText(/September 2026 uses £500/)).toBeVisible();

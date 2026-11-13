@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { requireLocalStack, shoot, signIn } from "./helpers.ts";
+import { SAVE_CONFIRMED, requireLocalStack, shoot, signIn } from "./helpers.ts";
 
 /**
  * Stage 5 — an aOS member reporting on themselves.
@@ -72,14 +72,14 @@ test("the figure she is only ever asked once does not hold a month open", async 
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
   await page.getByLabel(/when you joined/i).fill("40");
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
 
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.sep}`);
   await page.getByLabel(/clients who left/i).fill("1");
   await page.getByLabel(/renewals and upsells/i).fill("2");
   await page.getByLabel(/issues raised/i).fill("0");
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
 
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   const ce = page.locator("[data-completion='client_experience']");
@@ -162,7 +162,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
     await page.getByLabel(label).first().fill(value);
   }
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
 
   // The opening figure is asked once, on the month it applies to —
   // their first. The screen says so ("The opening figure goes on July
@@ -170,7 +170,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   await page.goto(`/reporting/enter/client-experience?month=${MONTHS.jul}`);
   await page.getByLabel(/when you joined/i).first().fill("12");
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
 
   await page.goto(`/reporting/enter/client-experience?month=${CURRENT}`);
   for (const [label, value] of [
@@ -180,7 +180,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
     await page.getByLabel(label).first().fill(value);
   }
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
 
   /**
    * Financials, which is four grids and one box since 13 November: she
@@ -206,7 +206,7 @@ test("first login to a finished month, without help", async ({ page }, info) => 
 
   await page.getByLabel(/cash in bank/i).fill("9000");
   await page.getByLabel(/cash in bank/i).blur();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved. Financials is up to date for this month.", { exact: true })).toBeVisible();
 
   // 5. Her reflection, and next month's objectives.
   await page.goto(`/reporting?month=${CURRENT}`);
@@ -280,7 +280,7 @@ test("hiding a section takes it off, and nothing is lost", async ({ page }, info
   await page.goto(`/reporting/enter/email?month=${MONTHS.sep}`);
   await page.getByLabel(/list size at month end/i).fill("900");
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toBeVisible();
 
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   await page.getByRole("link", { name: /your report settings/i }).click();

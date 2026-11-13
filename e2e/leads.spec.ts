@@ -79,7 +79,7 @@ test("potential revenue appears once an offer is chosen, and says what it used",
     .getByLabel(/Offer used for potential revenue/i)
     .selectOption({ label: "Signature programme — £800" });
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
 
   await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
   await expect(page.getByText("What those leads could be worth")).toBeVisible();
@@ -114,7 +114,7 @@ test("the figure follows the offer's price, with nothing else touched", async ({
     .getByLabel(/Offer used for potential revenue/i)
     .selectOption({ label: "Signature programme — £800" });
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
 
   await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
   await expect(page.getByText("£102,400")).toBeVisible();

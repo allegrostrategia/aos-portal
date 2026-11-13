@@ -448,7 +448,15 @@ test("the import is recorded by the save, not by the upload", async ({ page }) =
   expect(records(), "filling records nothing").toBe("");
 
   await page.getByRole("button", { name: /^save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  // Both halves on purpose. The sentence is what a person reads, and it
+  // was missing here until 14 November — Social Media's first save of a
+  // month makes "Top posts this month" appear, which rebuilt the form
+  // and threw the notice away. The import row is what this spec is
+  // about, and it is the half that proves the sentence is not just
+  // words: a screen can say "Saved." and record nothing.
+  await expect(
+    page.getByText("Saved. Social Media is up to date for this month.", { exact: true }),
+  ).toBeVisible();
   await expect
     .poll(() => records(), { message: "the save recorded no import" })
     .toContain("september-posts.csv / meta_content");
@@ -459,11 +467,21 @@ test("a month saved without a file records no import", async ({ page }) => {
   const ws = sql(`select id from public.report_workspaces where business_name = '${RETAINER}'`);
   const count = () =>
     Number(sql(`select count(*)::text from public.report_csv_imports where workspace_id = '${ws}'`));
+  const views = () =>
+    sql(`select coalesce(string_agg(value::text, ','), '-') from public.report_values
+          where workspace_id = '${ws}' and month = '${MONTHS.sep}'
+            and metric_key = 'social_media_views'`);
 
   await signIn(page, "nina");
   await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
   await page.getByLabel(/^Views/i).first().fill("1234");
   await page.getByRole("button", { name: /^save/i }).first().click();
-  await expect(page.getByText(/saved|nothing to save/i).first()).toBeVisible();
+  // The sentence and the figure. `count()` below is 0 before the save as
+  // well as after it, so without a wait for something that only a
+  // finished save produces, this test asserts nothing at all.
+  await expect(
+    page.getByText("Saved. Social Media is up to date for this month.", { exact: true }),
+  ).toBeVisible();
+  await expect.poll(() => views(), { message: "the save never landed" }).toContain("1234");
   expect(count()).toBe(0);
 });

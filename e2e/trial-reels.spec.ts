@@ -78,7 +78,7 @@ test("a new hook becomes Proven the month it comes back", async ({ page }, info)
   await page.locator("#item-hook-3").fill("  A ONE-OFF that did well  ");
   await page.locator("#item-hook-3-views").fill("7000");
   await page.getByRole("button", { name: /save what worked/i }).click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved. Trial Reels is up to date for this month.", { exact: true })).toBeVisible();
 
   await expect(page.getByText(/Proven ·/)).toHaveCount(2);
   await shoot(page, TAB, "02-second-proven", w);
@@ -91,7 +91,7 @@ test("clearing a line removes it", async ({ page }, info) => {
 
   await page.locator("#item-hook-2").fill("");
   await page.getByRole("button", { name: /save what worked/i }).click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved. Trial Reels is up to date for this month.", { exact: true })).toBeVisible();
 
   await expect(page.locator("#item-hook-2")).toHaveValue("");
   await expect(page.getByText("Brand new this month")).toHaveCount(0);
@@ -104,7 +104,7 @@ test("an assigned team member can do all of it", async ({ page }) => {
 
   await page.locator("#item-b_roll-2").fill("Close-up of the notebook");
   await page.getByRole("button", { name: /save what worked/i }).click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved. Trial Reels is up to date for this month.", { exact: true })).toBeVisible();
   await expect(page.locator("#item-b_roll-2")).toHaveValue("Close-up of the notebook");
 });
 

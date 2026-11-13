@@ -122,7 +122,7 @@ test("unpublish, fix, republish — the whole way round", async ({ page }, info)
   await expect(figure).toBeEnabled();
   await figure.fill("1234");
   await page.getByRole("button", { name: /^save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved. Leads & Conversions is up to date for this month.", { exact: true })).toBeVisible();
   await shoot(page, TAB, "05-unpublished-and-editable", w);
 
   // Publishing again closes it. That the SECOND email is worded as an

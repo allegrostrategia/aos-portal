@@ -51,7 +51,7 @@ test("the switch takes hours off both screens, and leaves the figures in the dat
   // Financials grid, and this test is about the hours switch anyway.
   await page.getByLabel("Units sold").first().fill("8");
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved. Offers are up to date.", { exact: true })).toBeVisible();
 
   await page.goto(`/reporting/offers?month=${MONTHS.sep}`);
   await expect(page.getByText("Hourly rate").first()).toBeVisible();
@@ -62,7 +62,7 @@ test("the switch takes hours off both screens, and leaves the figures in the dat
   await page.goto("/reporting/settings");
   await page.getByLabel(/Track hours on offers/i).uncheck();
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
   await shoot(page, TAB, "01-switch-off", w);
 
   // The entry screen: the box is gone, not disabled.
@@ -96,7 +96,7 @@ test("the switch takes hours off both screens, and leaves the figures in the dat
   await page.goto("/reporting/settings");
   await page.getByLabel(/Track hours on offers/i).check();
   await page.getByRole("button", { name: /save/i }).first().click();
-  await expect(page.getByText(/saved/i).first()).toBeVisible();
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
 
   await page.goto(`/reporting/offers?month=${MONTHS.sep}`);
   await expect(page.getByText("Hourly rate").first()).toBeVisible();
