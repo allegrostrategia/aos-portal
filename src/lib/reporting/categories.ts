@@ -136,8 +136,30 @@ export const CATEGORIES: Category[] = [
   },
 ];
 
-/** What production ships. Raised deliberately, by hand, in one place. */
-const PRODUCTION_STAGE = 2;
+/**
+ * What production ships. Raised deliberately, by hand, in one place.
+ *
+ * **2 → 6 on 14 November** (Dom). Five of the eleven report pages —
+ * Trial Reels, Funnels, Ads, Client Experience and Launches — had no
+ * route below stage 4, which is why Nina could not open Launches at
+ * all; everything she had been reviewing was localhost, which runs at
+ * 6.
+ *
+ * Raised only after two checks, and both are the reason it was safe:
+ *
+ * 1. **Nobody real is on Reporting.** Four workspaces on live, and the
+ *    three that are not the demo are test accounts with no access
+ *    events between them.
+ * 2. **Stage 5 sends, and it would send to nobody.** The reminder job
+ *    takes `aos_member` workspaces whose owner is not cancelled. Both
+ *    of those workspaces are owned by cancelled members, so the rule
+ *    drops them; there are no active members at all beyond two admins.
+ *
+ * Neither check stays true by itself. **No real member or retainer
+ * client gets Reporting access until Nina signs off the visual
+ * rebuild** — that is the condition this number is standing on.
+ */
+const PRODUCTION_STAGE = 6;
 
 /**
  * The stage this build has shipped.
