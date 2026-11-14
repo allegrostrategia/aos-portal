@@ -40,11 +40,22 @@ test("the stage override is development-only", async () => {
   assert.match(gate, /PRODUCTION_STAGE/, "and production must fall back to the constant");
 });
 
-test("production ships stage 2 and nothing more", async () => {
+test("the shipped stage is a reviewed constant, not a configuration change", async () => {
   // The number a reader of this repo should be able to trust. Raising it is
   // a deliberate edit, reviewed, not a configuration change.
+  //
+  // **It was 2 until 14 November**, when it went to 6 so Nina could see
+  // the report pages at all — five of the eleven had no route below
+  // stage 4. That was safe only because the email audit came first and
+  // found nobody to send to; the check that matters now lives in the
+  // test below, and it holds at any stage.
   const source = await readFile(`${root}src/lib/reporting/categories.ts`, "utf8");
-  assert.match(source, /const PRODUCTION_STAGE = 2;/);
+  const production = /const PRODUCTION_STAGE = (\d+);/.exec(source);
+  assert.ok(production, "PRODUCTION_STAGE is gone");
+  assert.ok(
+    Number(production[1]) >= 2 && Number(production[1]) <= 6,
+    `PRODUCTION_STAGE is ${production[1]}, which is not a stage`,
+  );
 });
 
 test("production is below Stage 5, so the reminder job sends nothing from live", async () => {
@@ -60,11 +71,33 @@ test("production is below Stage 5, so the reminder job sends nothing from live",
 
   const production = /const PRODUCTION_STAGE = (\d+);/.exec(source);
   assert.ok(production, "PRODUCTION_STAGE is gone");
-  assert.ok(
-    Number(production[1]) < 5,
-    `PRODUCTION_STAGE is ${production[1]} — Stage 5 is on in production, and the reminder job will send`,
-  );
 
   const gate = source.slice(source.indexOf("export const STAGE_5"));
   assert.match(gate, /SHIPPED_STAGE >= 5/, "STAGE_5 must read the shipped stage, nothing else");
+
+  if (Number(production[1]) < 5) return;
+
+  /**
+   * **Stage 5 is on, so the other lock has to be there.**
+   *
+   * A branch may raise the stage to look at unfinished pages, and a
+   * Vercel preview of that branch points at the same live database —
+   * so the reminder job would plan from real workspaces and send real
+   * email. Below Stage 5 the job returns 0 and none of this matters;
+   * at or above it, the cron entry point must refuse any deployment
+   * that is not production. Weakened to a warning the day somebody
+   * raises the stage, this test would be worth nothing, so it is the
+   * raise itself that turns the requirement on.
+   */
+  const cron = await readFile(`${root}src/app/api/cron/due-jobs/route.ts`, "utf8");
+  assert.match(
+    cron,
+    /VERCEL_ENV/,
+    "PRODUCTION_STAGE >= 5 and the cron does not check which deployment it is",
+  );
+  assert.match(
+    cron,
+    /deployment !== "production"/,
+    "the cron must refuse every deployment that is not production",
+  );
 });

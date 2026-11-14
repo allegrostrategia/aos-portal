@@ -13,6 +13,29 @@ import { runDueJobs } from "@/lib/jobs/runner";
  * that check this is a public endpoint that emails members on demand.
  */
 export async function GET(request: NextRequest) {
+  /**
+   * **Only a production deployment may send anything** (Dom, 14 November).
+   *
+   * Stage 5 is the first thing in this app that reaches outside it:
+   * `planReportReminders` plans from real workspaces and sends. Any
+   * deployment that is not production — a preview, a branch build —
+   * points at the same live database, so it would send real email to
+   * real people from a build nobody has reviewed. Vercel schedules
+   * crons on production only and this route needs CRON_SECRET, so that
+   * is already two locks; this is the one that does not depend on how
+   * anything is scoped in a dashboard.
+   *
+   * `VERCEL_ENV` is unset outside Vercel, so `npm run dev` and the
+   * tests are untouched.
+   */
+  const deployment = process.env.VERCEL_ENV;
+  if (deployment && deployment !== "production") {
+    return NextResponse.json(
+      { error: `Refusing to run jobs from a ${deployment} deployment.` },
+      { status: 403 },
+    );
+  }
+
   const secret = process.env.CRON_SECRET;
 
   if (!secret) {
