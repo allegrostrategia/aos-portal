@@ -3,6 +3,52 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 14 November 2026
+
+**Reporting now ships at stage 6, and that is standing on a condition.**
+
+`PRODUCTION_STAGE` went 2 → 6 on 14 November so Nina could open the
+report pages at all: five of the eleven — Trial Reels, Funnels, Ads,
+Client Experience and Launches — had no route below stage 4, which is
+why Launches 404ed for her. Everything in the screenshot sweeps was
+localhost, which runs at 6.
+
+It was raised only after two checks, and **neither of them stays true
+by itself**:
+
+1. **Nobody real is on Reporting.** Four workspaces on live — `Test
+   Client`, `dom`, `test 3` and `Demo – Lemon Studio`. Three are test
+   accounts and the fourth is the demo. No access events on any of
+   them.
+2. **Stage 5 sends, and it would send to nobody.** The reminder job
+   takes `aos_member` workspaces whose owner is not cancelled; both of
+   those workspaces are owned by cancelled members, and there are no
+   active members at all beyond two admins.
+
+> ### No real member or retainer client gets Reporting access until
+> ### Nina has signed off the visual rebuild.
+>
+> Settled by Dom, 14 November. Adding one real member or one real
+> retainer client breaks both checks at once: they would be shown five
+> pages mid-rebuild, and an `aos_member` with an active membership is
+> exactly who the stage-5 reminder emails. **Do not create a real
+> Reporting workspace, and do not reactivate a cancelled member, until
+> the sign-off.** If the rebuild is abandoned, put `PRODUCTION_STAGE`
+> back to 2 rather than leaving it at 6.
+
+The cron entry point refuses any deployment that is not production, so
+nothing that sends can run from a preview or a branch build whatever
+gets scoped in Vercel. The stage guard test holds the pair together:
+at stage 5 or more, that check must be there.
+
+**Nina's visual review, 14 November.** She compared the report pages
+with her mock-ups (`docs/reporting/mockups/`) and the verdict was that
+they are far too plain — numbers and lists where there should be
+charts, donuts, funnels and progress visuals. The rebuild is under way,
+Launches first. `Demo – Lemon Studio` exists on live for exactly this:
+thirteen months of coherent figures so every chart has something to
+draw (`scripts/demo/`).
+
 ## WHERE WE ARE — 28 October 2026
 
 **The reporting tool is finished and switched off.** Stages 1 and 2 are
