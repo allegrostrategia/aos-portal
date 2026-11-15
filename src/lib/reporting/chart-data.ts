@@ -1,5 +1,5 @@
 import { formatValue } from "./format.ts";
-import { bespokeRevenue, forecastAfter } from "./ledger.ts";
+import { bespokeRevenue, confirmedRecurring, forecastAfter } from "./ledger.ts";
 import { monthLabel } from "./months.ts";
 import { offerResults } from "./calculate.ts";
 import type { MonthFigures } from "./month-figures.ts";
@@ -241,6 +241,33 @@ export function forecastAhead(
       value: row.amount,
       display: formatValue(row.amount, "currency", currency),
     }));
+}
+
+/**
+ * Recurring money already committed, this month and the next three.
+ *
+ * **It replaces the MRR card** (Nina, 15 November): one figure for this
+ * month's recurring total is true and unplaceable — it says nothing
+ * about whether the retainers are still there in February, which is the
+ * only reason anybody looks at MRR. Four bars answer the question the
+ * figure was standing in for.
+ *
+ * The current month is marked, because it is the one bar that may be
+ * money already in rather than money expected, and a chart that mixes
+ * the two without saying so is the kind of thing a client quotes back.
+ */
+export function confirmedRecurringAhead(
+  figures: MonthFigures,
+  month: string,
+  currency: string,
+): BarDatum[] {
+  const ledger = figures.ledger;
+  return confirmedRecurring(ledger.rows, ledger.forecasts, ledger.actuals, month).map((row) => ({
+    label: monthLabel(row.month).split(" ")[0],
+    value: row.amount,
+    display: formatValue(row.amount, "currency", currency),
+    missingNote: row.month === month ? "this month" : undefined,
+  }));
 }
 
 export function costBreakdown(figures: MonthFigures, currency: string): Slice[] {

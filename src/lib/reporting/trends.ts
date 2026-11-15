@@ -127,26 +127,6 @@ export const TREND_CHARTS: Partial<Record<CategoryKey, TrendChartSpec[]>> = {
   ],
   financials: [
     {
-      id: "came-in-vs-expected",
-      title: "What came in, against what you expected",
-      icon: "revenue",
-      tone: "gold",
-      months: 12,
-      // **Bars, and side by side.** Two discrete figures being compared
-      // month by month, and what was expected is not a part of what came
-      // in — stacking them would add two numbers that sum to nothing.
-      kind: "bars",
-      unit: "currency",
-      series: [
-        { metricKey: "financials_total_revenue", label: "Came in" },
-        { metricKey: "financials_money_expected", label: "Expected" },
-      ],
-      caption:
-        "The last twelve months. A month nobody typed into is a gap, not a zero — and a month with a forecast and no money yet shows one bar.",
-      emptyMessage:
-        "Two months of figures are needed before there is a comparison to draw.",
-    },
-    {
       id: "revenue-vs-costs",
       title: "Revenue and costs",
       icon: "calculator",
@@ -192,6 +172,13 @@ export const TREND_CHARTS: Partial<Record<CategoryKey, TrendChartSpec[]>> = {
  */
 export const DRAWN_ELSEWHERE: Partial<Record<CategoryKey, string[]>> = {
   financials: [
+    // **MRR is the recurring chart now** (Nina, 15 November). A single
+    // monthly recurring figure is this month's recurring total sitting
+    // beside eleven other figures about this month, and it says nothing
+    // about whether the retainers are still there in February — which
+    // is the only question MRR is ever asked. "Confirmed recurring
+    // revenue" draws four months of it instead.
+    "financials_monthly_recurring_revenue",
     "financials_fixed_costs",
     "financials_variable_costs",
     "financials_team_costs",
@@ -206,7 +193,7 @@ export const HEADLINE_METRICS: Partial<Record<CategoryKey, string[]>> = {
     "financials_total_costs",
     "financials_profit",
     "financials_profit_margin",
-    "financials_monthly_recurring_revenue",
+    "financials_cash_in_bank_at_month_end",
   ],
 };
 

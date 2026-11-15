@@ -24,6 +24,8 @@ import { getTargets, getTopItems } from "@/lib/reporting/queries";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { TopPostsReport } from "@/components/reporting/top-posts";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
+import { buildEntityYearRows, buildYearRows, calendarYear } from "@/lib/reporting/year-table";
+import { YearTable } from "@/components/reporting/year-table";
 import { OfferCard } from "@/components/reporting/offer-card";
 import { PotentialRevenue } from "@/components/reporting/potential-revenue";
 import { GroupedBarChart } from "@/components/reporting/charts/grouped-bar-chart";
@@ -42,6 +44,7 @@ import { CampaignTable, FunnelTable } from "@/components/reporting/report-tables
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import {
+  confirmedRecurringAhead,
   costBreakdown,
   forecastAhead,
   hourlyRateByOffer,
@@ -183,6 +186,65 @@ export default async function CategoryReportPage({
         platform: figures.platform?.id ?? null,
       })
     : new Map<string, (number | null)[]>();
+  /**
+   * **"Your year, month by month"** (Nina, 15 November): the page's own
+   * figures as rows, January to December, the way her finance tracker
+   * reads. A chart shows a line rising; a grid lets you find the month
+   * it stopped.
+   *
+   * Its own read rather than a slice of the trend history: that one
+   * ends at the month being read and runs backwards, so for a report on
+   * March it would hold last year's October and none of this year's
+   * summer. A calendar year is what a year total means.
+   */
+  const yearMonths = calendarYear(ctx.month.month);
+  const yearMetrics = metrics.filter((m) => m.unit !== "text");
+  const yearHistory = await getFigureHistory({
+    workspaceId: ctx.workspace.id,
+    months: yearMonths,
+    metricKeys: yearMetrics.map((m) => m.key),
+    metrics: figures.metrics,
+    platform: figures.platform?.id ?? null,
+  });
+  /**
+   * The per-row figures too. Funnels is entirely per-funnel, so without
+   * these its year table was empty; Ads and Offers were showing their
+   * month-level totals and none of the campaign or offer figures that
+   * are most of those pages.
+   */
+  const yearEntityType = metrics.find((m) => m.entity_type)?.entity_type ?? null;
+  const yearEntities =
+    yearEntityType && yearEntityType !== "social_platform"
+      ? figures.data.entities.filter((e) => e.entity_type === yearEntityType)
+      : [];
+  const yearEntityMetrics = metrics.filter((m) => m.entity_type === yearEntityType);
+  const yearEntityHistory = new Map<string, Map<string, (number | null)[]>>();
+  if (yearEntities.length > 0) {
+    await Promise.all(
+      yearEntityMetrics.map(async (metric) => {
+        yearEntityHistory.set(
+          metric.key,
+          await getEntityHistory({
+            workspaceId: ctx.workspace.id,
+            months: yearMonths,
+            metricKey: metric.key,
+            entityIds: yearEntities.map((e: { id: string }) => e.id),
+          }),
+        );
+      }),
+    );
+  }
+
+  const yearRows = [
+    ...buildYearRows(yearMetrics, yearHistory),
+    ...buildEntityYearRows(
+      yearEntityMetrics,
+      yearEntities.map((e: { id: string; name: string }) => ({ id: e.id, name: e.name })),
+      yearEntityHistory,
+    ),
+  ];
+  const currentMonthIndex = yearMonths.indexOf(ctx.month.month);
+
   const axis = historyMonths.map(shortMonthLabel);
   // Only a chart with a `targetFor` needs these, so a category with no
   // such chart does not spend the round trip.
@@ -606,6 +668,27 @@ export default async function CategoryReportPage({
             </Card>
           ) : null}
 
+          {/* **Confirmed recurring revenue, four months of it** (Nina,
+              15 November). It replaces the MRR figure, which was this
+              month's recurring total and told nobody whether the
+              retainers were still there in February. Only rows marked
+              recurring count: a one-off pencilled into January is a
+              hope, not cover. */}
+          {category.key === "financials" ? (
+            <Card className="mt-6">
+              <SectionTitle
+                icon={<IconCircle name="revenue" tone="gold" />}
+                aside="This month and the next three"
+              >
+                Confirmed recurring revenue
+              </SectionTitle>
+              <BarChart
+                data={confirmedRecurringAhead(figures, ctx.month.month, ctx.workspace.currency)}
+                caption="What your retainers and subscriptions already commit to, month by month. The current month shows what has landed once any of it has."
+              />
+            </Card>
+          ) : null}
+
           {rest.length > 0 ? (
             <Card className="mt-6">
               {/* **Nina, 29 October: these carry their direction too.** It
@@ -695,6 +778,21 @@ export default async function CategoryReportPage({
           </a>{" "}
           — what came in, what you expect and what it cost, month by month.
         </p>
+      ) : null}
+
+      {/* **Not on a month this reader cannot see.** The page above says
+          "being prepared" to a client whose month is not out yet, and
+          the year grid underneath it was still listing the figures —
+          and, on a per-row page like Funnels, naming their funnels.
+          Same gate as the report body: `monthPublished` is "this reader
+          may see this month", always true for an editor. */}
+      {ctx.monthPublished ? (
+        <YearTable
+          rows={yearRows}
+          year={Number(ctx.month.month.slice(0, 4))}
+          currency={ctx.workspace.currency}
+          currentMonthIndex={currentMonthIndex}
+        />
       ) : null}
 
       <div className="mt-6">

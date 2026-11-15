@@ -234,6 +234,55 @@ export function forecastAfter(
     .map(([m, amount]) => ({ month: m, amount }));
 }
 
+/**
+ * Recurring money already committed, this month and the three after it.
+ *
+ * **MRR that you can place in time** (Nina, 15 November). A single
+ * "monthly recurring revenue" figure answers a question nobody asked:
+ * it is this month's recurring total, sitting beside eleven other
+ * figures about this month, and it says nothing about whether the
+ * retainers are still there in February. What a founder wants from that
+ * number is forward cover — so this is four months of it, and it is a
+ * chart rather than a figure.
+ *
+ * **Forecast rows, filtered by the row's recurrence.** A one-off sale
+ * pencilled in for January is a hope; a retainer is a commitment, and
+ * only the second belongs in a number called "confirmed". The current
+ * month uses what has actually landed on those rows where there is
+ * any, because by the time you are reading it the retainers have
+ * usually been paid — and a forecast for a month that is over is the
+ * stale number of the two.
+ */
+export function confirmedRecurring(
+  rows: Pick<SalesRow, "id" | "recurrence">[],
+  forecasts: Cell[],
+  actuals: ActualCell[],
+  month: string,
+  monthsAhead = 3,
+): { month: string; amount: number }[] {
+  const recurring = new Set(rows.filter((r) => r.recurrence !== "none").map((r) => r.id));
+  if (recurring.size === 0) return [];
+
+  const wanted: string[] = [month];
+  const [y, m] = month.split("-").map(Number);
+  for (let i = 1; i <= monthsAhead; i += 1) {
+    const d = new Date(Date.UTC(y, m - 1 + i, 1));
+    wanted.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`);
+  }
+
+  return wanted.map((wantedMonth) => {
+    const landed = actuals
+      .filter((c) => c.month === wantedMonth && recurring.has(c.salesRowId) && c.recurrence !== "none")
+      .reduce((sum, c) => sum + c.amount, 0);
+    if (wantedMonth === month && landed > 0) return { month: wantedMonth, amount: landed };
+
+    const forecast = forecasts
+      .filter((c) => c.month === wantedMonth && recurring.has(c.salesRowId))
+      .reduce((sum, c) => sum + c.amount, 0);
+    return { month: wantedMonth, amount: forecast };
+  });
+}
+
 /** One month's expense rows, the way `receivedThisMonth` reads the grid. */
 export function expensesThisMonth(expenses: ExpenseRow[], month: string): ExpenseRow[] {
   return inMonth(expenses, month);

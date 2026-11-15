@@ -83,10 +83,43 @@ test("what came in, what was expected, and what is still to come", async ({ page
   expect(main).toContain("£1,200");
   expect(main).toContain("£2,400");
 
-  // The year, actual against forecast.
+  /**
+   * **"What came in, against what you expected" is gone** (Nina, 15
+   * November) and so is the MRR card. One monthly recurring figure is
+   * this month's recurring total sitting beside eleven other figures
+   * about this month, and it says nothing about whether the retainers
+   * are still there in February — which is the only question MRR is
+   * ever asked.
+   */
   await expect(
     page.getByRole("heading", { name: "What came in, against what you expected" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  // Above the year grid, which legitimately carries MRR as a row —
+  // twelve months of it is placeable in time, which is the whole
+  // objection to the card.
+  const aboveTheYear = main.slice(0, main.indexOf("Your year, month by month"));
+  expect(aboveTheYear, "the single MRR card is replaced by the chart below").not.toContain(
+    "Monthly recurring revenue",
+  );
+
+  // **Four months of it instead**: this one and the next three, off the
+  // forecast on rows marked recurring. Bella Ltd is the monthly row and
+  // was forecast at £1,200 for September, October and November.
+  const recurring = card(page, "Confirmed recurring revenue");
+  const recurringText = (await recurring.innerText()).replace(/\s+/g, " ");
+  expect(recurringText, "September, the month being read").toContain("Sep");
+  expect(recurringText).toContain("Oct");
+  expect(recurringText).toContain("Nov");
+  expect(recurringText, "and December, which has no forecast yet").toContain("Dec");
+  expect(recurringText, "Bella Ltd's retainer").toContain("£1,200");
+
+  // **The year grid, on every page now** (Nina, 15 November).
+  const year = card(page, "Your year, month by month");
+  const yearText = (await year.innerText()).replace(/\s+/g, " ");
+  expect(yearText, "January to December, not the last twelve months").toContain("Jan");
+  expect(yearText).toContain("Dec");
+  expect(yearText, "and a year column").toContain("Year");
+  expect(yearText, "September's revenue, in its own column").toContain("£5,200");
 
   // **What the rest of the year is forecast at** — the only
   // forward-looking figure on the report, and the only place the
