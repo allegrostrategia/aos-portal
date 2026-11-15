@@ -68,7 +68,9 @@ test("the pill switches platform, and each one's figures are its own", async ({ 
   await page.goto(`/reporting/social-media?month=${MONTHS.sep}`);
   // The main platform by default: the first by sort order, which is the
   // one the Overview reads too.
-  await expect(page.getByText("26,420")).toBeVisible();
+  // The card, not the year grid, which legitimately carries the same
+  // figure in its December column since 15 November.
+  await expect(page.getByRole("paragraph").filter({ hasText: "26,420" }).first()).toBeVisible();
   await shoot(page, TAB, "01-report-instagram", w);
 
   await page.getByText("Instagram", { exact: true }).first().click();

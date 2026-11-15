@@ -21,6 +21,8 @@ import {
 import { ENTRY_CATEGORIES, STAGE_3, STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
+import { buildYearRows, calendarYear } from "@/lib/reporting/year-table";
+import { PrintYearTable } from "@/components/reporting/year-table";
 import { formatChange, formatValue } from "@/lib/reporting/format";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
 import { FOCUS_TAG, PANELS } from "@/lib/reporting/highlights";
@@ -93,10 +95,20 @@ export default async function ReportPrintPage({
     ? [...new Set(visible.flatMap((c) => trendMetricKeys(c.key)))]
     : [];
 
+  /**
+   * The year grid under each section, the same one the screen shows
+   * (Nina, 15 November: "include it in the PDF"). One read for the
+   * whole document rather than one per section — a client's PDF holds
+   * eight or nine of these and they all want the same twelve months.
+   */
+  const yearMonths = calendarYear(ctx.month.month);
+  const yearMetrics = figures.metrics.filter((m) => m.unit !== "text" && !m.entity_type);
+
   const offerRows = offerBreakdown(figures);
   const offerMonths = STAGE_3 ? historyMonths.slice(-6) : [];
 
-  const [targets, history, offerHistory, topPosts, topItems, launches] = await Promise.all([
+  const [targets, history, yearHistory, offerHistory, topPosts, topItems, launches] =
+    await Promise.all([
     getTargets(ctx.workspace.id, ctx.month.month),
     historyKeys.length > 0
       ? getFigureHistory({
@@ -106,6 +118,12 @@ export default async function ReportPrintPage({
           metrics: figures.metrics,
         })
       : Promise.resolve(new Map<string, (number | null)[]>()),
+    getFigureHistory({
+      workspaceId: ctx.workspace.id,
+      months: yearMonths,
+      metricKeys: yearMetrics.map((m) => m.key),
+      metrics: figures.metrics,
+    }),
     offerRows.length > 0 && offerMonths.length > 0
       ? getEntityHistory({
           workspaceId: ctx.workspace.id,
@@ -462,6 +480,17 @@ export default async function ReportPrintPage({
               />
             </div>
           ))}
+
+          {/* The year, as a grid. A chart shows the line rising; this
+              is where a reader finds the month it stopped. */}
+          <PrintYearTable
+            rows={buildYearRows(
+              figures.metrics.filter((m) => m.category === category.key && !m.entity_type && m.unit !== "text"),
+              yearHistory,
+            )}
+            year={Number(ctx.month.month.slice(0, 4))}
+            currency={ctx.workspace.currency}
+          />
 
           {notes.map((note) => (
             <div key={note.id} className="keep-together mt-5 border-l-2 border-gold pl-4">

@@ -13,6 +13,8 @@ import { leadsBySource } from "@/lib/reporting/chart-data";
 import { overviewPanels } from "@/lib/reporting/overview-panels";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { getFigureHistory } from "@/lib/reporting/figure-history";
+import { buildYearRows, calendarYear } from "@/lib/reporting/year-table";
+import { YearTable } from "@/components/reporting/year-table";
 import { TrendPanel } from "@/components/reporting/trend-panel";
 import { TREND_CHARTS, trendMetricKeys, trendMonthsNeeded } from "@/lib/reporting/trends";
 import { lightFor } from "@/lib/reporting/lights";
@@ -183,6 +185,26 @@ export default async function ReportingOverviewPage({
         metrics: figures.metrics,
       })
     : new Map<string, (number | null)[]>();
+  /**
+   * The Overview's year: the six headline figures it already shows,
+   * January to December (Nina, 15 November). Its own read, because the
+   * trend history ends at the month being read and runs backwards —
+   * for a March report that holds last October and none of the summer.
+   */
+  const yearMonths = calendarYear(ctx.month.month);
+  const yearMetrics = OVERVIEW_KPIS.map((kpi) =>
+    figures.metrics.find((m) => m.key === kpi.metricKey),
+  ).filter((m): m is NonNullable<typeof m> => !!m);
+  const yearRows = buildYearRows(
+    yearMetrics,
+    await getFigureHistory({
+      workspaceId: ctx.workspace.id,
+      months: yearMonths,
+      metricKeys: yearMetrics.map((m) => m.key),
+      metrics: figures.metrics,
+    }),
+  );
+
   const axis = historyMonths.map(shortMonthLabel);
 
   // §7's two panels. Every word in them is Nina's, from one file, and
@@ -651,6 +673,25 @@ export default async function ReportingOverviewPage({
           </div>
         ) : null}
       </div>
+
+      {/* **Full width, outside the two-column grid.** Thirteen columns
+          in the narrow column of a 2fr/1fr layout is the wrong shape for
+          it, and inside that grid it also sat over the publish control
+          on a phone — the year is the width of the page. */}
+      {/* **Not on a month this reader cannot see.** The page above says
+          "being prepared" to a client whose month is not out yet, and
+          the year grid underneath it was still listing the figures —
+          and, on a per-row page like Funnels, naming their funnels.
+          Same gate as the report body: `monthPublished` is "this reader
+          may see this month", always true for an editor. */}
+      {ctx.monthPublished ? (
+        <YearTable
+          rows={yearRows}
+          year={Number(ctx.month.month.slice(0, 4))}
+          currency={ctx.workspace.currency}
+          currentMonthIndex={yearMonths.indexOf(ctx.month.month)}
+        />
+      ) : null}
 
     </ReportShell>
   );
