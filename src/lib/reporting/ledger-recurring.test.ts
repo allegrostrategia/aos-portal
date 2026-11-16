@@ -59,7 +59,24 @@ test("nothing landed yet, so the current month still shows the forecast", () => 
 test("a one-off that landed this month is not recurring revenue", () => {
   const actuals = [actual("one-off", "2026-11-01", 5000, "none")];
   const out = confirmedRecurring(rows, [], actuals, "2026-11-01");
-  assert.equal(out[0].amount, 0);
+  // Null, not 0: the £5,000 is excluded, and nothing recurring has been
+  // forecast for the month either, so there is no figure to give. It read
+  // 0 until 17 November, which drew a bar at the floor — and "£0" on a
+  // recurring-revenue chart says the retainers have ended.
+  assert.equal(out[0].amount, null);
+});
+
+test("a forecast somebody typed as zero keeps its zero", () => {
+  // The distinction the null is for. An empty month is nobody having got
+  // to it; a month with a cell holding 0 is somebody saying so, and
+  // turning that into "nothing forecast yet" would lose a real answer.
+  const out = confirmedRecurring(rows, [cell("retainer-a", "2026-12-01", 0)], [], "2026-11-01");
+  assert.equal(out.find((r) => r.month === "2026-12-01")?.amount, 0);
+  assert.equal(
+    out.find((r) => r.month === "2027-01-01")?.amount,
+    null,
+    "and the month after it, which has no cell at all, is still null",
+  );
 });
 
 test("no recurring rows at all is nothing to draw, not four zeroes", () => {

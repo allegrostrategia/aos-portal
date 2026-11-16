@@ -14,7 +14,7 @@ import { overviewPanels } from "@/lib/reporting/overview-panels";
 import { getBenchmarks, getTargets } from "@/lib/reporting/queries";
 import { getFigureHistory } from "@/lib/reporting/figure-history";
 import { buildYearRows, calendarYear } from "@/lib/reporting/year-table";
-import { YearTable } from "@/components/reporting/year-table";
+import { YearTable } from "@/components/reporting/year-rows";
 import { TrendPanel } from "@/components/reporting/trend-panel";
 import { TREND_CHARTS, trendMetricKeys, trendMonthsNeeded } from "@/lib/reporting/trends";
 import { lightFor } from "@/lib/reporting/lights";

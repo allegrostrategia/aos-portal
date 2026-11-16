@@ -28,7 +28,7 @@ import { ENTRY_CATEGORIES, STAGE_3, STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
 import { buildYearRows, calendarYear } from "@/lib/reporting/year-table";
-import { PrintYearTable } from "@/components/reporting/year-table";
+import { PrintYearTable } from "@/components/reporting/year-rows";
 import { formatChange, formatValue } from "@/lib/reporting/format";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
 import { FOCUS_TAG, PANELS } from "@/lib/reporting/highlights";

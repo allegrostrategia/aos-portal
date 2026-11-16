@@ -7,7 +7,7 @@ import { formatCell, summaryLabel, type YearRow } from "@/lib/reporting/year-tab
 const SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /**
- * "Your year, month by month" — the editorial version.
+ * "Your year, month by month".
  *
  * Nina, 17 November: the gridded table "still looks like an old-fashioned
  * spreadsheet, and the green/red change figures aren't clear enough". So:
@@ -15,16 +15,10 @@ const SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "O
  * small bar in the section's own colour, and the change as a **tinted pill**
  * rather than a caption — 11px, medium, with the arrow inside it.
  *
- * Two options are built here for her to choose between, which is the only
- * reason `heatmap` exists:
- *
- *   **A** — clean rows, a pill under each figure.
- *   **B** — the same, plus a soft tint on every cell, green through red by
- *           the size and direction of its change.
- *
- * Whichever she picks, the other goes and so does the prop. Until then this
- * is reached only by `?year=a` / `?year=b` on Financials, so no page changes
- * under anybody who has not asked for it.
+ * **Option B, chosen 17 November**: every cell also wears a soft wash,
+ * green through red by the size and direction of its change, so the shape
+ * of a year is readable before a single figure is. Option A was the same
+ * without the wash; she compared them on the demo and took this one.
  *
  * The figures stay `font-num` — Inter with tabular numerals — so the columns
  * still line up without a rule to line them up against.
@@ -44,16 +38,21 @@ const BAR: Record<"sky" | "gold", string> = {
 };
 
 /**
- * Option B's cell wash: the same two hues as the pills, at an alpha that
+ * The cell wash: the same two hues as the pills, at an alpha that
  * grows with the size of the change and stops well short of competing with
  * the figure on top of it.
  *
  * A move of 25% or more is as dark as it gets. Beyond that the tint would
  * carry no more information and the number would start to fight it.
  */
-function heatTint(change: number | null, tone: "good" | "bad" | "neutral" | null): string | undefined {
+function heatTint(
+  change: number | null,
+  tone: "good" | "bad" | "neutral" | null,
+  /** Print needs more: a 4% tint on paper is white. */
+  ceiling = 0.16,
+): string | undefined {
   if (change === null || tone === null || tone === "neutral") return undefined;
-  const strength = Math.min(Math.abs(change) / 25, 1) * 0.16;
+  const strength = Math.min(Math.abs(change) / 25, 1) * ceiling;
   if (strength < 0.02) return undefined;
   const rgb = tone === "good" ? "31 122 77" : "158 59 47";
   return `rgb(${rgb} / ${strength.toFixed(3)})`;
@@ -73,14 +72,13 @@ function Pill({ change, row }: { change: number | null; row: YearRow }) {
   );
 }
 
-export function YearRowsCard({
+export function YearTable({
   rows,
   year,
   currency,
   currentMonthIndex,
   title = "Your year, month by month",
   tone = "sky",
-  heatmap = false,
 }: {
   rows: YearRow[];
   year: number;
@@ -89,8 +87,6 @@ export function YearRowsCard({
   currentMonthIndex: number;
   title?: string;
   tone?: "sky" | "gold";
-  /** Option B. */
-  heatmap?: boolean;
 }) {
   if (rows.length === 0) return null;
 
@@ -191,9 +187,12 @@ export function YearRowsCard({
                   const previous = i === 0 ? null : row.values[i - 1];
                   const change = i === 0 ? null : monthOnMonthChange(value, previous);
                   const isCurrent = i === currentMonthIndex;
-                  const wash = heatmap && !isCurrent
-                    ? heatTint(change, changeTone(change, row.goodDirection))
-                    : undefined;
+                  // Not under the gold column: two backgrounds fighting
+                  // would make the month this report is about the hardest
+                  // one on the page to read.
+                  const wash = isCurrent
+                    ? undefined
+                    : heatTint(change, changeTone(change, row.goodDirection));
 
                   return (
                     <td
@@ -244,10 +243,127 @@ export function YearRowsCard({
       <p className="mt-4 text-caption text-ink/55">
         January to December {year}. A blank month is one nobody has filled in yet, not a zero. The
         pill under each month is the change on the month before it, green where that is the
-        direction you want{heatmap ? ", and the cell is tinted the same way" : ""}. Rates are
+        direction you want, and the cell is tinted the same way. Rates are
         averaged over the months that have a figure; everything else is a total, except a running
         level like followers or list size, which shows its latest reading.
       </p>
     </Card>
+  );
+}
+
+/**
+ * The same year, for paper.
+ *
+ * **No card, no scroller, smaller type**: a printed page cannot scroll, so
+ * thirteen columns have to fit the width instead, and the surface
+ * underneath is white like the rest of the document.
+ *
+ * It carries the pills and the wash, because Nina's choice was about how a
+ * year reads and the PDF is the version a client keeps. Two concessions to
+ * print: the wash is a little stronger, since inkjet and screen render a 4%
+ * tint very differently, and the pill loses its background on a cell that
+ * already has one — a tint inside a tint prints as a smudge.
+ *
+ * The caption goes. It explains a control the reader of a PDF does not have.
+ */
+export function PrintYearTable({
+  rows,
+  year,
+  currency,
+}: {
+  rows: YearRow[];
+  year: number;
+  currency: string;
+}) {
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="keep-together mt-5">
+      <h3 className="font-display text-heading font-medium text-ink">
+        Your year, month by month <span className="font-num text-caption text-ink/55">{year}</span>
+      </h3>
+      <table className="mt-2 w-full border-separate border-spacing-0 text-caption">
+        <thead>
+          <tr>
+            <th scope="col" className="py-1 pr-2 text-left font-sans text-[0.625rem] font-medium uppercase tracking-wide text-ink/45">
+              Figure
+            </th>
+            {SHORT.map((label) => (
+              <th key={label} scope="col" className="px-1 py-1 text-right font-display font-medium text-ink/70">
+                {label}
+              </th>
+            ))}
+            <th scope="col" className="rounded-t bg-cream-deep px-1.5 py-1 text-right font-display font-medium text-ink">
+              Year
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, r) => {
+            const last = r === rows.length - 1;
+            return (
+              <tr key={row.key}>
+                <th
+                  scope="row"
+                  className={`py-2 pr-2 text-left align-middle font-sans font-medium text-navy ${
+                    last ? "" : "border-b border-ink/8"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span aria-hidden className="h-2.5 w-[2px] shrink-0 rounded-full bg-gold" />
+                    {row.label}
+                  </span>
+                </th>
+                {row.values.map((value, i) => {
+                  const previous = i === 0 ? null : row.values[i - 1];
+                  const change = i === 0 ? null : monthOnMonthChange(value, previous);
+                  const tone = changeTone(change, row.goodDirection);
+                  const wash = heatTint(change, tone, 0.24);
+                  const text = formatChange(change);
+                  return (
+                    <td
+                      key={i}
+                      style={wash ? { backgroundColor: wash } : undefined}
+                      className={`px-1 py-2 text-right align-middle ${
+                        last ? "" : "border-b border-ink/8"
+                      }`}
+                    >
+                      <span className="block font-num tabular-nums text-ink/85">
+                        {formatCell(value, row.unit, currency)}
+                      </span>
+                      {text && tone ? (
+                        <span
+                          className={`block font-num text-[0.5625rem] font-medium leading-none ${
+                            tone === "good"
+                              ? "text-[#176139]"
+                              : tone === "bad"
+                                ? "text-[#8a3328]"
+                                : "text-ink/50"
+                          }`}
+                        >
+                          {text}
+                        </span>
+                      ) : null}
+                    </td>
+                  );
+                })}
+                <td
+                  className={`whitespace-nowrap bg-cream-deep px-1.5 py-2 text-right align-middle ${
+                    last ? "rounded-b" : ""
+                  }`}
+                >
+                  <span className="block font-num tabular-nums font-semibold text-ink">
+                    {formatCell(row.summary.value, row.unit, currency)}
+                  </span>
+                  <span className="block font-sans text-[0.5rem] uppercase leading-none tracking-wide text-ink/45">
+                    {summaryLabel(row)}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

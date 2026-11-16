@@ -330,7 +330,20 @@ export function confirmedRecurringAhead(
     label: monthLabel(row.month).split(" ")[0],
     value: row.amount,
     display: formatValue(row.amount, "currency", currency),
-    missingNote: row.month === month ? "this month" : undefined,
+    /**
+     * **What a bar's absence means, said rather than drawn as zero**
+     * (Dom, 17 November). A £0 bar on next quarter reads as the
+     * retainers ending; what it actually means is that nobody has put a
+     * figure in the forecast grid for that month yet. `BarDatum` already
+     * says a missing note is drawn instead of a bar, so this is the
+     * existing convention rather than a new one.
+     */
+    missingNote:
+      row.amount === null
+        ? "Nothing forecast yet"
+        : row.month === month
+          ? "this month"
+          : undefined,
   }));
 }
 

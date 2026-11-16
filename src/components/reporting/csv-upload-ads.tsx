@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -31,6 +32,33 @@ import {
  * empty campaign is not harmless: it renders as a row on the client's
  * published report with dashes where its figures would be.
  */
+
+/**
+ * The save button for either column-map form, refused while one is in
+ * flight.
+ *
+ * **Measured, 17 November**: without this, a double-click sent the server
+ * action twice — two POSTs, the button never disabled. With "Ask me again"
+ * that is a delete racing a delete, and with a choice it is two writes
+ * whose order nothing decides.
+ *
+ * `useFormStatus` stays pending until the action has resolved AND the
+ * re-render it causes has landed, which is exactly the window the card is
+ * rebuilding itself in. So the same guard covers both the double submit
+ * and any click aimed at a button that is about to be replaced.
+ *
+ * A separate component because `useFormStatus` reads the form it is
+ * rendered inside, and the component owning the form cannot ask about its
+ * own submission.
+ */
+function SaveMaps({ children }: { children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+      {pending ? "Saving…" : children}
+    </Button>
+  );
+}
 
 export function CsvUploadAds({
   workspaceId,
@@ -246,9 +274,7 @@ export function CsvUploadAds({
               </fieldset>
             ))}
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" size="sm" variant="secondary">
-                Save these
-              </Button>
+              <SaveMaps>Save these</SaveMaps>
               <p
                 aria-live="polite"
                 className={`text-small ${mapState?.error ? "text-deep-red" : "text-ink/60"}`}
@@ -377,9 +403,7 @@ export function CsvUploadAds({
                   </fieldset>
                 ))}
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button type="submit" size="sm" variant="secondary">
-                    Remember these
-                  </Button>
+                  <SaveMaps>Remember these</SaveMaps>
                   <p
                     aria-live="polite"
                     className={`text-small ${mapState?.error ? "text-deep-red" : "text-ink/60"}`}

@@ -259,7 +259,7 @@ export function confirmedRecurring(
   actuals: ActualCell[],
   month: string,
   monthsAhead = 3,
-): { month: string; amount: number }[] {
+): { month: string; amount: number | null }[] {
   const recurring = new Set(rows.filter((r) => r.recurrence !== "none").map((r) => r.id));
   if (recurring.size === 0) return [];
 
@@ -276,10 +276,20 @@ export function confirmedRecurring(
       .reduce((sum, c) => sum + c.amount, 0);
     if (wantedMonth === month && landed > 0) return { month: wantedMonth, amount: landed };
 
-    const forecast = forecasts
-      .filter((c) => c.month === wantedMonth && recurring.has(c.salesRowId))
-      .reduce((sum, c) => sum + c.amount, 0);
-    return { month: wantedMonth, amount: forecast };
+    /**
+     * **Nothing forecast is null, not zero** (Dom, 17 November: "£0 reads
+     * as the retainers ending").
+     *
+     * A month with no forecast cell at all is a month nobody has got to
+     * yet. A month with a cell somebody typed 0 into is a statement, and
+     * it keeps its zero — which is why this counts the cells rather than
+     * testing the sum.
+     */
+    const cells = forecasts.filter(
+      (c) => c.month === wantedMonth && recurring.has(c.salesRowId),
+    );
+    if (cells.length === 0) return { month: wantedMonth, amount: null };
+    return { month: wantedMonth, amount: cells.reduce((sum, c) => sum + c.amount, 0) };
   });
 }
 
