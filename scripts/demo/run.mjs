@@ -25,7 +25,9 @@ const password = process.env.DEMO_PASSWORD ?? `Lemon-${crypto.randomBytes(6).toS
 
 const user = dryRun
   ? { id: "00000000-0000-0000-0000-000000000001", created: false }
-  : await demoUser(config, password);
+  // Only when asked. See `demoUser`: a reseed is about the figures, and
+  // resetting a password Nina is already using is not part of that.
+  : await demoUser(config, password, { resetPassword: Boolean(process.env.DEMO_PASSWORD) });
 
 /** An admin to stand as the author of the published months. */
 async function adminId() {
@@ -102,4 +104,8 @@ await check("launches / stages / values", `select (select count(*)::int from pub
 await check("notes / targets", `select (select count(*)::int from public.report_notes where workspace_id = ${W}) notes, (select count(*)::int from public.report_targets where workspace_id = ${W}) targets;`);
 
 console.log(`\nDemo client login: ${DEMO_EMAIL}`);
-if (!process.env.DEMO_PASSWORD) console.log(`Password: ${password}`);
+if (user.passwordChanged && !process.env.DEMO_PASSWORD) {
+  console.log(`Password: ${password}`);
+} else if (!user.passwordChanged) {
+  console.log("Password: unchanged (set DEMO_PASSWORD to replace it).");
+}

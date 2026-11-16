@@ -65,21 +65,33 @@ async function authAdmin(config, pathname, init = {}) {
 }
 
 /** The demo client's login, created if it is not already there. */
-async function demoUser(config, password) {
+/**
+ * The demo client's login.
+ *
+ * **An existing password is left alone unless one was given** (16
+ * November). Re-running this to update the figures used to reset it, so
+ * the password Nina had been handed stopped working and nothing said so
+ * — a seeding script quietly invalidating a credential somebody is
+ * holding. Pass `DEMO_PASSWORD` to set it deliberately; otherwise a
+ * reseed touches the data and not the way in.
+ */
+async function demoUser(config, password, { resetPassword = false } = {}) {
   const page = await authAdmin(config, "/auth/v1/admin/users?page=1&per_page=1000");
   const existing = (page.users ?? page).find((u) => u.email === DEMO_EMAIL);
   if (existing) {
-    await authAdmin(config, `/auth/v1/admin/users/${existing.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ password, email_confirm: true }),
-    });
-    return { id: existing.id, created: false };
+    if (resetPassword) {
+      await authAdmin(config, `/auth/v1/admin/users/${existing.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ password, email_confirm: true }),
+      });
+    }
+    return { id: existing.id, created: false, passwordChanged: resetPassword };
   }
   const made = await authAdmin(config, "/auth/v1/admin/users", {
     method: "POST",
     body: JSON.stringify({ email: DEMO_EMAIL, password, email_confirm: true }),
   });
-  return { id: made.id, created: true };
+  return { id: made.id, created: true, passwordChanged: true };
 }
 
 async function runSql(sql) {
