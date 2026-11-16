@@ -5,13 +5,19 @@ import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { GroupedBarChart } from "@/components/reporting/charts/grouped-bar-chart";
 import { toneFor } from "@/components/reporting/icons";
-import { CampaignTable, FunnelTable } from "@/components/reporting/report-tables";
+import {
+  CallWinsTable,
+  CampaignTable,
+  FunnelTable,
+} from "@/components/reporting/report-tables";
 import { TopItemsReport } from "@/components/reporting/top-items";
+import { FunnelChart } from "@/components/reporting/charts/funnel-chart";
 import { TopPostsReport } from "@/components/reporting/top-posts";
 import { TrendPanel } from "@/components/reporting/trend-panel";
 import { OfferCard } from "@/components/reporting/offer-card";
 import { PotentialRevenue } from "@/components/reporting/potential-revenue";
 import {
+  callFunnel,
   costBreakdown,
   forecastAhead,
   hourlyRateByOffer,
@@ -399,6 +405,20 @@ export default async function ReportPrintPage({
 
           {category.key === "ads" ? <CampaignTable ctx={ctx} figures={figures} /> : null}
           {category.key === "funnels" ? <FunnelTable ctx={ctx} figures={figures} /> : null}
+
+          {/* The funnel and the breakdown, the same two the screen draws.
+              A client's PDF has to hold what their report page holds. */}
+          {category.key === "leads_conversions" ? (
+            <>
+              <div className="keep-together mt-5">
+                <h3 className="mb-2 font-num text-eyebrow uppercase text-ink/50">
+                  How far they got
+                </h3>
+                <FunnelChart stages={callFunnel(figures)} />
+              </div>
+              <CallWinsTable ctx={ctx} figures={figures} />
+            </>
+          ) : null}
 
           {category.key === "leads_conversions"
             ? (() => {

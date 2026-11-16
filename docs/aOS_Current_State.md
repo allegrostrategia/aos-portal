@@ -3,6 +3,58 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 16 November 2026
+
+**The visual rebuild, by Nina's list.** She clicked through
+`Demo – Lemon Studio` on 15 November and came back with six items. Done so
+far, in her order:
+
+- **3. "Your year, month by month"** — every report page and the PDF carry
+  the page's figures as rows, January to December, with the year's total or
+  average. Restyled on 16 November to her second list: tinted header and
+  first column, a quiet percentage change under each figure coloured by the
+  figure's own good direction, alternating rows, the current month in gold,
+  and Financials' four P&L lines split into a card of their own.
+- **5. Financials** — "what came in vs what you expected" is gone, and MRR
+  became **confirmed recurring revenue**: this month and the next three,
+  from the forecast grid's recurring rows.
+- **Fonts, the whole portal** — **Fraunces** for headings, **Inter** for
+  everything else, and **no monospace at all**. Numbers wear `font-num`,
+  which is Inter with tabular figures. Recoleta is not licensed for app use;
+  JetBrains Mono made money read as code.
+- **2. Leads & Conversions** — **calls converted** is a core figure, the
+  funnel on the page runs leads → calls booked → held → won, and **what the
+  calls bought** is a breakdown by offer with the value each was worth, plus
+  a **Bespoke / other** line for work priced per job, where both the count
+  and the value are typed (Dom, 16 November: Nina's agency-style clients
+  sell a great deal of it). The two per-offer figures are the only place in
+  section 5 where a category's figures hang off another section's rows,
+  which is what `entity_type = 'offer'` on those metric rows is for.
+
+  **Close rate now follows calls converted** where a month has one, and
+  falls back to new clients where it does not — so the funnel's last step
+  and the rate beside it are never measuring two different things. Months
+  already sent are unaffected **because of the data, not the freeze**: the
+  carried snapshot deliberately holds only what comes from other months, so
+  calcs are worked out fresh on every read, published months included. What
+  protects them is that none of them holds a converted figure and none can
+  acquire one without being unpublished first. Worth knowing for the next
+  formula change: **changing a calc does change a sent report** unless the
+  inputs say otherwise.
+
+  The worked-out figure is called **value**, not revenue — the offer's price
+  times the sales, which is what was won rather than what came in, and the
+  card says Financials is the section that answers the second question.
+
+  `20261116100000_what_the_calls_turned_into.sql` is **not yet applied to
+  live**.
+
+Still to do: **1** (a figure set per platform — Nina's answers came back on
+16 November and are written into `docs/reporting/platform-metric-sets.md`,
+including a Facebook kind of its own; built after this), **4** (the same
+number of visuals on every page, Offers as the benchmark) and **6**
+(Launches, held until Nina's launch tracker arrives).
+
 ## WHERE WE ARE — 14 November 2026
 
 **Reporting now ships at stage 6, and that is standing on a condition.**

@@ -57,6 +57,25 @@ const ENTITY_TYPE = {
 };
 
 /**
+ * Metrics broken down by something other than their own category's rows.
+ *
+ * §5.6's two per-offer fields (Nina, 16 November: "what they bought, by
+ * offer, with revenue") are the only case. Leads & Conversions has no rows
+ * of its own — its figures are the month's — so a blanket category rule
+ * cannot say "these two, and only these two, hang off an offer". Without
+ * it they would store one figure per month and silently add four offers
+ * together, which is the failure `guard_report_value_metric` exists to
+ * refuse and would here refuse a figure somebody had just typed.
+ */
+const ENTITY_OVERRIDES = {
+  leads_conversions_sales_from_calls: "offer",
+  leads_conversions_value_of_sales_from_calls: "offer",
+  // And deliberately NOT the two bespoke fields below them in §5.6: work
+  // priced per job has no offer row to hang off, which is the whole
+  // reason they are typed rather than worked out.
+};
+
+/**
  * Rows in the spec's tables that are not numeric metrics.
  *
  * The two Trial Reels lists are text plus a view count per item, which is what
@@ -334,7 +353,7 @@ function parseSection(brief, number, category) {
       // A calc or pulled field must say where it comes from; the table's
       // Formula cell is empty for plenty of inputs, which is fine.
       formula: formulaRaw || null,
-      entity_type: ENTITY_TYPE[category] ?? null,
+      entity_type: ENTITY_OVERRIDES[key] ?? ENTITY_TYPE[category] ?? null,
     });
   }
   if (rows.length === 0) throw new Error(`Section ${number} parsed to no metrics`);

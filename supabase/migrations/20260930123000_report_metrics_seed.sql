@@ -7,7 +7,7 @@
 -- schema test runs the generator with --check, so a hand edit here fails the
 -- build rather than quietly disagreeing with the spec.
 --
--- 175 metrics across 10 categories.
+-- 180 metrics across 10 categories.
 
 insert into public.report_metrics
   (key, category, label, input_type, unit, good_direction, entity_type, formula, sort_order)
@@ -72,12 +72,17 @@ values
   ('leads_conversions_new_leads_from_other', 'leads_conversions', 'New leads from other', 'optional', 'count', 'up', null, null, 5),
   ('leads_conversions_calls_booked', 'leads_conversions', 'Calls booked', 'core', 'count', 'up', null, null, 6),
   ('leads_conversions_calls_held', 'leads_conversions', 'Calls held', 'core', 'count', 'up', null, null, 7),
-  ('leads_conversions_new_clients', 'leads_conversions', 'New clients', 'core', 'count', 'up', null, null, 8),
-  ('leads_conversions_total_leads', 'leads_conversions', 'Total leads', 'calc', 'count', 'up', null, 'Sum of all sources', 9),
-  ('leads_conversions_lead_source_split', 'leads_conversions', 'Lead source split', 'calc', 'percent', 'none', null, 'Each source ÷ total leads', 10),
-  ('leads_conversions_call_show_up_rate', 'leads_conversions', 'Call show-up rate', 'calc', 'percent', 'up', null, 'Calls held ÷ calls booked', 11),
-  ('leads_conversions_close_rate', 'leads_conversions', 'Close rate', 'calc', 'percent', 'up', null, 'New clients ÷ calls held', 12),
-  ('leads_conversions_lead_to_client_rate', 'leads_conversions', 'Lead to client rate', 'calc', 'percent', 'up', null, 'New clients ÷ total leads', 13),
+  ('leads_conversions_calls_converted', 'leads_conversions', 'Calls converted', 'core', 'count', 'up', null, null, 8),
+  ('leads_conversions_new_clients', 'leads_conversions', 'New clients', 'core', 'count', 'up', null, null, 9),
+  ('leads_conversions_total_leads', 'leads_conversions', 'Total leads', 'calc', 'count', 'up', null, 'Sum of all sources', 10),
+  ('leads_conversions_lead_source_split', 'leads_conversions', 'Lead source split', 'calc', 'percent', 'none', null, 'Each source ÷ total leads', 11),
+  ('leads_conversions_call_show_up_rate', 'leads_conversions', 'Call show-up rate', 'calc', 'percent', 'up', null, 'Calls held ÷ calls booked', 12),
+  ('leads_conversions_close_rate', 'leads_conversions', 'Close rate', 'calc', 'percent', 'up', null, 'Calls converted ÷ calls held, or new clients where no converted figure was entered', 13),
+  ('leads_conversions_lead_to_client_rate', 'leads_conversions', 'Lead to client rate', 'calc', 'percent', 'up', null, 'New clients ÷ total leads', 14),
+  ('leads_conversions_sales_from_calls', 'leads_conversions', 'Sales from calls', 'optional', 'count', 'up', 'offer', null, 15),
+  ('leads_conversions_value_of_sales_from_calls', 'leads_conversions', 'Value of sales from calls', 'calc', 'currency', 'up', 'offer', 'Sales from calls × the offer''s price', 16),
+  ('leads_conversions_bespoke_sales_from_calls', 'leads_conversions', 'Bespoke sales from calls', 'optional', 'count', 'up', null, null, 17),
+  ('leads_conversions_value_of_bespoke_sales_from_calls', 'leads_conversions', 'Value of bespoke sales from calls', 'optional', 'currency', 'up', null, null, 18),
   ('ads_spend', 'ads', 'Spend', 'core', 'currency', 'none', 'ad_campaign', null, 1),
   ('ads_impressions', 'ads', 'Impressions', 'core', 'count', 'up', 'ad_campaign', null, 2),
   ('ads_link_clicks', 'ads', 'Link clicks', 'core', 'count', 'up', 'ad_campaign', null, 3),

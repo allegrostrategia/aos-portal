@@ -414,8 +414,28 @@ test("a remembered answer can be changed or cleared on the same card", async ({
     )
     .toBe("purchases");
 
-  // Or clear it, so the next upload asks again.
+  // Or clear it, so the next upload asks again — as a fresh visit.
+  //
+  // **Not a second round of clicks on the card just saved.** Saving
+  // revalidates, which re-renders this whole block, and clicking back into
+  // it while that was arriving failed three times in full runs with
+  // "element is not stable" and then "detached from the DOM" — never in
+  // isolation, which is what says it is the machine under load and not a
+  // wrong answer. Waiting for the saved choice to appear was not enough:
+  // the radio read as checked and the button still went out from under the
+  // click. So the second half starts from a loaded page, where the DOM is
+  // settled because the server rendered it.
+  //
+  // Nothing is lost by it. Coming back to clear a remembered answer IS a
+  // separate visit, and the reload proves something the clicks could not:
+  // the first save survived a page load rather than only being in React's
+  // hands.
+  await ads(page);
   await page.locator("[data-csv-remembered]").click();
+  await expect(
+    page.locator("[data-csv-remembered]").getByRole("radio", { name: /^Purchases$/ }),
+    "the saved choice is there after a reload",
+  ).toBeChecked();
   await page.locator("[data-csv-remembered]").getByRole("radio", { name: /ask me again/i }).check();
   await page.locator("[data-csv-remembered]").getByRole("button", { name: /save these/i }).click();
   await expect

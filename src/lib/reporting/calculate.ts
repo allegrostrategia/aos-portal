@@ -254,14 +254,26 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
           v("leads_conversions_calls_held"),
           v("leads_conversions_calls_booked"),
         ),
+        // **Measured on calls converted, where there is one** (Dom, 16
+        // November). The funnel's last step on the same page is calls
+        // converted, and two numerators for one step is a disagreement a
+        // client notices and nobody can explain. `callsThatClosed` holds
+        // the fallback that keeps months already sent unchanged.
         leads_conversions_close_rate: leads.closeRate(
-          v("leads_conversions_new_clients"),
+          leads.callsThatClosed(
+            v("leads_conversions_calls_converted"),
+            v("leads_conversions_new_clients"),
+          ),
           v("leads_conversions_calls_held"),
         ),
         leads_conversions_lead_to_client_rate: leads.leadToClientRate(
           v("leads_conversions_new_clients"),
           leads.total(sources),
         ),
+        // leads_conversions_value_of_sales_from_calls is per offer and
+        // needs that offer's price, which is setup rather than a typed
+        // figure — `callWinRows` in call-wins.ts, the same arrangement
+        // funnel revenue has.
       };
     }
 

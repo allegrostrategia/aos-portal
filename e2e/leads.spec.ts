@@ -127,3 +127,117 @@ test("the figure follows the offer's price, with nothing else touched", async ({
   await expect(page.getByText("£115,200"), "128 x £900").toBeVisible();
   await expect(page.getByText("£102,400")).toHaveCount(0);
 });
+
+/**
+ * Nina, 16 November: "what the calls turned into".
+ *
+ * The funnel and the breakdown are one feature in two halves — how far
+ * people got, and what the ones who got all the way bought — so they are
+ * checked together on the page a client reads.
+ *
+ * **Won is 3 and new clients is 4**, which is the seed's point: somebody
+ * bought in September without ever being on a call. A funnel whose last
+ * step read 4 would be drawing a bottom wider than the step above it and
+ * claiming four calls closed when three did.
+ */
+test("the funnel ends at calls converted, and the breakdown says what they bought", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto(`/reporting/leads-conversions?month=${MONTHS.sep}`);
+
+  const funnel = page.locator("figure, section").filter({ hasText: "How far they got" }).first();
+  await expect(funnel).toBeVisible();
+  const steps = (await funnel.innerText()).replace(/\s+/g, " ");
+  expect(steps).toContain("Leads");
+  expect(steps).toContain("128");
+  expect(steps).toContain("Calls booked");
+  expect(steps).toContain("24");
+  expect(steps).toContain("Calls held");
+  expect(steps).toContain("18");
+  expect(steps).toContain("Won");
+  expect(steps).toContain("3");
+
+  // **And the close rate must be measuring the same thing the funnel's
+  // last step shows** (Dom, 16 November): 3 converted of 18 held is
+  // 16.7%, where the old rule — 4 new clients of 18 — would print 22.2%
+  // beside a funnel saying 3. The wrong one is asserted absent as well,
+  // because "16.7% is somewhere on the page" would pass with both on it.
+  const body = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(body, "close rate is converted ÷ held").toContain("16.7%");
+  expect(body, "not new clients ÷ held").not.toContain("22.2%");
+
+  // What those calls bought: two of the three were the Signature
+  // programme at £800, and the third was work priced per job on the
+  // bespoke line at £1,750. The rows add up to the funnel's last step,
+  // which is the thing worth being able to check.
+  const bought = page.locator("section").filter({ hasText: "What the calls bought" }).first();
+  await expect(bought).toBeVisible();
+  const table = (await bought.innerText()).replace(/\s+/g, " ");
+  expect(table).toContain("Signature programme");
+  expect(table).toContain("£1,600");
+  expect(table, "work priced per job").toContain("Bespoke / other");
+  expect(table).toContain("£1,750");
+  expect(table, "2 + 1 sales, £1,600 + £1,750").toContain("£3,350");
+
+  await shoot(page, TAB, "03-calls-converted", w);
+});
+
+/**
+ * And the screen somebody types it into.
+ *
+ * The grid is a second form on the entry screen, with its own action, so
+ * the first-save rule has to hold for it on its own: a save that lands
+ * and says nothing is the bug this project has been caught by four
+ * times. October is the empty month in the seed.
+ */
+test("saving what the calls bought says so, on an empty month", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { SAVE_CONFIRMED } = await import("./helpers.ts");
+  // The seed's months, not `guard.ts`'s: that list stops at September, so
+  // `MONTHS.oct` there is undefined and the URL asks for `month=undefined`.
+  // The page falls back to a default which happens to be October today and
+  // will not be in December.
+  const { MONTHS: SEEDED } = await import("../scripts/seed-test-db.mjs");
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/leads-conversions?month=${SEEDED.oct}`);
+
+  const grid = page.locator("section").filter({ hasText: "What the calls bought" }).first();
+  await expect(grid).toBeVisible();
+  await expect(page.getByText(SAVE_CONFIRMED)).toHaveCount(0);
+
+  const box = grid.getByLabel("Sales from calls, Signature programme");
+  await box.fill("2");
+  // The value updates as you type, before anything is saved: £800 each.
+  // The offer's own row, not the card: the running total underneath says
+  // £1,600 as well, and matching either would pass while the other was
+  // blank — the two are worth separating because they come from
+  // different sums.
+  const row = grid.locator("li").filter({ hasText: "Signature programme" });
+  await expect(row.getByText("£1,600")).toBeVisible();
+  await expect(grid.getByText(/2 sales off calls, worth/)).toBeVisible();
+
+  // The bespoke line: both figures typed, because work priced per job has
+  // no offer and no price to multiply out.
+  await grid.getByLabel("Bespoke sales from calls", { exact: true }).fill("1");
+  await grid.getByLabel("Value of bespoke sales from calls", { exact: true }).fill("1750");
+  await expect(grid.getByText(/3 sales off calls, worth/)).toBeVisible();
+  await expect(grid.getByText("£3,350")).toBeVisible();
+
+  await grid.getByRole("button", { name: /save what they bought/i }).click();
+  await expect(page.getByText(SAVE_CONFIRMED).first()).toBeVisible();
+
+  // And all three are still there after the navigation the save does.
+  await expect(
+    page.getByLabel("Sales from calls, Signature programme"),
+  ).toHaveValue("2");
+  await expect(
+    page.getByLabel("Bespoke sales from calls", { exact: true }),
+  ).toHaveValue("1");
+  await expect(
+    page.getByLabel("Value of bespoke sales from calls", { exact: true }),
+  ).toHaveValue("1750");
+
+  await shoot(page, TAB, "04-calls-bought-entry", w);
+});

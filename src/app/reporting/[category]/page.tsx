@@ -45,13 +45,19 @@ import {
   trendMonthsNeeded,
 } from "@/lib/reporting/trends";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
-import { CampaignTable, FunnelTable } from "@/components/reporting/report-tables";
+import {
+  CallWinsTable,
+  CampaignTable,
+  FunnelTable,
+} from "@/components/reporting/report-tables";
+import { FunnelChart } from "@/components/reporting/charts/funnel-chart";
 import { BarChart } from "@/components/reporting/charts/bar-chart";
 import { DonutChart } from "@/components/reporting/charts/donut-chart";
 import {
   confirmedRecurringAhead,
   costBreakdown,
   forecastAhead,
+  callFunnel,
   hourlyRateByOffer,
   leadsBySource,
   revenueByOffer,
@@ -203,7 +209,14 @@ export default async function CategoryReportPage({
    * summer. A calendar year is what a year total means.
    */
   const yearMonths = calendarYear(ctx.month.month);
-  const yearMetrics = metrics.filter((m) => m.unit !== "text");
+  // Month-level figures only — the per-row ones are the block below, and
+  // read here they would be twelve empty cells under a real label.
+  // Social Media's are the exception: every one of its figures hangs off a
+  // platform, and `getFigureHistory` is given which one.
+  const yearMetrics = metrics.filter(
+    (m) =>
+      m.unit !== "text" && (!m.entity_type || m.entity_type === "social_platform"),
+  );
   const yearHistory = await getFigureHistory({
     workspaceId: ctx.workspace.id,
     months: yearMonths,
@@ -437,20 +450,41 @@ export default async function CategoryReportPage({
           ) : null}
 
           {category.key === "leads_conversions" ? (
-            <Card className="mt-6">
-              <SectionTitle icon={<IconCircle name="chart" tone="sky" />} aside={ctx.month.label}>
-                Where the leads came from
-              </SectionTitle>
-              {/* **`colourByCategory`, as on the Overview** (Dom, 14
-                  November: the same chart was the palette there and all
-                  navy here). The sources are the identities, and one
-                  chart drawn two ways on two pages reads as two charts. */}
-              <BarChart
-                data={leadsBySource(figures)}
-                colourByCategory
-                caption="New leads this month, by source."
-              />
-            </Card>
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <Card>
+                <SectionTitle icon={<IconCircle name="chart" tone="sky" />} aside={ctx.month.label}>
+                  Where the leads came from
+                </SectionTitle>
+                {/* **`colourByCategory`, as on the Overview** (Dom, 14
+                    November: the same chart was the palette there and all
+                    navy here). The sources are the identities, and one
+                    chart drawn two ways on two pages reads as two charts. */}
+                <BarChart
+                  data={leadsBySource(figures)}
+                  colourByCategory
+                  caption="New leads this month, by source."
+                />
+              </Card>
+
+              {/* Nina, 16 November: "a funnel (leads → calls booked →
+                  held → won)". Beside the sources rather than under
+                  them, because the two answer one question between
+                  them — where the month's people came from, and how
+                  far they got. */}
+              <Card>
+                <SectionTitle icon={<IconCircle name="leads" tone="orange" />} aside={ctx.month.label}>
+                  How far they got
+                </SectionTitle>
+                <div className="mt-4">
+                  <FunnelChart stages={callFunnel(figures)} />
+                </div>
+                <p className="mt-3 text-caption text-ink/55">
+                  Each step is the people who came through the one above it. Won is the
+                  calls that ended in a sale, which is not the same as new clients —
+                  somebody can buy without ever being on a call.
+                </p>
+              </Card>
+            </div>
           ) : null}
 
           {category.key === "offers" ? (
@@ -580,6 +614,10 @@ export default async function CategoryReportPage({
           {category.key === "ads" ? <CampaignTable ctx={ctx} figures={figures} /> : null}
 
           {category.key === "funnels" ? <FunnelTable ctx={ctx} figures={figures} /> : null}
+
+          {category.key === "leads_conversions" ? (
+            <CallWinsTable ctx={ctx} figures={figures} />
+          ) : null}
 
           {category.key === "leads_conversions"
             ? (() => {

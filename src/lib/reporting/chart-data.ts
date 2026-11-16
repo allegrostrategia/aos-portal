@@ -2,9 +2,11 @@ import { formatValue } from "./format.ts";
 import { bespokeRevenue, confirmedRecurring, forecastAfter } from "./ledger.ts";
 import { monthLabel } from "./months.ts";
 import { offerResults } from "./calculate.ts";
+import { callWinRows, callWinTotals } from "./call-wins.ts";
 import type { MonthFigures } from "./month-figures.ts";
 import type { BarDatum } from "@/components/reporting/charts/bar-chart";
 import type { Slice } from "@/components/reporting/charts/donut-chart";
+import type { FunnelStage } from "@/components/reporting/charts/funnel-chart";
 
 /**
  * The numbers each chart draws, worked out in one place.
@@ -46,6 +48,68 @@ export function leadsBySource(figures: MonthFigures): BarDatum[] {
   }))
     .filter((d) => d.value !== null)
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+}
+
+/**
+ * The month's funnel: leads, calls booked, calls held, won (§5.6).
+ *
+ * Nina, 16 November: "a funnel (leads → calls booked → held → won)". Each
+ * step is a subset of the one above it, which is what the narrowing shape
+ * measures — and the reason this is a funnel rather than four bars.
+ *
+ * **"Won" is calls converted, not new clients.** New clients counts
+ * everybody who started this month however they arrived, so a client who
+ * bought from a sales page without ever being on a call would widen the
+ * bottom of a funnel they were never in. The two figures are usually close
+ * and the difference is exactly the part this chart must not swallow.
+ *
+ * A step with nothing entered is listed and not drawn, which is the
+ * component's own rule — a missing figure is not a zero.
+ */
+export function callFunnel(figures: MonthFigures): FunnelStage[] {
+  return [
+    { label: "Leads", value: figures.figure("leads_conversions_total_leads") },
+    { label: "Calls booked", value: figures.figure("leads_conversions_calls_booked") },
+    { label: "Calls held", value: figures.figure("leads_conversions_calls_held") },
+    { label: "Won", value: figures.figure("leads_conversions_calls_converted") },
+  ];
+}
+
+/**
+ * What the calls bought (§5.6) — the value of each line, biggest first.
+ *
+ * The value rather than the count, because "what they bought" is a question
+ * about where the month's money was won and two sales of a £4,000 programme
+ * are not the same news as two of a £49 workshop. The count is in the table
+ * beside it, where it can be read without being ranked.
+ *
+ * `colorIndex` is the line's own position in the list, carried past the
+ * sort, so an offer keeps its colour when it overtakes another — the same
+ * rule the Offers page's bars follow.
+ *
+ * **The bespoke line is one of the bars**, not a footnote. For an agency
+ * client it is often the biggest thing on the chart, and a breakdown that
+ * drew only the offers would be answering a narrower question than the
+ * title asks.
+ */
+export function winsByOffer(figures: MonthFigures, currency: string): BarDatum[] {
+  return callWinRows(figures.callWins, figures.bespokeWins)
+    .map((row, index) => ({
+      label: row.name,
+      value: row.value,
+      display: formatValue(row.value, "currency", currency),
+      colorIndex: index,
+      // Sold something, and nothing to value it at: an offer with no price.
+      // It earned something; we have no price to say what (§4, Dom 5 Oct).
+      missingNote: "no price set",
+    }))
+    .filter((d) => d.value !== null)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+}
+
+/** What the breakdown comes to, for the card's heading. */
+export function winsTotal(figures: MonthFigures): number {
+  return callWinTotals(callWinRows(figures.callWins, figures.bespokeWins)).value;
 }
 
 /**

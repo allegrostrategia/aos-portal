@@ -290,7 +290,50 @@ export const leads = {
 
   leadToClientRate: (newClients: Figure, totalLeads: Figure): Result =>
     percentage(newClients, totalLeads),
+
+  /**
+   * What one offer's wins were worth: sales from calls × that offer's price.
+   *
+   * **Value, not revenue** (Dom, 16 November). It is what was won at the
+   * offer's list price, which is not what came in — a payment plan is one
+   * sale and twelve months of money. Financials is the section that answers
+   * the second question, and the breakdown card says so under the table.
+   *
+   * `product` is what makes an offer with no price a dash rather than £0,
+   * which is the §4 rule and Dom's of 5 October — "it did not earn nothing,
+   * we have no price to work it out with". Deliberately the same arithmetic
+   * as a funnel's revenue, because a client reading both pages must not find
+   * the same quantity worked out two different ways.
+   */
+  valueOfSales: (salesFromCalls: Figure, offerPrice: Figure): Result =>
+    product(salesFromCalls, offerPrice),
+
+  /**
+   * Which figure the close rate is measured on.
+   *
+   * **Calls converted where there is one; new clients where there is not**
+   * (Dom, 16 November). The funnel's last step is calls converted, and a
+   * close rate measured on new clients would be a different number for the
+   * same step on the same page — somebody who bought without ever being on
+   * a call would push the rate above what the shape shows.
+   *
+   * The fallback is what keeps months already sent exactly as they were:
+   * every month published before calls converted existed holds no figure
+   * for it, so it takes the second branch and prints what it always
+   * printed. Keyed on the data rather than on a date or a publish flag,
+   * because the data is the thing that cannot drift.
+   */
+  callsThatClosed: (callsConverted: Figure, newClients: Figure): Result =>
+    callsConverted ?? newClients ?? null,
 };
+
+/** One offer's share of what the month's calls turned into. */
+export interface CallWin {
+  id: string;
+  name: string;
+  price: Figure;
+  salesFromCalls: Figure;
+}
 
 // ---------------------------------------------------------------------------
 // 5.7 Ads
@@ -855,6 +898,7 @@ export const CALC_COVERAGE: Record<string, string> = {
   leads_conversions_call_show_up_rate: "leads.callShowUpRate",
   leads_conversions_close_rate: "leads.closeRate",
   leads_conversions_lead_to_client_rate: "leads.leadToClientRate",
+  leads_conversions_value_of_sales_from_calls: "leads.valueOfSales",
 
   ads_cpm: "ads.cpm",
   ads_ctr: "ads.ctr",

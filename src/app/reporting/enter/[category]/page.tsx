@@ -6,6 +6,13 @@ import { OffersEntry } from "@/components/reporting/offers-entry";
 import { CampaignsEntry } from "@/components/reporting/campaigns-entry";
 import { FunnelsEntry } from "@/components/reporting/funnels-entry";
 import { TopItemsEntry } from "@/components/reporting/top-items";
+import { CallWinsEntry } from "@/components/reporting/call-wins-entry";
+import {
+  BESPOKE_SALES,
+  BESPOKE_VALUE,
+  CALL_WINS_METRICS,
+  CALL_WINS_SALES,
+} from "@/lib/reporting/call-wins";
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
@@ -335,18 +342,42 @@ export default async function EnterCategoryPage({
     );
   }
 
+  /**
+   * The figures that belong to the MONTH, which is what this form holds.
+   *
+   * Offers, Funnels and Ads have screens of their own above and never
+   * reach here. Leads & Conversions does — and since 16 November two of
+   * its figures hang off an offer (§5.6, "what they bought, by offer").
+   * One box per metric would add four offers together and store the
+   * result as the month's, which is the quiet kind of wrong: a figure,
+   * on the screen, belonging to nobody. They are entered in the
+   * breakdown below the form instead.
+   *
+   * Social Media's are the exception that stays: every one of them hangs
+   * off a platform, and `entityOf` is what addresses them.
+   */
+  const monthly = metrics.filter(
+    (m) =>
+      (m.entity_type === null || m.entity_type === "social_platform") &&
+      // And §5.6's bespoke pair, which belongs to the month and would
+      // otherwise appear twice on one screen: once as a box in this form
+      // and once in the breakdown's own row, with two save buttons and
+      // no way to tell which one won.
+      !CALL_WINS_METRICS.has(m.key),
+  );
+
   // The main list is the core fields plus decision 28's four, which are
   // optional but stay on screen — see VISIBLE_OPTIONAL for why.
-  const core = metrics
+  const core = monthly
     .filter((m) => m.input_type === "core" || VISIBLE_OPTIONAL.has(m.key))
     .filter((m) => m.key !== OPENING_KEY || (note?.field ?? false));
-  const optional = metrics.filter(
+  const optional = monthly.filter(
     (m) => m.input_type === "optional" && !VISIBLE_OPTIONAL.has(m.key),
   );
   // Pulled metrics belong on the card too. "Revenue from offers" is the
   // figure the whole Financials page is built on, and leaving it off meant
   // whoever was entering could not see what the totals were working from.
-  const calculated = metrics.filter(
+  const calculated = monthly.filter(
     (m) => m.input_type === "calc" || m.input_type === "pulled",
   );
 
@@ -556,6 +587,33 @@ export default async function EnterCategoryPage({
           workspaceId={ctx.workspace.id}
           platforms={platformsOf(data.entities, { includeRetired: true })}
           chosenId={platformId}
+        />
+      ) : null}
+
+      {category.key === "leads_conversions" ? (
+        <CallWinsEntry
+          workspaceId={ctx.workspace.id}
+          month={ctx.month.month}
+          here={reportHref(`/reporting/enter/${category.slug}`, ctx)}
+          currency={ctx.workspace.currency}
+          /* Active offers only: this is a box to type into, and an offer
+             taken off sale in November is not one somebody is about to
+             sell off a call. Rule 7 keeps the figure already entered
+             against a retired offer — the report reads every offer with
+             a figure, not every offer still on sale. */
+          offers={data.entities
+            .filter((e) => e.entity_type === "offer" && e.active)
+            .map((e) => ({
+              id: e.id,
+              name: e.name,
+              price: e.price,
+              sales: data.values.get(CALL_WINS_SALES, e.id),
+            }))}
+          bespoke={{
+            sales: data.values.get(BESPOKE_SALES),
+            value: data.values.get(BESPOKE_VALUE),
+          }}
+          converted={data.values.get("leads_conversions_calls_converted")}
         />
       ) : null}
 

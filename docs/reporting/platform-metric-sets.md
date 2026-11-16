@@ -1,6 +1,17 @@
 # Social Media: a figure set per platform
 
-**For Nina to confirm before anything is built.** 15 November 2026.
+**Answered by Nina, 16 November 2026.** Written 15 November; her answers
+are in the box below and each one is repeated where it lands. Nothing here
+is a question any more — it is what gets built, after Leads & Conversions.
+
+> 1. The four sets are approved as written.
+> 2. Kinds: Instagram, LinkedIn, TikTok, YouTube, **Facebook** (its own set:
+>    followers, reach, post engagements, reactions, comments, shares, link
+>    clicks, page visits; post types photo, video, reel, link, text) and
+>    **Other** (the general set).
+> 3. YouTube: CTR and average view duration are **typed**, not worked out.
+> 4. LinkedIn: **add DMs from content** as optional.
+> 5. Yes to the platform kind picked from a list.
 
 Right now every platform is asked for the same fourteen figures, because
 there is only one Social Media list and it was written for Instagram.
@@ -31,8 +42,14 @@ Every figure is then tagged with the kinds it belongs to.
   stops being asked for stays in the database and keeps appearing on the
   months it was entered for (rule 7).
 
-**Question for Nina:** is five kinds enough — Instagram, LinkedIn,
-TikTok, YouTube, Other — or should Facebook and Pinterest be their own?
+**Answered (Nina, 16 November): six kinds** — Instagram, LinkedIn, TikTok,
+YouTube, Facebook and Other, picked from a list when a platform is added.
+Facebook gets a set of its own rather than the general one, because its
+figures are named differently from Instagram's and the difference is the
+whole point of doing this: followers, reach, post engagements, reactions,
+comments, shares, link clicks and page visits, with post types photo,
+video, reel, link and text. Pinterest stays on the general set under
+"Other" until a client is actually on it.
 
 ---
 
@@ -68,6 +85,7 @@ them).
 | Members reached | | Click-through rate |
 | Reactions | | Impressions per post |
 | Comments | | Profile view rate |
+| DMs from content | | |
 
 **Post types:** Text · Image · Document / carousel · Video · Poll · Article
 
@@ -76,7 +94,11 @@ reached** — LinkedIn reports both and they are different numbers.
 Likes + comments splits into **reactions** and **comments**, because
 LinkedIn counts them separately. **Saves and shares are gone**; reposts
 replaces shares. Engagement rate is measured against impressions, which
-is how LinkedIn reports it.
+is how LinkedIn reports it. **DMs from content is optional and added on
+Nina's answer of 16 November** — it is where a lot of service-business
+conversations actually start, and the figure already exists for
+Instagram, so it is the same box on a second platform rather than a new
+one.
 
 ---
 
@@ -99,6 +121,33 @@ save. Engagement rate is measured against video views.
 
 ---
 
+## Facebook
+
+**Nina's addition, 16 November**: its own kind rather than the general
+set, because Facebook's figures are named differently from Instagram's
+and showing a page saves and a share rate is the problem this whole
+document exists to fix.
+
+| Figures entered | | Rates worked out |
+|---|---|---|
+| Followers at month end | Shares | Net follower growth |
+| Posts published | Link clicks | Follower growth % |
+| Reach | Page visits | Engagement rate |
+| Post engagements | | Reach per post |
+| Reactions | | Click-through rate |
+| Comments | | Page visit rate |
+
+**Post types:** Photo · Video · Reel · Link · Text
+
+**What changes from today:** **post engagements** is Facebook's own
+headline figure and has no Instagram equivalent, so it is entered rather
+than worked out. Likes + comments splits into **reactions** and
+**comments**. **Saves are gone** — a page does not have them. **Profile
+visits becomes page visits**, which is the same idea in Facebook's words
+and worth getting right on a page a client reads.
+
+---
+
 ## YouTube
 
 | Figures entered | | Rates worked out |
@@ -115,14 +164,14 @@ should change on screen. **Watch time** is the figure YouTube is
 actually judged on and nothing else here has an equivalent. Likes,
 saves, shares, profile visits all go.
 
-**One question.** Click-through rate and average view duration are both
-*given* to you by YouTube Studio, and both can also be worked out
-(CTR = views ÷ impressions; average duration = watch time ÷ views). If
-we ask for them, the typed number and the worked-out one can disagree
-on the same screen. **Recommendation: type the two YouTube gives you,
-and do not draw the worked-out versions** — YouTube counts a view
-differently from an impression-click and its own number is the one
-Nina would quote. Needs Nina's yes.
+**Settled (Nina, 16 November): both are typed.** Click-through rate and
+average view duration are *given* to you by YouTube Studio, and both can
+also be worked out (CTR = views ÷ impressions; average duration = watch
+time ÷ views) — which is exactly why only one of the two may be on the
+screen. YouTube counts a view differently from an impression-click, so
+the typed figure and the worked-out one would disagree on the same page,
+and YouTube's own is the one Nina would quote. So they are entered
+figures, and the worked-out versions are not drawn at all.
 
 ---
 
@@ -138,10 +187,18 @@ Nina would quote. Needs Nina's yes.
 | **CSV import** | Meta's export fills Instagram. LinkedIn, TikTok and YouTube have their own exports with different columns — **out of scope for this round** unless Nina wants it now. |
 | **Demo data** | Four platforms, each with its own figures, rates and post types. |
 
-## What I need back
+## What came back (Nina, 16 November)
 
-1. The four sets above — anything missing, anything to drop.
-2. Five kinds, or more?
-3. YouTube: type CTR and average view duration, or work them out?
-4. Should LinkedIn also carry DMs, the way Instagram does? It is where
-   a lot of service-business conversations actually start.
+1. **The four sets are approved as written.**
+2. **Six kinds**, with Facebook its own — set out under "The decision this
+   needs first" above.
+3. **YouTube's CTR and average view duration are typed.** They come off
+   YouTube Studio as figures somebody can read, and working them out here
+   would need impressions and total watch time, which are two more boxes
+   to get a number already on the screen in front of them.
+4. **LinkedIn carries DMs from content**, optional, the same as
+   Instagram's.
+
+Order: this is built after Leads & Conversions (Dom, 16 November), with the
+demo data updated so each platform shows its own figures, and screenshots of
+Social Media on every platform.

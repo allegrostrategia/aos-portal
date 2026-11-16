@@ -42,6 +42,8 @@ Next month: rewrite the VIP Day sales page around the outcome rather than the fo
 
 The close rate is 34%, down slightly on last month. With this much more volume that is expected, and the absolute number of new clients still went up.
 
+What those calls bought is worth a look: the 1:1 package is carrying the value, the VIP Day converts on the call rather than the page, and the Group Programme is mostly still coming off the webinar funnel rather than a conversation. The bespoke line is the one to watch — it is a third of the calls and some months the biggest number on the chart, and none of it is packaged.
+
 Next month: tighten the qualifying question on the booking form.`,
 
   ads: `Cost per lead is £4.40 on the masterclass campaign, which is the one that matters — the other four are not lead campaigns and should not be judged on it.

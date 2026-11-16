@@ -157,7 +157,11 @@ test("first login to a finished month, without help", async ({ page }, info) => 
   for (const [label, value] of [
     [/new leads from social/i, "20"], [/new leads from email/i, "8"],
     [/new leads from referral/i, "2"], [/calls booked/i, "6"],
-    [/calls held/i, "5"], [/new clients/i, "3"],
+    // Calls converted is core since 16 November, so a month without it
+    // is a month this section is not finished — which is what this test
+    // is for. Three of the five calls closed; new clients is the same
+    // three, since nobody bought without a call in her first month.
+    [/calls held/i, "5"], [/calls converted/i, "3"], [/new clients/i, "3"],
   ] as const) {
     await page.getByLabel(label).first().fill(value);
   }

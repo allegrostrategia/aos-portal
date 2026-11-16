@@ -26,7 +26,7 @@ import {
   months, platformMonth, trialReelsMonth, emailMonth, funnelMonth, campaignMonth,
   leadsMonth, clientExperienceMonth,
 } from "./data.mjs";
-import { OFFERS, offerMonth } from "./data2.mjs";
+import { OFFERS, bespokeWins, callWins, offerMonth } from "./data2.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const BUSINESS = "Demo – Lemon Studio";
@@ -204,7 +204,18 @@ function buildSql(userId, adminId) {
       const figures = campaignMonth(c, i, MONTHS.length);
       for (const [key, value] of Object.entries(figures)) put(month, key, value, ent("ad_campaign", c.name));
     }
-    for (const [key, value] of Object.entries(leadsMonth(i))) put(month, key, value);
+    const leads = leadsMonth(i);
+    for (const [key, value] of Object.entries(leads)) put(month, key, value);
+    // What those converted calls bought (§5.6): the offers, and the
+    // bespoke line for work priced per job — which for an agency client
+    // is often the biggest thing on the chart.
+    const converted = leads.leads_conversions_calls_converted;
+    const bespoke = bespokeWins(i, converted);
+    for (const { offer, sales } of callWins(i, MONTHS.length, converted - (bespoke.sales ?? 0))) {
+      put(month, "leads_conversions_sales_from_calls", sales, ent("offer", offer));
+    }
+    put(month, "leads_conversions_bespoke_sales_from_calls", bespoke.sales);
+    put(month, "leads_conversions_value_of_bespoke_sales_from_calls", bespoke.value);
     for (const [key, value] of Object.entries(clientExperienceMonth(i))) put(month, key, value);
     for (const o of OFFERS) {
       const { values: v } = offerMonth(o, i, MONTHS.length);

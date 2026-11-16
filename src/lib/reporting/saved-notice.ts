@@ -33,6 +33,7 @@ export const SAVED_NOTICES = {
   stages: "Stages saved.",
   prices: "Price options saved.",
   figures: "Figures saved.",
+  wins: "Saved. What the calls bought is up to date for this month.",
   nothing: "Nothing to save.",
   cover: "Cover image saved.",
   "cover-removed": "Cover image removed.",

@@ -218,6 +218,17 @@ export function leadsMonth(index) {
    */
   const booked = round((social + email + referral + other) * jitter(`${seed}:bk`, 0.17, 0.12));
   const held = round(booked * jitter(`${seed}:hd`, 0.78, 0.08));
+  /**
+   * **Converted is the funnel's last step; new clients is wider.**
+   *
+   * Nina, 16 November. The calls that ended in a sale are what the
+   * breakdown by offer adds up to. New clients counts everybody who
+   * started that month however they arrived, so a month with one or two
+   * people who bought from a funnel without ever being on a call reads
+   * higher — which is the difference the demo has to show, because a
+   * demo where the two are always equal teaches the wrong thing.
+   */
+  const converted = round(held * jitter(`${seed}:cl`, 0.34, 0.15));
   return {
     leads_conversions_new_leads_from_social: social,
     leads_conversions_new_leads_from_email: email,
@@ -225,7 +236,8 @@ export function leadsMonth(index) {
     leads_conversions_new_leads_from_other: other,
     leads_conversions_calls_booked: booked,
     leads_conversions_calls_held: held,
-    leads_conversions_new_clients: round(held * jitter(`${seed}:cl`, 0.34, 0.15)),
+    leads_conversions_calls_converted: converted,
+    leads_conversions_new_clients: converted + round(jitter(`${seed}:off`, 1.2, 0.8)),
   };
 }
 

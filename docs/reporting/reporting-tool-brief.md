@@ -205,14 +205,62 @@ Chart: a funnel graphic per funnel (views, opt-ins, sales page, purchases, with 
 | New leads from other | Optional |  | Up |
 | Calls booked | Core |  | Up |
 | Calls held | Core |  | Up |
+| Calls converted | Core |  | Up |
 | New clients | Core |  | Up |
 | Total leads | Calc | Sum of all sources | Up |
 | Lead source split | Calc | Each source ÷ total leads | n/a |
 | Call show-up rate | Calc | Calls held ÷ calls booked | Up |
-| Close rate | Calc | New clients ÷ calls held | Up |
+| Close rate | Calc | Calls converted ÷ calls held, or new clients where no converted figure was entered | Up |
 | Lead to client rate | Calc | New clients ÷ total leads | Up |
 
-Charts: leads by source bars, leads trend line (12 months).
+Charts: leads by source bars, leads trend line (12 months), and the funnel —
+leads, calls booked, calls held, won — as the mockups' narrowing shape.
+
+**Also in Leads & Conversions, per offer (Nina, 16 November): what the calls
+turned into.** "After calls booked and calls held, add calls converted and
+what they bought (by offer, with revenue)." So the month carries one more
+figure — calls converted, the last step of the funnel — and a breakdown with
+one row per offer:
+
+| Field | Type | Formula | Good |
+| --- | --- | --- | --- |
+| Sales from calls | Optional |  | Up |
+| Value of sales from calls | Calc | Sales from calls × the offer's price | Up |
+
+Both hang off an offer, which is the one place in section 5 where a category's
+figures are broken down by another section's rows. The value is worked out
+rather than typed, the same as a funnel's: an offer with no price shows a dash
+rather than £0, and a published month keeps the price it was sent with because
+the snapshot freezes it. **It is a value, not revenue** — the offer's price
+times the sales, which is what was won rather than what came in. Financials is
+the section that answers what came in, and the breakdown says so on the page.
+
+**And a bespoke line, where there is no offer to point at** (Dom, 16
+November). Nina's agency-style clients sell a great deal of work that is
+priced per job: it has no offer row and no price, so neither figure can be
+worked out and both are typed.
+
+| Field | Type | Formula | Good |
+| --- | --- | --- | --- |
+| Bespoke sales from calls | Optional |  | Up |
+| Value of bespoke sales from calls | Optional |  | Up |
+
+These two belong to the month, not to an offer, and they count in the
+breakdown's totals exactly as an offer's row does — so what the calls bought
+adds up to what the funnel says they closed.
+
+**"Calls converted" is not "new clients" renamed.** New clients counts
+everybody who started this month however they arrived; calls converted counts
+the calls that ended in a sale, which is what the funnel's last step is
+measuring and what the breakdown's rows add up to.
+
+**Close rate follows calls converted** (Dom, 16 November): calls converted ÷
+calls held wherever a converted figure has been entered, and new clients ÷
+calls held on a month without one. The funnel's last step and the close rate
+on the same page must never be measuring two different things. Months already
+sent keep the figure they were sent with — a published month holds no
+converted figure, because the metric did not exist when it was published and
+`report_values` refuses an insert into a published month.
 
 ### 5.7 Ads
 

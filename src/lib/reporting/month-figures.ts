@@ -8,7 +8,7 @@ import {
   type FunnelMonth,
   type Lookup,
 } from "./calculate.ts";
-import type { AdCampaign, OfferMonth } from "./formulas.ts";
+import type { AdCampaign, CallWin, OfferMonth } from "./formulas.ts";
 import {
   getClientFlow,
   getMetrics,
@@ -17,6 +17,7 @@ import {
   type ReportMetric,
 } from "./queries.ts";
 import { readCarried, type Carried } from "./carried.ts";
+import { BESPOKE_SALES, BESPOKE_VALUE, CALL_WINS_SALES } from "./call-wins.ts";
 import {
   expensesThisMonth,
   forecastIn,
@@ -75,6 +76,24 @@ export interface MonthFigures {
   campaignRows: (AdCampaign & { id: string })[];
   /** The funnels, each with the price captured for this month (§5.5). */
   funnelRows: FunnelMonth[];
+  /**
+   * What the month's calls turned into, per offer (§5.6, Nina 16 November).
+   *
+   * Only the offers with a figure against them: an offer nobody sold off a
+   * call this month is not a zero row in the breakdown, it is simply not in
+   * it — the same rule `offerRowsFrom` follows, and the same reason. The
+   * price rides along because the revenue is worked out from it.
+   */
+  callWins: CallWin[];
+  /**
+   * And the line that has no offer to hang off (Dom, 16 November).
+   *
+   * Work priced per job — no offer row, no price — which Nina's
+   * agency-style clients sell a great deal of. Both figures are typed,
+   * and they belong to the month, so they are read here rather than
+   * built from entities.
+   */
+  bespokeWins: { sales: number | null; value: number | null };
   /**
    * §5.8's opening figure: the one in use, and any others sitting unused.
    *
@@ -163,6 +182,25 @@ function offerRowsFrom(
       (row) =>
         row.unitsSold !== null || row.revenue !== null || row.hoursSpent !== null,
     );
+}
+
+/**
+ * The offers the month's calls turned into, with the price to value them at.
+ *
+ * Active and retired alike: an offer retired in November still sold in
+ * June, and rule 7 says June keeps it. The filter is whether a figure was
+ * entered, not whether the offer is still on sale.
+ */
+function callWinsFrom(data: MonthData, values: MonthData["values"]): CallWin[] {
+  return data.entities
+    .filter((e) => e.entity_type === "offer")
+    .map((offer) => ({
+      id: offer.id,
+      name: offer.name,
+      price: offer.price,
+      salesFromCalls: values.get(CALL_WINS_SALES, offer.id),
+    }))
+    .filter((row) => row.salesFromCalls !== null);
 }
 
 /**
@@ -405,6 +443,11 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
   const previousOfferRows = offerRowsFrom(frozen, frozen.previous, offerTotals(previousReceived));
   const campaignRows = campaignRowsFrom(frozen, frozen.values);
   const funnelRows = funnelRowsFrom(frozen, frozen.values);
+  const callWins = callWinsFrom(frozen, frozen.values);
+  const bespokeWins = {
+    sales: frozen.values.get(BESPOKE_SALES),
+    value: frozen.values.get(BESPOKE_VALUE),
+  };
   const previousCampaignRows = campaignRowsFrom(frozen, frozen.previous);
 
   // Every category, so the Overview can read a figure from any of them.
@@ -509,6 +552,8 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     offerRows,
     campaignRows,
     funnelRows,
+    callWins,
+    bespokeWins,
     ledger,
     received,
     expenses,

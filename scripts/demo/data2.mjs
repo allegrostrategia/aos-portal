@@ -50,6 +50,77 @@ export function offerMonth(offer, index, total) {
   };
 }
 
+/**
+ * Which offers the month's converted calls bought (§5.6, Nina 16 Nov).
+ *
+ * **Weighted towards the high-touch offers, and capped by what that
+ * offer actually sold.** The Group Programme is mostly bought off the
+ * webinar funnel rather than a call, and the demo would contradict
+ * itself if it showed six sales from calls of an offer whose Offers
+ * page says three units all month. The cap is what keeps the two pages
+ * telling one story.
+ *
+ * The remainder is handed out largest-first so the rows add up to
+ * `converted` exactly where the cap allows — a breakdown that silently
+ * totals less than the funnel's last step is a question nobody can
+ * answer, and where the cap does bite the page says so by totalling
+ * less, which is honest: some of those calls bought something bespoke.
+ */
+const CALL_WEIGHTS = {
+  "1:1 Coaching Package": 0.42,
+  "VIP Day": 0.26,
+  "Group Programme": 0.22,
+  "Done-with-you Launch": 0.1,
+};
+
+/**
+ * How much of a month's converted calls is bespoke work.
+ *
+ * Dom, 16 November: Nina's agency-style clients sell a great deal of work
+ * priced per job, so the demo has to show it or the breakdown teaches the
+ * wrong lesson. About a third of the calls, at a job price between the VIP
+ * Day and the Done-with-you Launch — big enough to be the top bar some
+ * months, which is the point.
+ */
+export function bespokeWins(index, converted) {
+  if (!converted) return { sales: null, value: null };
+  const seed = `bespoke:${index}`;
+  const sales = Math.max(1, Math.round(converted * jitter(`${seed}:n`, 0.3, 0.4)));
+  return {
+    sales,
+    value: Math.round(sales * jitter(`${seed}:v`, 2_650, 0.3) / 50) * 50,
+  };
+}
+
+export function callWins(index, total, converted) {
+  if (!converted) return [];
+
+  const caps = new Map(
+    OFFERS.map((o) => [o.name, offerMonth(o, index, total).units]),
+  );
+  const exact = OFFERS.map((o) => ({
+    offer: o.name,
+    want: converted * (CALL_WEIGHTS[o.name] ?? 0),
+  }));
+
+  const rows = exact.map((e) => ({
+    offer: e.offer,
+    sales: Math.min(Math.floor(e.want), caps.get(e.offer) ?? 0),
+    remainder: e.want - Math.floor(e.want),
+  }));
+
+  let left = converted - rows.reduce((t, r) => t + r.sales, 0);
+  for (const row of [...rows].sort((a, b) => b.remainder - a.remainder)) {
+    if (left <= 0) break;
+    const room = (caps.get(row.offer) ?? 0) - row.sales;
+    if (room <= 0) continue;
+    row.sales += 1;
+    left -= 1;
+  }
+
+  return rows.filter((r) => r.sales > 0).map(({ offer, sales }) => ({ offer, sales }));
+}
+
 /** The retainer clients, which is where the recurring money comes from. */
 export const CLIENT_ROWS = [
   { name: "Harbour & Co", amount: 1_200 },

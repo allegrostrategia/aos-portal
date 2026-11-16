@@ -14,6 +14,7 @@ import { fromInputValue } from "./format.ts";
 import { isInternalReportPath } from "./paths.ts";
 import { withSaved } from "./saved-notice.ts";
 import { canEdit } from "./access.ts";
+import { CALL_WINS_METRICS } from "./call-wins.ts";
 import { lockedError } from "./locked.ts";
 
 /**
@@ -74,6 +75,24 @@ export async function saveCategoryValues(
     metrics
       .filter((m) => m.category === categoryKey)
       .filter((m) => m.input_type === "core" || m.input_type === "optional")
+      /**
+       * And only ones that belong to the month.
+       *
+       * This action writes against one entity: the platform for Social
+       * Media, nothing for everyone else. §5.6's two per-offer figures
+       * are in a category whose other figures are the month's, so a
+       * posted `v:leads_conversions_sales_from_calls` would be stored
+       * with no entity at all — allowed by the database, since a value
+       * with no entity is always allowed, and wrong: one number where
+       * there should be one per offer. `saveCallWins` is the action
+       * that knows which offer.
+       */
+      .filter((m) => m.entity_type === null || categoryKey === "social_media")
+      // And not §5.6's bespoke pair, which belongs to the month but is
+      // entered on the breakdown below this form. `saveCallWins` is the
+      // action that owns all four; accepting two of them here would mean
+      // two endpoints writing one figure.
+      .filter((m) => !CALL_WINS_METRICS.has(m.key))
       .map((m) => [m.key, m]),
   );
 

@@ -94,11 +94,13 @@ await check("no calc metric is missing its formula", async () =>
 // exists because "active clients at start" is pulled and so can never be
 // typed); 176 from 6 Oct (§5.5's captured funnel price, so a price rise
 // cannot rewrite a month the client has read).
-// 175 from the brief's own tables plus section 6's launch keys. The
-// count is the point: a metric that silently fails to seed is a field
-// that never appears on a screen.
+// 175 from the brief's own tables plus section 6's launch keys; 182 from
+// 16 Nov (§5.6's calls converted, the two per-offer fields behind "what
+// they bought, by offer" — Nina — and the bespoke pair Dom added for work
+// priced per job). The count is the point: a metric that silently fails to
+// seed is a field that never appears on a screen.
 await check("anyone signed in reads the metric list", async () =>
-  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 177);
+  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 182);
 
 await rejects("a client cannot add a metric", () =>
   as(MEMBER, () => db.query(`
@@ -349,6 +351,42 @@ await rejects("and an offer's revenue is not one of them any more", () =>
     values ('${WS_R}', '${MONTH}', 'offers_revenue_this_month', '${OFFER}', 10000, '${ELIZE}')`)),
   "is pulled");
 
+// §5.6, Nina 16 November: "what they bought, by offer". Leads &
+// Conversions is a category whose other figures are the month's, so this
+// one row carries the whole design — with `entity_type` left null the
+// guard below would refuse the save, and with it set to the wrong kind
+// the figure would land on a funnel. Both are checked, because a seed
+// value is the kind of thing a regeneration can quietly change.
+await check("what the calls bought is stored against an offer", async () => {
+  await as(ELIZE, () => db.query(`
+    insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
+    values ('${WS_R}', '${MONTH}', 'leads_conversions_sales_from_calls', '${OFFER}', 3, '${ELIZE}')`));
+  return (await one(ELIZE,
+    `select value::int v from public.report_values
+      where metric_key = 'leads_conversions_sales_from_calls' and entity_id = '${OFFER}'`)).v === 3;
+});
+
+await rejects("and the revenue it is worth is worked out, never stored", () =>
+  as(ELIZE, () => db.query(`
+    insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
+    values ('${WS_R}', '${MONTH}', 'leads_conversions_value_of_sales_from_calls', '${OFFER}', 12000, '${ELIZE}')`)),
+  "is calc");
+
+// The bespoke pair belongs to the MONTH, not to an offer: work priced per
+// job has no offer row, which is the whole reason both figures are typed.
+// With an entity_type on them by mistake the guard below would refuse the
+// null-entity write that the breakdown actually makes.
+await check("the bespoke line is stored against the month, not an offer", async () => {
+  await as(ELIZE, () => db.query(`
+    insert into public.report_values (workspace_id, month, metric_key, value, entered_by)
+    values ('${WS_R}', '${MONTH}', 'leads_conversions_bespoke_sales_from_calls', 1, '${ELIZE}'),
+           ('${WS_R}', '${MONTH}', 'leads_conversions_value_of_bespoke_sales_from_calls', 2400, '${ELIZE}')`));
+  return (await one(ELIZE,
+    `select value::int v from public.report_values
+      where metric_key = 'leads_conversions_value_of_bespoke_sales_from_calls'
+        and entity_id is null`)).v === 2400;
+});
+
 await rejects("a figure cannot be broken down by the wrong kind of thing", () =>
   as(ELIZE, () => db.query(`
     insert into public.report_values (workspace_id, month, metric_key, entity_id, value, entered_by)
@@ -377,13 +415,18 @@ await rejects("Elize cannot publish by inserting an already-published period", (
     values ('${WS_R}', '2026-08-01', now(), '${ELIZE}')`)),
   "Only an admin can publish");
 
+// Five: the two figures entered above, §5.6's sales from calls, and the
+// bespoke pair, all added 16 November. The number is every value this
+// month holds, so it moves whenever a test above stores another one — and
+// it is written out rather than counted at run time because "the client
+// reads what is there" would pass just as well against nothing at all.
 await check("Nina publishes, and the client can then read the month", async () => {
   await as(NINA, () => db.query(`
     update public.report_periods set published_at = now(), published_by = '${NINA}'
     where workspace_id = '${WS_R}' and month = '${MONTH}'`));
   return (await count(RETAINER,
     `select count(*)::int c from public.report_values
-     where workspace_id = '${WS_R}' and month = '${MONTH}'`)) === 2;
+     where workspace_id = '${WS_R}' and month = '${MONTH}'`)) === 5;
 });
 
 await check("publishing one month does not reveal another", async () => {

@@ -205,6 +205,16 @@ export async function seed({ quiet = false } = {}) {
     ${v(MONTHS.sep, "client_experience_issues_raised", 1)}
     ${v(MONTHS.sep, "leads_conversions_new_leads_from_social", 20)}
     ${v(MONTHS.sep, "leads_conversions_new_leads_from_email", 8)}
+    -- The funnel's three middle steps (§5.6, 16 November). **Calls
+    -- converted is 3 and new clients is 4 on purpose**: one of
+    -- September's clients bought without ever being on a call, which is
+    -- the difference the funnel's last step must not swallow.
+    ${v(MONTHS.aug, "leads_conversions_calls_booked", 18)}
+    ${v(MONTHS.aug, "leads_conversions_calls_held", 14)}
+    ${v(MONTHS.aug, "leads_conversions_calls_converted", 5)}
+    ${v(MONTHS.sep, "leads_conversions_calls_booked", 24)}
+    ${v(MONTHS.sep, "leads_conversions_calls_held", 18)}
+    ${v(MONTHS.sep, "leads_conversions_calls_converted", 3)}
     -- **No cost figures here.** The four cost totals are the expense
     -- grid's buckets since 13 November, so report_values refuses one:
     -- they are pulled, like revenue. A test that wants costs puts them
@@ -294,6 +304,16 @@ export async function seed({ quiet = false } = {}) {
     ${funnelValue(MONTHS.sep, "funnels_purchases", 3, "Unlinked funnel")}
     update public.report_entities set price = 800
      where workspace_id = '${retainerId}' and name = 'Signature programme';
+  `);
+
+  // What September's calls bought (§5.6). Two of the three sales were
+  // this offer; the third was work priced per job, which is what the
+  // bespoke line is for — so the breakdown adds up to the funnel's last
+  // step, which is the thing worth being able to check.
+  sql(`
+    ${funnelValue(MONTHS.sep, "leads_conversions_sales_from_calls", 2, "Signature programme")}
+    ${v(MONTHS.sep, "leads_conversions_bespoke_sales_from_calls", 1)}
+    ${v(MONTHS.sep, "leads_conversions_value_of_bespoke_sales_from_calls", 1750)}
   `);
 
   // Trial Reels (§5.3): figures for September, and two months of hooks
