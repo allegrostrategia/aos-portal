@@ -7,6 +7,7 @@ import {
   BESPOKE_ID,
   callWinRows,
   callWinTotals,
+  type BespokeWins,
 } from "./call-wins.ts";
 import { callFunnel, winsByOffer } from "./chart-data.ts";
 import type { CallWin } from "./formulas.ts";
@@ -30,12 +31,12 @@ const WINS: CallWin[] = [
   { id: "c", name: "Bespoke day", price: null, salesFromCalls: 1 },
 ];
 
-const NO_BESPOKE = { sales: null, value: null };
+const NO_BESPOKE: BespokeWins = { sales: null, value: null };
 
 function figuresFrom(
   callWins: CallWin[],
   monthly: Record<string, number | null> = {},
-  bespokeWins = NO_BESPOKE,
+  bespokeWins: BespokeWins = NO_BESPOKE,
 ): MonthFigures {
   return {
     callWins,

@@ -31,6 +31,7 @@ import {
   splitYearRows,
 } from "@/lib/reporting/year-table";
 import { YearTable } from "@/components/reporting/year-table";
+import { YearRowsCard } from "@/components/reporting/year-rows";
 import { OfferCard } from "@/components/reporting/offer-card";
 import { PotentialRevenue } from "@/components/reporting/potential-revenue";
 import { GroupedBarChart } from "@/components/reporting/charts/grouped-bar-chart";
@@ -262,6 +263,20 @@ export default async function CategoryReportPage({
     ),
   ];
   const currentMonthIndex = yearMonths.indexOf(ctx.month.month);
+
+  /**
+   * Which year grid to draw — **Financials only, and only when asked.**
+   *
+   * Nina is choosing between two restyles (17 November), so both have to be
+   * openable side by side without changing the eleven other pages that carry
+   * the same grid. Anything other than "a" or "b" is nothing, which is
+   * today's table: a pasted `?year=x` cannot put an unreviewed design on a
+   * client's report. Temporary — the switch goes when she picks.
+   */
+  const yearStyle =
+    category.key === "financials" && (search.year === "a" || search.year === "b")
+      ? search.year
+      : null;
 
   const axis = historyMonths.map(shortMonthLabel);
   // Only a chart with a `targetFor` needs these, so a category with no
@@ -835,21 +850,39 @@ export default async function CategoryReportPage({
               profit and the margin are the four lines a P&L is read for,
               and in one table of fifteen rows they were four among
               eleven. Everything else — the cost buckets included — stays
-              in the table underneath. */}
-          <YearTable
-            rows={splitYearRows(category.key, yearRows).headline}
-            year={Number(ctx.month.month.slice(0, 4))}
-            currency={ctx.workspace.currency}
-            currentMonthIndex={currentMonthIndex}
-            title="Your year — revenue, costs and profit"
-            tone="gold"
-          />
-          <YearTable
-            rows={splitYearRows(category.key, yearRows).rest}
-            year={Number(ctx.month.month.slice(0, 4))}
-            currency={ctx.workspace.currency}
-            currentMonthIndex={currentMonthIndex}
-          />
+              in the table underneath.
+
+              **And on Financials only, two styles to choose between**
+              (Nina, 17 November: the grid "still looks like an
+              old-fashioned spreadsheet"). `?year=a` is clean rows with a
+              pill under each figure; `?year=b` adds a soft heatmap tint
+              per cell. No parameter is today's table, so no page changes
+              under anybody until she has picked one — and then this
+              switch and the losing option both go. */}
+          {(() => {
+            const Grid = yearStyle ? YearRowsCard : YearTable;
+            const extra = yearStyle === "b" ? { heatmap: true } : {};
+            return (
+              <>
+                <Grid
+                  rows={splitYearRows(category.key, yearRows).headline}
+                  year={Number(ctx.month.month.slice(0, 4))}
+                  currency={ctx.workspace.currency}
+                  currentMonthIndex={currentMonthIndex}
+                  title="Your year — revenue, costs and profit"
+                  tone="gold"
+                  {...extra}
+                />
+                <Grid
+                  rows={splitYearRows(category.key, yearRows).rest}
+                  year={Number(ctx.month.month.slice(0, 4))}
+                  currency={ctx.workspace.currency}
+                  currentMonthIndex={currentMonthIndex}
+                  {...extra}
+                />
+              </>
+            );
+          })()}
         </>
       ) : null}
 
