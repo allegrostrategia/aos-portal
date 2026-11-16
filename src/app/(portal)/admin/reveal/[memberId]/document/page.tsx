@@ -64,7 +64,7 @@ export default async function RevealDocumentPage({
       </div>
 
       <header className="mb-10">
-        <p className="font-mono text-eyebrow text-ink/50 uppercase">
+        <p className="font-num text-eyebrow text-ink/50 uppercase">
           Prepared by Nina
         </p>
         <h1 className="font-display mt-3 text-title font-medium text-ink">
@@ -79,7 +79,7 @@ export default async function RevealDocumentPage({
           ].map(([label, value]) =>
             value ? (
               <div key={label}>
-                <dt className="font-mono text-eyebrow text-ink/50 uppercase">
+                <dt className="font-num text-eyebrow text-ink/50 uppercase">
                   {label}
                 </dt>
                 <dd className="mt-1 text-small text-ink">{value}</dd>
@@ -112,7 +112,7 @@ export default async function RevealDocumentPage({
           ].map(([heading, body]) =>
             body ? (
               <div key={heading}>
-                <h3 className="font-mono text-eyebrow text-ink/50 uppercase">
+                <h3 className="font-num text-eyebrow text-ink/50 uppercase">
                   {heading}
                 </h3>
                 <p className="mt-1 text-body whitespace-pre-wrap text-ink/85">
@@ -136,7 +136,7 @@ export default async function RevealDocumentPage({
           <ol className="mt-4 flex flex-col gap-5">
             {reveal.priorities.map((priority, index) => (
               <li key={index} className="flex gap-4">
-                <span className="font-mono text-heading text-orange">
+                <span className="font-num text-heading text-orange">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>

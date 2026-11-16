@@ -102,7 +102,7 @@ function MarginRing({
           transform="rotate(-90 32 32)"
         />
       )}
-      <text x="32" y="36" textAnchor="middle" className="fill-ink font-mono text-[0.85rem]">
+      <text x="32" y="36" textAnchor="middle" className="fill-ink font-num text-[0.85rem]">
         {percent === null ? "—" : `${Math.round(percent)}%`}
       </text>
     </svg>
@@ -184,13 +184,13 @@ export function OfferCard({
           <dt className="text-caption uppercase tracking-wide text-ink/55">
             {recurring ? "Members" : "Units sold"}
           </dt>
-          <dd className="font-mono text-body text-ink">
+          <dd className="font-num text-body text-ink">
             {formatValue(unitsSold ?? null, "count")}
           </dd>
         </div>
         <div>
           <dt className="text-caption uppercase tracking-wide text-ink/55">Revenue</dt>
-          <dd className="font-mono text-body text-ink">
+          <dd className="font-num text-body text-ink">
             {formatValue(revenue ?? null, "currency", currency)}
           </dd>
         </div>
@@ -214,13 +214,13 @@ export function OfferCard({
           <dl className="flex flex-wrap justify-end gap-x-5 gap-y-2 text-right">
             <div>
               <dt className="text-caption uppercase tracking-wide text-ink/55">Hours</dt>
-              <dd className="font-mono text-body text-ink">
+              <dd className="font-num text-body text-ink">
                 {formatValue(hoursSpent ?? null, "hours")}
               </dd>
             </div>
             <div>
               <dt className="text-caption uppercase tracking-wide text-ink/55">Hourly rate</dt>
-              <dd className="font-mono text-body text-ink">
+              <dd className="font-num text-body text-ink">
                 {formatValue(hourlyRate, "currency", currency)}
               </dd>
             </div>

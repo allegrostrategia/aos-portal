@@ -70,7 +70,7 @@ export function HoursByCategory({ totals }: { totals: CategoryTotal[] }) {
                   x={labelWidth + w + 8}
                   y={y + BAR / 2}
                   dominantBaseline="middle"
-                  className="fill-ink font-mono text-[12px]"
+                  className="fill-ink font-num text-[12px]"
                 >
                   {formatMinutes(row.minutes)}
                 </text>
@@ -123,7 +123,7 @@ export function HoursByDay({
           return (
             <g key={h}>
               <line x1={0} x2={width} y1={y} y2={y} className="stroke-ink/8" strokeWidth={1} />
-              <text x={0} y={y - 4} className="fill-ink/40 font-mono text-[11px]">
+              <text x={0} y={y - 4} className="fill-ink/40 font-num text-[11px]">
                 {h}h
               </text>
             </g>
@@ -181,7 +181,7 @@ function AsTable({ head, rows }: { head: string[]; rows: string[][] }) {
           {rows.map((r) => (
             <tr key={r[0]} className="border-t border-ink/6">
               <td className="py-1 text-ink/80">{r[0]}</td>
-              <td className="py-1 font-mono text-ink tabular-nums">{r[1]}</td>
+              <td className="py-1 font-num text-ink tabular-nums">{r[1]}</td>
             </tr>
           ))}
         </tbody>

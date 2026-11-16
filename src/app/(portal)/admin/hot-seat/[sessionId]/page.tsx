@@ -202,7 +202,7 @@ export default async function SessionPrepPage({
                     <Eyebrow>Where their month actually went</Eyebrow>
                     {time && time.byCategory.length > 0 ? (
                       <>
-                        <p className="font-mono mt-1 text-small text-ink tabular-nums">
+                        <p className="font-num mt-1 text-small text-ink tabular-nums">
                           {formatMinutes(time.totalMinutes)} logged
                         </p>
                         <ul className="mt-2 flex flex-col gap-1">
@@ -220,7 +220,7 @@ export default async function SessionPrepPage({
                               >
                                 {category.label}
                               </span>
-                              <span className="font-mono text-ink tabular-nums">
+                              <span className="font-num text-ink tabular-nums">
                                 {formatMinutes(category.minutes)}
                               </span>
                             </li>

@@ -99,7 +99,7 @@ export function AvailabilityForm({
                       >
                         <path d="m7.5 5 5 5-5 5" />
                       </svg>
-                      <span className="font-mono tabular-nums">{dateLabelShort(day.date)}</span>
+                      <span className="font-num tabular-nums">{dateLabelShort(day.date)}</span>
                     </span>
                     <span className={`text-caption ${count > 0 ? "font-medium text-orange" : "text-ink/45"}`}>
                       {count > 0 ? `${count} picked` : "none"}
@@ -134,7 +134,7 @@ export function AvailabilityForm({
       )}
 
       <p className="text-caption text-ink/60">
-        <span className="font-mono tabular-nums text-ink">{picked.size}</span>{" "}
+        <span className="font-num tabular-nums text-ink">{picked.size}</span>{" "}
         {picked.size === 1 ? "time" : "times"} picked. Nothing picked means
         you&rsquo;re sitting this month out, which is a fine answer.
       </p>

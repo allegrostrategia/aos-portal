@@ -191,14 +191,14 @@ export default async function CompareLaunchesPage({
                     return (
                       <tr key={row.label} className="border-b border-ink/8 last:border-b-0">
                         <td className="py-2.5 text-small text-ink/70">{row.label}</td>
-                        <td className="py-2.5 text-right font-mono text-small text-ink">
+                        <td className="py-2.5 text-right font-num text-small text-ink">
                           {formatValue(before, row.unit, ctx.workspace.currency)}
                         </td>
-                        <td className="py-2.5 text-right font-mono text-small text-ink">
+                        <td className="py-2.5 text-right font-num text-small text-ink">
                           {formatValue(after, row.unit, ctx.workspace.currency)}
                         </td>
                         <td
-                          className={`py-2.5 text-right font-mono text-small ${
+                          className={`py-2.5 text-right font-num text-small ${
                             better === null
                               ? "text-ink/45"
                               : better

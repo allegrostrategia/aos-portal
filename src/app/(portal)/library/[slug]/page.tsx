@@ -76,7 +76,7 @@ export default async function ContentPage({
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Badge>{FORMAT_LABEL[item.format]}</Badge>
         {item.duration_minutes ? (
-          <span className="font-mono text-caption text-ink/50">
+          <span className="font-num text-caption text-ink/50">
             {item.duration_minutes} min
           </span>
         ) : null}

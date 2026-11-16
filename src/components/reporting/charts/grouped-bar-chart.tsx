@@ -153,7 +153,7 @@ export function GroupedBarChart({
               x={PAD.left - 8}
               y={y(value) + 4}
               textAnchor="end"
-              className={`fill-ink/45 font-mono ${axisText}`}
+              className={`fill-ink/45 font-num ${axisText}`}
             >
               {compactAxisValue(value, unit, currency)}
             </text>
@@ -208,7 +208,7 @@ export function GroupedBarChart({
               x={PAD.left + slot * i + slot / 2}
               y={H - 7}
               textAnchor="middle"
-              className={`fill-ink/45 font-mono ${axisText}`}
+              className={`fill-ink/45 font-num ${axisText}`}
             >
               {label}
             </text>

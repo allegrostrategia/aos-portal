@@ -241,7 +241,7 @@ export function Composer({
       {recording ? (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-sky/40 bg-sky/10 px-3 py-2">
           <audio controls src={recording.url} className="h-9 max-w-full" />
-          <span className="font-mono text-caption text-ink/60">
+          <span className="font-num text-caption text-ink/60">
             {recording.seconds}s
           </span>
           <button

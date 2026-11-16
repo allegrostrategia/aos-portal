@@ -101,8 +101,8 @@ export default async function StationPage({
       progress={
         lessons.length > 0 ? (
           <p className="text-body text-ink/80">
-            <span className="font-mono">{done}</span> of{" "}
-            <span className="font-mono">{lessons.length}</span> lessons marked
+            <span className="font-num">{done}</span> of{" "}
+            <span className="font-num">{lessons.length}</span> lessons marked
             complete.
           </p>
         ) : undefined

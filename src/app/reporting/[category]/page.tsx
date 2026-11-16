@@ -24,7 +24,12 @@ import { getTargets, getTopItems } from "@/lib/reporting/queries";
 import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import { TopPostsReport } from "@/components/reporting/top-posts";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
-import { buildEntityYearRows, buildYearRows, calendarYear } from "@/lib/reporting/year-table";
+import {
+  buildEntityYearRows,
+  buildYearRows,
+  calendarYear,
+  splitYearRows,
+} from "@/lib/reporting/year-table";
 import { YearTable } from "@/components/reporting/year-table";
 import { OfferCard } from "@/components/reporting/offer-card";
 import { PotentialRevenue } from "@/components/reporting/potential-revenue";
@@ -735,7 +740,7 @@ export default async function CategoryReportPage({
                     >
                       <dt className="text-small text-ink/70">{metric.label}</dt>
                       <dd className="text-right">
-                        <span className="block font-mono text-body text-ink">
+                        <span className="block font-num text-body text-ink">
                           {formatValue(
                             figures.figure(metric.key),
                             metric.unit,
@@ -787,12 +792,27 @@ export default async function CategoryReportPage({
           Same gate as the report body: `monthPublished` is "this reader
           may see this month", always true for an editor. */}
       {ctx.monthPublished ? (
-        <YearTable
-          rows={yearRows}
-          year={Number(ctx.month.month.slice(0, 4))}
-          currency={ctx.workspace.currency}
-          currentMonthIndex={currentMonthIndex}
-        />
+        <>
+          {/* **Financials gets two** (Nina, 16 November): revenue, costs,
+              profit and the margin are the four lines a P&L is read for,
+              and in one table of fifteen rows they were four among
+              eleven. Everything else — the cost buckets included — stays
+              in the table underneath. */}
+          <YearTable
+            rows={splitYearRows(category.key, yearRows).headline}
+            year={Number(ctx.month.month.slice(0, 4))}
+            currency={ctx.workspace.currency}
+            currentMonthIndex={currentMonthIndex}
+            title="Your year — revenue, costs and profit"
+            tone="gold"
+          />
+          <YearTable
+            rows={splitYearRows(category.key, yearRows).rest}
+            year={Number(ctx.month.month.slice(0, 4))}
+            currency={ctx.workspace.currency}
+            currentMonthIndex={currentMonthIndex}
+          />
+        </>
       ) : null}
 
       <div className="mt-6">

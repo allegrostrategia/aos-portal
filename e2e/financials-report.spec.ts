@@ -113,13 +113,29 @@ test("what came in, what was expected, and what is still to come", async ({ page
   expect(recurringText, "and December, which has no forecast yet").toContain("Dec");
   expect(recurringText, "Bella Ltd's retainer").toContain("£1,200");
 
-  // **The year grid, on every page now** (Nina, 15 November).
+  /**
+   * **The year grid, and on Financials there are two** (Nina, 15 and 16
+   * November): revenue, costs, profit and the margin have their own
+   * card, because in one table of fifteen rows the four lines a P&L is
+   * read for were four among eleven.
+   */
+  const headlineYear = card(page, "Your year — revenue, costs and profit");
+  const headlineText = (await headlineYear.innerText()).replace(/\s+/g, " ");
+  expect(headlineText, "January to December, not the last twelve months").toContain("Jan");
+  expect(headlineText).toContain("Dec");
+  expect(headlineText, "and a year column").toContain("Year");
+  expect(headlineText, "September's revenue, in its own column").toContain("£5,200");
+  expect(headlineText, "profit is one of the four").toContain("Profit");
+
   const year = card(page, "Your year, month by month");
   const yearText = (await year.innerText()).replace(/\s+/g, " ");
-  expect(yearText, "January to December, not the last twelve months").toContain("Jan");
-  expect(yearText).toContain("Dec");
-  expect(yearText, "and a year column").toContain("Year");
-  expect(yearText, "September's revenue, in its own column").toContain("£5,200");
+  expect(yearText, "the buckets stay in the main table").toContain("Fixed costs");
+  expect(yearText, "and the P&L lines are not in it twice").not.toContain("Total revenue");
+
+  // **A level takes its latest reading, not its total** (Nina, 16
+  // November). Twelve months of MRR summed is twelve times the run
+  // rate, which is not a figure anybody can use.
+  expect(yearText).toMatch(/Monthly recurring revenue[^A-Z]*LATEST/);
 
   // **What the rest of the year is forecast at** — the only
   // forward-looking figure on the report, and the only place the

@@ -121,7 +121,7 @@ export function LaunchForm({
                     name={`goal_${which}`}
                     inputMode="numeric"
                     defaultValue={launch?.[`goal_${which}`] ?? ""}
-                    className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
+                    className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                   />
                 </label>
               ))}
@@ -142,7 +142,7 @@ export function LaunchForm({
                 Conversion is filled in from{" "}
                 <span className="text-ink/75">{suggestedConversion.from}</span>, the
                 last launch that finished — it got{" "}
-                <span className="font-mono text-ink/75">
+                <span className="font-num text-ink/75">
                   {suggestedConversion.rate}%
                 </span>
                 . Change it if this one is different.
@@ -157,7 +157,7 @@ export function LaunchForm({
                   name="planner_show_up_rate"
                   inputMode="decimal"
                   defaultValue={launch?.planner_show_up_rate ?? ""}
-                  className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
+                  className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                 />
               </label>
               <label className="flex flex-col gap-1.5">
@@ -172,7 +172,7 @@ export function LaunchForm({
                       ? (launch.planner_conversion_rate ?? "")
                       : (suggestedConversion?.rate ?? "")
                   }
-                  className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
+                  className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                 />
               </label>
             </div>

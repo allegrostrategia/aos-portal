@@ -111,7 +111,7 @@ export function WeekCalendar({
               >
                 {LETTERS[i]}
               </span>
-              <span className="font-mono text-[0.6rem] text-ink/45 tabular-nums">
+              <span className="font-num text-[0.6rem] text-ink/45 tabular-nums">
                 {minutes ? formatMinutes(minutes) : "·"}
               </span>
             </Link>
@@ -130,7 +130,7 @@ export function WeekCalendar({
           {Array.from({ length: span / 60 + 1 }, (_, i) => from + i * 60).map((m) => (
             <span
               key={m}
-              className="font-mono absolute right-1 -translate-y-1/2 text-[0.6rem] text-ink/40 tabular-nums"
+              className="font-num absolute right-1 -translate-y-1/2 text-[0.6rem] text-ink/40 tabular-nums"
               style={{ top: ((m - from) / span) * height }}
             >
               {String(m / 60).padStart(2, "0")}

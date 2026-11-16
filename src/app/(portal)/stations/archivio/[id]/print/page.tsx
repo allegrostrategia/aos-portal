@@ -54,7 +54,7 @@ export default async function SopPrintPage({
       </div>
 
       <header className="mb-8 border-b border-ink/20 pb-5">
-        <p className="font-mono text-eyebrow text-ink/50 uppercase">
+        <p className="font-num text-eyebrow text-ink/50 uppercase">
           Standard operating procedure
         </p>
         <h1 className="font-display mt-2 text-title font-medium text-ink">
@@ -67,7 +67,7 @@ export default async function SopPrintPage({
 
       {sop.trigger ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">
+          <h2 className="font-num text-eyebrow text-ink/50 uppercase">
             What starts it
           </h2>
           <p className="mt-1 text-body whitespace-pre-wrap">{sop.trigger}</p>
@@ -76,7 +76,7 @@ export default async function SopPrintPage({
 
       {sop.outcome ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">
+          <h2 className="font-num text-eyebrow text-ink/50 uppercase">
             What done looks like
           </h2>
           <p className="mt-1 text-body whitespace-pre-wrap">{sop.outcome}</p>
@@ -85,18 +85,18 @@ export default async function SopPrintPage({
 
       {sop.tools.length > 0 ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">Tools</h2>
+          <h2 className="font-num text-eyebrow text-ink/50 uppercase">Tools</h2>
           <p className="mt-1 text-body">{sop.tools.join(" · ")}</p>
         </section>
       ) : null}
 
       {sop.steps.length > 0 ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">Steps</h2>
+          <h2 className="font-num text-eyebrow text-ink/50 uppercase">Steps</h2>
           <ol className="mt-2 flex flex-col gap-3">
             {sop.steps.map((step, index) => (
               <li key={index} className="flex gap-3">
-                <span className="font-mono w-6 shrink-0 text-small text-ink/40">
+                <span className="font-num w-6 shrink-0 text-small text-ink/40">
                   {index + 1}.
                 </span>
                 <span className="text-body whitespace-pre-wrap">{step.text}</span>
@@ -108,7 +108,7 @@ export default async function SopPrintPage({
 
       {sop.video_url ? (
         <section className="mb-6">
-          <h2 className="font-mono text-eyebrow text-ink/50 uppercase">
+          <h2 className="font-num text-eyebrow text-ink/50 uppercase">
             Walkthrough
           </h2>
           {/* Printed on paper a link is unclickable, so the address is shown

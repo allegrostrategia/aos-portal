@@ -25,7 +25,7 @@ import type { LaunchPrice, LaunchRow, LaunchStage } from "@/lib/reporting/launch
  */
 
 const field =
-  "w-full rounded-xl border border-ink/12 bg-card px-3 py-2 font-mono text-small text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30";
+  "w-full rounded-xl border border-ink/12 bg-card px-3 py-2 font-num text-small text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30";
 
 /** How many email rows a stage gets: what it has, plus two spare. */
 function emailRows(values: LaunchFigures, stage: LaunchStage): number {

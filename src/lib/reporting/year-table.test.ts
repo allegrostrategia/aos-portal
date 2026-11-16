@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildYearRows, calendarYear, summarise, summaryLabel } from "./year-table.ts";
+import {
+  buildYearRows, calendarYear, splitYearRows, summarise, summaryLabel,
+} from "./year-table.ts";
 
 const metric = (key: string, label: string, unit: string) =>
   ({ key, label, unit, category: "email", input_type: "core", good_direction: "up",
@@ -48,4 +50,35 @@ test("a row with nothing in it all year is left out", () => {
 test("a missing key is blanks, not a crash", () => {
   const rows = buildYearRows([metric("email_emails_sent", "Emails sent", "count")], new Map());
   assert.deepEqual(rows, []);
+});
+
+test("Financials splits the four P&L lines out, and keeps the buckets below", () => {
+  const rows = [
+    "financials_total_revenue", "financials_fixed_costs", "financials_total_costs",
+    "financials_profit", "financials_variable_costs", "financials_profit_margin",
+  ].map((key) => ({ key, label: key, unit: "currency", goodDirection: "up",
+      values: new Array(12).fill(1), summary: { value: 12, kind: "total" } }) as never);
+
+  const { headline, rest } = splitYearRows("financials", rows);
+  assert.deepEqual(headline.map((r) => (r as { key: string }).key), [
+    "financials_total_revenue", "financials_total_costs",
+    "financials_profit", "financials_profit_margin",
+  ], "in the order a P&L is read, not the order they arrived");
+  assert.deepEqual(rest.map((r) => (r as { key: string }).key), [
+    "financials_fixed_costs", "financials_variable_costs",
+  ], "the buckets stay in the main table");
+});
+
+test("every other page keeps one table", () => {
+  const rows = [{ key: "email_new_subscribers", label: "x", unit: "count", goodDirection: "up",
+    values: new Array(12).fill(1), summary: { value: 12, kind: "total" } }] as never[];
+  const { headline, rest } = splitYearRows("email", rows);
+  assert.equal(headline.length, 0);
+  assert.equal(rest.length, 1);
+});
+
+test("a P&L line nobody has entered does not leave a hole in the headline table", () => {
+  const rows = [{ key: "financials_total_revenue", label: "x", unit: "currency", goodDirection: "up",
+    values: new Array(12).fill(1), summary: { value: 12, kind: "total" } }] as never[];
+  assert.equal(splitYearRows("financials", rows).headline.length, 1);
 });

@@ -165,7 +165,7 @@ export default async function AdminMemberPage({
       {itinerary ? (
         <Card className="mt-5">
           <Eyebrow>Their itinerary. What they&rsquo;ve been told to expect</Eyebrow>
-          <ul className="font-mono mt-3 flex flex-wrap gap-x-8 gap-y-2 text-small text-ink/80">
+          <ul className="font-num mt-3 flex flex-wrap gap-x-8 gap-y-2 text-small text-ink/80">
             <li>Tracking I · w/c {WEEK.format(new Date(itinerary.trackingWeekOne))}</li>
             <li>Tracking II · w/c {WEEK.format(new Date(itinerary.trackingWeekTwo))}</li>
             <li>1:1 · w/c {WEEK.format(new Date(itinerary.oneToOneWeek))}</li>
@@ -285,7 +285,7 @@ export default async function AdminMemberPage({
             <Card key={audit.id}>
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <Eyebrow tone="accent">{audit.occasion}</Eyebrow>
-                <p className="font-mono text-caption text-ink/50">
+                <p className="font-num text-caption text-ink/50">
                   {audit.submitted_at
                     ? DATE.format(new Date(audit.submitted_at))
                     : "in progress"}
@@ -327,7 +327,7 @@ export default async function AdminMemberPage({
                       <p className="mt-1 text-small text-ink">
                         {option ? option.label : ", "}
                         {option ? (
-                          <span className="font-mono ml-2 text-caption text-ink/50">
+                          <span className="font-num ml-2 text-caption text-ink/50">
                             {option.score}/3
                           </span>
                         ) : null}
@@ -353,7 +353,7 @@ export default async function AdminMemberPage({
           {weeklyRate > 0 ? (
             <>
               Currently earning{" "}
-              <span className="font-mono text-ink">{formatHours(weeklyRate)} hrs</span>{" "}
+              <span className="font-num text-ink">{formatHours(weeklyRate)} hrs</span>{" "}
               every week, while the builds below are live.
             </>
           ) : (
@@ -376,7 +376,7 @@ export default async function AdminMemberPage({
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <p className="font-medium text-ink">{build.title}</p>
                 {build.current ? (
-                  <span className="font-mono text-small text-ink">
+                  <span className="font-num text-small text-ink">
                     {formatHours(build.current.hours_per_week)} hrs/week
                   </span>
                 ) : (
@@ -395,7 +395,7 @@ export default async function AdminMemberPage({
                         {rate.effective_from} →{" "}
                         {rate.effective_until ?? "still running"}
                       </span>
-                      <span className="font-mono">
+                      <span className="font-num">
                         {formatHours(rate.hours_per_week)} hrs
                       </span>
                     </li>

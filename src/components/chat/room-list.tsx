@@ -132,7 +132,7 @@ export async function RoomList({ current }: { current?: string }) {
                       {row.name}
                     </span>
                     {row.createdAt ? (
-                      <span className="shrink-0 font-mono text-caption text-ink/45">
+                      <span className="shrink-0 font-num text-caption text-ink/45">
                         {formatSessionTimeShort(row.createdAt).replace(/^\w+ /, "")}
                       </span>
                     ) : null}

@@ -71,7 +71,7 @@ export function Reactions({
           }`}
         >
           <span aria-hidden>{s.emoji}</span>
-          <span className="font-mono tabular-nums">{s.count}</span>
+          <span className="font-num tabular-nums">{s.count}</span>
         </button>
       ))}
 

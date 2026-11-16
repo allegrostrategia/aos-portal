@@ -77,7 +77,7 @@ export function RevealForm({
           {priorities.map((priority, index) => (
             <li key={index} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-mono w-6 shrink-0 text-caption text-ink/40">
+                <span className="font-num w-6 shrink-0 text-caption text-ink/40">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <input

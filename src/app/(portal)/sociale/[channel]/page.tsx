@@ -263,7 +263,7 @@ export default async function ChannelPage({
                                 className="h-9 w-56 max-w-full"
                               />
                               {message.voice_seconds ? (
-                                <p className={`font-mono text-caption ${mine ? "text-cream/60" : "text-ink/45"}`}>
+                                <p className={`font-num text-caption ${mine ? "text-cream/60" : "text-ink/45"}`}>
                                   {message.voice_seconds}s
                                 </p>
                               ) : null}
@@ -277,7 +277,7 @@ export default async function ChannelPage({
                           ) : null}
                         </div>
 
-                        <p className={`mt-1 flex items-center gap-2 font-mono text-[0.65rem] text-ink/40 ${mine ? "mr-1 flex-row-reverse" : "ml-1"}`}>
+                        <p className={`mt-1 flex items-center gap-2 font-num text-[0.65rem] text-ink/40 ${mine ? "mr-1 flex-row-reverse" : "ml-1"}`}>
                           <span>{formatSessionTimeShort(message.created_at)}</span>
                           {/* Retract (E4): your own, or anything as an admin.
                               Pin (E1): admin only. Both are plain forms. */}

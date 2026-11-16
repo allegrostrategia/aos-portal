@@ -87,7 +87,7 @@ export function BusinessForm({
               name="currency"
               defaultValue={currency}
               maxLength={3}
-              className={`${field} font-mono uppercase`}
+              className={`${field} font-num uppercase`}
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -98,7 +98,7 @@ export function BusinessForm({
               name="target_hourly_rate"
               inputMode="decimal"
               defaultValue={targetHourlyRate ?? ""}
-              className={`${field} font-mono`}
+              className={`${field} font-num`}
             />
           </label>
         </div>

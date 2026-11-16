@@ -106,7 +106,7 @@ export function StagesForm({
                       name={`stage:${position}:live_days`}
                       inputMode="numeric"
                       defaultValue={stage?.live_days ?? ""}
-                      className={`${field} w-24 font-mono`}
+                      className={`${field} w-24 font-num`}
                     />
                   </label>
                 </div>
@@ -126,7 +126,7 @@ export function StagesForm({
                         type="date"
                         name={`stage:${position}:${name}`}
                         defaultValue={value ?? ""}
-                        className={`${field} font-mono`}
+                        className={`${field} font-num`}
                       />
                     </label>
                   ))}
@@ -141,7 +141,7 @@ export function StagesForm({
                       name={`stage:${position}:sign_up_goal`}
                       inputMode="numeric"
                       defaultValue={stage?.sign_up_goal ?? ""}
-                      className={`${field} font-mono`}
+                      className={`${field} font-num`}
                     />
                   </label>
                   <label className="flex flex-col gap-1">
@@ -152,7 +152,7 @@ export function StagesForm({
                       name={`stage:${position}:attendance_goal`}
                       inputMode="numeric"
                       defaultValue={stage?.attendance_goal ?? ""}
-                      className={`${field} font-mono`}
+                      className={`${field} font-num`}
                     />
                   </label>
                 </div>
@@ -237,7 +237,7 @@ export function PricesForm({
                       name={`price:${slot}:price`}
                       inputMode="decimal"
                       defaultValue={price?.price ?? ""}
-                      className={`${field} w-28 font-mono`}
+                      className={`${field} w-28 font-num`}
                     />
                   </label>
                 </div>
@@ -250,7 +250,7 @@ export function PricesForm({
                       name={`price:${slot}:instalments`}
                       inputMode="numeric"
                       defaultValue={price?.instalments ?? ""}
-                      className={`${field} font-mono`}
+                      className={`${field} font-num`}
                     />
                   </label>
                   <label className="flex flex-col gap-1">
@@ -261,7 +261,7 @@ export function PricesForm({
                       name={`price:${slot}:instalment_amount`}
                       inputMode="decimal"
                       defaultValue={price?.instalment_amount ?? ""}
-                      className={`${field} font-mono`}
+                      className={`${field} font-num`}
                     />
                   </label>
                 </div>

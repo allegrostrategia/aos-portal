@@ -166,7 +166,7 @@ export function DonutChart({
           x="80"
           y="76"
           textAnchor="middle"
-          className="fill-ink font-mono"
+          className="fill-ink font-num"
           style={{ fontSize: "15px" }}
         >
           {totalDisplay}
@@ -196,7 +196,7 @@ export function DonutChart({
               }}
             />
             <span className="min-w-0 flex-1 truncate text-small text-ink">{arc.label}</span>
-            <span className="font-mono text-small text-ink/70">
+            <span className="font-num text-small text-ink/70">
               {arc.display ? `${arc.display} · ` : ""}
               {arc.percent}%
             </span>

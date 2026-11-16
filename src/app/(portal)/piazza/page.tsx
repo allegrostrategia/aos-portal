@@ -245,7 +245,7 @@ export default async function PiazzaPage() {
               href={stat.href}
               className="rounded-2xl bg-cream px-3 py-3 text-center shadow-soft transition hover:bg-card sm:px-4"
             >
-              <p className="font-mono text-heading text-ink tabular-nums sm:text-title">
+              <p className="font-num text-heading text-ink tabular-nums sm:text-title">
                 {stat.flip ? <FlipNumber value={stat.value} /> : stat.value}
               </p>
               <p className="mt-0.5 text-[0.62rem] leading-tight font-medium tracking-wide text-ink/60 uppercase sm:text-eyebrow">
@@ -394,7 +394,7 @@ export default async function PiazzaPage() {
 
         <Card className="flex flex-col">
           <Eyebrow>Hours reclaimed</Eyebrow>
-          <p className="font-mono mt-2 text-title text-ink">
+          <p className="font-num mt-2 text-title text-ink">
             <FlipNumber value={formatHours(hours.total)} />
           </p>
           <p className="mt-1 text-small text-ink/65">

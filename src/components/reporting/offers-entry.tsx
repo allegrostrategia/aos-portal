@@ -162,7 +162,7 @@ export function OffersEntry(props: OffersEntryProps) {
                   <Badge tone={offer.pricing_model === "recurring" ? "sky" : "neutral"}>
                     {offer.pricing_model === "recurring" ? "Recurring" : "One-off"}
                   </Badge>
-                  <span className="font-mono text-small text-ink/60">
+                  <span className="font-num text-small text-ink/60">
                     {formatValue(offer.price, "currency", props.currency)}
                     {offer.pricing_model === "recurring" ? " / month" : null}
                   </span>
@@ -198,7 +198,7 @@ export function OffersEntry(props: OffersEntryProps) {
                         form={MONTH_FORM}
                         inputMode="decimal"
                         autoComplete="off"
-                        className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+                        className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
                       />
                       {previous !== null && props.previousLabel ? (
                         <p className="text-caption text-ink/55">
@@ -294,7 +294,7 @@ function Worked({
   return (
     <div>
       <dt className="text-caption text-ink/60">{label}</dt>
-      <dd className="font-mono text-body text-ink">
+      <dd className="font-num text-body text-ink">
         {formatValue(value, unit, currency)}
       </dd>
     </div>
@@ -333,7 +333,7 @@ function Summary({
           className="rounded-card border border-gold/40 bg-lemon/60 p-5 shadow-soft"
         >
           <Eyebrow>{label}</Eyebrow>
-          <p className="font-mono mt-2 text-[1.5rem] leading-tight tracking-tight text-ink tabular-nums">
+          <p className="font-num mt-2 text-[1.5rem] leading-tight tracking-tight text-ink tabular-nums">
             {formatValue(value, unit, currency)}
           </p>
         </div>
@@ -439,7 +439,7 @@ function OfferFields({
           <input
             id={`price-${id}`} name="price" inputMode="decimal"
             defaultValue={toInputValue(offer?.price ?? null)}
-            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -460,7 +460,7 @@ function OfferFields({
           <input
             id={`cost-${id}`} name="hourly_cost" inputMode="decimal"
             defaultValue={toInputValue(offer?.hourly_cost ?? null)}
-            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
           />
           <p className="text-caption text-ink/55">What an hour of their own delivery time costs.</p>
         </div>

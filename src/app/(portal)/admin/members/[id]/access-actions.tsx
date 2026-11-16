@@ -63,7 +63,7 @@ export function AccessActions({
           <FormMessage error={passwordState?.error} notice={passwordState?.notice} />
           {passwordState?.password ? (
             <p className="mt-1">
-              <code className="inline-block select-all rounded-lg bg-cream-deep px-3 py-2 font-mono text-heading tracking-wide text-ink">
+              <code className="inline-block select-all rounded-lg bg-cream-deep px-3 py-2 font-num text-heading tracking-wide text-ink">
                 {passwordState.password}
               </code>
             </p>

@@ -224,7 +224,7 @@ export function MoneyGrid(props: MoneyGridProps) {
                           // As wide as the input it stands in for, so the
                           // column does not change size on the grid that
                           // cannot take a figure.
-                          <span className="inline-block w-20 py-1.5 font-mono text-small text-ink/30">
+                          <span className="inline-block w-20 py-1.5 font-num text-small text-ink/30">
                             &mdash;
                           </span>
                         ) : (
@@ -261,7 +261,7 @@ export function MoneyGrid(props: MoneyGridProps) {
                       </td>
                     );
                   })}
-                  <td className="py-2 pl-3 text-right font-mono tabular-nums text-ink">
+                  <td className="py-2 pl-3 text-right font-num tabular-nums text-ink">
                     {money(rowTotal(row.id) || null)}
                   </td>
                 </tr>
@@ -273,14 +273,14 @@ export function MoneyGrid(props: MoneyGridProps) {
                 {months.map((m) => (
                   <td
                     key={m}
-                    className={`${MONTH_COL} py-2.5 font-mono tabular-nums text-ink ${
+                    className={`${MONTH_COL} py-2.5 font-num tabular-nums text-ink ${
                       m === props.month ? "bg-cream-deep" : ""
                     }`}
                   >
                     {money(columnTotal(m) || null)}
                   </td>
                 ))}
-                <td className="py-2.5 pl-3 text-right font-mono tabular-nums text-ink">
+                <td className="py-2.5 pl-3 text-right font-num tabular-nums text-ink">
                   {money(entered.reduce((t, m) => t + columnTotal(m), 0) || null)}
                 </td>
               </tr>

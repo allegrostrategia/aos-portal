@@ -97,7 +97,7 @@ export function Stat({
 }) {
   return (
     <div className={className}>
-      <p className="font-mono text-title text-ink">{value}</p>
+      <p className="font-num text-title text-ink">{value}</p>
       <Eyebrow className="mt-1.5">{label}</Eyebrow>
       {detail ? <p className="mt-1 text-small text-ink/65">{detail}</p> : null}
     </div>

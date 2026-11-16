@@ -42,7 +42,7 @@ export function SourceBlock({ source }: { source: string }) {
         </p>
       </div>
 
-      <pre className="max-h-96 overflow-auto rounded-xl bg-cream-deep p-4 font-mono text-caption leading-relaxed whitespace-pre-wrap text-ink/85">
+      <pre className="max-h-96 overflow-auto rounded-xl bg-cream-deep p-4 font-num text-caption leading-relaxed whitespace-pre-wrap text-ink/85">
         {source}
       </pre>
     </div>

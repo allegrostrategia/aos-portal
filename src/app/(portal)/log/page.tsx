@@ -241,7 +241,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
 
           <SectionTitle
             aside={
-              <span className="font-mono tabular-nums">
+              <span className="font-num tabular-nums">
                 {formatMinutes(minutesByDay.get(day) ?? 0)}
               </span>
             }
@@ -275,7 +275,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
                             </span>
                           ) : null}
                         </p>
-                        <p className="font-mono text-caption text-ink/50">
+                        <p className="font-num text-caption text-ink/50">
                           {TIME.format(new Date(entry.started_at))}
                           {entry.ended_at
                             ? `–${TIME.format(new Date(entry.ended_at))}`
@@ -284,7 +284,7 @@ export default async function WeeklyLogPage({ searchParams }: PageProps<"/log">)
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <span className="font-mono text-small text-ink tabular-nums">
+                        <span className="font-num text-small text-ink tabular-nums">
                           {entry.ended_at ? formatMinutes(entry.duration_minutes ?? 0) : ", "}
                         </span>
                         {isCurrent ? (
@@ -496,7 +496,7 @@ function WeekProgress({
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <Eyebrow>Tracked this week</Eyebrow>
-          <p className="font-mono mt-1 text-title text-ink tabular-nums">
+          <p className="font-num mt-1 text-title text-ink tabular-nums">
             {formatMinutes(loggedMinutes)}
           </p>
         </div>

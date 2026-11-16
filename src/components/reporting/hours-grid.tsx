@@ -151,7 +151,7 @@ function Hours(props: HoursGridProps & { clients: SalesRow[]; team: StaffMember[
                       />
                     </td>
                   ))}
-                  <td className="py-2 pl-3 text-right font-mono tabular-nums text-ink">
+                  <td className="py-2 pl-3 text-right font-num tabular-nums text-ink">
                     {hours(rowTotal(client.id))}
                   </td>
                 </tr>
@@ -163,12 +163,12 @@ function Hours(props: HoursGridProps & { clients: SalesRow[]; team: StaffMember[
                 {props.team.map((person) => (
                   <td
                     key={person.id}
-                    className="px-1.5 py-2.5 text-right font-mono tabular-nums text-ink"
+                    className="px-1.5 py-2.5 text-right font-num tabular-nums text-ink"
                   >
                     {hours(columnTotal(person.id))}
                   </td>
                 ))}
-                <td className="py-2.5 pl-3 text-right font-mono tabular-nums text-ink">
+                <td className="py-2.5 pl-3 text-right font-num tabular-nums text-ink">
                   {hours(props.clients.reduce((t, r) => t + rowTotal(r.id), 0))}
                 </td>
               </tr>
@@ -226,26 +226,26 @@ function Profitability(props: HoursGridProps) {
                 <th className="max-w-[10rem] truncate py-2.5 pr-3 text-left font-medium text-ink">
                   {row.name}
                 </th>
-                <td className="px-3 py-2.5 text-right font-mono tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-num tabular-nums text-ink">
                   {money(row.paid)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-num tabular-nums text-ink">
                   {formatValue(row.hours, "hours", props.currency)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-num tabular-nums text-ink">
                   {money(row.staffCost)}
                 </td>
                 <td
-                  className={`px-3 py-2.5 text-right font-mono tabular-nums ${
+                  className={`px-3 py-2.5 text-right font-num tabular-nums ${
                     (row.profit ?? 0) < 0 ? "text-orange" : "text-ink"
                   }`}
                 >
                   {money(row.profit)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-num tabular-nums text-ink">
                   {formatValue(row.margin, "percent", props.currency)}
                 </td>
-                <td className="py-2.5 pl-3 text-right font-mono tabular-nums text-ink">
+                <td className="py-2.5 pl-3 text-right font-num tabular-nums text-ink">
                   {money(effectiveRate(row.paid, row.hours))}
                 </td>
               </tr>

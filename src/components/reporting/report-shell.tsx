@@ -627,7 +627,7 @@ function MonthPicker({ ctx, path }: { ctx: ReportContext; path: string }) {
             it would still be "normal text" by WCAG's reckoning and owe
             4.5:1 anyway. The chevron stays ink: it is furniture. */}
         <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-ink/15 bg-card px-4 py-2 font-medium text-ink">
-          <span className="font-mono text-[1.125rem] leading-none text-orange-ink">
+          <span className="font-num text-[1.125rem] leading-none text-orange-ink">
             {ctx.month.label}
           </span>
           <Arrow direction="down" className="size-3.5 opacity-60" />
@@ -638,7 +638,7 @@ function MonthPicker({ ctx, path }: { ctx: ReportContext; path: string }) {
               <Link
                 href={reportHref(path, ctx, { month: option.month })}
                 aria-current={option.month === ctx.month.month ? "true" : undefined}
-                className={`block rounded-xl px-3 py-2 font-mono text-small transition hover:bg-cream-deep ${
+                className={`block rounded-xl px-3 py-2 font-num text-small transition hover:bg-cream-deep ${
                   option.month === ctx.month.month ? "text-ink" : "text-ink/70"
                 }`}
               >

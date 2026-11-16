@@ -104,10 +104,16 @@ test("a client reads the published month, and none of the team's half", async ({
   // holding space for a picture. Asserted as an absence as well as a
   // presence, because "ready for an SVG" is easy to satisfy by shipping a
   // grey box that looks like a missing image.
-  await expect(page.getByText("Allegro Team", { exact: true })).toBeVisible();
+  // **"Your strategist", for every author** — Nina, 16 November,
+  // replacing her own 3 November answer of "Allegro Team". The same
+  // line whoever wrote the note: the client has one strategist, and
+  // which of the team drafted a particular month is not a distinction
+  // they need.
+  await expect(page.getByText("Your strategist", { exact: true })).toBeVisible();
+  await expect(page.getByText("Allegro Team", { exact: true })).toHaveCount(0);
   const sigs = await page.evaluate(() => {
     const role = [...document.querySelectorAll("span")].find(
-      (el) => el.textContent?.trim() === "Allegro Team",
+      (el) => el.textContent?.trim() === "Your strategist",
     );
     const slot = role?.closest("div");
     return {

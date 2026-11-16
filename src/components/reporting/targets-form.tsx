@@ -98,7 +98,7 @@ export function TargetsForm({
                       inputMode="decimal"
                       autoComplete="off"
                       placeholder="—"
-                      className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none transition placeholder:text-ink/40 focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+                      className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none transition placeholder:text-ink/40 focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
                     />
                   </div>
 

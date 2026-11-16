@@ -1100,5 +1100,23 @@ await check("it can be ended again, and that is a third event", async () => {
   return c === 3;
 });
 
+/**
+ * `LEVEL_METRICS` is a named list, not a pattern, because whether a
+ * figure is a level is a judgement about what it means — monthly
+ * recurring revenue looks like every other currency figure, and summing
+ * twelve months of it gives twelve times the run rate.
+ *
+ * A named list rots differently from a pattern: rename a metric and the
+ * list goes quietly stale, the figure starts being summed again, and
+ * nothing fails. This is what stops that.
+ */
+await check("every figure the year grid calls a level still exists", async () => {
+  const { LEVEL_METRICS } = await import("../../src/lib/reporting/year-table.ts");
+  const { rows } = await as(NINA, () => db.query(`select key from public.report_metrics`));
+  const known = new Set(rows.map((r) => r.key));
+  const missing = [...LEVEL_METRICS].filter((key) => !known.has(key));
+  return missing.length === 0 && LEVEL_METRICS.size >= 9 ? true : { missing, size: LEVEL_METRICS.size };
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -63,13 +63,13 @@ export default async function MilestonesPage() {
 
       <Card className="mb-6 bg-sky/15">
         <Eyebrow>Total</Eyebrow>
-        <p className="font-mono mt-1 text-title text-ink">
+        <p className="font-num mt-1 text-title text-ink">
           <FlipNumber value={`${formatHours(journey.total)} hrs`} />
         </p>
         {hours.weeklyRate > 0 ? (
           <p className="mt-2 text-small text-ink/70">
             Your builds add{" "}
-            <span className="font-mono">{formatHours(hours.weeklyRate)} hrs</span>{" "}
+            <span className="font-num">{formatHours(hours.weeklyRate)} hrs</span>{" "}
             every week it&rsquo;s live.
           </p>
         ) : null}
@@ -104,7 +104,7 @@ export default async function MilestonesPage() {
                 }
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <p className="font-mono text-heading text-ink">
+                  <p className="font-num text-heading text-ink">
                     {step.target} hrs
                   </p>
                   {step.reached ? (
@@ -158,7 +158,7 @@ export default async function MilestonesPage() {
                 <span className="text-small text-ink/70">
                   Week of {formatCalendarDate(week.weekStartDate)}
                 </span>
-                <span className="font-mono text-small text-ink tabular-nums">
+                <span className="font-num text-small text-ink tabular-nums">
                   {week.hours > 0 ? `+${formatHours(week.hours)}` : ", "}
                   <span className="text-ink/40">
                     {" "}

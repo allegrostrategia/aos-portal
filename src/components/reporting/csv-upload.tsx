@@ -175,11 +175,11 @@ export function CsvUpload({
                 {preview.changed.map((row) => (
                   <li key={row.key} className="text-small text-ink">
                     {row.label}:{" "}
-                    <span className="font-mono text-ink/60">
+                    <span className="font-num text-ink/60">
                       {row.status === "changed" ? row.from : ""}
                     </span>{" "}
                     <span aria-hidden>→</span>{" "}
-                    <span className="font-mono">{row.to}</span>
+                    <span className="font-num">{row.to}</span>
                   </li>
                 ))}
               </ul>
@@ -190,7 +190,7 @@ export function CsvUpload({
             {preview.rows.map((row) => (
               <li key={row.key} className="flex justify-between gap-4 text-small">
                 <span className="text-ink/70">{row.label}</span>
-                <span className="font-mono text-ink">{row.to}</span>
+                <span className="font-num text-ink">{row.to}</span>
               </li>
             ))}
           </ul>

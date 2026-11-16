@@ -74,7 +74,7 @@ export default async function TouchpointPage() {
                             {entry.members?.email}
                           </p>
                         </div>
-                        <p className="font-mono text-caption text-ink/50">
+                        <p className="font-num text-caption text-ink/50">
                           {entry.submitted_at
                             ? WHEN.format(new Date(entry.submitted_at))
                             : "not signed off"}

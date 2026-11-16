@@ -423,7 +423,7 @@ function NumberField({
         // write a row that says what it already said. What "changed"
         // means is decided by the caller, against what is stored.
         onBlur={(e) => onCommit?.(metric.key, e.currentTarget)}
-        className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none transition placeholder:text-ink/40 focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+        className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none transition placeholder:text-ink/40 focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
       />
       {hint ? (
         <p id={hintId} className="text-caption text-ink/55">
@@ -487,7 +487,7 @@ function WorkedOut({
           {metrics.map((metric) => (
             <div key={metric.key} className="border-t border-ink/10 pt-4 first:border-0 first:pt-0">
               <dt className="text-small text-ink/70">{metric.label}</dt>
-              <dd className="font-mono text-heading text-ink">
+              <dd className="font-num text-heading text-ink">
                 {formatValue(results[metric.key], metric.unit, currency)}
               </dd>
               {metric.formula ? (

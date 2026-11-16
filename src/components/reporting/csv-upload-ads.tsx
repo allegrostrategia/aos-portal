@@ -277,11 +277,11 @@ export function CsvUploadAds({
                   m.changed.map((row) => (
                     <li key={`${m.entityId}-${row.key}`} className="text-small text-ink">
                       {m.name} · {row.label}:{" "}
-                      <span className="font-mono text-ink/60">
+                      <span className="font-num text-ink/60">
                         {row.status === "changed" ? row.from : ""}
                       </span>{" "}
                       <span aria-hidden>→</span>{" "}
-                      <span className="font-mono">{row.to}</span>
+                      <span className="font-num">{row.to}</span>
                     </li>
                   )),
                 )}
@@ -357,7 +357,7 @@ export function CsvUploadAds({
                   <fieldset key={column.column} className="flex flex-wrap items-center gap-3">
                     <legend className="text-small text-ink">
                       {column.label}{" "}
-                      <span className="font-mono text-ink/55">{column.total}</span>
+                      <span className="font-num text-ink/55">{column.total}</span>
                     </legend>
                     {(["leads", "purchases", "ignored"] as const).map((choice) => (
                       <label key={choice} className="flex items-center gap-1.5 text-small text-ink">

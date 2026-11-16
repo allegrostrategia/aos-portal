@@ -38,7 +38,7 @@ export function TimerPanel({
         <>
           <p className="text-eyebrow font-medium uppercase text-white/80">{label}</p>
           <p
-            className="font-mono mt-4 text-[3.5rem] leading-none tabular-nums sm:text-[4.5rem]"
+            className="font-num mt-4 text-[3.5rem] leading-none tabular-nums sm:text-[4.5rem]"
             aria-live="off"
           >
             {seconds === null ? "0:00" : formatElapsed(seconds)}
@@ -62,7 +62,7 @@ export function TimerPanel({
       ) : (
         <form action={startTimer} className="mx-auto flex max-w-sm flex-col items-center">
           <p className="text-eyebrow font-medium uppercase text-white/80">Focus time</p>
-          <p className="font-mono mt-4 text-[3.5rem] leading-none tabular-nums sm:text-[4.5rem]">
+          <p className="font-num mt-4 text-[3.5rem] leading-none tabular-nums sm:text-[4.5rem]">
             0:00
           </p>
 

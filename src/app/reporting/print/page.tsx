@@ -222,7 +222,7 @@ export default async function ReportPrintPage({
       </div>
 
       <header className="mb-8 border-b border-ink/20 pb-5">
-        <p className="font-mono text-eyebrow uppercase text-ink/50">
+        <p className="font-num text-eyebrow uppercase text-ink/50">
           {ctx.workspace.business_name}
         </p>
         <h1 className="font-display mt-2 text-title font-medium text-ink">
@@ -247,7 +247,7 @@ export default async function ReportPrintPage({
               <h2 className="font-display text-heading font-medium text-ink">
                 {PANELS.attention}
               </h2>
-              <p className="mt-1 font-mono text-eyebrow uppercase text-ink/50">{FOCUS_TAG}</p>
+              <p className="mt-1 font-num text-eyebrow uppercase text-ink/50">{FOCUS_TAG}</p>
               <ul className="mt-3 flex flex-col gap-2">
                 {panels.attention.map((item) => (
                   <li key={item.key} className="text-body text-ink/85">
@@ -303,7 +303,7 @@ export default async function ReportPrintPage({
                   >
                     <dt className="text-small text-ink/70">{metric.label}</dt>
                     <dd className="text-right">
-                      <span className="block font-mono text-body text-ink">
+                      <span className="block font-num text-body text-ink">
                         {formatValue(
                           figures.figure(metric.key),
                           metric.unit,
@@ -311,7 +311,7 @@ export default async function ReportPrintPage({
                         )}
                       </span>
                       {changeText ? (
-                        <span className="block font-mono text-caption text-ink/55">
+                        <span className="block font-num text-caption text-ink/55">
                           {changeText}
                         </span>
                       ) : null}
@@ -328,7 +328,7 @@ export default async function ReportPrintPage({
               answer (§9). */}
           {category.key === "offers" && offerRows.length > 0 ? (
             <div className="keep-together mt-5">
-              <h3 className="mb-2 font-mono text-eyebrow uppercase text-ink/50">
+              <h3 className="mb-2 font-num text-eyebrow uppercase text-ink/50">
                 Where the money came from
               </h3>
               <DonutChart
@@ -343,7 +343,7 @@ export default async function ReportPrintPage({
 
           {category.key === "offers" && ctx.workspace.track_offer_hours ? (
             <div className="keep-together mt-5">
-              <h3 className="mb-2 font-mono text-eyebrow uppercase text-ink/50">
+              <h3 className="mb-2 font-num text-eyebrow uppercase text-ink/50">
                 Effective hourly rate
               </h3>
               <BarChart
@@ -379,7 +379,7 @@ export default async function ReportPrintPage({
 
           {category.key === "offers" && offerHistory.size > 0 ? (
             <div className="keep-together mt-5">
-              <h3 className="mb-2 font-mono text-eyebrow uppercase text-ink/50">
+              <h3 className="mb-2 font-num text-eyebrow uppercase text-ink/50">
                 Revenue by offer
               </h3>
               <GroupedBarChart
@@ -443,7 +443,7 @@ export default async function ReportPrintPage({
                 if (ahead.length === 0) return null;
                 return (
                   <div className="keep-together mt-5">
-                    <h3 className="mb-2 font-mono text-eyebrow uppercase text-ink/50">
+                    <h3 className="mb-2 font-num text-eyebrow uppercase text-ink/50">
                       Still expected this year
                     </h3>
                     <BarChart data={ahead} caption="What the forecast says for the months after this one." />
@@ -452,7 +452,7 @@ export default async function ReportPrintPage({
               })()}
               {costBreakdown(figures, ctx.workspace.currency).length > 0 ? (
                 <div className="keep-together mt-5">
-                  <h3 className="mb-2 font-mono text-eyebrow uppercase text-ink/50">
+                  <h3 className="mb-2 font-num text-eyebrow uppercase text-ink/50">
                     Where the money went
                   </h3>
                   <DonutChart
@@ -494,7 +494,7 @@ export default async function ReportPrintPage({
 
           {notes.map((note) => (
             <div key={note.id} className="keep-together mt-5 border-l-2 border-gold pl-4">
-              <p className="font-mono text-eyebrow uppercase text-ink/50">
+              <p className="font-num text-eyebrow uppercase text-ink/50">
                 Note from your Allegro team
               </p>
               <p className="mt-1 whitespace-pre-wrap text-body text-ink/85">{note.body}</p>
@@ -515,7 +515,7 @@ export default async function ReportPrintPage({
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <h3 className="font-display text-body font-medium text-ink">{launch.name}</h3>
-                  <p className="font-mono text-caption text-ink/55">
+                  <p className="font-num text-caption text-ink/55">
                     {launchRange(stages) ?? "No dates set"}
                   </p>
                 </div>
@@ -528,7 +528,7 @@ export default async function ReportPrintPage({
                   ].map(([label, value, unit]) => (
                     <div key={String(label)}>
                       <dt className="text-caption text-ink/60">{String(label)}</dt>
-                      <dd className="font-mono text-small text-ink">
+                      <dd className="font-num text-small text-ink">
                         {formatValue(
                           value as number | null,
                           unit as "count" | "currency" | "percent",
@@ -573,7 +573,7 @@ export default async function ReportPrintPage({
           <ol className="mt-3 flex flex-col gap-2">
             {objectives.map((objective, i) => (
               <li key={objective.id} className="flex gap-3 text-body text-ink/85">
-                <span className="font-mono text-small text-ink/45">{i + 1}</span>
+                <span className="font-num text-small text-ink/45">{i + 1}</span>
                 <span className="whitespace-pre-wrap">{objective.body}</span>
               </li>
             ))}

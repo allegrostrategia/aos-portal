@@ -178,7 +178,7 @@ export function FunnelChart({
                 style={{ height: HEIGHT + (i < drawn.length - 1 ? GAP : 0) }}
               >
                 <span className="min-w-0">
-                  <span className="block font-mono text-body font-medium text-ink">
+                  <span className="block font-num text-body font-medium text-ink">
                     {stage.value.toLocaleString("en-GB")}
                   </span>
                   <span className="block truncate text-caption text-ink/55">{stage.label}</span>
@@ -190,7 +190,7 @@ export function FunnelChart({
                   // 3.3% of sign-ups" on one line is three wrapped lines
                   // there, and the row's height is fixed to the trapezoid
                   // beside it and cannot grow to take them.
-                  <span className="shrink-0 text-right font-mono text-caption text-ink/55">
+                  <span className="shrink-0 text-right font-num text-caption text-ink/55">
                     {/* What reached this stage, not what was lost: the
                         mockup's own reading, and the one people quote. */}
                     {kept === null ? null : (

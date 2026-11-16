@@ -311,7 +311,7 @@ export function CampaignsEntry(props: CampaignsEntryProps) {
                             }
                             inputMode="decimal"
                             autoComplete="off"
-                            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+                            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
                           />
                           {last !== null && last !== undefined && props.previousLabel ? (
                             <p className="text-caption text-ink/55">
@@ -536,7 +536,7 @@ function WorkedOut({
           {lines.map((line) => (
             <div key={line.label} className="border-t border-ink/10 pt-4 first:border-0 first:pt-0">
               <dt className="text-small text-ink/70">{line.label}</dt>
-              <dd className="font-mono text-heading text-ink">
+              <dd className="font-num text-heading text-ink">
                 {formatValue(line.value ?? null, line.unit, currency)}
               </dd>
               {line.note ? <p className="mt-0.5 text-caption text-ink/50">{line.note}</p> : null}

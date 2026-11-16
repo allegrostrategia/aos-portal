@@ -82,7 +82,7 @@ export function TopItemsEntry({
 
                 return (
                   <div key={rank} className="flex flex-wrap items-end gap-3">
-                    <span aria-hidden className="mt-2.5 font-mono text-caption text-ink/45">
+                    <span aria-hidden className="mt-2.5 font-num text-caption text-ink/45">
                       {rank}
                     </span>
 
@@ -134,7 +134,7 @@ export function TopItemsEntry({
                         name={`item:${list.type}:${rank}:views`}
                         defaultValue={toInputValue(item?.views ?? null)}
                         inputMode="numeric"
-                        className="mt-1 w-full rounded-xl border border-ink/12 bg-cream-deep px-3 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+                        className="mt-1 w-full rounded-xl border border-ink/12 bg-cream-deep px-3 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
                       />
                     </div>
 
@@ -206,7 +206,7 @@ export function TopItemsReport({
                   const seen = provenness(item, history);
                   return (
                     <li key={item.id ?? `${item.item_type}-${item.rank}`} className="flex gap-3">
-                      <span aria-hidden className="font-mono text-caption text-ink/45">
+                      <span aria-hidden className="font-num text-caption text-ink/45">
                         {item.rank}
                       </span>
                       <div className="min-w-0 flex-1">

@@ -73,7 +73,7 @@ export function FloatingTimer({
           <div className="min-w-0">
             <p className="truncate text-caption text-ink/60">{categoryLabel}</p>
             <p
-              className="font-mono text-small text-ink tabular-nums"
+              className="font-num text-small text-ink tabular-nums"
               // Announced only when it settles, not every second — a timer
               // reading itself aloud once a second is unusable.
               aria-live="off"

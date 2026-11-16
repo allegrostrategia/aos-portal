@@ -216,7 +216,7 @@ export default async function LaunchPage({
               <li key={goal.label}>
                 <div className="flex items-baseline justify-between gap-3 text-small">
                   <span className="font-medium text-ink">{goal.label}</span>
-                  <span className="font-mono text-ink/70">
+                  <span className="font-num text-ink/70">
                     {summary.totalSales ?? "—"} of {goal.target}
                     {goal.percent === null ? null : (
                       <span className="ml-2 text-ink/50">{Math.round(goal.percent)}%</span>
@@ -384,18 +384,18 @@ export default async function LaunchPage({
                 it is the one somebody can picture. */}
             {s.liveAtEndOfPitch !== null ? (
               <p className="mt-4 rounded-xl bg-cream-deep px-4 py-3 text-body text-ink/80">
-                <span className="font-mono text-ink">
+                <span className="font-num text-ink">
                   {s.liveAtEndOfPitch.toLocaleString("en-GB")}
                 </span>{" "}
                 still live at the end of the pitch
                 {s.pitchRetention !== null && s.liveAtStart !== null ? (
                   <>
                     {" — "}
-                    <span className="font-mono text-ink">
+                    <span className="font-num text-ink">
                       {Math.round(s.pitchRetention)}%
                     </span>{" "}
                     of the{" "}
-                    <span className="font-mono text-ink">
+                    <span className="font-num text-ink">
                       {s.liveAtStart.toLocaleString("en-GB")}
                     </span>{" "}
                     there at the start of the session.
@@ -493,7 +493,7 @@ export default async function LaunchPage({
                         : null}
                     </span>
                   </dt>
-                  <dd className="font-mono text-body text-ink">{sold ?? "—"}</dd>
+                  <dd className="font-num text-body text-ink">{sold ?? "—"}</dd>
                 </div>
               );
             })}

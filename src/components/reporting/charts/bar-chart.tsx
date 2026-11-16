@@ -88,7 +88,7 @@ export function BarChart({
           <li key={datum.label}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-small text-ink">{datum.label}</span>
-              <span className="font-mono text-small text-ink/70">
+              <span className="font-num text-small text-ink/70">
                 {datum.value === null ? (datum.missingNote ?? datum.display) : datum.display}
               </span>
             </div>

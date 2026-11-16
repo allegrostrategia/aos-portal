@@ -81,7 +81,7 @@ export default async function AdminHotSeatPage() {
                         <p className="font-display text-heading font-medium text-ink">
                           {MONTH.format(new Date(session.session_month))}
                         </p>
-                        <p className="font-mono text-caption text-ink/60">
+                        <p className="font-num text-caption text-ink/60">
                           {submitted} submitted · {confirmed} prepped
                         </p>
                       </div>

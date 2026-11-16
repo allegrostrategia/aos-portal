@@ -678,7 +678,7 @@ function OpeningFigureNote({ note }: { note: OpeningNote }) {
       <Card className="mb-6">
         <SectionTitle>This is the opening figure</SectionTitle>
         <p className="text-body text-ink/70">
-          <span className="font-mono">{note.value}</span> clients at the start,
+          <span className="font-num">{note.value}</span> clients at the start,
           set on this month. Every later month carries on from here.
         </p>
       </Card>
@@ -689,16 +689,16 @@ function OpeningFigureNote({ note }: { note: OpeningNote }) {
     <Card className="mb-6">
       <SectionTitle>Carried from earlier</SectionTitle>
       <p className="text-body text-ink/70">
-        The opening figure is <span className="font-mono">{note.value}</span>,
+        The opening figure is <span className="font-num">{note.value}</span>,
         set on {monthLabel(note.from)}. This month starts with{" "}
-        <span className="font-mono">{note.carried ?? "—"}</span>, carried
+        <span className="font-num">{note.carried ?? "—"}</span>, carried
         forward from the months in between.
       </p>
 
       {note.stray ? (
         <p className="mt-3 text-small text-deep-red">
           There is also an opening figure of{" "}
-          <span className="font-mono">{note.stray.value}</span> stored on this
+          <span className="font-num">{note.stray.value}</span> stored on this
           month. <strong>It is not in use</strong> — the earliest one is, and
           that is {monthLabel(note.from)}. Clear the box below, or clear the
           one on {monthLabel(note.from)}, so there is only one.

@@ -61,16 +61,16 @@ export function LaunchPlanner({
       ) : (
         <>
           <p className="text-body text-ink/70">
-            To sell <span className="font-mono text-ink">{goal}</span> at{" "}
-            <span className="font-mono text-ink">{conversionRate}%</span> conversion
-            and <span className="font-mono text-ink">{showUpRate}%</span> show-up:
+            To sell <span className="font-num text-ink">{goal}</span> at{" "}
+            <span className="font-num text-ink">{conversionRate}%</span> conversion
+            and <span className="font-num text-ink">{showUpRate}%</span> show-up:
           </p>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-cream-deep px-4 py-3">
               <dt className="text-caption uppercase tracking-wide text-ink/55">
                 Sign-ups needed
               </dt>
-              <dd className="font-mono text-heading text-ink">
+              <dd className="font-num text-heading text-ink">
                 {signUpsNeeded?.toLocaleString("en-GB") ?? "—"}
               </dd>
             </div>
@@ -78,7 +78,7 @@ export function LaunchPlanner({
               <dt className="text-caption uppercase tracking-wide text-ink/55">
                 Expected in the room
               </dt>
-              <dd className="font-mono text-heading text-ink">
+              <dd className="font-num text-heading text-ink">
                 {liveAttendeesNeeded?.toLocaleString("en-GB") ?? "—"}
               </dd>
             </div>

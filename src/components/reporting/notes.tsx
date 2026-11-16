@@ -139,10 +139,19 @@ function Signature({ name }: { name: string }) {
 
       <p className="min-w-0">
         <span className="font-display block text-body text-ink">{name}</span>
-        {/* Under a person's name, so the team rather than "your
-            Allegro team": "Nina Oliver / Your Allegro team" reads as
-            though she were a department. (Nina, 3 Nov.) */}
-        <span className="block text-caption text-ink/55">Allegro Team</span>
+        {/* **Every note is signed "Your strategist"** — Nina, 16
+            November, replacing her own 3 November answer of "Allegro
+            Team". The mock-ups sign "Nina Oliver / Your strategist",
+            and a name over a role is how a letter is signed.
+            **The same line for every author, Elize included**, asked
+            for by name: the client has one strategist and the person
+            who drafted a particular month is not a distinction they
+            need. So there is no per-author role here and no map to
+            keep in step with the team.
+            The NAME is never the client's business — that comes from
+            `set_report_note_author_name()`, which reads the author's
+            own grant or members row and never the caller. */}
+        <span className="block text-caption text-ink/55">Your strategist</span>
       </p>
     </div>
   );
@@ -332,7 +341,7 @@ function EmailOutcome({
       ) : sentAt ? (
         <p className="text-small text-ink/60">
           Emailed{to ? ` to ${to}` : ""} at{" "}
-          <span className="font-mono">{sentTime(sentAt)}</span>. That is the
+          <span className="font-num">{sentTime(sentAt)}</span>. That is the
           sender accepting it, not the inbox receiving it.
         </p>
       ) : (

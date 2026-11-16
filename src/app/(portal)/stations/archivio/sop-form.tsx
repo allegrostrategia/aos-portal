@@ -97,7 +97,7 @@ export function SopForm({
         <ol className="mt-3 flex flex-col gap-2">
           {steps.map((step, index) => (
             <li key={index} className="flex items-start gap-2">
-              <span className="font-mono mt-2.5 w-5 shrink-0 text-caption text-ink/40">
+              <span className="font-num mt-2.5 w-5 shrink-0 text-caption text-ink/40">
                 {index + 1}
               </span>
               <input

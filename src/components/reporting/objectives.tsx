@@ -104,7 +104,7 @@ function ObjectiveEditor({
           <div key={position} className="flex items-start gap-3">
             <span
               aria-hidden
-              className="mt-2.5 font-mono text-caption text-ink/45"
+              className="mt-2.5 font-num text-caption text-ink/45"
             >
               {position}
             </span>

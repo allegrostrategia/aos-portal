@@ -113,7 +113,7 @@ export default async function AdminMembersPage() {
                     <p className="text-small text-ink/80">
                       {STATUS_LABEL[member.status]}
                     </p>
-                    <p className="font-mono text-caption text-ink/50">
+                    <p className="font-num text-caption text-ink/50">
                       joined {DATE.format(new Date(member.join_date))}
                     </p>
                   </div>

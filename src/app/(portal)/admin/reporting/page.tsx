@@ -188,11 +188,11 @@ export default async function AdminReportingPage() {
               <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 border-t border-ink/8 pt-4">
                 <div>
                   <dt className="text-caption text-ink/55">Months started</dt>
-                  <dd className="font-mono text-body text-ink">{months.length}</dd>
+                  <dd className="font-num text-body text-ink">{months.length}</dd>
                 </div>
                 <div>
                   <dt className="text-caption text-ink/55">Published</dt>
-                  <dd className="font-mono text-body text-ink">{published}</dd>
+                  <dd className="font-num text-body text-ink">{published}</dd>
                 </div>
                 {emailFailures.length > 0 ? (
                   <div className="min-w-60">

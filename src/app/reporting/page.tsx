@@ -490,7 +490,7 @@ export default async function ReportingOverviewPage({
                 <li key={key}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="text-small text-ink">{label}</span>
-                    <span className="font-mono text-small text-ink/70">
+                    <span className="font-num text-small text-ink/70">
                       {formatValue(value, metric.unit, ctx.workspace.currency)} of{" "}
                       {formatValue(target, metric.unit, ctx.workspace.currency)}
                       <span className="ml-2 text-ink/50">{Math.round(share)}%</span>
@@ -759,7 +759,7 @@ function StillToFill({
                   />
                   {category.label}
                 </span>
-                <span className="font-mono text-caption text-ink/55">
+                <span className="font-num text-caption text-ink/55">
                   {filled}/{total}
                 </span>
               </Link>

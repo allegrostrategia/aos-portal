@@ -86,7 +86,7 @@ export function TopPostsReport({
         {posts.map((post) => (
           <li key={post.rank} className="border-t border-ink/8 pt-3 first:border-0 first:pt-0">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-mono text-small text-ink/45">{post.rank}</span>
+              <span className="font-num text-small text-ink/45">{post.rank}</span>
               {/* `rel` on every outward link: `noopener` because the new
                   tab would otherwise get a handle on this one, and
                   `noreferrer` because where a client reads their report
@@ -104,7 +104,7 @@ export function TopPostsReport({
               {FIGURES.filter((figure) => post[figure.key] !== null).map((figure) => (
                 <div key={figure.key} className="flex items-baseline gap-1.5">
                   <dt className="text-caption text-ink/55">{figure.label}</dt>
-                  <dd className="font-mono text-small text-ink">
+                  <dd className="font-num text-small text-ink">
                     {formatValue(post[figure.key] as number, "count", "GBP")}
                   </dd>
                 </div>
@@ -195,7 +195,7 @@ export function TopPostsEntry({
               className="flex flex-col gap-2 border-t border-ink/8 pt-3 first:border-0 first:pt-0"
             >
               <div className="flex items-center gap-2">
-                <span className="font-mono text-small text-ink/45">{rank}</span>
+                <span className="font-num text-small text-ink/45">{rank}</span>
                 <label htmlFor={`post-${rank}-url`} className="sr-only">
                   Link to post {rank}
                 </label>
@@ -255,7 +255,7 @@ export function TopPostsEntry({
                       inputMode="numeric"
                       defaultValue={value ?? ""}
                       key={`${name}-${rank}-${value ?? ""}`}
-                      className={`${field} w-28 font-mono`}
+                      className={`${field} w-28 font-num`}
                     />
                   </label>
                 ))}

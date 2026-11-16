@@ -91,7 +91,7 @@ export default async function BenchmarksPage({
             {set.map(({ metric, value }) => (
               <div key={metric.key} className="flex items-baseline justify-between gap-3">
                 <dt className="text-small text-ink/70">{metric.label}</dt>
-                <dd className="font-mono text-body text-ink">
+                <dd className="font-num text-body text-ink">
                   {formatValue(value, metric.unit, ctx.workspace.currency)}
                 </dd>
               </div>

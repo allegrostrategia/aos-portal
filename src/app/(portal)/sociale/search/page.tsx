@@ -63,7 +63,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/sociale/s
                       {" in "}
                       {hit.channelName}
                     </span>
-                    <span className="shrink-0 font-mono">{formatSessionTimeShort(hit.created_at)}</span>
+                    <span className="shrink-0 font-num">{formatSessionTimeShort(hit.created_at)}</span>
                   </p>
                   <p className="mt-1 text-small break-words whitespace-pre-wrap text-ink">{hit.body}</p>
                 </Link>

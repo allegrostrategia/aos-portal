@@ -206,7 +206,7 @@ export function FunnelsEntry(props: FunnelsEntryProps) {
                             }
                             inputMode="decimal"
                             autoComplete="off"
-                            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-mono text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
+                            className="w-full rounded-xl border border-ink/12 bg-cream-deep px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30"
                           />
                           {last !== null && last !== undefined && props.previousLabel ? (
                             <p className="text-caption text-ink/55">
@@ -276,7 +276,7 @@ function PriceNote({
         ) : (
           <>
             {monthLabel} uses{" "}
-            <span className="font-mono text-ink">
+            <span className="font-num text-ink">
               {formatValue(captured, "currency", currency)}
             </span>
             {published ? " · published, so it stays" : null}
@@ -473,7 +473,7 @@ function WorkedOut({ rows, currency }: { rows: FunnelMonth[]; currency: string }
                   ].map((line) => (
                     <div key={line.label}>
                       <dt className="text-caption text-ink/70">{line.label}</dt>
-                      <dd className="font-mono text-body text-ink">
+                      <dd className="font-num text-body text-ink">
                         {formatValue(line.value ?? null, line.unit, currency)}
                       </dd>
                     </div>

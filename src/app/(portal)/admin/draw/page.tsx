@@ -175,7 +175,7 @@ export default async function AdminDrawPage() {
                                     {row.full_name}
                                   </span>
                                   <span
-                                    className={`font-mono text-caption ${
+                                    className={`font-num text-caption ${
                                       row.is_eligible ? "text-ink" : "text-ink/40"
                                     }`}
                                   >

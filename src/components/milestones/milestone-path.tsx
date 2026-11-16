@@ -168,7 +168,7 @@ export function MilestonePath({
               height: "var(--marker)",
               fontSize: "var(--marker-text)",
             }}
-            className={`font-mono absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold shadow-lg ${
+            className={`font-num absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold shadow-lg ${
               done ? "bg-orange text-white" : "bg-white/95 text-ink"
             }`}
           >

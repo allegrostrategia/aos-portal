@@ -133,10 +133,10 @@ export function StageTimeline({
                     wraps wherever it happens to run out and the four
                     stages end up ragged against each other. */}
                 {promo ? (
-                  <p className="mt-0.5 font-mono text-caption text-ink/55">promo {promo}</p>
+                  <p className="mt-0.5 font-num text-caption text-ink/55">promo {promo}</p>
                 ) : null}
                 {live ? (
-                  <p className="font-mono text-caption text-ink/55">live {live}</p>
+                  <p className="font-num text-caption text-ink/55">live {live}</p>
                 ) : null}
                 {/* The one stage the conversion rate is measured against
                     — §6.4 — so it says which it is rather than leaving the

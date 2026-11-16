@@ -219,7 +219,7 @@ export default async function HotSeatPage({ searchParams }: PageProps<"/hot-seat
                 <Eyebrow>Your month so far</Eyebrow>
                 {month && month.byCategory.length > 0 ? (
                   <>
-                    <p className="font-mono mt-2 text-small text-ink tabular-nums">
+                    <p className="font-num mt-2 text-small text-ink tabular-nums">
                       {formatMinutes(month.totalMinutes)} logged
                     </p>
                     <ul className="mt-2 flex flex-col gap-1">
@@ -228,7 +228,7 @@ export default async function HotSeatPage({ searchParams }: PageProps<"/hot-seat
                           <span className={index === 0 ? "font-medium text-ink" : "text-ink/70"}>
                             {category.label}
                           </span>
-                          <span className="font-mono text-ink tabular-nums">
+                          <span className="font-num text-ink tabular-nums">
                             {formatMinutes(category.minutes)}
                           </span>
                         </li>

@@ -89,7 +89,7 @@ export function LineChart({
               x={PAD.left - 8}
               y={y(value) + 4}
               textAnchor="end"
-              className="fill-ink/45 font-mono text-[0.6rem]"
+              className="fill-ink/45 font-num text-[0.6rem]"
             >
               {value}
               {unitSuffix}
@@ -147,7 +147,7 @@ export function LineChart({
                         x={x(p.i)}
                         y={y(p.value) + (above ? -12 : 18)}
                         textAnchor="middle"
-                        className="fill-ink font-mono text-[0.65rem]"
+                        className="fill-ink font-num text-[0.65rem]"
                       >
                         {p.value}
                         {unitSuffix}
@@ -165,7 +165,7 @@ export function LineChart({
             x={x(i)}
             y={H - 8}
             textAnchor="middle"
-            className="fill-ink/45 font-mono text-[0.6rem]"
+            className="fill-ink/45 font-num text-[0.6rem]"
           >
             {i + 1}
           </text>

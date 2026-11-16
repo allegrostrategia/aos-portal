@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Link href="/login" className="inline-block">
-            <p className="font-mono text-eyebrow text-orange uppercase">
+            <p className="font-num text-eyebrow text-orange uppercase">
               Allegro Strategia
             </p>
             <p className="font-display mt-1 text-display font-medium text-ink">aOS</p>

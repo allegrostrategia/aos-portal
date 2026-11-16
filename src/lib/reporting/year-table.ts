@@ -22,6 +22,8 @@ export interface YearRow {
   key: string;
   label: string;
   unit: ReportUnit;
+  /** Which way is good, so a fall in costs reads green (Nina, 16 Nov). */
+  goodDirection: "up" | "down" | "none";
   /** Twelve cells, January first. Null is "not entered". */
   values: (number | null)[];
   /** The year's total or average, and which it is. */
@@ -58,14 +60,37 @@ function averaged(unit: ReportUnit): boolean {
 }
 
 /**
- * A figure whose year total would be a lie, whatever its unit.
+ * A figure whose year total would be a lie: a level, not a flow.
  *
  * "Followers at month end" is a count, and adding twelve months of it
- * gives a number thirty times the size of the audience. Anything that
- * is a level rather than a flow takes its last reading instead — which
- * is what a year-end figure means for a balance.
+ * gives a number thirty times the size of the audience. Same for a
+ * balance, a list size, a price, a run rate and a runway — each is a
+ * reading taken at a moment, so the year's answer is the last one, not
+ * the sum and not the average.
+ *
+ * **Named, not matched on a pattern.** It was a regex on the key, and
+ * it missed four: monthly recurring revenue (summed to twelve times the
+ * run rate), active clients at end, runway, and an offer's price that
+ * month. Whether a figure is a level is a judgement about what it
+ * means, and a naming convention is not where that judgement lives —
+ * `financials_monthly_recurring_revenue` looks like every other
+ * currency figure. The test below fails if one of these keys stops
+ * existing, so a rename cannot quietly drop a figure back to being
+ * summed. (Nina, 16 November, from a year cell reading £94,400 of MRR.)
  */
-const LEVELS = /_at_month_end$|_at_start|^offers_price|_list_size/;
+export const LEVEL_METRICS = new Set([
+  "social_media_followers_at_month_end",
+  "email_list_size_at_month_end",
+  "financials_cash_in_bank_at_month_end",
+  "financials_monthly_recurring_revenue",
+  "financials_runway",
+  "client_experience_active_clients_at_start",
+  "client_experience_active_clients_at_end",
+  "client_experience_clients_at_start_opening",
+  "funnels_offer_price_at_month",
+]);
+
+const isLevel = (key: string) => LEVEL_METRICS.has(key.split(":")[0]);
 
 /**
  * The same, for the figures that hang off a row rather than a month.
@@ -97,8 +122,9 @@ export function buildEntityYearRows(
         key: `${metric.key}:${entity.id}`,
         label: `${entity.name} — ${metric.label}`,
         unit: metric.unit as ReportUnit,
+        goodDirection: metric.good_direction,
         values,
-        summary: LEVELS.test(metric.key)
+        summary: isLevel(metric.key)
           ? { value: lastReading(values), kind: "total" as const }
           : summarise(metric.unit as ReportUnit, values),
       });
@@ -114,10 +140,17 @@ export function buildYearRows(
   return metrics
     .map((metric) => {
       const values = history.get(metric.key) ?? new Array(12).fill(null);
-      const summary = LEVELS.test(metric.key)
+      const summary = isLevel(metric.key)
         ? { value: lastReading(values), kind: "total" as const }
         : summarise(metric.unit as ReportUnit, values);
-      return { key: metric.key, label: metric.label, unit: metric.unit as ReportUnit, values, summary };
+      return {
+        key: metric.key,
+        label: metric.label,
+        unit: metric.unit as ReportUnit,
+        goodDirection: metric.good_direction,
+        values,
+        summary,
+      };
     })
     // A row with nothing in it all year is not worth twelve blank cells.
     .filter((row) => row.values.some((v) => v !== null));
@@ -132,9 +165,47 @@ function lastReading(values: (number | null)[]): number | null {
 
 /** What the summary column is called for a row. */
 export function summaryLabel(row: YearRow): string {
-  if (LEVELS.test(row.key.split(":")[0])) return "Latest";
+  if (isLevel(row.key)) return "Latest";
   return row.summary.kind === "average" ? "Average" : "Total";
 }
 
+/**
+ * The Financials split (Nina, 16 November).
+ *
+ * Revenue, costs, profit and the margin are the four lines a P&L is
+ * read for, and in one table of fifteen rows they were four rows among
+ * eleven. They get their own card at the top; everything else — the
+ * cost buckets included — stays in the main table underneath.
+ */
+export const HEADLINE_YEAR_ROWS: Partial<Record<string, string[]>> = {
+  financials: [
+    "financials_total_revenue",
+    "financials_total_costs",
+    "financials_profit",
+    "financials_profit_margin",
+  ],
+};
+
+export function splitYearRows(
+  category: string,
+  rows: YearRow[],
+): { headline: YearRow[]; rest: YearRow[] } {
+  const wanted = HEADLINE_YEAR_ROWS[category];
+  if (!wanted) return { headline: [], rest: rows };
+  const headline = wanted
+    .map((key) => rows.find((r) => r.key === key))
+    .filter((r): r is YearRow => !!r);
+  return { headline, rest: rows.filter((r) => !headline.includes(r)) };
+}
+
+/**
+ * **Whole pounds in the year grid** (Nina, 16 November). Twelve columns
+ * of "£590.77" is two characters of noise per cell and it is what was
+ * pushing December into the Year column. Pence stay everywhere else, on
+ * the cards and in the CSV, where one month's exact figure is the
+ * point.
+ */
 export const formatCell = (value: number | null, unit: ReportUnit, currency: string) =>
-  value === null ? "—" : formatValue(value, unit, currency);
+  value === null
+    ? "—"
+    : formatValue(unit === "currency" ? Math.round(value) : value, unit, currency);

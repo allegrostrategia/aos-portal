@@ -92,7 +92,7 @@ export function ContentList({
             <SectionTitle
               aside={
                 section.key === "lessons" ? (
-                  <span className="font-mono tabular-nums">
+                  <span className="font-num tabular-nums">
                     {done}/{inSection.length}
                   </span>
                 ) : undefined

@@ -30,9 +30,22 @@ const user = dryRun
 /** An admin to stand as the author of the published months. */
 async function adminId() {
   if (dryRun) return "00000000-0000-0000-0000-000000000002";
-  const rows = await runSql(`select id::text from public.members where role = 'admin' order by created_at limit 1;`);
-  const found = Array.isArray(rows) ? rows[0]?.id : null;
-  return found ?? user.id;
+  const rows = await runSql(
+    `select id::text as id from public.members where role = 'admin' order by created_at limit 1;`,
+  );
+  // **Two shapes, because the two targets answer differently**: the
+  // Management API returns JSON rows, psql returns text. Reading only the
+  // JSON shape made this null on local, and the fallback below then signed
+  // every note with the demo CLIENT's id — which the signing trigger turns
+  // into their grant name, so the strategist's note was signed "Lemon
+  // Studio". Found from a screenshot, 16 November.
+  const found = Array.isArray(rows) ? rows[0]?.id : String(rows).trim().split("\n")[0];
+  if (!found) {
+    throw new Error(
+      "No admin on this database to author the demo notes. Seed the portal first.",
+    );
+  }
+  return found;
 }
 
 const admin = await adminId();

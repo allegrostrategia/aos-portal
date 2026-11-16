@@ -31,10 +31,10 @@ function Row({
 }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-ink/10 py-3 first:border-t-0">
-      <span className="font-mono w-24 shrink-0 text-eyebrow text-orange uppercase">
+      <span className="font-num w-24 shrink-0 text-eyebrow text-orange uppercase">
         {stage}
       </span>
-      <span className="font-mono min-w-40 flex-1 text-small text-ink">
+      <span className="font-num min-w-40 flex-1 text-small text-ink">
         {when}
       </span>
       <span className="w-full text-small text-ink/70 sm:w-auto sm:flex-2">

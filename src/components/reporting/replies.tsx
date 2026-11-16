@@ -86,7 +86,7 @@ function Reply({ reply, mine }: { reply: ReportNote; mine: boolean }) {
     <li className="border-l-2 border-ink/10 pl-4">
       <p className="text-caption text-ink/55">
         <span className="font-display text-body text-ink">{reply.author_name}</span>
-        <span className="ml-2 font-mono">{replyDate(reply.created_at)}</span>
+        <span className="ml-2 font-num">{replyDate(reply.created_at)}</span>
       </p>
 
       {editing ? (

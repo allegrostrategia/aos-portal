@@ -76,7 +76,7 @@ function ProgressRing({ percent }: { percent: number | null }) {
         x="32"
         y="36"
         textAnchor="middle"
-        className="fill-ink font-mono text-[0.85rem]"
+        className="fill-ink font-num text-[0.85rem]"
       >
         {percent === null ? "—" : `${Math.round(percent)}%`}
       </text>
@@ -175,7 +175,7 @@ export function LaunchCard({
               October reads as a September launch. Mono, like every other
               date in the report. */}
           {dates ? (
-            <p className="mt-1.5 font-mono text-caption text-ink/70">{dates}</p>
+            <p className="mt-1.5 font-num text-caption text-ink/70">{dates}</p>
           ) : null}
         </div>
       </div>
@@ -191,13 +191,13 @@ export function LaunchCard({
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-2">
           <div>
             <dt className="text-caption uppercase tracking-wide text-ink/55">Revenue</dt>
-            <dd className="font-mono text-heading text-ink">
+            <dd className="font-num text-heading text-ink">
               {formatValue(summary.totalRevenue, "currency", "GBP")}
             </dd>
           </div>
           <div>
             <dt className="text-caption uppercase tracking-wide text-ink/55">Sales</dt>
-            <dd className="font-mono text-heading text-ink">
+            <dd className="font-num text-heading text-ink">
               {summary.totalSales ?? "—"}
               {goal === null ? null : <span className="text-ink/50"> of {goal}</span>}
             </dd>

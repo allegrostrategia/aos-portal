@@ -29,7 +29,7 @@ export default async function NoAccessPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-5 py-10 sm:py-16">
       <div className="w-full max-w-md text-center">
-        <p className="font-mono text-eyebrow text-orange uppercase">
+        <p className="font-num text-eyebrow text-orange uppercase">
           Allegro Strategia
         </p>
         <h1 className="font-display mt-3 text-title font-medium text-ink">

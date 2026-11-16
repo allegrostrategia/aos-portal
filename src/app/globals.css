@@ -72,6 +72,20 @@
   --aos-glass-blur: blur(14px);
 }
 
+/**
+ * What a figure wears: Inter, with the digits in fixed-width boxes.
+ *
+ * `tabular-nums` is what keeps a column of money aligned — the mono
+ * face was doing it by accident, and at the cost of making a report
+ * page look like a terminal. Named for the job rather than the family,
+ * so the next person to change the font does not have to find 206 call
+ * sites to know what they meant.
+ */
+@utility font-num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -99,10 +113,18 @@
   --shadow-soft: 0 1px 2px rgb(10 30 74 / 0.04), 0 8px 24px -12px rgb(10 30 74 / 0.12);
   --shadow-lift: 0 2px 4px rgb(10 30 74 / 0.05), 0 16px 40px -16px rgb(10 30 74 / 0.18);
 
-  /* Display = Cormorant Garamond, body/UI = Inter, numbers/data = JetBrains Mono */
-  --font-display: var(--font-cormorant), Georgia, serif;
+  /*
+   * Display = Fraunces, everything else = Inter.
+   *
+   * **There is no monospace font any more** (Nina, 16 November). Numbers
+   * wore JetBrains Mono, and on a page of figures that reads as code
+   * rather than as money. They are Inter now, with `tabular-nums` so the
+   * columns still line up — which is the only thing the mono face was
+   * really doing. `font-num` below is what a figure wears; there is no
+   * `font-num` to reach for by accident.
+   */
+  --font-display: var(--font-fraunces), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   /*
    * Type scale.

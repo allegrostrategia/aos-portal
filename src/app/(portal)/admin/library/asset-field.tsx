@@ -158,7 +158,7 @@ export function AssetField({
 
       {path && !uploading ? (
         <div className="rounded-md border border-ink/15 bg-white px-3 py-2.5">
-          <p className="font-mono text-caption break-all text-ink">{path}</p>
+          <p className="font-num text-caption break-all text-ink">{path}</p>
           <div className="mt-2 flex flex-wrap items-center gap-4">
             <button
               type="button"
@@ -186,7 +186,7 @@ export function AssetField({
         >
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-small break-all text-ink">{phase.name}</p>
-            <p className="font-mono text-caption whitespace-nowrap text-ink/70">
+            <p className="font-num text-caption whitespace-nowrap text-ink/70">
               {phase.percent}% of {prettyBytes(phase.size)}
             </p>
           </div>

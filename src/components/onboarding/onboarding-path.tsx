@@ -66,7 +66,7 @@ export function OnboardingPath({
 
               <span
                 aria-hidden
-                className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full font-mono text-small ${
+                className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full font-num text-small ${
                   step.done
                     ? "bg-orange text-white"
                     : isNext

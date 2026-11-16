@@ -62,16 +62,16 @@ export function CampaignTable({
                 <td className="px-3 py-3 text-small text-ink/70">
                   {row.goal ? GOAL_LABELS[row.goal] : <span className="text-ink/45">Not set</span>}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                <td className="px-3 py-3 text-right font-num text-body text-ink">
                   {formatValue(row.spend ?? null, "currency", currency)}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                <td className="px-3 py-3 text-right font-num text-body text-ink">
                   {formatValue(row.linkClicks ?? null, "count")}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                <td className="px-3 py-3 text-right font-num text-body text-ink">
                   {formatValue(row.leads ?? null, "count")}
                 </td>
-                <td className="px-5 py-3 text-right font-mono text-body text-ink sm:px-6">
+                <td className="px-5 py-3 text-right font-num text-body text-ink sm:px-6">
                   {formatValue(figures.data.values.get("ads_reach", row.id), "count")}
                 </td>
               </tr>
@@ -83,13 +83,13 @@ export function CampaignTable({
                 Total
               </th>
               <td />
-              <td className="px-3 py-3 text-right font-mono text-body text-ink">
+              <td className="px-3 py-3 text-right font-num text-body text-ink">
                 {formatValue(totals.spend ?? null, "currency", currency)}
               </td>
-              <td className="px-3 py-3 text-right font-mono text-body text-ink">
+              <td className="px-3 py-3 text-right font-num text-body text-ink">
                 {formatValue(totals.linkClicks ?? null, "count")}
               </td>
-              <td className="px-3 py-3 text-right font-mono text-body text-ink">
+              <td className="px-3 py-3 text-right font-num text-body text-ink">
                 {formatValue(totals.leads ?? null, "count")}
               </td>
               <td className="px-5 py-3 text-right text-caption text-ink/45 sm:px-6">
@@ -190,19 +190,19 @@ export function FunnelTable({
                   <th scope="row" className="px-5 py-3 text-body font-medium text-ink sm:px-6">
                     {row.name}
                   </th>
-                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  <td className="px-3 py-3 text-right font-num text-body text-ink">
                     {formatValue(row.landingPageViews ?? null, "count")}
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  <td className="px-3 py-3 text-right font-num text-body text-ink">
                     {formatValue(results.funnels_opt_in_rate ?? null, "percent")}
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  <td className="px-3 py-3 text-right font-num text-body text-ink">
                     {formatValue(row.purchases ?? null, "count")}
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-body text-ink">
+                  <td className="px-3 py-3 text-right font-num text-body text-ink">
                     {formatValue(row.priceAtMonth ?? null, "currency", currency)}
                   </td>
-                  <td className="px-5 py-3 text-right font-mono text-body text-ink sm:px-6">
+                  <td className="px-5 py-3 text-right font-num text-body text-ink sm:px-6">
                     {formatValue(results.funnels_funnel_revenue ?? null, "currency", currency)}
                   </td>
                 </tr>
