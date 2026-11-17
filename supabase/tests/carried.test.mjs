@@ -138,6 +138,10 @@ test("the snapshot carries targets, benchmarks and the entity settings", async (
     // A campaign has no price, and null is the frozen answer rather than
     // the absent one: see the test below.
     price: null,
+    // Nor a platform kind — only a social platform may carry one, which
+    // the database's own constraint enforces. Frozen as null for the
+    // same reason as the price.
+    platformKind: null,
   });
 });
 
@@ -440,6 +444,105 @@ test("a snapshot written before prices were frozen still reads the live one", as
     figures.data.entities.find((e) => e.id === OFFER).price,
     900,
     "no price in the snapshot means the live one, not a dash",
+  );
+});
+
+/**
+ * **A platform's kind, frozen with the month** (Dom, 17 November).
+ *
+ * The question he asked when approving the kind: what does a published
+ * month show if the kind changes afterwards? The typed figures are safe
+ * without any help — every report screen draws the figures the month
+ * HOLDS and drops the nulls — but Social Media's rates are worked out
+ * from different figures depending on the kind, and a calc is recomputed
+ * on every read, published months included. So the kind joins the price
+ * in the snapshot, which is what makes correcting one safe. The
+ * alternative was locking the kind once a month had gone out, which
+ * would trap a client who picked "Other" by mistake.
+ */
+test("a platform's kind is frozen, so a published rate keeps its definition", async () => {
+  let PLATFORM;
+  await asMember(db, NINA, async () => {
+    PLATFORM = (
+      await db.query(`insert into public.report_entities
+                        (workspace_id, entity_type, name, platform_kind)
+                      values ('${WS}', 'social_platform', 'Our page', 'other')
+                      returning id`)
+    ).rows[0].id;
+    // The general set's engagement rate is (likes + comments + saves +
+    // shares) ÷ reach = 600 ÷ 10,000 = 6%. LinkedIn's is (reactions +
+    // comments + reposts) ÷ impressions = 500 ÷ 20,000 = 2.5%. Both
+    // sets of figures are entered, because a database holds whatever
+    // was typed and the kind is what chooses between them.
+    await db.query(`insert into public.report_values
+                      (workspace_id, month, metric_key, entity_id, value, source)
+                    values
+                      ('${WS}', '${SEP}', 'social_media_reach', '${PLATFORM}', 10000, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_likes_plus_comments', '${PLATFORM}', 500, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_saves', '${PLATFORM}', 50, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_shares', '${PLATFORM}', 50, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_impressions', '${PLATFORM}', 20000, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_reactions', '${PLATFORM}', 300, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_comments', '${PLATFORM}', 100, 'manual'),
+                      ('${WS}', '${SEP}', 'social_media_reposts', '${PLATFORM}', 100, 'manual')`);
+  });
+
+  assert.equal((await publish(SEP))?.error, undefined);
+  assert.equal((await carriedOn(SEP)).entities[PLATFORM].platformKind, "other", "frozen at publish");
+
+  const sent = await figuresFor(SEP, AUG, "September 2026");
+  assert.equal(sent.results.social_media_engagement_rate, 6, "what the client was sent");
+
+  // Nina corrects it: it was LinkedIn all along.
+  await asMember(db, NINA, () =>
+    db.query(`update public.report_entities set platform_kind = 'linkedin' where id = '${PLATFORM}'`),
+  );
+
+  const published = await figuresFor(SEP, AUG, "September 2026");
+  assert.equal(
+    published.results.social_media_engagement_rate,
+    6,
+    "the published month still measures it the way it was published",
+  );
+  assert.equal(
+    published.data.entities.find((e) => e.id === PLATFORM).platform_kind,
+    "other",
+    "and the figures on it are the ones that kind asks for",
+  );
+
+  const draft = await figuresFor("2026-10-01", SEP, "October 2026");
+  assert.equal(
+    draft.data.entities.find((e) => e.id === PLATFORM).platform_kind,
+    "linkedin",
+    "while a month that is not published follows the correction",
+  );
+});
+
+/**
+ * And the months published before today have no kind in their snapshot.
+ * Same rule as the price: absent means "read the live one", not "frozen
+ * as nothing" — which would make every one of them the general set.
+ */
+test("a snapshot written before kinds were frozen still reads the live one", async () => {
+  const [row] = await rows(
+    `select carried from public.report_periods where workspace_id = '${WS}' and month = '${SEP}'`,
+  );
+  const older = structuredClone(row.carried);
+  for (const entity of Object.values(older.entities)) delete entity.platformKind;
+  await asMember(db, NINA, () =>
+    db.query(
+      `update public.report_periods set carried = $1
+        where workspace_id = '${WS}' and month = '${SEP}'`,
+      [JSON.stringify(older)],
+    ),
+  );
+
+  const figures = await figuresFor(SEP, AUG, "September 2026");
+  const platform = figures.data.entities.find((e) => e.entity_type === "social_platform");
+  assert.equal(
+    platform.platform_kind,
+    "linkedin",
+    "no kind in the snapshot means the live one, not the general set",
   );
 });
 

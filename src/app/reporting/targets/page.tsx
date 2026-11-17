@@ -8,6 +8,7 @@ import { CATEGORIES, STAGE_3 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getMetrics, type ReportEntity } from "@/lib/reporting/queries";
 import { visibleMetrics } from "@/lib/reporting/month-figures";
+import { platformAsks, platformLabel } from "@/lib/reporting/platform-metrics";
 import { platformsOf } from "@/lib/reporting/platforms";
 import { createClient } from "@/lib/supabase/server";
 
@@ -124,6 +125,36 @@ export default async function TargetsPage({ searchParams }: PageProps<"/reportin
               },
             ];
           }
+          /**
+           * **A platform is only offered the figures it is asked for**
+           * (§5.2's per-platform sets, 17 November). Without this, every
+           * platform was offered all forty Social Media figures — a
+           * target for LinkedIn's save rate, which is a box that can be
+           * filled in for a figure that is never drawn.
+           *
+           * A target somebody has ALREADY set stays on the list whatever
+           * the set says, so a kind corrected afterwards leaves nothing
+           * set-but-invisible. Same rule as the entry screen's `held`,
+           * for the same reason.
+           */
+          if (metric.entity_type === "social_platform") {
+            return platformsOf(entityRows ?? [])
+              .filter(
+                (p) =>
+                  platformAsks(metric.key, p.platform_kind) ||
+                  standing.has(key(metric.key, p.id)) ||
+                  thisMonth.has(key(metric.key, p.id)),
+              )
+              .map((p) => ({
+                // In that platform's own words: Subscribers on a
+                // channel, Page visits on a Facebook page.
+                metric: { ...metric, label: platformLabel(metric, p.platform_kind) },
+                entity: { id: p.id, name: p.name },
+                standing: standing.get(key(metric.key, p.id)) ?? null,
+                thisMonth: thisMonth.get(key(metric.key, p.id)) ?? null,
+              }));
+          }
+
           return entitiesByType(metric.entity_type).map((entity) => ({
             metric,
             entity,

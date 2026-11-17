@@ -46,6 +46,42 @@ export const PLATFORM_KIND_LABELS: Record<PlatformKind, string> = {
   other: "Something else",
 };
 
+/**
+ * What the first platform is, when a client has none yet.
+ *
+ * §5.2: "Instagram first". The first Social Media save creates the row
+ * (`ensurePrimaryPlatform`), so the entry screen must ask for
+ * Instagram's figures BEFORE it exists too — otherwise the boxes change
+ * shape the moment somebody presses Save, which is the kind of thing
+ * that makes a person doubt what they just typed.
+ *
+ * One constant for both, so the screen and the row it creates cannot
+ * disagree about what a new platform is.
+ */
+export const FIRST_PLATFORM_KIND: PlatformKind = "instagram";
+
+/**
+ * The kind to read Social Media by, given the platform on screen.
+ *
+ * **No platform row at all is Instagram, not "no kind said".** §5.2 is
+ * "Instagram first" and the first Social Media save is what creates the
+ * row (`ensurePrimaryPlatform`), so a client who has entered nothing yet
+ * must be asked Instagram's questions and shown Instagram's charts.
+ * Reading it as the general set instead changed the boxes under somebody
+ * the moment they pressed Save, and took two of the three charts off a
+ * Social Media report whose figures are stored at month level — which is
+ * what `e2e/mockup-screens.spec.ts` photographed.
+ *
+ * A platform that EXISTS with no kind is a different thing: somebody has
+ * been asked and has not answered, the card says so, and the general set
+ * is the honest answer until they do.
+ */
+export function platformKindOf(
+  platform: { platform_kind: PlatformKind | null } | null | undefined,
+): PlatformKind | null {
+  return platform ? platform.platform_kind : FIRST_PLATFORM_KIND;
+}
+
 export function isPlatformKind(value: unknown): value is PlatformKind {
   return typeof value === "string" && (PLATFORM_KINDS as readonly string[]).includes(value);
 }

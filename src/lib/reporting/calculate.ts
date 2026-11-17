@@ -14,6 +14,7 @@ import {
   type Result,
 } from "./formulas.ts";
 import type { CategoryKey } from "./categories.ts";
+import type { PlatformKind } from "./platforms.ts";
 import {
   bucketTotals,
   fromOffers,
@@ -99,7 +100,72 @@ export interface CalcInput {
    * the total beside what actually came in.
    */
   expected?: Figure;
+  /**
+   * Which kind of platform Social Media's figures belong to (§5.2).
+   *
+   * **It changes the arithmetic, not only the labels**, which is why it
+   * is here rather than left to the screens: LinkedIn measures
+   * engagement against impressions and Facebook against reach, and a
+   * client reading "Engagement rate 4.2%" on two platforms is reading
+   * the figure each platform reports. `platform-metrics.ts` holds which
+   * figures each kind is asked for; this holds what they are divided by.
+   *
+   * Null — nobody has said yet — is the general set, measured against
+   * reach, which is what every platform did before 17 November.
+   *
+   * **On a published month it comes from the carried snapshot**, beside
+   * the offer price and the row names, so correcting a kind cannot move
+   * a number on a report that has already gone out (Dom, 17 November).
+   */
+  platformKind?: PlatformKind | null;
 }
+
+/**
+ * What a platform's content was shown to, by kind.
+ *
+ * The bottom of three rates — engagement, click-through and profile view
+ * — and the one thing that differs between the platforms' own versions
+ * of them. Impressions counts times shown and members reached counts
+ * people, so LinkedIn's rates are against impressions; TikTok's are
+ * against video views; Instagram's and Facebook's against reach.
+ */
+const SHOWN_TO: Record<PlatformKind, string> = {
+  instagram: "social_media_reach",
+  facebook: "social_media_reach",
+  other: "social_media_reach",
+  linkedin: "social_media_impressions",
+  tiktok: "social_media_video_views",
+  youtube: "social_media_views",
+};
+
+/**
+ * What counts as an interaction, by kind.
+ *
+ * Empty for YouTube, which has no engagement rate in its set at all:
+ * the figures it is judged on are watch time and the two YouTube Studio
+ * reports itself (Nina, 16 November).
+ */
+const INTERACTIONS: Record<PlatformKind, readonly string[]> = {
+  instagram: [
+    "social_media_likes_plus_comments",
+    "social_media_saves",
+    "social_media_shares",
+  ],
+  other: [
+    "social_media_likes_plus_comments",
+    "social_media_saves",
+    "social_media_shares",
+  ],
+  linkedin: ["social_media_reactions", "social_media_comments", "social_media_reposts"],
+  tiktok: [
+    "social_media_likes",
+    "social_media_comments",
+    "social_media_shares",
+    "social_media_favourites",
+  ],
+  facebook: ["social_media_post_engagements"],
+  youtube: [],
+};
 
 export type CalcResults = Record<string, Result>;
 
@@ -116,7 +182,31 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
   const p = input.previous;
 
   switch (category) {
-    case "social_media":
+    case "social_media": {
+      /**
+       * Instagram's set, and the general one, keep the named formula
+       * they have always had — `engagementRate` with the brief's own
+       * four arguments, which is what §9's worked example is tested
+       * against. The platforms whose figures are different go through
+       * `engagementRateOn`, which is the same arithmetic over the keys
+       * the maps above name. One of the two is drawn; which, is the
+       * kind's answer.
+       */
+      const kind = input.platformKind ?? null;
+      const shownTo = v(SHOWN_TO[kind ?? "other"]);
+      const engagement =
+        kind === null || kind === "instagram" || kind === "other"
+          ? social.engagementRate({
+              likesAndComments: v("social_media_likes_plus_comments"),
+              saves: v("social_media_saves"),
+              shares: v("social_media_shares"),
+              reach: v("social_media_reach"),
+            })
+          : social.engagementRateOn(
+              INTERACTIONS[kind].map((key) => v(key)),
+              shownTo,
+            );
+
       return {
         social_media_net_follower_growth: social.netFollowerGrowth(
           v("social_media_followers_at_month_end"),
@@ -126,12 +216,7 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
           v("social_media_followers_at_month_end"),
           p("social_media_followers_at_month_end"),
         ),
-        social_media_engagement_rate: social.engagementRate({
-          likesAndComments: v("social_media_likes_plus_comments"),
-          saves: v("social_media_saves"),
-          shares: v("social_media_shares"),
-          reach: v("social_media_reach"),
-        }),
+        social_media_engagement_rate: engagement,
         social_media_save_rate: social.saveRate(
           v("social_media_saves"),
           v("social_media_reach"),
@@ -152,7 +237,44 @@ export function calculate(category: CategoryKey, input: CalcInput): CalcResults 
           v("social_media_reach_from_non_followers"),
           v("social_media_reach_from_followers"),
         ),
+
+        /**
+         * §5.2's per-platform rates. Worked out for every kind and drawn
+         * only by the kinds whose set holds them, which is what every
+         * other figure here does too: `calculate` answers what CAN be
+         * worked out, and the screen decides what belongs on it. A rate
+         * whose inputs this platform is never asked for comes back null
+         * and is a dash nobody sees.
+         */
+        social_media_impressions_per_post: social.impressionsPerPost(
+          v("social_media_impressions"),
+          v("social_media_posts_published"),
+        ),
+        // Video views on TikTok, views on YouTube — whichever this
+        // platform keeps. Not a kind switch: a platform has one or the
+        // other, and `??` reads better than a map with two entries.
+        social_media_views_per_post: social.viewsPerPost(
+          v("social_media_video_views") ?? v("social_media_views"),
+          v("social_media_posts_published"),
+        ),
+        social_media_click_through_rate: social.clickThroughRate(
+          v("social_media_link_clicks"),
+          shownTo,
+        ),
+        social_media_profile_view_rate: social.profileViewRate(
+          v("social_media_profile_visits"),
+          shownTo,
+        ),
+        social_media_favourite_rate: social.favouriteRate(
+          v("social_media_favourites"),
+          v("social_media_video_views"),
+        ),
+        social_media_watch_time_per_view: social.watchTimePerView(
+          v("social_media_watch_time"),
+          v("social_media_views"),
+        ),
       };
+    }
 
     case "trial_reels":
       return {

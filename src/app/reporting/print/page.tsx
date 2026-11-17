@@ -28,6 +28,7 @@ import { ENTRY_CATEGORIES, STAGE_3, STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { getEntityHistory, getFigureHistory } from "@/lib/reporting/figure-history";
 import { buildYearRows, calendarYear } from "@/lib/reporting/year-table";
+import { platformOrdered } from "@/lib/reporting/platform-metrics";
 import { PrintYearTable } from "@/components/reporting/year-rows";
 import { formatChange, formatValue } from "@/lib/reporting/format";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
@@ -43,7 +44,7 @@ import { getTopPosts } from "@/lib/reporting/top-post-queries";
 import {
   DRAWN_ELSEWHERE,
   HEADLINE_METRICS,
-  TREND_CHARTS,
+  chartsFor,
   trendMetricKeys,
   trendMonthsNeeded,
 } from "@/lib/reporting/trends";
@@ -95,10 +96,16 @@ export default async function ReportPrintPage({
    * themselves make — one history call for every chart on the document
    * rather than one per section.
    */
-  const span = Math.max(12, ...visible.map((c) => trendMonthsNeeded(c.key)));
+  /**
+   * The main platform's kind, which decides Social Media's figures and
+   * its charts (§5.2's per-platform sets). The PDF has no platform pill,
+   * so it is the main one — the same platform the Overview reads.
+   */
+  const platformKind = figures.platformKind;
+  const span = Math.max(12, ...visible.map((c) => trendMonthsNeeded(c.key, platformKind)));
   const historyMonths = STAGE_3 ? monthsEndingAt(ctx.month.month, span) : [];
   const historyKeys = STAGE_3
-    ? [...new Set(visible.flatMap((c) => trendMetricKeys(c.key)))]
+    ? [...new Set(visible.flatMap((c) => trendMetricKeys(c.key, platformKind)))]
     : [];
 
   /**
@@ -169,7 +176,13 @@ export default async function ReportPrintPage({
 
   const sections = visible
     .map((category) => {
-      const metrics = figures.metrics.filter((m) => m.category === category.key);
+      // Renamed and reordered to suit the platform, and filtered by
+      // nothing: the two lists below drop every figure that is null, so
+      // the PDF holds what the month holds. Same rule as the screen.
+      const metrics = platformOrdered(
+        figures.metrics.filter((m) => m.category === category.key),
+        platformKind,
+      );
       const named = HEADLINE_METRICS[category.key];
       const drawn = DRAWN_ELSEWHERE[category.key] ?? [];
       const shown = (named
@@ -489,7 +502,7 @@ export default async function ReportPrintPage({
 
           {/* The section's own trend charts, the same specs the screen
               reads from. */}
-          {(TREND_CHARTS[category.key] ?? []).map((spec) => (
+          {chartsFor(category.key, platformKind).map((spec) => (
             <div key={spec.id} className="keep-together mt-5">
               <TrendPanel
                 spec={spec}

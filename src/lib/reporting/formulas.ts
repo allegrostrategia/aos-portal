@@ -109,6 +109,71 @@ export const social = {
       input.reach,
     ),
 
+  /**
+   * The same rate, measured the way the platform in question reports it.
+   *
+   * **Which figures go in is the kind's business, not this module's**
+   * (`platform-metrics.ts` and §5.2's per-platform sets, approved by
+   * Nina on 16 November). LinkedIn counts reactions, comments and
+   * reposts against impressions; TikTok counts likes, comments, shares
+   * and favourites against video views; Facebook has a single "post
+   * engagements" figure and counts it against reach. The arithmetic is
+   * identical in all three — interactions ÷ what it was shown to — and
+   * `calculate()` is the one place that knows which keys those are for a
+   * given kind, the same way it already knows which key feeds any other
+   * formula here.
+   *
+   * `sum` ignores what is missing, so a platform that has never been
+   * asked for one of its interaction figures still reports a rate from
+   * the ones it has, rather than a dash.
+   */
+  engagementRateOn: (interactions: Figure[], shownTo: Figure): Result =>
+    percentage(sum(...interactions), shownTo),
+
+  /** Impressions ÷ posts published — LinkedIn's reach per post. */
+  impressionsPerPost: (impressions: Figure, postsPublished: Figure): Result =>
+    divide(impressions, postsPublished),
+
+  /**
+   * Views ÷ posts published: TikTok's video views, YouTube's views.
+   *
+   * A separate formula from `reachPerPost` because the figure on top is
+   * a different one, and a client comparing two platforms should not be
+   * shown one number built two ways under one name.
+   */
+  viewsPerPost: (views: Figure, postsPublished: Figure): Result =>
+    divide(views, postsPublished),
+
+  /**
+   * Link clicks ÷ what the post was shown to.
+   *
+   * Impressions on LinkedIn, reach on Facebook — and never on YouTube,
+   * whose click-through rate is typed because YouTube Studio reports it
+   * and counts a view differently from an impression-click (Nina, 16
+   * November). The two would disagree on the same page.
+   */
+  clickThroughRate: (linkClicks: Figure, shownTo: Figure): Result =>
+    percentage(linkClicks, shownTo),
+
+  /** Profile views — or page visits — ÷ what the posts were shown to. */
+  profileViewRate: (profileViews: Figure, shownTo: Figure): Result =>
+    percentage(profileViews, shownTo),
+
+  /** TikTok's save, by its own name. */
+  favouriteRate: (favourites: Figure, videoViews: Figure): Result =>
+    percentage(favourites, videoViews),
+
+  /**
+   * Minutes watched per view: watch time (hours) × 60 ÷ views.
+   *
+   * In minutes because that is the unit YouTube's own average view
+   * duration comes in, and the two sit on the same screen — one typed,
+   * one worked out from the month's totals. Hours would print 0.1 for a
+   * six-minute average.
+   */
+  watchTimePerView: (watchTimeHours: Figure, views: Figure): Result =>
+    divide(product(watchTimeHours, 60), views),
+
   saveRate: (saves: Figure, reach: Figure): Result => percentage(saves, reach),
 
   shareRate: (shares: Figure, reach: Figure): Result => percentage(shares, reach),
@@ -872,6 +937,14 @@ export const CALC_COVERAGE: Record<string, string> = {
   social_media_reach_per_post: "social.reachPerPost",
   social_media_profile_visit_to_follow: "social.profileVisitToFollow",
   social_media_non_follower_reach: "social.nonFollowerReachPercent",
+  // §5.2's per-platform sets. Each is drawn on the kinds that have it
+  // and on no others; `platform-metrics.ts` is the list.
+  social_media_impressions_per_post: "social.impressionsPerPost",
+  social_media_views_per_post: "social.viewsPerPost",
+  social_media_click_through_rate: "social.clickThroughRate",
+  social_media_profile_view_rate: "social.profileViewRate",
+  social_media_favourite_rate: "social.favouriteRate",
+  social_media_watch_time_per_view: "social.watchTimePerView",
 
   trial_reels_average_views_per_reel: "trialReels.averageViewsPerReel",
   trial_reels_follows_per_1k_views: "trialReels.followsPer1kViews",

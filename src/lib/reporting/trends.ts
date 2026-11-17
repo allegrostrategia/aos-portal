@@ -1,6 +1,8 @@
 import type { CategoryKey } from "./categories.ts";
 import type { Unit } from "./format.ts";
 import type { IconTone, ReportIconName } from "@/components/reporting/icons";
+import { platformSetFor } from "./platform-metrics.ts";
+import type { PlatformKind } from "./platforms.ts";
 
 /**
  * The month-by-month charts each screen draws, as data.
@@ -197,15 +199,211 @@ export const HEADLINE_METRICS: Partial<Record<CategoryKey, string[]>> = {
   ],
 };
 
+/**
+ * Social Media's charts, where a platform's own figures need their own
+ * chart (§5.2's per-platform sets, Nina 16 November).
+ *
+ * `chartsFor` starts from the three declared above, keeps the ones whose
+ * every series is a figure this kind is asked for, and then applies
+ * these. **A chart here REPLACES an inherited one of the same id**,
+ * which is how YouTube's "Subscribers over time" takes the place of
+ * "Followers over time" rather than appearing beside it — it is the same
+ * chart of the same metric under the word YouTube uses.
+ *
+ * Instagram and "Other" have no entry: the three general charts are
+ * theirs, and were written for Instagram in the first place.
+ */
+export const PLATFORM_TREND_CHARTS: Partial<Record<PlatformKind, TrendChartSpec[]>> = {
+  linkedin: [
+    {
+      id: "impressions-and-members",
+      title: "Impressions and members reached",
+      icon: "chart",
+      tone: "orange",
+      months: 6,
+      kind: "bars",
+      unit: "count",
+      series: [
+        { metricKey: "social_media_impressions", label: "Impressions" },
+        { metricKey: "social_media_members_reached", label: "Members reached" },
+      ],
+      caption:
+        "The last six months. One counts times shown and the other counts people, so the bars sit side by side.",
+      emptyMessage: "No impressions or members reached entered for these months yet.",
+    },
+    {
+      id: "engagement-and-clicks",
+      title: "Engagement rate vs click-through rate",
+      icon: "pointer",
+      tone: "blush",
+      months: 6,
+      kind: "line",
+      unit: "percent",
+      series: [
+        { metricKey: "social_media_engagement_rate", label: "Engagement rate" },
+        { metricKey: "social_media_click_through_rate", label: "Click-through rate" },
+      ],
+      caption: "The last six months. Both are measured against impressions.",
+      emptyMessage:
+        "Two months of engagement and click-through rates are needed before there is a trend to draw.",
+    },
+  ],
+  tiktok: [
+    {
+      id: "video-views",
+      title: "Video views",
+      icon: "chart",
+      tone: "orange",
+      months: 6,
+      kind: "bars",
+      unit: "count",
+      series: [{ metricKey: "social_media_video_views", label: "Video views" }],
+      caption: "The last six months.",
+      emptyMessage: "No video views entered for these months yet.",
+    },
+    {
+      id: "engagement-and-favourites",
+      title: "Engagement rate vs favourite rate",
+      icon: "bookmark",
+      tone: "blush",
+      months: 6,
+      kind: "line",
+      unit: "percent",
+      series: [
+        { metricKey: "social_media_engagement_rate", label: "Engagement rate" },
+        { metricKey: "social_media_favourite_rate", label: "Favourite rate" },
+      ],
+      caption: "The last six months. A favourite is TikTok's save.",
+      emptyMessage:
+        "Two months of engagement and favourite rates are needed before there is a trend to draw.",
+    },
+  ],
+  facebook: [
+    {
+      id: "reach-and-engagements",
+      title: "Reach and post engagements",
+      icon: "chart",
+      tone: "orange",
+      months: 6,
+      kind: "bars",
+      unit: "count",
+      series: [
+        { metricKey: "social_media_reach", label: "Reach" },
+        { metricKey: "social_media_post_engagements", label: "Post engagements" },
+      ],
+      caption: "The last six months.",
+      emptyMessage: "No reach or post engagements entered for these months yet.",
+    },
+    {
+      id: "engagement-and-clicks",
+      title: "Engagement rate vs click-through rate",
+      icon: "pointer",
+      tone: "blush",
+      months: 6,
+      kind: "line",
+      unit: "percent",
+      series: [
+        { metricKey: "social_media_engagement_rate", label: "Engagement rate" },
+        { metricKey: "social_media_click_through_rate", label: "Click-through rate" },
+      ],
+      caption: "The last six months. Both are measured against reach.",
+      emptyMessage:
+        "Two months of engagement and click-through rates are needed before there is a trend to draw.",
+    },
+  ],
+  youtube: [
+    {
+      // Replaces the inherited chart of the same figure: subscribers is
+      // the word, and the metric underneath is the same one.
+      id: "followers-over-time",
+      title: "Subscribers over time",
+      icon: "people",
+      tone: "sky",
+      months: 12,
+      kind: "line",
+      unit: "count",
+      series: [{ metricKey: "social_media_followers_at_month_end", label: "Subscribers" }],
+      area: true,
+      targetFor: "social_media_followers_at_month_end",
+      caption: "Subscribers at the end of each month.",
+      emptyMessage:
+        "Two months of subscriber counts are needed before there is a line to draw.",
+    },
+    {
+      id: "views-and-impressions",
+      title: "Views and impressions",
+      icon: "eye",
+      tone: "orange",
+      months: 6,
+      kind: "bars",
+      unit: "count",
+      series: [
+        { metricKey: "social_media_views", label: "Views" },
+        { metricKey: "social_media_impressions", label: "Impressions" },
+      ],
+      caption:
+        "The last six months. An impression is a thumbnail somebody saw; a view is one they opened.",
+      emptyMessage: "No views or impressions entered for these months yet.",
+    },
+    {
+      id: "watch-time",
+      title: "Watch time",
+      icon: "clock",
+      tone: "gold",
+      months: 12,
+      kind: "line",
+      unit: "hours",
+      series: [{ metricKey: "social_media_watch_time", label: "Watch time" }],
+      area: true,
+      caption: "Hours watched each month — the figure YouTube itself judges a channel on.",
+      emptyMessage: "Two months of watch time are needed before there is a line to draw.",
+    },
+  ],
+};
+
+/**
+ * A category's charts, narrowed to the platform on screen.
+ *
+ * Only Social Media has anything to narrow: every other category's
+ * figures belong to the month. A general chart survives when the kind is
+ * asked for every figure it draws — so LinkedIn keeps the follower line
+ * and loses "Save rate vs share rate", which would otherwise be a
+ * confident title over an empty panel on a platform that has no saves.
+ */
+export function chartsFor(
+  category: CategoryKey,
+  kind: PlatformKind | null = null,
+): TrendChartSpec[] {
+  const declared = TREND_CHARTS[category] ?? [];
+  if (category !== "social_media") return declared;
+
+  const asked = new Set(platformSetFor(kind).keys);
+  const byId = new Map(
+    declared
+      .filter((chart) => chart.series.every((s) => asked.has(s.metricKey)))
+      .map((chart) => [chart.id, chart] as const),
+  );
+  for (const chart of (kind && PLATFORM_TREND_CHARTS[kind]) ?? []) {
+    byId.set(chart.id, chart);
+  }
+  return [...byId.values()];
+}
+
 /** Every metric key a category's charts need, with no duplicates. */
-export function trendMetricKeys(category: CategoryKey): string[] {
-  const keys = (TREND_CHARTS[category] ?? []).flatMap((chart) =>
+export function trendMetricKeys(
+  category: CategoryKey,
+  kind: PlatformKind | null = null,
+): string[] {
+  const keys = chartsFor(category, kind).flatMap((chart) =>
     chart.series.map((s) => s.metricKey),
   );
   return [...new Set(keys)];
 }
 
 /** The longest span any of a category's charts asks for. */
-export function trendMonthsNeeded(category: CategoryKey): number {
-  return Math.max(0, ...(TREND_CHARTS[category] ?? []).map((chart) => chart.months));
+export function trendMonthsNeeded(
+  category: CategoryKey,
+  kind: PlatformKind | null = null,
+): number {
+  return Math.max(0, ...chartsFor(category, kind).map((chart) => chart.months));
 }

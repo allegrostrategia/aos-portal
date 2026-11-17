@@ -3,6 +3,69 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 17 November 2026
+
+**A figure set per platform** (item 1 of Nina's 15 November list, her
+answers of 16 November in `docs/reporting/platform-metric-sets.md`). Built
+in two steps, each its own commit and its own migration:
+
+- **Step 1 — a platform knows what kind of thing it is.**
+  `report_entities.platform_kind` is a six-value enum (Instagram, LinkedIn,
+  TikTok, YouTube, Facebook, Other), nullable, picked from a list on the
+  Social Media entry screen, with a "Needs a kind" badge where nobody has
+  said. The name is **not** what decides: a client who calls theirs
+  "IG — main" still gets Instagram's figures and one with "Instagram Ads"
+  does not. `20261117100000_a_platform_has_a_kind.sql` is **applied to
+  live**; all five platform rows there got the right kind from the
+  backfill.
+- **Step 2 — the figures follow the kind.** Eighteen new metrics
+  (LinkedIn's impressions, members reached, reactions, comments and
+  reposts; TikTok's video views, likes and favourites; Facebook's post
+  engagements; YouTube's watch time, reported click-through rate and
+  average view duration; and the six rates built on them), with
+  `src/lib/reporting/platform-metrics.ts` holding which kinds ask for
+  which. `20261118100000_a_figure_set_per_platform.sql` is **not yet
+  applied to live**.
+
+Four things worth knowing before touching this again:
+
+- **The kind narrows what a screen ASKS for, never what a month SHOWS.**
+  Every report screen already drops a metric whose figure is null and
+  `buildYearRows` drops a row that is blank all year, so a month shows
+  what it holds. `platformOrdered` (report, PDF) reorders and renames and
+  filters nothing; `platformMetrics` (entry) filters, and keeps anything
+  the month already holds, so a figure can never go un-shown or
+  un-editable. That is what makes a kind safe to correct.
+- **The kind is frozen into the carried snapshot**, beside the offer price
+  and the row names, with absent ≠ null. Social Media's rates are worked
+  out from different figures depending on the kind — LinkedIn measures
+  engagement against impressions, Facebook against reach — and a calc is
+  recomputed on every read, published months included. Without the freeze,
+  correcting a kind in December would move a figure on a September report
+  the client has already read. **Deliberately not a lock** on the kind
+  (Dom asked for one or the other): a lock would trap a client who picked
+  "Other" by mistake and freeze every future month to protect a past one.
+- **Two click-through rates, on purpose.** YouTube's is typed, because
+  YouTube Studio reports it; LinkedIn's and Facebook's are worked out from
+  clicks and impressions. `input_type` belongs to the metric rather than
+  to the kind, and `guard_report_value_metric` refuses a stored value for
+  a `calc`, so one key could not be both. Never both on one screen.
+- **"Still to fill in" counts per kind.** A core figure is owed only by the
+  platforms whose kind asks for it, and a figure no platform is asked for
+  is not in the total at all. Counting all eighteen new figures on every
+  platform would have made Social Media impossible to finish for any
+  client with two kinds.
+
+Nothing existing moved: the eighteen rows take `sort_order` 23–40, after
+everything already seeded, so the migration is a pure insert. A
+renumbering cannot be one upsert — `report_metrics_category_sort_order_key`
+is checked row by row — which is what live refused atomically on
+16 November.
+
+Still to do on this item: post types per platform (a LinkedIn post cannot
+be a Reel), demo data so each platform shows its own figures, and
+screenshots of Social Media on every platform.
+
 ## WHERE WE ARE — 16 November 2026
 
 **The visual rebuild, by Nina's list.** She clicked through
@@ -49,11 +112,10 @@ far, in her order:
   `20261116100000_what_the_calls_turned_into.sql` is **not yet applied to
   live**.
 
-Still to do: **1** (a figure set per platform — Nina's answers came back on
-16 November and are written into `docs/reporting/platform-metric-sets.md`,
-including a Facebook kind of its own; built after this), **4** (the same
-number of visuals on every page, Offers as the benchmark) and **6**
-(Launches, held until Nina's launch tracker arrives).
+Still to do: **4** (the same number of visuals on every page, Offers as
+the benchmark) and **6** (Launches, held until Nina's launch tracker
+arrives). Item **1**, a figure set per platform, is above under
+17 November.
 
 ## WHERE WE ARE — 14 November 2026
 

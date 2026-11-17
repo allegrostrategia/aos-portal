@@ -97,10 +97,40 @@ await check("no calc metric is missing its formula", async () =>
 // 175 from the brief's own tables plus section 6's launch keys; 182 from
 // 16 Nov (§5.6's calls converted, the two per-offer fields behind "what
 // they bought, by offer" — Nina — and the bespoke pair Dom added for work
-// priced per job). The count is the point: a metric that silently fails to
-// seed is a field that never appears on a screen.
+// priced per job). 200 from 17 Nov: §5.2's eighteen per-platform figures,
+// so LinkedIn stops being asked for saves and YouTube counts watch time
+// (`docs/reporting/platform-metric-sets.md`, approved by Nina 16 Nov).
+//
+// **The seed holds 198 of them**; the other two are seeded by migrations
+// of their own, which is why this number is not the generator's. The
+// count is the point either way: a metric that silently fails to seed is
+// a field that never appears on a screen.
 await check("anyone signed in reads the metric list", async () =>
-  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 182);
+  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 200);
+
+// And the eighteen are all on Social Media, all per platform: a figure
+// seeded with no entity type would be stored once a month and silently
+// shared between a client's platforms, which is what
+// guard_report_value_metric exists to refuse.
+await check("§5.2's per-platform figures are all social, and all per platform", async () =>
+  (await db.query(`
+    select count(*)::int c from public.report_metrics
+     where category = 'social_media' and entity_type = 'social_platform'`)).rows[0].c === 40);
+
+// The two click-through rates of §5.2, which cannot be one row: YouTube
+// reports its own and LinkedIn works its out, and input_type belongs to
+// the metric rather than to the platform.
+await check("YouTube's click-through rate is typed and LinkedIn's is worked out", async () => {
+  const rows = (await db.query(`
+    select key, input_type from public.report_metrics
+     where key in ('social_media_click_through_rate', 'social_media_reported_click_through_rate')
+     order by key`)).rows;
+  return (
+    rows.length === 2 &&
+    rows[0].input_type === "calc" &&
+    rows[1].input_type === "core"
+  );
+});
 
 await rejects("a client cannot add a metric", () =>
   as(MEMBER, () => db.query(`

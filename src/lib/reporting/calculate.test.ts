@@ -70,6 +70,105 @@ test("social media wires to the right fields", () => {
   assert.equal(Number(out.social_media_reach_per_post!.toFixed(2)), 8386.36);
 });
 
+/**
+ * §5.2's per-platform sets (Nina, 16 November). What can go wrong here
+ * is the thing the whole exercise is about: a rate measured against the
+ * wrong denominator still prints a plausible percentage.
+ */
+test("engagement rate follows the platform's kind", () => {
+  const figures = {
+    // Instagram's inputs and LinkedIn's, together — the lookup holds
+    // whatever is in the database, and the kind is what chooses.
+    social_media_reach: 10000,
+    social_media_likes_plus_comments: 400,
+    social_media_saves: 50,
+    social_media_shares: 50,
+    social_media_impressions: 20000,
+    social_media_reactions: 300,
+    social_media_comments: 100,
+    social_media_reposts: 100,
+    social_media_video_views: 50000,
+    social_media_likes: 1000,
+    social_media_favourites: 500,
+    social_media_post_engagements: 900,
+    social_media_link_clicks: 200,
+    social_media_profile_visits: 600,
+  };
+  const rate = (kind: Parameters<typeof calculate>[1]["platformKind"]) =>
+    calculate("social_media", { value: from(figures), previous: none, platformKind: kind })
+      .social_media_engagement_rate;
+
+  // (400 + 50 + 50) ÷ 10,000 — the brief's own formula, unchanged.
+  assert.equal(rate("instagram"), 5);
+  assert.equal(rate(null), 5, "and that is what a platform with no kind yet shows");
+  // (300 + 100 + 100) ÷ 20,000, because LinkedIn reports against
+  // impressions. On reach it would read 5% and look just as real.
+  assert.equal(rate("linkedin"), 2.5);
+  // (1,000 + 100 + 50 + 500) ÷ 50,000 — likes, comments, shares,
+  // favourites, against video views.
+  assert.equal(Number(rate("tiktok")!.toFixed(2)), 3.3);
+  // Facebook's own headline figure ÷ reach.
+  assert.equal(rate("facebook"), 9);
+  // YouTube's set has no engagement rate at all: the figures it is
+  // judged on are watch time and the two YouTube Studio reports.
+  assert.equal(rate("youtube"), null);
+});
+
+test("the click-through and profile-view rates follow it too", () => {
+  const figures = {
+    social_media_link_clicks: 200,
+    social_media_profile_visits: 600,
+    social_media_impressions: 20000,
+    social_media_reach: 10000,
+    social_media_video_views: 50000,
+  };
+  const out = (kind: Parameters<typeof calculate>[1]["platformKind"]) =>
+    calculate("social_media", { value: from(figures), previous: none, platformKind: kind });
+
+  assert.equal(out("linkedin").social_media_click_through_rate, 1);
+  assert.equal(out("facebook").social_media_click_through_rate, 2);
+  assert.equal(out("linkedin").social_media_profile_view_rate, 3);
+  assert.equal(out("facebook").social_media_profile_view_rate, 6);
+  // Against video views, not reach.
+  assert.equal(out("tiktok").social_media_profile_view_rate, 1.2);
+});
+
+test("the YouTube figures that are worked out, and the two that are not", () => {
+  const out = calculate("social_media", {
+    value: from({
+      social_media_views: 24000,
+      social_media_posts_published: 12,
+      social_media_watch_time: 1600,
+      // Typed, both of them, so nothing here should produce them.
+      social_media_reported_click_through_rate: 4.8,
+      social_media_average_view_duration: 4,
+    }),
+    previous: none,
+    platformKind: "youtube",
+  });
+  assert.equal(out.social_media_views_per_post, 2000);
+  // 1,600 hours × 60 ÷ 24,000 views = 4 minutes a view, which is the
+  // same shape as the typed figure beside it and must not be it.
+  assert.equal(out.social_media_watch_time_per_view, 4);
+  assert.ok(!("social_media_reported_click_through_rate" in out), "it is typed, not worked out");
+  assert.ok(!("social_media_average_view_duration" in out), "and so is this one");
+});
+
+test("TikTok's views per post is its video views, not its reach", () => {
+  const out = calculate("social_media", {
+    value: from({
+      social_media_video_views: 50000,
+      social_media_reach: 999,
+      social_media_posts_published: 25,
+      social_media_favourites: 500,
+    }),
+    previous: none,
+    platformKind: "tiktok",
+  });
+  assert.equal(out.social_media_views_per_post, 2000);
+  assert.equal(out.social_media_favourite_rate, 1);
+});
+
 test("follower growth reads last month, not this one", () => {
   // The commonest wiring slip in the file: passing the same month twice gives
   // a growth of zero, which looks like a real answer.

@@ -15,6 +15,7 @@ import { isInternalReportPath } from "./paths.ts";
 import { withSaved } from "./saved-notice.ts";
 import { canEdit } from "./access.ts";
 import { CALL_WINS_METRICS } from "./call-wins.ts";
+import { FIRST_PLATFORM_KIND } from "./platforms.ts";
 import { lockedError } from "./locked.ts";
 
 /**
@@ -332,7 +333,10 @@ async function ensurePrimaryPlatform(workspaceId: string): Promise<string | null
       // this row is Instagram by construction. Set here rather than left
       // for the picker, because a figure set is what the next screen
       // draws and "not said yet" would show the general one.
-      platform_kind: "instagram",
+      //
+      // The same constant the entry screen assumes before this row
+      // exists, so the boxes do not change shape on the first save.
+      platform_kind: FIRST_PLATFORM_KIND,
     })
     .select("id")
     .maybeSingle<{ id: string }>();

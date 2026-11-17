@@ -40,10 +40,11 @@ import { TrendPanel } from "@/components/reporting/trend-panel";
 import {
   DRAWN_ELSEWHERE,
   HEADLINE_METRICS,
-  TREND_CHARTS,
+  chartsFor,
   trendMetricKeys,
   trendMonthsNeeded,
 } from "@/lib/reporting/trends";
+import { platformOrdered } from "@/lib/reporting/platform-metrics";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
 import {
   CallWinsTable,
@@ -110,7 +111,22 @@ export default async function CategoryReportPage({
   const comparedWith = figures.carried?.previousMonth ?? ctx.month.previous;
   const previousLabel = comparedWith ? monthLabel(comparedWith).split(" ")[0] : null;
 
-  const metrics = figures.metrics.filter((m) => m.category === category.key);
+  /**
+   * **In the platform's own order and its own words** (§5.2's
+   * per-platform sets, 17 November), and filtering nothing.
+   *
+   * `platformOrdered` renames and reorders; it does not take anything
+   * out. It cannot: the two lists below already drop every metric whose
+   * figure is null, so this page shows the figures the month HOLDS — and
+   * that is the whole reason a platform's kind is safe to correct after
+   * a month has gone out. A filter here would be the one thing able to
+   * take a row off a report a client has already been sent.
+   */
+  const platformKind = figures.platformKind;
+  const metrics = platformOrdered(
+    figures.metrics.filter((m) => m.category === category.key),
+    platformKind,
+  );
   /**
    * **Named, where a category says which six** (13 November). The rule
    * below gives the right six everywhere else; on Financials it gave
@@ -180,13 +196,13 @@ export default async function CategoryReportPage({
    * `report_values`, so reading them would have drawn an empty chart under
    * a confident title.
    */
-  const trendSpecs = STAGE_3 ? (TREND_CHARTS[category.key] ?? []) : [];
+  const trendSpecs = STAGE_3 ? chartsFor(category.key, platformKind) : [];
   const historySpan = STAGE_3
-    ? Math.max(12, trendMonthsNeeded(category.key))
+    ? Math.max(12, trendMonthsNeeded(category.key, platformKind))
     : 0;
   const historyMonths = STAGE_3 ? monthsEndingAt(ctx.month.month, historySpan) : [];
   const historyKeys = STAGE_3
-    ? [...new Set([...headline.map((m) => m.key), ...trendMetricKeys(category.key)])]
+    ? [...new Set([...headline.map((m) => m.key), ...trendMetricKeys(category.key, platformKind)])]
     : [];
   const history = STAGE_3
     ? await getFigureHistory({

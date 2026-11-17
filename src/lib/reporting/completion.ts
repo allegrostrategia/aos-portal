@@ -1,13 +1,23 @@
 /**
  * "Still to fill in" (§8.1): how much of a category's core is answered.
  *
- * **Its own module, with no imports that are not types.** It used to sit
- * in `month-figures.ts`, which reaches the database through `@/lib`
- * aliases — so it could not be unit-tested without a Supabase client,
- * and it had no tests at all. Three sections that could never be
- * finished is what that cost. Everything it needs is in the structural
- * type below, so the test can hand it four fields and no database.
+ * **Its own module, and nothing it imports touches a database.** It used
+ * to sit in `month-figures.ts`, which reaches the database through
+ * `@/lib` aliases — so it could not be unit-tested without a Supabase
+ * client, and it had no tests at all. Three sections that could never be
+ * finished is what that cost. Everything it needs from a month is in the
+ * structural type below, so the test can hand it four fields and no
+ * database.
+ *
+ * The two functions it does import — `platformAsks` and `isPlatformKind`
+ * — are pure, and their own modules import nothing but types, which is
+ * what keeps that true. The rule is "no database", not "no code": a
+ * second copy of which figures a platform is asked for would be the
+ * thing that eventually disagreed.
  */
+
+import { platformAsks } from "./platform-metrics.ts";
+import { isPlatformKind } from "./platforms.ts";
 
 /** Exactly what completion reads from a month, and nothing else. */
 export interface CompletionInput {
@@ -22,7 +32,18 @@ export interface CompletionInput {
   /** §5.8's opening figure: non-null once it has been answered, in any month. */
   openingClients: { inUse: unknown };
   data: {
-    entities: { id: string; entity_type: string; active: boolean }[];
+    entities: {
+      id: string;
+      entity_type: string;
+      active: boolean;
+      /**
+       * A social platform's kind, which decides WHICH core figures it
+       * owes (§5.2's per-platform sets, 17 November). Optional so every
+       * caller written before it still type-checks; absent reads as the
+       * general set, which is what a platform with no kind shows.
+       */
+      platform_kind?: string | null;
+    }[];
     values: { get: (key: string, entityId: string) => number | null };
   };
   /**
@@ -143,14 +164,43 @@ export function categoryCompletion(
   // Nothing set up is nothing owed — not a section that can never finish.
   if (rows && rows.length === 0) return { filled: 0, total: 0 };
 
+  /**
+   * Which rows owe a given figure.
+   *
+   * Every row, except on Social Media since 17 November: a figure set
+   * per platform means Instagram is never asked for impressions and
+   * LinkedIn is never asked for saves, so "every platform has it" would
+   * make the section impossible to finish the moment a client had two
+   * kinds. It counted 7 core figures on every platform until today and
+   * would have counted 18.
+   */
+  const owing = (metric: (typeof core)[number]) => {
+    if (!rows) return null;
+    if (entityType !== "social_platform") return rows;
+    return rows.filter((row) =>
+      platformAsks(metric.key, isPlatformKind(row.platform_kind) ? row.platform_kind : null),
+    );
+  };
+
+  /**
+   * And a figure no platform is asked for is not owed by anybody, so it
+   * is not in the total either — the same rule as a member with no
+   * funnels owing nothing, one level down.
+   */
+  const counted = core.filter((metric) => {
+    const asked = owing(metric);
+    return asked === null || asked.length > 0;
+  });
+
   const isFilled = (metric: (typeof core)[number]) => {
     // Asked once, so it counts from whichever month it was answered in.
     if (metric.key === ASKED_ONCE) return figures.openingClients.inUse !== null;
-    if (rows) return rows.every((row) => figures.data.values.get(metric.key, row.id) !== null);
+    const asked = owing(metric);
+    if (asked) return asked.every((row) => figures.data.values.get(metric.key, row.id) !== null);
     return figures.figure(metric.key) !== null;
   };
 
-  return { filled: core.filter(isFilled).length, total: core.length };
+  return { filled: counted.filter(isFilled).length, total: counted.length };
 }
 
 /**

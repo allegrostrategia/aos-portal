@@ -223,6 +223,108 @@ const PROSE_METRICS = [
 ];
 
 /**
+ * §5.2's figures that belong to one platform and not another.
+ *
+ * **`docs/reporting/platform-metric-sets.md`, approved by Nina on 16
+ * November**, and the reason they are listed here rather than parsed out
+ * of the brief's §5.2 table: that table is one list, and the whole point
+ * of this round is that there is no longer one list. LinkedIn does not
+ * have saves; Facebook does not have a profile; YouTube counts watch
+ * time and nothing else here does. Which kinds a figure belongs to is in
+ * `src/lib/reporting/platform-metrics.ts` — the database holds the
+ * figure, the code holds which screens ask for it, the same division
+ * `OFFER_HOURS_METRICS` already follows.
+ *
+ * **Listed after PROSE_METRICS on purpose.** sort_order is assigned in
+ * the order this file builds the list, so appending here gives the new
+ * rows 23 upwards and renumbers nothing — and a renumbering of
+ * report_metrics cannot be a single upsert, because
+ * report_metrics_category_sort_order_key is checked row by row. That
+ * cost one atomically-refused migration against live on 16 November.
+ */
+const PLATFORM_SET_METRICS = [
+  // LinkedIn. Reach becomes two figures, because LinkedIn reports both
+  // and they are different numbers: impressions counts times shown,
+  // members reached counts people.
+  { category: "social_media", label: "Impressions", type: "core", unit: "count", good: "up" },
+  { category: "social_media", label: "Members reached", type: "core", unit: "count", good: "up" },
+  // And likes + comments splits, because LinkedIn counts them separately
+  // and a reaction is not only a like.
+  { category: "social_media", label: "Reactions", type: "core", unit: "count", good: "up" },
+  { category: "social_media", label: "Comments", type: "core", unit: "count", good: "up" },
+  { category: "social_media", label: "Reposts", type: "core", unit: "count", good: "up" },
+  {
+    category: "social_media", label: "Impressions per post", type: "calc", unit: "count", good: "up",
+    formula: "Impressions ÷ posts published",
+  },
+  {
+    category: "social_media", label: "Click-through rate", type: "calc", unit: "percent", good: "up",
+    formula: "Link clicks ÷ impressions, or ÷ reach on Facebook",
+  },
+  {
+    category: "social_media", label: "Profile view rate", type: "calc", unit: "percent", good: "up",
+    formula:
+      "Profile views ÷ impressions, or ÷ video views on TikTok and ÷ reach on Facebook",
+  },
+
+  // TikTok. Reach becomes video views, and favourites is its save.
+  { category: "social_media", label: "Video views", type: "core", unit: "count", good: "up" },
+  { category: "social_media", label: "Likes", type: "core", unit: "count", good: "up" },
+  { category: "social_media", label: "Favourites", type: "core", unit: "count", good: "up" },
+  {
+    category: "social_media", label: "Views per post", type: "calc", unit: "count", good: "up",
+    formula: "Video views ÷ posts published, or views ÷ videos published on YouTube",
+  },
+  {
+    category: "social_media", label: "Favourite rate", type: "calc", unit: "percent", good: "up",
+    formula: "Favourites ÷ video views",
+  },
+
+  // Facebook. Its headline figure, and it has no Instagram equivalent —
+  // which is why it is entered rather than worked out.
+  { category: "social_media", label: "Post engagements", type: "core", unit: "count", good: "up" },
+
+  // YouTube. Watch time is what it is actually judged on.
+  {
+    // Keyed without the unit: the label carries "(hours)" because that is
+    // how Nina's own table reads, and three screens would otherwise read
+    // `social_media_watch_time_hours` out of a formula.
+    category: "social_media", label: "Watch time (hours)", type: "core", unit: "hours",
+    good: "up", key: "social_media_watch_time",
+  },
+  /**
+   * **Typed, not worked out** (Nina, 16 November) — and therefore a row
+   * of its own rather than the calc above.
+   *
+   * `input_type` is a column on the metric, not on the kind, and
+   * `guard_report_value_metric` refuses a stored value for a `calc`. So
+   * a figure that YouTube Studio hands you and LinkedIn makes you work
+   * out cannot be one row: it would be unstorable on the platform that
+   * reports it, or uncomputable on the ones that do not. Two keys, one
+   * on-screen label, and never both on the same screen — the kind
+   * decides which.
+   */
+  {
+    category: "social_media", label: "Click-through rate (reported)", type: "core",
+    unit: "percent", good: "up", key: "social_media_reported_click_through_rate",
+  },
+  {
+    category: "social_media", label: "Average view duration (minutes)", type: "core",
+    // `ratio` rather than a new `minutes` unit: it is the one unit that
+    // already means "one decimal, no symbol, averaged over the year
+    // rather than summed", which is exactly right for a per-view
+    // average — and adding a value to report_unit cannot be used in the
+    // same transaction that inserts a row with it.
+    unit: "ratio", good: "up", key: "social_media_average_view_duration",
+  },
+  {
+    category: "social_media", label: "Watch time per view (minutes)", type: "calc",
+    unit: "ratio", good: "up", formula: "Watch time × 60 ÷ views",
+    key: "social_media_watch_time_per_view",
+  },
+];
+
+/**
  * Section 6. Prose in 6.3 and 6.5, tables in 6.2 and 6.4, so all of it is
  * listed rather than half parsed and half not.
  *
@@ -366,7 +468,7 @@ function build(brief) {
     metrics.push(...parseSection(brief, number, category));
   }
 
-  for (const m of PROSE_METRICS) {
+  for (const m of [...PROSE_METRICS, ...PLATFORM_SET_METRICS]) {
     const key = m.key ?? keyFor(m.category, m.label);
     metrics.push({
       key,
@@ -397,7 +499,7 @@ function build(brief) {
   // insert time; catching it here says which one and why.
   for (const m of metrics) {
     if (m.input_type === "calc" && !m.formula) {
-      throw new Error(`Calc metric ${m.key} has no formula. The brief's table cell is empty — add it to PROSE_METRICS or LAUNCH_METRICS.`);
+      throw new Error(`Calc metric ${m.key} has no formula. The brief's table cell is empty — add it to PROSE_METRICS, PLATFORM_SET_METRICS or LAUNCH_METRICS.`);
     }
   }
 

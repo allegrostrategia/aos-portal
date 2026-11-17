@@ -125,6 +125,16 @@ Eleven areas: Overview, Social Media, Trial Reels, Email, Funnels, Leads & Conve
 
 Charts: follower line (12 months), reach and views bars, saves and shares trend.
 
+**Since 17 November the figures a platform is asked for follow its kind.**
+The table above is the Instagram set, which is also what a platform shows
+until somebody says what kind it is. LinkedIn, TikTok, Facebook and YouTube
+each have their own set — LinkedIn has no saves, YouTube counts subscribers
+and watch time — and every one of those figures is listed in
+`docs/reporting/platform-metric-sets.md`, approved by Nina on 16 November
+2026 and seeded from `PLATFORM_SET_METRICS` in the generator. Which kinds a
+figure belongs to is in `src/lib/reporting/platform-metrics.ts`: the
+database holds the figure, the code holds which screens ask for it.
+
 **Also in Social Media** (from Meta's account overview): **Reach from followers** and **Reach from non-followers**, both optional inputs. Calculated: **Non-follower reach %** = reach from non-followers ÷ (reach from followers + reach from non-followers), good = up. It shows how far content travels beyond the existing audience (sample month: 28,000 of 30,000, or 93%).
 
 ### 5.3 Trial Reels (optional area, signed off by Nina)

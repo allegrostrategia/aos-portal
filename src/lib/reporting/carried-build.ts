@@ -77,10 +77,21 @@ export async function computeCarried(
       // change the day the offer went up. The Offers table on the same
       // report reads the same frozen price, so the two cannot disagree —
       // which is the whole reason the price lives on the offer.
-      .select("id, name, campaign_goal, price")
+      //
+      // **And a social platform's kind, since 17 November**: Social
+      // Media's rates are worked out from different figures depending
+      // on it, so a kind corrected in December would otherwise move a
+      // number on a September report the client has already read.
+      .select("id, name, campaign_goal, price, platform_kind")
       .eq("workspace_id", workspaceId)
       .returns<
-        { id: string; name: string; campaign_goal: string | null; price: number | string | null }[]
+        {
+          id: string;
+          name: string;
+          campaign_goal: string | null;
+          price: number | string | null;
+          platform_kind: string | null;
+        }[]
       >(),
     // **What the forecast says about the months after this one** (Dom,
     // 12 and 13 November). The only forward-looking figure on the report,

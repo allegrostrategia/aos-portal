@@ -2,9 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { TREND_CHARTS, trendMetricKeys, trendMonthsNeeded } from "./trends.ts";
+import {
+  PLATFORM_TREND_CHARTS,
+  TREND_CHARTS,
+  chartsFor,
+  trendMetricKeys,
+  trendMonthsNeeded,
+} from "./trends.ts";
+import { PLATFORM_KINDS } from "./platforms.ts";
 import { METRIC_ICONS } from "./metric-icons.ts";
 import { niceCeiling } from "../../components/reporting/charts/scale.ts";
+import { platformSetFor } from "./platform-metrics.ts";
+import type { TrendChartSpec } from "./trends.ts";
 
 /**
  * The declared charts, checked against the metric list they claim to draw.
@@ -34,8 +43,26 @@ test("the seeded metric list was actually found", () => {
   assert.ok(SEEDED.has("financials_total_revenue"));
 });
 
+/**
+ * Every declared chart in the file, category ones and per-platform ones.
+ *
+ * The structural checks below are about the SHAPE of a chart spec — a
+ * key that exists, one unit, at most three series — and a chart drawn
+ * only on TikTok is as able to get those wrong as one drawn everywhere.
+ * They were written when there was one list; the second list is exactly
+ * the kind of thing a test like this stops covering silently.
+ */
+const ALL_CHARTS: [string, TrendChartSpec[]][] = [
+  ...Object.entries(TREND_CHARTS).map(
+    ([category, charts]) => [category, charts ?? []] as [string, TrendChartSpec[]],
+  ),
+  ...Object.entries(PLATFORM_TREND_CHARTS).map(
+    ([kind, charts]) => [`social_media/${kind}`, charts ?? []] as [string, TrendChartSpec[]],
+  ),
+];
+
 test("every charted metric key is one the database seeds", () => {
-  for (const [category, charts] of Object.entries(TREND_CHARTS)) {
+  for (const [category, charts] of ALL_CHARTS) {
     for (const chart of charts ?? []) {
       for (const series of chart.series) {
         assert.ok(
@@ -63,16 +90,16 @@ test("a chart's series share one unit, because they share one axis", () => {
   // The shape cannot express a second scale, and this is the test that says
   // why: the moment two units are allowed on one chart, any two lines can
   // be drawn crossing wherever the author wants them to.
-  for (const charts of Object.values(TREND_CHARTS)) {
-    for (const chart of charts ?? []) {
+  for (const [, charts] of ALL_CHARTS) {
+    for (const chart of charts) {
       assert.ok(chart.unit, `${chart.id} has no unit`);
     }
   }
 });
 
 test("only a single-series chart fills its area", () => {
-  for (const charts of Object.values(TREND_CHARTS)) {
-    for (const chart of charts ?? []) {
+  for (const [, charts] of ALL_CHARTS) {
+    for (const chart of charts) {
       if (chart.area) {
         assert.equal(
           chart.series.length,
@@ -85,8 +112,8 @@ test("only a single-series chart fills its area", () => {
 });
 
 test("a chart asks for at most three lines, which is what the inks allow", () => {
-  for (const charts of Object.values(TREND_CHARTS)) {
-    for (const chart of charts ?? []) {
+  for (const [, charts] of ALL_CHARTS) {
+    for (const chart of charts) {
       assert.ok(
         chart.series.length <= 3,
         `${chart.id} asks for ${chart.series.length} series`,
@@ -96,17 +123,85 @@ test("a chart asks for at most three lines, which is what the inks allow", () =>
 });
 
 test("every chart id is unique within its category", () => {
-  for (const [category, charts] of Object.entries(TREND_CHARTS)) {
-    const ids = (charts ?? []).map((c) => c.id);
+  for (const [category, charts] of ALL_CHARTS) {
+    const ids = charts.map((c) => c.id);
     assert.equal(new Set(ids).size, ids.length, `${category} repeats a chart id`);
   }
 });
 
 test("the keys a category needs come back once each", () => {
-  const keys = trendMetricKeys("social_media");
+  const keys = trendMetricKeys("social_media", "instagram");
   assert.equal(new Set(keys).size, keys.length);
   assert.ok(keys.includes("social_media_reach"));
   assert.ok(keys.includes("social_media_save_rate"));
+});
+
+// ---------------------------------------------------------------------------
+// §5.2's per-platform charts (Nina, 16 November).
+
+test("a chart is only drawn on a platform that is asked for its figures", () => {
+  // The point of the whole exercise: a save rate on LinkedIn was a
+  // confident title over an empty panel, because LinkedIn has no saves.
+  const linkedin = chartsFor("social_media", "linkedin").map((c) => c.id);
+  assert.ok(!linkedin.includes("save-rate-vs-share-rate"));
+  assert.ok(!linkedin.includes("reach-and-views"), "LinkedIn reports impressions, not reach");
+  assert.ok(linkedin.includes("followers-over-time"), "it does have followers");
+  assert.ok(linkedin.includes("impressions-and-members"));
+
+  // And Instagram keeps every one of the three it has always had.
+  const instagram = chartsFor("social_media", "instagram").map((c) => c.id);
+  assert.deepEqual(instagram, [
+    "followers-over-time",
+    "reach-and-views",
+    "save-rate-vs-share-rate",
+  ]);
+});
+
+test("a platform's own chart replaces an inherited one of the same id", () => {
+  // YouTube's "Subscribers over time" is the same metric under the word
+  // YouTube uses, so it takes the follower chart's place rather than
+  // appearing beside it.
+  const youtube = chartsFor("social_media", "youtube");
+  const followers = youtube.filter((c) => c.id === "followers-over-time");
+  assert.equal(followers.length, 1, "two charts of one figure, or none");
+  assert.equal(followers[0].title, "Subscribers over time");
+});
+
+test("no kind's charts repeat an id, after inheriting and replacing", () => {
+  // The replace-by-id mechanism is the one thing that could produce two
+  // charts with one React key, and a duplicate would render twice.
+  for (const kind of [...PLATFORM_KINDS, null]) {
+    const ids = chartsFor("social_media", kind).map((c) => c.id);
+    assert.equal(new Set(ids).size, ids.length, `${kind} repeats a chart id`);
+  }
+});
+
+test("every kind has something to draw", () => {
+  for (const kind of [...PLATFORM_KINDS, null]) {
+    const charts = chartsFor("social_media", kind);
+    assert.ok(charts.length > 0, `${kind} draws no charts at all`);
+    assert.ok(
+      trendMonthsNeeded("social_media", kind) > 0,
+      `${kind} asks for no months`,
+    );
+  }
+});
+
+test("a chart is only drawn from figures its platform is asked for", () => {
+  // Including the per-platform ones: a TikTok chart of Instagram's
+  // saves would draw an empty panel on the only platform it appears on,
+  // which is the failure this round exists to fix rather than move.
+  for (const kind of PLATFORM_KINDS) {
+    const asked = new Set(platformSetFor(kind).keys);
+    for (const chart of chartsFor("social_media", kind)) {
+      for (const series of chart.series) {
+        assert.ok(
+          asked.has(series.metricKey),
+          `${kind}/${chart.id} draws "${series.metricKey}", which ${kind} is never asked for`,
+        );
+      }
+    }
+  }
 });
 
 test("a category with no charts asks for nothing", () => {

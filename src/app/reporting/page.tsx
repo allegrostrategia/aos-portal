@@ -38,6 +38,7 @@ import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { categoryCompletion, getMonthFigures } from "@/lib/reporting/month-figures";
 import { monthLabel, monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { OVERVIEW_KPIS } from "@/lib/reporting/overview";
+import { platformCardLabel, platformOrdered } from "@/lib/reporting/platform-metrics";
 
 export const metadata: Metadata = {
   title: "Monthly Report — aOS",
@@ -192,9 +193,15 @@ export default async function ReportingOverviewPage({
    * for a March report that holds last October and none of the summer.
    */
   const yearMonths = calendarYear(ctx.month.month);
-  const yearMetrics = OVERVIEW_KPIS.map((kpi) =>
-    figures.metrics.find((m) => m.key === kpi.metricKey),
-  ).filter((m): m is NonNullable<typeof m> => !!m);
+  // In the main platform's words: "Subscribers at month end" on a
+  // channel, "Followers at month end" everywhere else (§5.2).
+  const mainKind = figures.platformKind;
+  const yearMetrics = platformOrdered(
+    OVERVIEW_KPIS.map((kpi) =>
+      figures.metrics.find((m) => m.key === kpi.metricKey),
+    ).filter((m): m is NonNullable<typeof m> => !!m),
+    mainKind,
+  );
   const yearRows = buildYearRows(
     yearMetrics,
     await getFigureHistory({
@@ -359,7 +366,7 @@ export default async function ReportingOverviewPage({
             return (
               <KpiCard
                 key={kpi.metricKey}
-                label={kpi.label}
+                label={platformCardLabel(kpi.metricKey, mainKind, kpi.label)}
                 // **The main platform, named, never a sum** (Nina via
                 // Dom, 11 November). Followers added across Instagram,
                 // LinkedIn and TikTok counts the same person up to three

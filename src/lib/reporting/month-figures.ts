@@ -31,7 +31,13 @@ import { getExpenseLedger, type ExpenseLedger } from "./expense-queries.ts";
 import { getStaffLedger, type StaffLedger } from "./staff-queries.ts";
 import { monthIsLocked } from "./locked.ts";
 import { ValueBag } from "./queries.ts";
-import { choosePlatform, platformsOf, type PlatformRow } from "./platforms.ts";
+import {
+  choosePlatform,
+  platformKindOf,
+  platformsOf,
+  type PlatformKind,
+  type PlatformRow,
+} from "./platforms.ts";
 import { activeClientsAtStart, openingFigures, type OpeningFigure } from "./client-flow.ts";
 import type { ReportContext } from "./context.ts";
 
@@ -112,6 +118,17 @@ export interface MonthFigures {
    */
   platform: PlatformRow | null;
   platforms: PlatformRow[];
+  /**
+   * The kind to read Social Media by: that platform's, or Instagram
+   * where there is no platform row yet (§5.2, `platformKindOf`).
+   *
+   * Carried here rather than worked out by each screen, because four of
+   * them need it — the report, the PDF, the Overview's card and the
+   * entry form — and a screen that read `platform?.platform_kind` on
+   * its own would quietly fall to the general set for a client who has
+   * not saved yet.
+   */
+  platformKind: PlatformKind | null;
   /**
    * The two grids, whole — Financials reads its revenue off them (§5.10).
    *
@@ -374,6 +391,19 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
           // a month published then must go on showing the price it showed
           // rather than a dash. Absent is not null.
           price: frozen.price === undefined ? e.price : frozen.price,
+          /**
+           * And the platform's kind, on the same rule (17 November).
+           *
+           * It decides what engagement rate and the click-through rate
+           * are divided by, so a kind corrected in December would move a
+           * figure on a September report without this. A snapshot
+           * written before today has no key and reads the live one,
+           * which is what every month published before now looked like.
+           */
+          platform_kind:
+            frozen.platformKind === undefined
+              ? e.platform_kind
+              : (frozen.platformKind as typeof e.platform_kind),
         };
       })
     : data.entities;
@@ -470,6 +500,8 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         received,
         costs,
         expected,
+        // Frozen above on a published month, live on a draft.
+        platformKind: platformKindOf(platform),
       }),
     );
     Object.assign(
@@ -483,6 +515,11 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
         received: previousReceived,
         costs: previousCosts,
         expected: previousExpected,
+        // Last month's figures with THIS month's kind: it is the same
+        // platform, and the arrow beside a rate has to compare two
+        // numbers worked out the same way or it is measuring the change
+        // of definition rather than the change of month.
+        platformKind: platformKindOf(platform),
       }),
     );
   }
@@ -495,7 +532,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
    * so this differs from the main pass in exactly one thing: which
    * platform row the lookups resolve to.
    */
-  const socialFigures = (platformId: string) => {
+  const socialFigures = (platformId: string, kind: PlatformRow["platform_kind"]) => {
     const bound = (entityType: string) =>
       entityType === "social_platform" ? platformId : null;
     const mine = entityAwareLookup(
@@ -514,6 +551,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
       offerRows,
       adCampaigns: campaignRows,
       clientsAtStart,
+      platformKind: kind,
     });
     const before = calculate("social_media", {
       value: mineBefore,
@@ -521,6 +559,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
       offerRows: previousOfferRows,
       adCampaigns: previousCampaignRows,
       clientsAtStart: previousClientsAtStart,
+      platformKind: kind,
     });
     return {
       figure: (key: string) => (key in now ? now[key] : (mine(key) ?? null)),
@@ -528,7 +567,13 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     };
   };
 
-  const byPlatform = platforms.map((row) => ({ platform: row, ...socialFigures(row.id) }));
+  const byPlatform = platforms.map((row) => ({
+    platform: row,
+    // Each platform judged on its own figures AND by its own kind: a
+    // LinkedIn engagement rate on an Instagram denominator would be a
+    // number nobody could reproduce from the figures beside it.
+    ...socialFigures(row.id, row.platform_kind),
+  }));
 
   const figure = (metricKey: string): number | null =>
     metricKey in results ? results[metricKey] : value(metricKey) ?? null;
@@ -548,6 +593,7 @@ export async function getMonthFigures(ctx: ReportContext): Promise<MonthFigures>
     previousFigure,
     platform,
     platforms,
+    platformKind: platformKindOf(platform),
     byPlatform,
     offerRows,
     campaignRows,

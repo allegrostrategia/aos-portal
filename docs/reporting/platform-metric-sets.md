@@ -202,3 +202,53 @@ figures, and the worked-out versions are not drawn at all.
 Order: this is built after Leads & Conversions (Dom, 16 November), with the
 demo data updated so each platform shows its own figures, and screenshots of
 Social Media on every platform.
+
+---
+
+## What was built, 17 November 2026
+
+Two commits, two migrations, in this order.
+
+**Step 1 — a platform knows what kind of thing it is.**
+`report_entities.platform_kind`, a six-value enum, nullable, picked from a
+list on the Social Media entry card with a **Needs a kind** badge where
+nobody has said. The one-off backfill guessed from the name over the five
+rows that existed and got all five right; from then on the kind is stored
+and the name decides nothing.
+`20261117100000_a_platform_has_a_kind.sql` — **applied to live.**
+
+**Step 2 — the figures follow the kind.** Eighteen new metrics, and
+`src/lib/reporting/platform-metrics.ts` holding which kinds ask for which.
+`20261118100000_a_figure_set_per_platform.sql`.
+
+### Where the rules ended up
+
+| | |
+|---|---|
+| **Which kinds ask for a figure** | In code (`platform-metrics.ts`), not in the schema — the same division `OFFER_HOURS_METRICS` follows. The database's job is that a figure exists and has a unit; which boxes a screen asks for changes with a screen. |
+| **Entry screens** | `platformMetrics` — this kind's set, in its order and its words, **plus anything the month already holds**, so a kind corrected leaves nothing stranded. |
+| **Report pages and the PDF** | `platformOrdered` — reorders and renames, filters nothing. They already drop every figure that is null, so a month shows what it HOLDS. |
+| **Published months** | The kind is **frozen into the carried snapshot** beside the offer price, absent ≠ null. Social Media's rates are worked out from different figures per kind and a calc is recomputed on every read, so without this, correcting a kind would move a number on a report already sent. Deliberately not a lock on the kind: that would trap a client who picked "Other" by mistake. |
+| **Charts** | A general chart is kept only where the kind is asked for every figure it draws, so LinkedIn no longer shows a save rate; each of the four new kinds has charts of its own, and YouTube's "Subscribers over time" replaces the follower line rather than sitting beside it. |
+| **Targets** | A platform is offered only the figures its kind asks for, in its own words. A target already set stays on the list whatever the set says. |
+| **The Overview** | Reads **Subscribers** when the main platform is a channel, from the main platform's own figure — never a sum. |
+| **"Still to fill in"** | A core figure is owed only by the platforms whose kind asks for it; a figure no platform is asked for is not in the total at all. |
+| **No platform row yet** | Instagram, not "no kind said" (§5.2 "Instagram first"): the first save creates the row, so the boxes must not change shape when somebody presses Save. |
+
+### Two things that could not be done the obvious way
+
+- **Two click-through rates.** YouTube's is typed and LinkedIn's and
+  Facebook's are worked out. `input_type` belongs to the metric rather than
+  the kind, and the database refuses a stored value for a `calc`, so one
+  key would be unstorable on the platform that reports it or uncomputable
+  on the ones that do not. One on-screen label, never both on a screen.
+- **No `minutes` unit.** Average view duration and watch time per view
+  wear `ratio`, which already means "one decimal, no symbol, averaged over
+  the year rather than summed" — right for a per-view average — and the
+  unit is in the label, as Nina's own table writes "Watch time (hours)".
+
+### Still to do on this item
+
+Post types per platform (a LinkedIn post cannot be a Reel), demo data so
+each platform shows its own figures, and screenshots of Social Media on
+every platform.

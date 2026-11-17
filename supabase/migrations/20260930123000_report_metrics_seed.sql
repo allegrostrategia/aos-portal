@@ -7,7 +7,7 @@
 -- schema test runs the generator with --check, so a hand edit here fails the
 -- build rather than quietly disagreeing with the spec.
 --
--- 180 metrics across 10 categories.
+-- 198 metrics across 10 categories.
 
 insert into public.report_metrics
   (key, category, label, input_type, unit, good_direction, entity_type, formula, sort_order)
@@ -146,6 +146,24 @@ values
   ('offers_overall_margin', 'offers', 'Overall margin', 'calc', 'percent', 'up', null, '(Total revenue − total delivery cost) ÷ total revenue, weighted, not an average of offer margins', 11),
   ('offers_total_hours_spent_delivering', 'offers', 'Total hours spent delivering', 'calc', 'hours', 'none', null, 'Sum of all offers'' hours', 12),
   ('offers_overall_effective_hourly_rate', 'offers', 'Overall effective hourly rate', 'calc', 'currency', 'up', null, '(Total revenue − total other direct costs) ÷ total hours', 13),
+  ('social_media_impressions', 'social_media', 'Impressions', 'core', 'count', 'up', 'social_platform', null, 23),
+  ('social_media_members_reached', 'social_media', 'Members reached', 'core', 'count', 'up', 'social_platform', null, 24),
+  ('social_media_reactions', 'social_media', 'Reactions', 'core', 'count', 'up', 'social_platform', null, 25),
+  ('social_media_comments', 'social_media', 'Comments', 'core', 'count', 'up', 'social_platform', null, 26),
+  ('social_media_reposts', 'social_media', 'Reposts', 'core', 'count', 'up', 'social_platform', null, 27),
+  ('social_media_impressions_per_post', 'social_media', 'Impressions per post', 'calc', 'count', 'up', 'social_platform', 'Impressions ÷ posts published', 28),
+  ('social_media_click_through_rate', 'social_media', 'Click-through rate', 'calc', 'percent', 'up', 'social_platform', 'Link clicks ÷ impressions, or ÷ reach on Facebook', 29),
+  ('social_media_profile_view_rate', 'social_media', 'Profile view rate', 'calc', 'percent', 'up', 'social_platform', 'Profile views ÷ impressions, or ÷ video views on TikTok and ÷ reach on Facebook', 30),
+  ('social_media_video_views', 'social_media', 'Video views', 'core', 'count', 'up', 'social_platform', null, 31),
+  ('social_media_likes', 'social_media', 'Likes', 'core', 'count', 'up', 'social_platform', null, 32),
+  ('social_media_favourites', 'social_media', 'Favourites', 'core', 'count', 'up', 'social_platform', null, 33),
+  ('social_media_views_per_post', 'social_media', 'Views per post', 'calc', 'count', 'up', 'social_platform', 'Video views ÷ posts published, or views ÷ videos published on YouTube', 34),
+  ('social_media_favourite_rate', 'social_media', 'Favourite rate', 'calc', 'percent', 'up', 'social_platform', 'Favourites ÷ video views', 35),
+  ('social_media_post_engagements', 'social_media', 'Post engagements', 'core', 'count', 'up', 'social_platform', null, 36),
+  ('social_media_watch_time', 'social_media', 'Watch time (hours)', 'core', 'hours', 'up', 'social_platform', null, 37),
+  ('social_media_reported_click_through_rate', 'social_media', 'Click-through rate (reported)', 'core', 'percent', 'up', 'social_platform', null, 38),
+  ('social_media_average_view_duration', 'social_media', 'Average view duration (minutes)', 'core', 'ratio', 'up', 'social_platform', null, 39),
+  ('social_media_watch_time_per_view', 'social_media', 'Watch time per view (minutes)', 'calc', 'ratio', 'up', 'social_platform', 'Watch time × 60 ÷ views', 40),
   ('launches_sign_ups', 'launches', 'Sign-ups', 'core', 'count', 'up', null, null, 1),
   ('launches_live_attendees', 'launches', 'Live attendees', 'core', 'count', 'up', null, null, 2),
   ('launches_replay_watchers', 'launches', 'Replay watchers', 'optional', 'count', 'up', null, null, 3),

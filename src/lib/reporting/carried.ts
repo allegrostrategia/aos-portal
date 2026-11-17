@@ -64,7 +64,28 @@ export interface Carried {
    * absent means "not frozen, use what the offer says now" and null
    * means "frozen, and the offer had no price that day".
    */
-  entities: Record<string, { name: string; goal: string | null; price?: number | null }>;
+  entities: Record<
+    string,
+    {
+      name: string;
+      goal: string | null;
+      price?: number | null;
+      /**
+       * **And a platform's kind, since 17 November** (Dom), frozen for
+       * the same reason as the price and with the same absent ≠ null
+       * rule.
+       *
+       * Social Media's rates are worked out from DIFFERENT figures
+       * depending on the kind — LinkedIn measures engagement against
+       * impressions, Facebook against reach — so a kind corrected after
+       * a month went out would change a number on a report the client
+       * has already read. Freezing it is what makes the kind safe to
+       * correct, which is the alternative to locking it (and locking it
+       * would trap a client who picked "Other" by mistake).
+       */
+      platformKind?: string | null;
+    }
+  >;
   /**
    * What this month's forecast said about the months after it, month by
    * month.
@@ -229,6 +250,9 @@ export function readCarried(carried: unknown): Carried | null {
       if ("price" in r && (typeof r.price === "number" || r.price === null)) {
         frozen.price = r.price;
       }
+      if ("platformKind" in r && (typeof r.platformKind === "string" || r.platformKind === null)) {
+        frozen.platformKind = r.platformKind;
+      }
       entities[id] = frozen;
     }
   }
@@ -271,7 +295,13 @@ export function buildCarried(input: {
   previousMonth: string | null;
   targets: Record<ValueKey, number>;
   benchmarks: Record<string, number>;
-  entities: { id: string; name: string; campaign_goal: string | null; price: number | null }[];
+  entities: {
+    id: string;
+    name: string;
+    campaign_goal: string | null;
+    price: number | null;
+    platform_kind?: string | null;
+  }[];
   /** Already summed per month by `forecastAfter`. */
   forecastAhead: { month: string; amount: number }[];
   /** Already flattened by `receivedThisMonth`, for the month before this. */
@@ -288,7 +318,15 @@ export function buildCarried(input: {
     targets: input.targets,
     benchmarks: input.benchmarks,
     entities: Object.fromEntries(
-      input.entities.map((e) => [e.id, { name: e.name, goal: e.campaign_goal, price: e.price }]),
+      input.entities.map((e) => [
+        e.id,
+        {
+          name: e.name,
+          goal: e.campaign_goal,
+          price: e.price,
+          platformKind: e.platform_kind ?? null,
+        },
+      ]),
     ),
     forecastAhead: input.forecastAhead,
     previousReceived: input.previousReceived,

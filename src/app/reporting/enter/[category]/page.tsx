@@ -16,7 +16,12 @@ import {
 import { PublishBadge, ReportShell } from "@/components/reporting/report-shell";
 import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
-import { choosePlatform, looksLikeMeta, platformsOf } from "@/lib/reporting/platforms";
+import {
+  choosePlatform,
+  looksLikeMeta,
+  platformKindOf,
+  platformsOf,
+} from "@/lib/reporting/platforms";
 import { PlatformsEntry } from "@/components/reporting/platforms-entry";
 import { SocialEntry } from "@/components/reporting/social-entry";
 import { SalesGrid } from "@/components/reporting/sales-grid";
@@ -46,6 +51,7 @@ import { getMonthFigures, sectionStates } from "@/lib/reporting/month-figures";
 import { expensesThisMonth } from "@/lib/reporting/ledger";
 import { activeClientsAtStart, openingFigures } from "@/lib/reporting/client-flow";
 import { VISIBLE_OPTIONAL } from "@/lib/reporting/completion";
+import { platformMetrics } from "@/lib/reporting/platform-metrics";
 import { openingNote, type OpeningNote } from "@/lib/reporting/opening-note";
 import { Card, SectionTitle } from "@/components/ui/card";
 
@@ -356,7 +362,28 @@ export default async function EnterCategoryPage({
    * Social Media's are the exception that stays: every one of them hangs
    * off a platform, and `entityOf` is what addresses them.
    */
-  const monthly = metrics.filter(
+  /**
+   * **The platform the pill is showing**, hoisted above the figure list
+   * because since 17 November it decides WHICH figures that list holds
+   * (§5.2's per-platform sets). It used to only decide their values.
+   */
+  const shownPlatform = choosePlatform(data.entities, ctx.platformRequested);
+
+  const monthly = platformMetrics(
+    metrics,
+    // No platform row yet is Instagram, not "no kind said" — see
+    // `platformKindOf`, which is where that rule lives for all four
+    // screens that need it.
+    platformKindOf(shownPlatform),
+    /**
+     * Anything this platform already holds a figure for stays on screen
+     * whatever its kind now says, so a kind corrected — "Other" put
+     * right as LinkedIn — leaves nothing stranded in the database with
+     * no box to show it in. Rule 7, applied to a figure rather than a
+     * record.
+     */
+    (key) => data.values.get(key, shownPlatform?.id ?? null) !== null,
+  ).filter(
     (m) =>
       (m.entity_type === null || m.entity_type === "social_platform") &&
       // And §5.6's bespoke pair, which belongs to the month and would
@@ -393,7 +420,7 @@ export default async function EnterCategoryPage({
   // (11 November). Everything on this screen — the boxes, last month's
   // hints, the upload card and the save — has to agree about which
   // platform it is working on, so they all read this one answer.
-  const platform = choosePlatform(data.entities, ctx.platformRequested);
+  const platform = shownPlatform;
   const platformId = platform?.id ?? null;
   const platformPills = { chosen: platform, all: platformsOf(data.entities) };
   const entityOf = (metric: { entity_type: string | null }) =>

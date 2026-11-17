@@ -29,7 +29,12 @@ function figuresWith({
 }: {
   metrics: Metric[];
   monthValues?: Record<string, number | null>;
-  entities?: { id: string; entity_type: string; active: boolean }[];
+  entities?: {
+    id: string;
+    entity_type: string;
+    active: boolean;
+    platform_kind?: string | null;
+  }[];
   entityValues?: Record<string, number | null>;
   openingInUse?: unknown;
   financialsCells?: { received: number; costs: number };
@@ -194,6 +199,71 @@ test("Social Media with no platform row yet is asked at month level", () => {
     metrics,
     monthValues: { social_media_followers_at_month_end: 1200 },
     entities: [],
+  });
+  assert.deepEqual(categoryCompletion(figures, "social_media"), { filled: 1, total: 1 });
+});
+
+test("a platform only owes the figures its kind is asked for", () => {
+  /**
+   * §5.2's per-platform sets (17 November). "Every platform has it" is
+   * right while they are asked the same questions and impossible the
+   * moment they are not: Instagram is never asked for impressions, so
+   * Social Media could never be finished by a client with both.
+   */
+  const metrics: Metric[] = [
+    { key: "social_media_followers_at_month_end", category: "social_media", input_type: "core", entity_type: "social_platform" },
+    { key: "social_media_saves", category: "social_media", input_type: "core", entity_type: "social_platform" },
+    { key: "social_media_impressions", category: "social_media", input_type: "core", entity_type: "social_platform" },
+  ];
+  const entities = [
+    { id: "ig", entity_type: "social_platform", active: true, platform_kind: "instagram" },
+    { id: "li", entity_type: "social_platform", active: true, platform_kind: "linkedin" },
+  ];
+
+  const done = figuresWith({
+    metrics,
+    entities,
+    entityValues: {
+      "social_media_followers_at_month_end|ig": 26420,
+      "social_media_followers_at_month_end|li": 3120,
+      // Instagram's, and Instagram's alone.
+      "social_media_saves|ig": 400,
+      // LinkedIn's, and LinkedIn's alone.
+      "social_media_impressions|li": 9000,
+    },
+  });
+  assert.deepEqual(
+    categoryCompletion(done, "social_media"),
+    { filled: 3, total: 3 },
+    "nobody is owed a figure their platform is never asked for",
+  );
+
+  // And the figure that IS owed is still chased: LinkedIn's impressions
+  // missing is an unfinished section, Instagram's absence of them is not.
+  const missing = figuresWith({
+    metrics,
+    entities,
+    entityValues: {
+      "social_media_followers_at_month_end|ig": 26420,
+      "social_media_followers_at_month_end|li": 3120,
+      "social_media_saves|ig": 400,
+    },
+  });
+  assert.deepEqual(categoryCompletion(missing, "social_media"), { filled: 2, total: 3 });
+});
+
+test("a figure no platform is asked for is not in the total at all", () => {
+  // The same rule as a member with no funnels owing nothing, one level
+  // down: a client on LinkedIn alone is not 0 of 1 for ever because
+  // saves exist in the metric list.
+  const metrics: Metric[] = [
+    { key: "social_media_impressions", category: "social_media", input_type: "core", entity_type: "social_platform" },
+    { key: "social_media_saves", category: "social_media", input_type: "core", entity_type: "social_platform" },
+  ];
+  const figures = figuresWith({
+    metrics,
+    entities: [{ id: "li", entity_type: "social_platform", active: true, platform_kind: "linkedin" }],
+    entityValues: { "social_media_impressions|li": 9000 },
   });
   assert.deepEqual(categoryCompletion(figures, "social_media"), { filled: 1, total: 1 });
 });
