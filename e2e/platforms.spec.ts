@@ -24,9 +24,10 @@ requireLocalStack();
 const TAB = "platforms";
 const width = (name: string) => (name === "phone" ? "phone" : "desktop") as "phone" | "desktop";
 
-const platform = (name: string, order: number) =>
-  `insert into public.report_entities (workspace_id, entity_type, name, sort_order)
-   select id, 'social_platform', '${name}', ${order} from public.report_workspaces
+const platform = (name: string, order: number, kind: string | null = null) =>
+  `insert into public.report_entities (workspace_id, entity_type, name, sort_order, platform_kind)
+   select id, 'social_platform', '${name}', ${order}, ${kind ? `'${kind}'` : "null"}
+     from public.report_workspaces
     where business_name = 'Northwind Studio';`;
 
 const figure = (platformName: string, month: string, key: string, value: number) =>
@@ -44,8 +45,8 @@ test.beforeEach(async () => {
   // The seed enters no Social Media figures, so this makes the state
   // Nina described: two platforms, each with its own month.
   sql(`
-    ${platform("Instagram", 1)}
-    ${platform("LinkedIn", 2)}
+    ${platform("Instagram", 1, "instagram")}
+    ${platform("LinkedIn", 2, "linkedin")}
     ${figure("Instagram", MONTHS.aug, "social_media_followers_at_month_end", 24650)}
     ${figure("Instagram", MONTHS.sep, "social_media_followers_at_month_end", 26420)}
     ${figure("Instagram", MONTHS.sep, "social_media_posts_published", 22)}
@@ -140,7 +141,7 @@ test("a platform is added, renamed and retired, and nothing is deleted", async (
   await page.getByLabel(/What TikTok is called/i).fill("TikTok UK");
   await page
     .locator("form", { has: page.getByLabel(/What TikTok is called/i) })
-    .getByRole("button", { name: "Rename" })
+    .getByRole("button", { name: "Save" })
     .click();
   await expect(page.getByText(/Renamed to TikTok UK/i)).toBeVisible();
 
@@ -193,4 +194,100 @@ test("a target can be set per platform, and the Overview names it", async ({ pag
   expect(bars).toContain("22 of 20");
 
   await shoot(page, TAB, "07-overview-target-bars", w);
+});
+
+/**
+ * §5.2's kind (Nina, 16 November): which platform a row actually is.
+ *
+ * **The point is that it is not the name.** A client who calls theirs
+ * "IG — main" still gets Instagram's figures, and a campaign account
+ * called "Instagram Ads" is not handed them by accident — which is why
+ * this walks a name and a kind that deliberately disagree.
+ */
+test("a platform is told what kind it is, and the name does not decide", async ({
+  page,
+}, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+
+  const card = page.locator("section").filter({ hasText: "The platforms you post on" });
+  await expect(card).toBeVisible();
+
+  // Instagram was made by the first save, so it knows what it is.
+  await expect(
+    card.getByLabel("What kind of platform Instagram is"),
+    "created as Instagram, so its kind is not a guess",
+  ).toHaveValue("instagram");
+
+  // A new one, named one thing and declared another.
+  await card.getByRole("button", { name: /add a platform/i }).click();
+  await card.getByLabel("Add a platform").fill("Instagram Ads");
+  await card.getByLabel("What kind of platform this is").selectOption("facebook");
+  await card.getByRole("button", { name: /^Add$/ }).click();
+  await expect(page.getByText(/Instagram Ads added/i)).toBeVisible();
+
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+  await expect(
+    page.getByLabel("What kind of platform Instagram Ads is"),
+    "the kind chosen, not the one its name reads like",
+  ).toHaveValue("facebook");
+
+  await shoot(page, TAB, "08-platform-kinds", w);
+});
+
+/**
+ * A platform from before the kind existed, which nobody has answered for.
+ *
+ * It is allowed — the database does not refuse one — and the card has to
+ * say so rather than quietly handing out the general figure set.
+ */
+test("a platform with no kind yet is asked for one", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  // A platform from before the kind existed: the same shape the backfill
+  // leaves behind for a name it could not place, like Threads or
+  // Pinterest.
+  sql(platform("Threads", 9));
+  // Proved rather than assumed: if the insert goes astray, this says so
+  // instead of the badge assertion twenty lines down blaming the card.
+  expect(
+    sql(`select count(*)::text from public.report_entities e
+           join public.report_workspaces w on w.id = e.workspace_id
+          where w.business_name = 'Northwind Studio' and e.name = 'Threads'`),
+    "the kindless platform was seeded",
+  ).toBe("1");
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+
+  // The badge on the card, and the empty picker on the row. Asserted on
+  // the card's text rather than on a row element: the shell draws a pill
+  // per platform in an `li` too, so "the li that says Threads" is
+  // ambiguous on this page and was silently reading the header.
+  const card = page.locator("section").filter({ hasText: "The platforms you post on" }).last();
+  await expect(card, "the card asks for a kind it has not been given").toContainText(
+    /needs a kind/i,
+  );
+  const picker = page.getByLabel("What kind of platform Threads is");
+  await expect(picker).toHaveValue("");
+
+  await picker.selectOption("other");
+  await page
+    .locator("form")
+    .filter({ has: page.getByLabel("What kind of platform Threads is") })
+    .getByRole("button", { name: "Save" })
+    .click();
+  await expect(page.getByText(/Renamed to Threads/i)).toBeVisible();
+
+  // What matters is that the kind stuck, which is a stronger claim than
+  // the badge going away.
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+  await expect(page.getByLabel("What kind of platform Threads is")).toHaveValue("other");
+  await expect(
+    page.locator("section").filter({ hasText: "The platforms you post on" }).last(),
+    "and the card stops asking",
+  ).not.toContainText(/needs a kind/i);
+
+  await shoot(page, TAB, "09-kind-needed", w);
 });

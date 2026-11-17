@@ -61,7 +61,7 @@ const form = (fields) => {
 const rows = async (sql) => (await asMember(db, NINA, () => db.query(sql))).rows;
 
 const platforms = () =>
-  rows(`select id, name, active, sort_order from public.report_entities
+  rows(`select id, name, active, sort_order, platform_kind from public.report_entities
          where workspace_id = '${WS}' and entity_type = 'social_platform'
          order by sort_order, name`);
 
@@ -247,4 +247,85 @@ test("a client cannot add a platform to their own report", async () => {
   );
   assert.match(refused?.error ?? "", /filled in by your Allegro team|don't have access/);
   assert.equal((await platforms()).length, 2);
+});
+
+// ---------------------------------------------------------------------------
+// §5.2's kind (Nina, 16 November): which platform a row actually is
+// ---------------------------------------------------------------------------
+
+test("the Instagram the first save makes knows it is Instagram", async () => {
+  const [first] = await platforms();
+  assert.equal(
+    first.platform_kind,
+    "instagram",
+    "created by the first save, so its kind is construction rather than a guess",
+  );
+});
+
+test("a platform is added with its kind, and the kind is what was chosen", async () => {
+  await as(NINA, () =>
+    savePlatform(null, form({ workspace_id: WS, name: "Our LinkedIn page", platform_kind: "linkedin" })),
+  );
+  const added = (await platforms()).find((p) => p.name === "Our LinkedIn page");
+  assert.equal(added.platform_kind, "linkedin");
+});
+
+test("a name that reads like one platform does not override the kind chosen", async () => {
+  // The whole reason the kind is stored rather than matched: this row is
+  // called "Instagram Ads" and is not Instagram.
+  await as(NINA, () =>
+    savePlatform(null, form({ workspace_id: WS, name: "Instagram Ads", platform_kind: "facebook" })),
+  );
+  const added = (await platforms()).find((p) => p.name === "Instagram Ads");
+  assert.equal(added.platform_kind, "facebook");
+});
+
+test("a kind that is not on the list is refused before it reaches the enum", async () => {
+  const out = await as(NINA, () =>
+    savePlatform(null, form({ workspace_id: WS, name: "Bebo", platform_kind: "bebo" })),
+  );
+  assert.match(out.error ?? "", /not one of the kinds/i);
+  assert.equal(
+    (await platforms()).find((p) => p.name === "Bebo"),
+    undefined,
+    "and nothing was created",
+  );
+});
+
+test("renaming without saying a kind leaves the kind alone", async () => {
+  const before = (await platforms()).find((p) => p.name === "Our LinkedIn page");
+  // The result is checked, not assumed. The first version of this test
+  // renamed it to "LinkedIn", which another test in this file already
+  // uses — the unique name refused it, `savePlatform` returned an error
+  // nobody read, and the assertion failed three lines later saying
+  // nothing about why.
+  const out = await as(NINA, () =>
+    savePlatform(null, form({ workspace_id: WS, platform_id: before.id, name: "LinkedIn (company)" })),
+  );
+  assert.equal(out.error, undefined, out.error ?? "");
+
+  const after = (await platforms()).find((p) => p.id === before.id);
+  assert.equal(after.name, "LinkedIn (company)");
+  assert.equal(after.platform_kind, "linkedin", "a rename is not a change of kind");
+});
+
+test("a platform with no kind yet is allowed, because the screen asks", async () => {
+  await asMember(db, NINA, () =>
+    db.query(`insert into public.report_entities (workspace_id, entity_type, name)
+              values ('${WS}', 'social_platform', 'Threads')`),
+  );
+  const added = (await platforms()).find((p) => p.name === "Threads");
+  assert.equal(added.platform_kind, null);
+});
+
+test("an offer cannot carry a platform kind", async () => {
+  await assert.rejects(
+    () =>
+      asMember(db, NINA, () =>
+        db.query(`insert into public.report_entities (workspace_id, entity_type, name, platform_kind)
+                  values ('${WS}', 'offer', 'A programme', 'instagram')`),
+      ),
+    /report_entities_platform_fields/,
+    "storable and silently meaningless is the trap the other three constraints close",
+  );
 });

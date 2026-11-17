@@ -4,6 +4,7 @@ import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { CategoryKey } from "./categories.ts";
+import type { PlatformKind } from "./platforms.ts";
 import type { CampaignGoal } from "./formulas.ts";
 import type { MonthFlow } from "./client-flow.ts";
 import type { TopItem } from "./top-items.ts";
@@ -68,6 +69,15 @@ export interface ReportEntity {
   linked_offer_id: string | null;
   /** §5.7's goal. Null until somebody sets one, which is a real state. */
   campaign_goal: CampaignGoal | null;
+  /**
+   * §5.2's kind: which social platform this row actually is.
+   *
+   * Null is a real state too — nobody has said yet — and the platforms
+   * card asks rather than guessing, because a client who renames
+   * Instagram to "IG — main" would otherwise quietly lose half their
+   * boxes (Nina, 16 November).
+   */
+  platform_kind: PlatformKind | null;
 }
 
 export interface ReportNote {

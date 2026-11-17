@@ -327,6 +327,12 @@ async function ensurePrimaryPlatform(workspaceId: string): Promise<string | null
       workspace_id: workspaceId,
       entity_type: "social_platform",
       name: "Instagram",
+      // It is called Instagram because that is what the first save
+      // creates (§5.2: "Instagram first"), so its kind is not a guess —
+      // this row is Instagram by construction. Set here rather than left
+      // for the picker, because a figure set is what the next screen
+      // draws and "not said yet" would show the general one.
+      platform_kind: "instagram",
     })
     .select("id")
     .maybeSingle<{ id: string }>();

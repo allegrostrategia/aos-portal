@@ -61,12 +61,15 @@ export default async function TargetsPage({ searchParams }: PageProps<"/reportin
     // something to aim at next month.
     supabase
       .from("report_entities")
-      .select("id, name, entity_type, active, sort_order")
+      .select("id, name, entity_type, active, sort_order, platform_kind")
       .eq("workspace_id", ctx.workspace.id)
       .eq("active", true)
       .order("sort_order")
       .returns<
-        Pick<ReportEntity, "id" | "name" | "entity_type" | "active" | "sort_order">[]
+        Pick<
+          ReportEntity,
+          "id" | "name" | "entity_type" | "active" | "sort_order" | "platform_kind"
+        >[]
       >(),
   ]);
 

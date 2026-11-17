@@ -6,6 +6,7 @@ import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspace } from "./queries.ts";
 import { canEdit } from "./access.ts";
+import { isPlatformKind, type PlatformKind } from "./platforms.ts";
 
 /**
  * The client's social platforms: adding one, renaming one, retiring one.
@@ -61,12 +62,28 @@ export async function savePlatform(
   if (!name) return { error: "A platform needs a name." };
   if (name.length > 40) return { error: "That name is too long for the pill it sits in." };
 
+  /**
+   * Which platform this actually is (§5.2, Nina 16 November).
+   *
+   * Checked against the list rather than trusted: a Server Action is a
+   * public endpoint, and the database's enum would refuse an unknown
+   * value with a message about a type cast rather than about a platform.
+   *
+   * An absent kind is left as it was on a rename, and null on a new one —
+   * "nobody has said yet" is a real state, and the card asks.
+   */
+  const kindRaw = String(formData.get("platform_kind") ?? "").trim();
+  if (kindRaw && !isPlatformKind(kindRaw)) {
+    return { error: "That is not one of the kinds of platform on the list." };
+  }
+  const kind = kindRaw ? (kindRaw as PlatformKind) : null;
+
   const supabase = await createClient();
 
   if (id) {
     const { data, error } = await supabase
       .from("report_entities")
-      .update({ name })
+      .update(kind ? { name, platform_kind: kind } : { name })
       .eq("id", id)
       .eq("workspace_id", workspaceId)
       .eq("entity_type", "social_platform")
@@ -101,6 +118,7 @@ export async function savePlatform(
       entity_type: "social_platform" as const,
       name,
       sort_order: next,
+      platform_kind: kind,
     })
     .select("id");
 

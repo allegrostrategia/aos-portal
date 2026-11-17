@@ -11,6 +11,11 @@ import {
   savePlatform,
   type PlatformState,
 } from "@/lib/reporting/platform-actions";
+import {
+  PLATFORM_KINDS,
+  PLATFORM_KIND_LABELS,
+  type PlatformKind,
+} from "@/lib/reporting/platforms";
 
 /**
  * The platforms this client posts on (§5.2).
@@ -44,7 +49,12 @@ export function PlatformsEntry({
 }: {
   workspaceId: string;
   /** Every platform, retired ones included, in the order the pill shows them. */
-  platforms: { id: string; name: string; active: boolean }[];
+  platforms: {
+    id: string;
+    name: string;
+    active: boolean;
+    platform_kind: PlatformKind | null;
+  }[];
   chosenId: string | null;
 }) {
   const [state, action] = useActionState<PlatformState, FormData>(savePlatform, null);
@@ -64,7 +74,8 @@ export function PlatformsEntry({
       </SectionTitle>
       <p className="mt-1 text-small text-ink/70">
         Each one keeps its own figures, month by month. The first is the one the Overview
-        shows.
+        shows. <strong className="font-medium text-ink">What kind it is</strong> decides which
+        figures it asks you for — LinkedIn has no saves, YouTube counts subscribers.
       </p>
 
       <ul className="mt-4 flex flex-col gap-2">
@@ -73,7 +84,7 @@ export function PlatformsEntry({
             key={platform.id}
             className="flex flex-wrap items-center gap-2 rounded-xl bg-cream-deep px-3 py-2"
           >
-            <form action={action} className="flex min-w-0 grow items-center gap-2">
+            <form action={action} className="flex min-w-0 grow flex-wrap items-center gap-2">
               <input type="hidden" name="workspace_id" value={workspaceId} />
               <input type="hidden" name="platform_id" value={platform.id} />
               <input
@@ -82,11 +93,31 @@ export function PlatformsEntry({
                 aria-label={`What ${platform.name} is called`}
                 className={`${field} max-w-56`}
               />
+              {/* **The kind, beside the name it cannot be read from.** A
+                  client who calls theirs "IG — main" still gets
+                  Instagram's figures, and one with a campaign account
+                  called "Instagram Ads" is not handed them by accident. */}
+              <select
+                name="platform_kind"
+                defaultValue={platform.platform_kind ?? ""}
+                aria-label={`What kind of platform ${platform.name} is`}
+                className={`${field} max-w-44`}
+              >
+                <option value="">Which platform?</option>
+                {PLATFORM_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {PLATFORM_KIND_LABELS[kind]}
+                  </option>
+                ))}
+              </select>
               {index === 0 ? <Badge tone="sky">Main</Badge> : null}
+              {platform.platform_kind === null ? (
+                <Badge tone="orange">Needs a kind</Badge>
+              ) : null}
               {platform.id === chosenId ? (
                 <span className="text-caption text-ink/55">showing</span>
               ) : null}
-              <Save label="Rename" />
+              <Save label="Save" />
             </form>
 
             {live.length > 1 ? (
@@ -132,6 +163,22 @@ export function PlatformsEntry({
               autoFocus
               className={`${field} max-w-64`}
             />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-small font-medium text-ink">What kind</span>
+            <select
+              name="platform_kind"
+              defaultValue=""
+              aria-label="What kind of platform this is"
+              className={`${field} max-w-44`}
+            >
+              <option value="">Which platform?</option>
+              {PLATFORM_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {PLATFORM_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
           </label>
           <Save label="Add" />
           <Button type="button" variant="secondary" size="sm" onClick={() => setAdding(false)}>

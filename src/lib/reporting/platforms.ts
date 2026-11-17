@@ -18,9 +18,47 @@ import type { ReportEntity } from "./queries.ts";
  * reach (Nina via Dom, 11 November).
  */
 
-export type PlatformRow = Pick<ReportEntity, "id" | "name" | "active" | "sort_order">;
+/**
+ * The six kinds (Nina, 16 November), in the order the picker lists them.
+ *
+ * "Other" last and deliberately present: a client on Pinterest or Threads
+ * gets the general set rather than being stuck, and a kind nobody has
+ * chosen yet is null rather than silently one of these.
+ */
+export const PLATFORM_KINDS = [
+  "instagram",
+  "linkedin",
+  "tiktok",
+  "youtube",
+  "facebook",
+  "other",
+] as const;
 
-type MaybePlatform = Pick<ReportEntity, "id" | "name" | "active" | "sort_order" | "entity_type">;
+export type PlatformKind = (typeof PLATFORM_KINDS)[number];
+
+/** What the picker calls each one. */
+export const PLATFORM_KIND_LABELS: Record<PlatformKind, string> = {
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  facebook: "Facebook",
+  other: "Something else",
+};
+
+export function isPlatformKind(value: unknown): value is PlatformKind {
+  return typeof value === "string" && (PLATFORM_KINDS as readonly string[]).includes(value);
+}
+
+export type PlatformRow = Pick<
+  ReportEntity,
+  "id" | "name" | "active" | "sort_order" | "platform_kind"
+>;
+
+type MaybePlatform = Pick<
+  ReportEntity,
+  "id" | "name" | "active" | "sort_order" | "entity_type" | "platform_kind"
+>;
 
 /**
  * Sorted by `sort_order`, then by name so the order never depends on
@@ -31,7 +69,13 @@ type MaybePlatform = Pick<ReportEntity, "id" | "name" | "active" | "sort_order" 
 export function platformsOf(entities: MaybePlatform[], { includeRetired = false } = {}): PlatformRow[] {
   return entities
     .filter((e) => e.entity_type === "social_platform" && (includeRetired || e.active))
-    .map(({ id, name, active, sort_order }) => ({ id, name, active, sort_order }))
+    .map(({ id, name, active, sort_order, platform_kind }) => ({
+      id,
+      name,
+      active,
+      sort_order,
+      platform_kind,
+    }))
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
 }
 
