@@ -14,11 +14,19 @@ Leads are up across every source except referrals, and ads are now the second-bi
 
 Next month: the November launch closes, so expect revenue to spike and the margin to dip. That is the launch doing its job.`,
 
-  social_media: `Instagram reach is up 18% and profile visits up 24%, and the two moving together is what tells you the content is reaching the right people rather than simply more people.
+  /**
+   * **Section-wide, not Instagram's** (18 November). The note is one
+   * per section per month, and from today it is shown once above the
+   * platform switcher — so a note that opened on Instagram's reach was
+   * being read on the YouTube page. It now says something about each of
+   * the four, and every figure in it is one the demo's own data gives
+   * for these three months on any of them.
+   */
+  social_media: `Four platforms, and they are not doing the same job — which is why this page is read one platform at a time rather than as a single total.
 
-Reels are carrying the account — 62% of total reach — and TikTok has tripled its following since last November off the back of the same clips. LinkedIn is smaller but converts: it sends the fewest profile visits and the most DMs.
+Instagram holds the biggest audience and the widest reach, and reels are carrying it. TikTok is the fastest growing: more than tripled since last November, and it shows about twelve views for every follower where Instagram shows seven — largely off the same edits posted twice, which is where the leverage is. LinkedIn is eight posts a month and the warmest audience, so judge it on clicks and conversations rather than on impressions. YouTube is the smallest audience and the slowest to move, and the figure to read there is watch time rather than views — four or five videos a month holding people for around three minutes each.
 
-Next month: keep the reel cadence, and test the educational series on LinkedIn where the audience is already warmer.`,
+Next month: keep the reel cadence and keep cross-posting it to TikTok, test the educational series on LinkedIn where the audience is already warmer, and leave YouTube alone — it is early and the trend is right.`,
 
   trial_reels: `Six trial reels this month and the hook about pricing is the one that moved — it brought in more new followers than the other five together.
 
