@@ -37,6 +37,10 @@ Every figure is then tagged with the kinds it belongs to.
   exactly the kind of thing that works until it doesn't.
 - **"Other"** gets the general set — followers, reach, views,
   engagement — so a client on Pinterest or Threads is not stuck.
+  **Saves are in it from 18 November** (Nina): Pinterest is the platform
+  this set was written for, a save is the whole of how Pinterest is
+  read, and the general engagement rate was already counting saves in
+  its arithmetic without ever offering a box for them.
 - **Nothing already entered is lost.** Figures are already stored per
   platform; this only changes which boxes are *shown*. A figure that
   stops being asked for stays in the database and keeps appearing on the
@@ -247,8 +251,24 @@ and the name decides nothing.
   the year rather than summed" — right for a per-view average — and the
   unit is in the label, as Nina's own table writes "Watch time (hours)".
 
+### What came back on step 2 (Dom, 18 November)
+
+Reviewed and approved, with six things to put right first. Five were
+code and are in the same commits as the step; the sixth was a question
+about the migration and the answer was that there was nothing to fix.
+
+| | |
+|---|---|
+| **Sort orders** | Live's highest `social_media` sort order is 22, over 22 rows, so the new figures at 23–40 cannot collide with the unique `(category, sort_order)`. Nothing renumbered. |
+| **The year grid** | "Impressions per post: 3,156 TOTAL" — a figure that is already a division cannot be added up over twelve months. `PER_UNIT_METRICS` in `year-table.ts`, a named list beside `LEVEL_METRICS`, and it is not only Social Media's four: cost per lead, CPM, CPC, revenue per visitor, average order value and the effective hourly rate were all being summed. A schema test fails on any NEW metric whose formula divides and whose unit totals. |
+| **The console** | The "1 Issue" badge on the LinkedIn screenshot was Next's dev advice to preload the header photograph, which the project declined on purpose and has a test for. The sweep that chased it found a real one next door: the PDF keyed its Wins and Focus lists on the TEMPLATE's name, so two figures that both rose shared a React key. Every browser test now fails on a console error (`e2e/quiet.ts`). |
+| **The file card** | A Meta export cannot fill one LinkedIn box, so `uploadFor` asks the kind and the card is not drawn on a platform that cannot take one. `looksLikeMeta`, the last place in the product that read meaning out of a platform's name, is gone — which is what §5.2 argued the kind was for. |
+| **The note** | "Notes from your strategist", matching the signature Nina settled on 16 November and the mock-ups. Only the heading: "your Allegro team" stays everywhere it is the team being described. |
+| **Saves** | Added to the general set — see "Other" above. |
+
 ### Still to do on this item
 
 Post types per platform (a LinkedIn post cannot be a Reel), demo data so
 each platform shows its own figures, and screenshots of Social Media on
-every platform.
+every platform. The demo platforms carry their kinds from 18 November,
+so a re-seed no longer puts four kindless rows back.

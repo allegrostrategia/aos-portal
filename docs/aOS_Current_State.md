@@ -3,6 +3,73 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 18 November 2026
+
+**Step 2 reviewed** (Dom), and five things fixed before it goes to live.
+The step itself is below under 17 November; this is what came back.
+
+- **The year grid was summing figures that are already divisions.**
+  "Impressions per post: 3,156 TOTAL" where the two months averaged
+  2,578. The only rule the Year column had was the unit's — percent,
+  ratio and months average; count, currency and hours total — and
+  "impressions per post" is a count. `PER_UNIT_METRICS` in
+  `year-table.ts` is the fix, a named list beside `LEVEL_METRICS` for
+  the same reason: whether a figure is a per-unit average is a
+  judgement, not something a `_per_` pattern can read.
+  `launches_sales_per_price_option` matches the pattern and is a real
+  total; `launches_average_order_value` does not match it and is an
+  average. **It is twenty-one figures, not the four on Social Media** —
+  cost per lead, cost per acquisition, CPM, CPC, revenue per visitor,
+  revenue per subscriber, average order value, cost per sale and both
+  effective hourly rates were all being added up across the year. Two
+  schema tests: one that every named key still exists, and one that a
+  NEW metric whose formula contains "÷" and whose unit totals must be in
+  a list or named as a deliberate exception.
+- **The browser suite now fails on a console error** (`e2e/quiet.ts`, an
+  auto fixture, so a spec gets it without opting in). The "1 Issue"
+  badge on the LinkedIn screenshot turned out to be Next's dev advice to
+  preload the header photograph — which the project declined on purpose,
+  because the box is `hidden sm:block` and `priority` would send the
+  photograph to every phone that will never draw one, and
+  `mockup-screens.spec.ts` asserts the phone does not fetch it. So that
+  one is in the fixture's `IGNORED` list with its reason. **The sweep
+  that chased it found a real error the badge never showed**: the PDF
+  keyed its Wins and Focus lists on `item.key`, which is the TEMPLATE's
+  name — so two figures that both rose shared a React key, on the
+  document a client is sent, where React is free to omit or duplicate a
+  row. The Overview had always keyed on the line itself. Three hundred
+  and seventy-eight browser tests had been passing over it because none
+  of them was looking.
+- **The Meta upload card is gone from platforms it cannot fill.** A
+  Meta Business Suite content export has no column for impressions,
+  members reached, reactions, reposts or watch time, so on LinkedIn,
+  TikTok and YouTube the card could never work. It used to be drawn
+  everywhere with a sentence underneath guessing from the platform's
+  NAME. `uploadFor` asks the kind now, and **`looksLikeMeta` is
+  deleted** — it was the last place in the product that read meaning out
+  of a name, and the one §5.2 cited when it argued for storing a kind.
+- **"Notes from your strategist"**, matching the signature. Nina moved
+  five phrases to "your Allegro team" on 3 November, then on 16 November
+  settled that every note is signed "Your strategist", which left the
+  card headed by one word and signed with the other. Only the heading
+  moved: "your Allegro team" stays wherever it is the team being
+  described — the reply box, the Overview's empty state, the refusals.
+- **Saves are in the "Other" set** (Nina). Pinterest is what that set
+  was written for and a save is the whole of how Pinterest is read. It
+  also closed a gap the set had from the start: the general engagement
+  rate is Instagram's formula, saves among its ingredients, so "Other"
+  was computing a figure from a box it never offered. The save RATE is
+  deliberately still out — saves ÷ reach is Instagram's reading of it.
+
+**The migration was checked against live before applying**: the highest
+`sort_order` in `social_media` is 22, over 22 rows, so 23–40 cannot
+collide with `report_metrics_category_sort_order_key`. Nothing renumbered.
+
+The demo seed script now gives its four platforms their kinds. The live
+demo rows were backfilled by step 1's migration, but a re-seed would have
+put four kindless platforms back and dropped every screen to the general
+set.
+
 ## WHERE WE ARE — 17 November 2026
 
 **A figure set per platform** (item 1 of Nina's 15 November list, her
