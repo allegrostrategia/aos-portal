@@ -3,6 +3,87 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 18 November 2026 (later)
+
+**Both step 3 migrations are applied to live.**
+`20261118140000_a_post_type_per_platform.sql` went on after Dom's
+review: the enum reads
+`{reel,carousel,photo,video,story,other,text,link,poll,article,live}`,
+in the order the file declares and the order `POST_TYPES` lists, with
+the type comment matching disk and all 156 stored posts untouched.
+
+**Two things the screenshots caught, after the build was done:**
+
+- **A chart of two numbers that drew one.** YouTube's "Views and
+  impressions" shared an axis, and at a ~6% click-through rate
+  impressions are about fifteen times views — so the views were slivers
+  along the floor. Split into **Views over time** and **Click-through
+  rate** (the typed one), and a test now refuses views and impressions
+  on one axis for any kind. It is the dual-axis mistake wearing a
+  disguise: two measures of different scale want two charts.
+- **The strategist's note read as the platform's.** It is one note per
+  section per month, and sitting at the bottom of the only page with a
+  platform switcher it looked like a note about whatever was on screen
+  — the YouTube page ended with a paragraph about Instagram reels. It
+  is the first card in the body now, above everything the switcher
+  changes. Not above the switcher itself, which lives in the page
+  header beside the month; the top of the body is as high as a card
+  goes. Only Social Media moves, because only Social Media has the
+  problem. **Nina's call in the end** — this is the default.
+
+Four charts lay out two across now rather than three and an orphan;
+only YouTube has four.
+
+
+**Step 3: the posts, and the demo.** `20261118140000_a_post_type_per_platform.sql`
+is written and **not yet applied to live** — five new values on
+`report_post_type` (text, link, poll, article, live) and nothing else,
+because Postgres refuses to USE an enum value in the transaction that
+added it and a migration file runs as one here.
+
+- **A LinkedIn post cannot be a Reel.**
+  `src/lib/reporting/platform-post-types.ts` holds which kinds of post
+  each platform offers and what it calls them, beside
+  `platform-metrics.ts` and for the same reason. Only five of Nina's
+  words are new: the rest are the same shape of post under a different
+  name, so they are the same VALUE — a LinkedIn Image is `photo`, a
+  Document / carousel and a Photo carousel are both `carousel`, a
+  YouTube Short and an Instagram Reel are both `reel`. Which is what
+  makes a kind safe to correct: it never retypes a post.
+- **The picker keeps whatever the three posts already are.** This
+  matters more here than it does for the figures: a `<select>` whose
+  value has no matching option renders as the FIRST one, so a kind
+  corrected would have silently retyped three posts on the next Save.
+  It is the one control where getting this wrong changes stored data
+  rather than hiding it.
+- **A post's five figures follow the kind too.** They are COLUMNS on
+  `report_top_posts`, so a kind cannot add a sixth — but LinkedIn's
+  `reach` column is Impressions, its `likes` column is Reactions +
+  comments and its `shares` column is Reposts; TikTok's `views` is
+  Video views and its `saves` is Favourites. A TikTok post used to read
+  "Reach 10,933 … Saves 197" on a platform that reports neither. A
+  column a post HOLDS is never dropped.
+- **The demo has four platforms with four different sets of figures**,
+  their own kinds of post, and only the per-post figures each one
+  reports. Two tests keep the demo's lists and the product's in step.
+
+**And the screenshots found a real one.** `getFigureHistory` discovers
+which raw figures to load by RUNNING the formula with a recording
+lookup, then runs it again per month — and both runs were made with no
+platform kind. So every month but the newest had Social Media's rates
+worked out Instagram's way: a LinkedIn engagement rate measured against
+a reach LinkedIn does not report, and a click-through rate never
+produced at all. **It cost LinkedIn its engagement/click-through chart
+and three whole rows of the year grid**, on a client with thirteen
+months of figures, while the card above the chart was right.
+
+The tests that exist to catch exactly this (`figure-history.test.mjs`,
+"a point and a card must never disagree") could not: they save Social
+Media at month level, where the platform is "none yet" and the kind is
+Instagram — so Instagram's arithmetic was both the question and the
+answer. There is a LinkedIn case in there now, with a negative control
+that asserts what the bug looked like.
+
 ## WHERE WE ARE — 18 November 2026
 
 **Step 2 reviewed** (Dom), and five things fixed before it goes to live.

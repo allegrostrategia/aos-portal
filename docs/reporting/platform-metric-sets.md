@@ -266,9 +266,72 @@ about the migration and the answer was that there was nothing to fix.
 | **The note** | "Notes from your strategist", matching the signature Nina settled on 16 November and the mock-ups. Only the heading: "your Allegro team" stays everywhere it is the team being described. |
 | **Saves** | Added to the general set — see "Other" above. |
 
+## Step 3 — the posts and the demo, 18 November 2026
+
+**A LinkedIn post cannot be a Reel.** `report_post_type` learned five
+words it did not have — text, link, poll, article, live — and
+`src/lib/reporting/platform-post-types.ts` says which of them each kind
+offers and what it calls them.
+`20261118140000_a_post_type_per_platform.sql`.
+
+Only five are new, because the rest are the same shape of post under a
+different name and are therefore the same value, which is the rule the
+figures already follow. A LinkedIn **Image** is Instagram's `photo`. A
+**Document / carousel** and a **Photo carousel** are both `carousel`. A
+YouTube **Short** and an Instagram **Reel** are both `reel` — the same
+vertical short video under two companies' words — and a **Long-form** is
+a `video`. So correcting a platform's kind never retypes its posts.
+
+| | |
+|---|---|
+| **The picker** | This kind's types, in its order and its words, plus whatever the three posts already are. A `<select>` whose value has no matching option renders as the FIRST one, so without that a kind corrected would have retyped three posts the moment somebody pressed Save — the one place where getting this wrong changes stored data rather than hiding it. |
+| **A post's figures** | `reach, views, likes_plus_comments, saves, shares` are columns, so a kind cannot add a sixth — but it can use the ones that mean something to it. LinkedIn's `reach` column is **Impressions**, its `likes` column is **Reactions + comments** and its `shares` column is **Reposts**; TikTok's `views` is **Video views** and its `saves` is **Favourites**; YouTube has views and likes and nothing else. A column a post HOLDS is never dropped. |
+| **"Post"** | On every list, although none of Nina's five has it: it is the escape hatch, and what the Meta import falls back to rather than guessing. |
+| **The demo** | Each platform now has its own figures (LinkedIn ten, TikTok eight, YouTube seven, Instagram fourteen), its own kinds of post and only the per-post figures it reports. Two tests keep the demo's lists and the product's in step, because a demo that disagrees with the product is worse than none — it is the screen Nina shows people. |
+| **The screenshots** | `docs/nina-review/visual-rebuild/13-*-social-*.png`: the same client and the same month, four times. |
+
+### What the screenshots found
+
+**A chart drew Instagram's arithmetic under LinkedIn's heading.**
+`getFigureHistory` works out which raw figures to load by RUNNING the
+formula with a recording lookup, then runs it again for each month — and
+both runs were being made with no platform kind. So every month but the
+newest had its Social Media rates worked out the Instagram way: a
+LinkedIn engagement rate measured against a reach LinkedIn does not
+report, and a click-through rate that was never produced at all. The
+card above the chart had the kind and was right.
+
+It cost LinkedIn its engagement/click-through chart and **three whole
+rows of the year grid**, on a client with thirteen months of figures.
+Nothing caught it because the tests that compare a chart to its card
+save Social Media at month level, where the kind is Instagram — and
+Instagram's arithmetic is what they were comparing against.
+
+### What the screenshots found, second look (Dom, 18 November)
+
+- **YouTube's "Views and impressions" showed only the impressions.** A
+  click-through rate around 6% means impressions are roughly fifteen
+  times views, so on a shared axis the views were slivers against the
+  floor — a chart of two numbers that drew one. It is two charts now:
+  **Views over time**, and **Click-through rate** on its own, the TYPED
+  one YouTube Studio reports. The relationship between them is not lost;
+  the click-through rate IS views over impressions. A test now refuses
+  any chart that puts views and impressions on one axis, for any kind.
+- **The strategist's note sat under the platform it was not about.** It
+  is written per SECTION — one note for Social Media in a month — and at
+  the bottom of a page with a platform switcher it read as a note about
+  whichever platform was on screen: the YouTube page ended a screen of
+  watch time with a paragraph about Instagram reels. It is now the first
+  card in the body, above everything the switcher changes, still headed
+  "Notes from your strategist". Above the switcher itself is not
+  possible — it is in the page header, beside the month — so the top of
+  the body is as high as a card goes. **Only Social Media moves**: the
+  other ten pages have no switcher and nothing to be mistaken for.
+  Nina's call in the end; this is the default until she says otherwise.
+- Four charts now lay out two across rather than three and an orphan at
+  a third of the width. Only YouTube has four.
+
 ### Still to do on this item
 
-Post types per platform (a LinkedIn post cannot be a Reel), demo data so
-each platform shows its own figures, and screenshots of Social Media on
-every platform. The demo platforms carry their kinds from 18 November,
-so a re-seed no longer puts four kindless rows back.
+Nothing. Facebook has a set, a post-type list and demo support but no
+demo platform, because no client is on one; adding it is adding a row.
