@@ -210,6 +210,7 @@ export default async function CategoryReportPage({
         months: historyMonths,
         metricKeys: historyKeys,
         metrics: figures.metrics,
+        platformKind,
         platform: figures.platform?.id ?? null,
       })
     : new Map<string, (number | null)[]>();
@@ -238,6 +239,7 @@ export default async function CategoryReportPage({
     months: yearMonths,
     metricKeys: yearMetrics.map((m) => m.key),
     metrics: figures.metrics,
+    platformKind,
     platform: figures.platform?.id ?? null,
   });
   /**

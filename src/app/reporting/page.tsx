@@ -184,6 +184,8 @@ export default async function ReportingOverviewPage({
         months: historyMonths,
         metricKeys: historyKeys,
         metrics: figures.metrics,
+        // The main platform's, which is whose figures the Overview shows.
+        platformKind: figures.platformKind,
       })
     : new Map<string, (number | null)[]>();
   /**
@@ -209,6 +211,7 @@ export default async function ReportingOverviewPage({
       months: yearMonths,
       metricKeys: yearMetrics.map((m) => m.key),
       metrics: figures.metrics,
+      platformKind: mainKind,
     }),
   );
 

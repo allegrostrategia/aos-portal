@@ -451,3 +451,133 @@ test("an entity nobody asked about is not in the answer", async () => {
   });
   assert.equal(history.size, 0, "no offers asked for, no series back");
 });
+
+/**
+ * **A chart drew Instagram's arithmetic under LinkedIn's heading.**
+ *
+ * `getFigureHistory` discovers which raw figures to load by RUNNING the
+ * formula with a recording lookup, then runs it again per month. Both
+ * runs were made with no platform kind — so for every month but the
+ * newest, Social Media's rates were worked out the Instagram way: a
+ * LinkedIn engagement rate measured against a reach LinkedIn does not
+ * report, which is null, and a click-through rate that never appeared
+ * at all. The card above the chart had the kind and was right. (18
+ * November, found on the demo: "Engagement rate vs click-through rate"
+ * drew its empty state on a client with thirteen months of figures,
+ * and the year grid was missing three whole rows.)
+ *
+ * The existing tests above could not catch it: they save Social Media
+ * at month level, so the platform is "none yet", whose kind is
+ * Instagram — and Instagram's arithmetic is the arithmetic they were
+ * comparing against.
+ */
+const LI = await (async () => {
+  await db.exec(`
+    insert into public.report_entities (workspace_id, entity_type, name, sort_order, platform_kind)
+    values ('${WS}', 'social_platform', 'LinkedIn', 1, 'linkedin');
+  `);
+  const { rows } = await asMember(db, NINA, () =>
+    db.query(`select id from public.report_entities where name = 'LinkedIn'`),
+  );
+  return rows[0].id;
+})();
+
+for (const [month, scale] of [
+  [JUL, 1],
+  [AUG, 2],
+  [SEP, 3],
+]) {
+  await as(NINA, () =>
+    saveCategoryValues(
+      null,
+      form({
+        workspace_id: WS,
+        month,
+        category: "social_media",
+        platform_id: LI,
+        "v:social_media_followers_at_month_end": 2000 * scale,
+        "v:social_media_posts_published": 10,
+        "v:social_media_impressions": 20000 * scale,
+        "v:social_media_members_reached": 9000 * scale,
+        "v:social_media_reactions": 600 * scale,
+        "v:social_media_comments": 90 * scale,
+        "v:social_media_reposts": 30 * scale,
+        "v:social_media_link_clicks": 200 * scale,
+        "v:social_media_profile_visits": 800 * scale,
+      }),
+    ),
+  );
+}
+
+const LINKEDIN_RATES = [
+  "social_media_engagement_rate",
+  "social_media_click_through_rate",
+  "social_media_profile_view_rate",
+  "social_media_impressions_per_post",
+];
+
+test("a LinkedIn chart is worked out LinkedIn's way, every month of it", async () => {
+  configure(db, NINA);
+  const ctx = await resolveReportContext(
+    { workspace: WS, month: "2026-09", platform: LI },
+    "2026-10-02",
+  );
+  const figures = await getMonthFigures(ctx);
+  const metrics = await getMetrics();
+  const history = await getFigureHistory({
+    workspaceId: WS,
+    months: monthsEndingAt(SEP, 3),
+    metricKeys: LINKEDIN_RATES,
+    metrics,
+    platformKind: "linkedin",
+    platform: LI,
+  });
+
+  const disagreements = [];
+  for (const key of LINKEDIN_RATES) {
+    const series = history.get(key);
+    // Nothing may be empty: that is how this bug looked, and two nulls
+    // agree happily.
+    assert.ok(
+      series.every((point) => point !== null),
+      `${key} has a blank month: ${JSON.stringify(series)}`,
+    );
+    if (series.at(-1) !== figures.figure(key)) {
+      disagreements.push(`${key}: chart ${series.at(-1)}, card ${figures.figure(key)}`);
+    }
+  }
+  assert.deepEqual(disagreements, [], "§9, per platform kind");
+
+  // And the number itself, so "they agree" is not two copies of one bug:
+  // (600 + 90 + 30) × 3 reactions, comments and reposts ÷ 20,000 × 3
+  // impressions = 3.6%, measured against impressions as LinkedIn does.
+  assert.equal(history.get("social_media_engagement_rate").at(-1).toFixed(2), "3.60");
+  // 200 × 3 link clicks ÷ 60,000 = 1%.
+  assert.equal(history.get("social_media_click_through_rate").at(-1), 1);
+});
+
+test("without the kind it reverts to the arithmetic that was wrong", async () => {
+  // The negative control, and the shape of the bug: the same months,
+  // the same platform, no kind — Instagram's formula against a reach
+  // LinkedIn does not report.
+  configure(db, NINA);
+  const metrics = await getMetrics();
+  const history = await getFigureHistory({
+    workspaceId: WS,
+    months: monthsEndingAt(SEP, 3),
+    metricKeys: LINKEDIN_RATES,
+    metrics,
+    platform: LI,
+  });
+
+  assert.equal(
+    history.get("social_media_engagement_rate").at(-1),
+    null,
+    "measured against a reach that is not there",
+  );
+  assert.equal(
+    history.get("social_media_click_through_rate").at(-1),
+    null,
+    "and the click-through rate was never drawn at all",
+  );
+});

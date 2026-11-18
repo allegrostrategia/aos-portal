@@ -129,6 +129,7 @@ export default async function ReportPrintPage({
           months: historyMonths,
           metricKeys: historyKeys,
           metrics: figures.metrics,
+          platformKind,
         })
       : Promise.resolve(new Map<string, (number | null)[]>()),
     getFigureHistory({
@@ -136,6 +137,7 @@ export default async function ReportPrintPage({
       months: yearMonths,
       metricKeys: yearMetrics.map((m) => m.key),
       metrics: figures.metrics,
+      platformKind,
     }),
     offerRows.length > 0 && offerMonths.length > 0
       ? getEntityHistory({

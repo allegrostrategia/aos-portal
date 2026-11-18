@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORIES, type CategoryKey } from "./categories.ts";
 import { calculate, entityAwareLookup, type Lookup } from "./calculate.ts";
+import type { PlatformKind } from "./platforms.ts";
 import { ValueBag } from "./queries.ts";
 import { alignToMonths } from "./history.ts";
 import { previousMonthOf } from "./months.ts";
@@ -67,7 +68,10 @@ import {
  * the rows rather than through the lookup, which is why they come back with
  * no inputs at all and why `ENTITY_KEYS` below exists.
  */
-export function inputKeysFor(category: CategoryKey): string[] {
+export function inputKeysFor(
+  category: CategoryKey,
+  platformKind: PlatformKind | null = null,
+): string[] {
   const seen = new Set<string>();
   const record: Lookup = (key) => {
     seen.add(key);
@@ -81,6 +85,13 @@ export function inputKeysFor(category: CategoryKey): string[] {
     adCampaigns: [],
     clientsAtStart: null,
     totalRevenue: null,
+    // **Social Media reads different figures per kind** (§5.2, 17
+    // November), and this discovers the list by running the formula —
+    // so without the kind it discovers Instagram's. LinkedIn's
+    // impressions and reactions were never loaded, which is why its
+    // engagement and click-through chart drew its empty state on a
+    // client with thirteen months of figures.
+    platformKind,
   });
 
   return [...seen];
@@ -158,6 +169,7 @@ export async function getFigureHistory({
   months,
   metricKeys,
   metrics,
+  platformKind = null,
   platform,
 }: {
   workspaceId: string;
@@ -167,6 +179,18 @@ export async function getFigureHistory({
   metricKeys: string[];
   /** The metric list, for each key's category and whether it is calculated. */
   metrics: ReportMetric[];
+  /**
+   * What kind of platform that is, so the rates on the charts are
+   * worked out the way the cards above them are.
+   *
+   * A calc is recomputed on every read, here as everywhere, and
+   * Social Media's depend on the kind: LinkedIn measures engagement
+   * against impressions and TikTok against video views. Without this a
+   * chart either drew nothing or drew Instagram's arithmetic under
+   * LinkedIn's heading — a line on a client's report that disagreed
+   * with the figure beside it. (18 November, off the demo.)
+   */
+  platformKind?: PlatformKind | null;
   /**
    * Whose Social Media history to draw.
    *
@@ -212,7 +236,7 @@ export async function getFigureHistory({
   const monthLevelKeys = new Set<string>(metricKeys);
   const entityKinds = new Set<"offer" | "ad_campaign">();
   for (const category of calcCategories) {
-    for (const key of inputKeysFor(category)) monthLevelKeys.add(key);
+    for (const key of inputKeysFor(category, platformKind)) monthLevelKeys.add(key);
     for (const kind of ENTITIES_NEEDED[category] ?? []) entityKinds.add(kind);
   }
   const perRowKeys = new Set<string>();
@@ -480,6 +504,7 @@ export async function getFigureHistory({
           received: receivedFor(month),
           costs: costsFor(month),
           expected: forecastIn(forecastCells, month),
+          platformKind,
         }),
       );
     }
