@@ -369,12 +369,14 @@ export default async function EnterCategoryPage({
    */
   const shownPlatform = choosePlatform(data.entities, ctx.platformRequested);
 
+  // No platform row yet is Instagram, not "no kind said" — see
+  // `platformKindOf`, which is where that rule lives for all the
+  // screens that need it.
+  const platformKind = platformKindOf(shownPlatform);
+
   const monthly = platformMetrics(
     metrics,
-    // No platform row yet is Instagram, not "no kind said" — see
-    // `platformKindOf`, which is where that rule lives for all four
-    // screens that need it.
-    platformKindOf(shownPlatform),
+    platformKind,
     /**
      * Anything this platform already holds a figure for stays on screen
      * whatever its kind now says, so a kind corrected — "Other" put
@@ -540,6 +542,17 @@ export default async function EnterCategoryPage({
         const entry = {
           upload: uploadCard,
           elsewhere,
+          /**
+           * **The live card has to know the kind, or it disagrees with
+           * the report** (§9, and §5.2's per-platform sets). The rates
+           * are worked out from different figures per platform, so
+           * without this "Worked out for you" printed three dashes on
+           * LinkedIn — engagement rate, click-through rate and profile
+           * view rate — beside the very boxes they are made of, while
+           * the report had them right. Caught by looking at the
+           * screenshot, which is how the other four of these were.
+           */
+          platformKind,
           clientsAtStart,
           openingAppliesHere,
           // §5.10: Financials' revenue is the Actual grid and its costs

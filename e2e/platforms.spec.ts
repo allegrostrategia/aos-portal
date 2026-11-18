@@ -369,6 +369,22 @@ test("the boxes follow the platform, not just their values", async ({ page }, in
   ).replace(/\s+/g, " ");
   expect(worked).toContain("(Reactions + comments + reposts) ÷ impressions");
   expect(worked, "no save rate on a platform with no saves").not.toContain("Save rate");
+
+  /**
+   * **And it works them OUT, not just labels them.** The panel is
+   * computed in the browser as you type, so it takes the kind as a prop
+   * — and without that prop it printed three dashes here beside the
+   * boxes the figures are in, while the report had them right. The
+   * formula line above is server-rendered and said the right words
+   * throughout, which is why only the numbers catch it.
+   *
+   *   (640 reactions + 95 comments) ÷ 28,400 impressions = 2.6%
+   *   310 link clicks ÷ 28,400 = 1.1%
+   *   870 profile views ÷ 28,400 = 3.1%
+   */
+  expect(worked, "engagement rate, LinkedIn's way").toContain("2.6%");
+  expect(worked, "click-through rate against impressions").toContain("1.1%");
+  expect(worked, "profile view rate, the same").toContain("3.1%");
   await shoot(page, TAB, "11-entry-linkedin", w);
 });
 

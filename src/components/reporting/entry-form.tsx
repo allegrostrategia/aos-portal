@@ -13,6 +13,7 @@ import { CsvUpload, type UploadPlatform } from "@/components/reporting/csv-uploa
 import type { TopPost } from "@/lib/reporting/top-posts";
 import type { ExpenseRow, Received } from "@/lib/reporting/ledger";
 import type { ReportMetric } from "@/lib/reporting/queries";
+import type { PlatformKind } from "@/lib/reporting/platforms";
 
 /**
  * "Enter your data" — the entry screen of the approved mockup.
@@ -123,6 +124,18 @@ export interface EntryFormProps {
    * (Dom, reading the screen). So the box saves itself and the bar goes.
    */
   quietSave?: boolean;
+  /**
+   * Which kind of platform Social Media's figures belong to (§5.2).
+   *
+   * **The live panel has to know, or it disagrees with the report.**
+   * LinkedIn's engagement rate is measured against impressions and
+   * Facebook's against reach, and `calculate` takes the kind as an
+   * input — so without it this card worked LinkedIn's rates out with
+   * Instagram's formula and printed three dashes beside the very
+   * figures they are made of. §9's rule is that the entry screen and
+   * the report cannot disagree; this is the half of it that is a prop.
+   */
+  platformKind?: PlatformKind | null;
   /** Where "Save and next" goes, or null on the last section. */
   nextHref: string | null;
   nextLabel: string | null;
@@ -165,8 +178,10 @@ export function EntryForm(props: EntryFormProps) {
         clientsAtStart: props.openingAppliesHere
           ? fromInputValue(values.client_experience_clients_at_start_opening ?? "")
           : (props.clientsAtStart ?? null),
+        platformKind: props.platformKind ?? null,
       }),
     [
+      props.platformKind,
       props.category,
       props.previous,
       props.received,
