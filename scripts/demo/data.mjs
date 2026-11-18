@@ -54,11 +54,17 @@ export function months(lastMonth) {
  * what the page is for. TikTok triples while YouTube crawls, which is
  * the comparison the switcher exists to make.
  */
+/**
+ * `kind` is the platform's own, stored rather than guessed (§5.2, step
+ * 1). The live demo rows were backfilled by the migration on 17
+ * November; this is what stops a re-seed putting four kindless platforms
+ * back and the screens falling to the general set.
+ */
 export const PLATFORMS = [
-  { name: "Instagram", start: 18_200, end: 26_420, reachPerFollower: 7.0, engagement: 0.069, posts: [14, 20] },
-  { name: "LinkedIn", start: 4_150, end: 6_100, reachPerFollower: 4.2, engagement: 0.048, posts: [8, 12] },
-  { name: "TikTok", start: 3_100, end: 9_800, reachPerFollower: 12.5, engagement: 0.094, posts: [12, 22] },
-  { name: "YouTube", start: 1_180, end: 2_430, reachPerFollower: 5.5, engagement: 0.057, posts: [3, 6] },
+  { name: "Instagram", kind: "instagram", start: 18_200, end: 26_420, reachPerFollower: 7.0, engagement: 0.069, posts: [14, 20] },
+  { name: "LinkedIn", kind: "linkedin", start: 4_150, end: 6_100, reachPerFollower: 4.2, engagement: 0.048, posts: [8, 12] },
+  { name: "TikTok", kind: "tiktok", start: 3_100, end: 9_800, reachPerFollower: 12.5, engagement: 0.094, posts: [12, 22] },
+  { name: "YouTube", kind: "youtube", start: 1_180, end: 2_430, reachPerFollower: 5.5, engagement: 0.057, posts: [3, 6] },
 ];
 
 /** One platform's month, every figure derived from the one above it. */

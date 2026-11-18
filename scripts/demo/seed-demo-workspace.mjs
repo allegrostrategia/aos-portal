@@ -175,12 +175,15 @@ function buildSql(userId, adminId) {
 
   // --- entities ---------------------------------------------------------
   const entities = [
-    ...PLATFORMS.map((p, i) => `(${w}, 'social_platform', ${q(p.name)}, ${i}, null, null, null, null)`),
-    ...OFFERS.map((o, i) => `(${w}, 'offer', ${q(o.name)}, ${i}, ${o.price}, '${o.model}', ${o.hourlyCost}, null)`),
-    ...CAMPAIGNS.map((c, i) => `(${w}, 'ad_campaign', ${q(c.name)}, ${i}, null, null, null, '${c.goal}')`),
+    ...PLATFORMS.map(
+      (p, i) => `(${w}, 'social_platform', ${q(p.name)}, ${i}, null, null, null, null, '${p.kind}')`,
+    ),
+    ...OFFERS.map((o, i) => `(${w}, 'offer', ${q(o.name)}, ${i}, ${o.price}, '${o.model}', ${o.hourlyCost}, null, null)`),
+    ...CAMPAIGNS.map((c, i) => `(${w}, 'ad_campaign', ${q(c.name)}, ${i}, null, null, null, '${c.goal}', null)`),
   ];
   out.push(`insert into public.report_entities
-      (workspace_id, entity_type, name, sort_order, price, pricing_model, hourly_cost, campaign_goal)
+      (workspace_id, entity_type, name, sort_order, price, pricing_model, hourly_cost, campaign_goal,
+       platform_kind)
     values ${entities.join(",\n      ")};`);
   // Funnels after the offers they sell, so the link can be looked up.
   out.push(`insert into public.report_entities
