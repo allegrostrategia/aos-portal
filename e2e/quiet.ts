@@ -44,6 +44,24 @@ const IGNORED: { pattern: RegExp; why: string }[] = [
     pattern: /WebSocket connection to 'ws:\/\/127\.0\.0\.1:\d+\/_next\/webpack-hmr'/,
     why: "the dev server's reload socket, closed with the page",
   },
+  {
+    /**
+     * Next's own render timing, on a navigation whose page never
+     * rendered — every one seen so far was a route that 404s on
+     * purpose, where the start mark is taken and the end mark never
+     * is. **Nothing in this project calls `performance.measure`**
+     * (`grep` says so), and the names it is complaining about are our
+     * component names because Next's dev instrumentation uses them, so
+     * an error from this API can only be the framework's. Dev-only: the
+     * instrumentation is not in a built page.
+     *
+     * It appeared on one full run and not the one before it, on the
+     * same code — a race in that instrumentation, not something a test
+     * can be written against.
+     */
+    pattern: /Failed to execute 'measure' on 'Performance'/,
+    why: "Next's dev render timing on a page that never rendered",
+  },
 ];
 
 /** Tests that make the browser complain on purpose, and say so. */
