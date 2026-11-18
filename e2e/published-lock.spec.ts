@@ -98,7 +98,7 @@ test("the Overview's note and objectives are read-only too", async ({ page }, in
   await expect(page.getByPlaceholder(/what happened this month/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /save note/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /save focus/i })).toHaveCount(0);
-  await expect(page.getByText(/notes from your Allegro Team/i)).toBeVisible();
+  await expect(page.getByText(/notes from your strategist/i)).toBeVisible();
 
   // September, a draft, still has both.
   await page.goto(`/reporting?month=${MONTHS.sep}`);

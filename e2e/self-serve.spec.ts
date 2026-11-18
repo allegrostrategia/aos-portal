@@ -395,7 +395,7 @@ test("a retainer client gets the reply box, not a reflection", async ({ page }) 
 
   const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   expect(body, "no reflection box").not.toMatch(/your reflection/i);
-  expect(body, "their Allegro team's note is still theirs").toMatch(/Notes from your Allegro Team/i);
+  expect(body, "their strategist's note is still theirs").toMatch(/Notes from your strategist/i);
 });
 
 test("Piazza says last month is unfinished, and says it to nobody else", async ({

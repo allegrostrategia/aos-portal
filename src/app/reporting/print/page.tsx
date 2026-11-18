@@ -535,7 +535,7 @@ export default async function ReportPrintPage({
           {notes.map((note) => (
             <div key={note.id} className="keep-together mt-5 border-l-2 border-gold pl-4">
               <p className="font-num text-eyebrow uppercase text-ink/50">
-                Note from your Allegro team
+                Note from your strategist
               </p>
               <p className="mt-1 whitespace-pre-wrap text-body text-ink/85">{note.body}</p>
             </div>
@@ -588,7 +588,7 @@ export default async function ReportPrintPage({
       {notesFor(null).length > 0 ? (
         <section className="keep-together mb-9">
           <h2 className="font-display text-heading font-medium text-ink">
-            Notes from your Allegro team
+            Notes from your strategist
           </h2>
           {notesFor(null).map((note) => (
             <p key={note.id} className="mt-2 whitespace-pre-wrap text-body text-ink/85">

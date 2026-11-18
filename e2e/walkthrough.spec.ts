@@ -91,7 +91,7 @@ test("a client reads the published month, and none of the team's half", async ({
   await page.goto(`/reporting?month=${MONTHS.sep}`);
   const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
 
-  expect(body, "their Allegro team's note is theirs").toMatch(/Notes from your Allegro Team/i);
+  expect(body, "their strategist's note is theirs").toMatch(/Notes from your strategist/i);
   expect(body, "no upload card").not.toMatch(/fill from a file/i);
   expect(body, "nothing to publish").not.toMatch(/publish this month/i);
   expect(body, "no completion list").not.toMatch(/still to fill in/i);

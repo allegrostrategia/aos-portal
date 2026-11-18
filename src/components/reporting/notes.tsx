@@ -16,13 +16,19 @@ import type { ReportNote } from "@/lib/reporting/queries";
 import { IconCircle } from "./icons";
 
 /**
- * "Notes from your Allegro Team" (§8), and the box Elize and Nina write it in.
+ * "Notes from your strategist" (§8), and the box Elize and Nina write it in.
  *
- * **Renamed from "your strategist" on 3 November** (Nina), and the word
- * reached a client in five places rather than one: this title, the line
- * under the signature, the empty state on the Overview, the sentence
- * above the reply box and the reply button itself. A sixth, the launches
- * list's empty state, went with them. The `note_type` is still
+ * **Renamed from "your Allegro Team" on 18 November** (Dom), which puts
+ * the heading back where the signature already was. Nina moved five
+ * phrases to "your Allegro team" on 3 November, then on 16 November
+ * settled that every note is signed "Your strategist" — and the card was
+ * left headed by one word and signed by the other, which the mock-ups
+ * are not. The heading follows the signature.
+ *
+ * **Only the heading.** "Your Allegro team reads this with the report"
+ * above the reply box, the Overview's empty state and the refusals a
+ * client sees are all about the team rather than the person who signs,
+ * and they stay as Nina wrote them. The `note_type` is still
  * `strategist` in the database, because that is a column value and not
  * something anybody reads.
  *
@@ -55,7 +61,7 @@ export function StrategistNotes({
   return (
     <Card>
       <SectionTitle icon={<IconCircle name="notes" tone="blush" />}>
-        Notes from your Allegro Team
+        Notes from your strategist
       </SectionTitle>
 
       {notes.length === 0 && !canWrite ? (
