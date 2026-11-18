@@ -1191,5 +1191,58 @@ await check("every figure the year grid calls a level still exists", async () =>
   return missing.length === 0 && LEVEL_METRICS.size >= 9 ? true : { missing, size: LEVEL_METRICS.size };
 });
 
+/**
+ * The same guard, for the per-unit list — and the same reason. "£12 cost
+ * per lead in January plus £15 in February is £27" is the lie it stops,
+ * and a rename would start it again silently.
+ */
+await check("every figure the year grid calls a per-unit average still exists", async () => {
+  const { PER_UNIT_METRICS } = await import("../../src/lib/reporting/year-table.ts");
+  const { rows } = await as(NINA, () => db.query(`select key from public.report_metrics`));
+  const known = new Set(rows.map((r) => r.key));
+  const missing = [...PER_UNIT_METRICS].filter((key) => !known.has(key));
+  return missing.length === 0 && PER_UNIT_METRICS.size >= 20
+    ? true
+    : { missing, size: PER_UNIT_METRICS.size };
+});
+
+/**
+ * **Every figure whose formula is a division is in one of the two lists
+ * or averages by its unit.** The lists are judgements, so they cannot be
+ * derived — but a NEW metric whose formula says "÷" and whose unit sums
+ * is exactly the shape of the bug, and this is what notices.
+ *
+ * The exceptions are named, with the reason each is a real total.
+ */
+const DIVIDES_BUT_TOTALS = new Set([
+  // "Purchases × linked offer price" over a month, then "÷ landing page
+  // views" is the row below it — this one is a multiplication.
+  "funnels_funnel_revenue",
+  // Hours × hourly cost: a cost, and a year of costs is a year's costs.
+  "offers_delivery_cost",
+  // Sales goal ÷ conversion rate: a plan for one launch, not a flow. It
+  // is only ever read on the launch it belongs to.
+  "launches_live_attendees_needed",
+  "launches_sign_ups_needed",
+]);
+
+await check("a new divided figure cannot quietly be summed over the year", async () => {
+  const { LEVEL_METRICS, PER_UNIT_METRICS } = await import("../../src/lib/reporting/year-table.ts");
+  const { rows } = await as(
+    NINA,
+    () => db.query(`select key, unit, formula from public.report_metrics where formula is not null`),
+  );
+  const averagedUnit = new Set(["percent", "ratio", "months"]);
+  const summed = rows.filter(
+    (r) =>
+      /÷/.test(r.formula) &&
+      !averagedUnit.has(r.unit) &&
+      !LEVEL_METRICS.has(r.key) &&
+      !PER_UNIT_METRICS.has(r.key) &&
+      !DIVIDES_BUT_TOTALS.has(r.key),
+  );
+  return summed.length === 0 ? true : summed.map((r) => `${r.key} (${r.unit}): ${r.formula}`);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

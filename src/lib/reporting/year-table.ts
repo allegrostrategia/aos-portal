@@ -49,15 +49,82 @@ export function summarise(unit: ReportUnit, values: (number | null)[]): YearRow[
   const present = values.filter((v): v is number => v !== null);
   if (present.length === 0) return { value: null, kind: averaged(unit) ? "average" : "total" };
 
-  if (averaged(unit)) {
-    return { value: present.reduce((a, b) => a + b, 0) / present.length, kind: "average" };
-  }
+  if (averaged(unit)) return mean(present);
   return { value: present.reduce((a, b) => a + b, 0), kind: "total" };
 }
 
 function averaged(unit: ReportUnit): boolean {
   return unit === "percent" || unit === "ratio" || unit === "months";
 }
+
+const mean = (present: number[]): YearRow["summary"] => ({
+  value: present.reduce((a, b) => a + b, 0) / present.length,
+  kind: "average",
+});
+
+/**
+ * A figure that is already a division: "X per Y", not a quantity of X.
+ *
+ * **Twelve months of "impressions per post" is not a year's worth of
+ * impressions** — the Year column read "3,156 TOTAL" where the months
+ * averaged 263, and the same lie was being told by cost per lead, CPM,
+ * CPC, revenue per visitor, average order value and the effective
+ * hourly rate. The unit rule catches a rate only when the unit happens
+ * to say so: a percentage and a ratio average, and a count, a sum of
+ * money and an hours figure total. "Impressions per post" is a count,
+ * and £12 of cost per lead in January plus £15 in February is not £27
+ * of anything. (Dom, 18 November, from the LinkedIn year grid.)
+ *
+ * **Named, not matched on `_per_`.** The same reason as `LEVEL_METRICS`
+ * above: whether a figure is a per-unit average is a judgement about
+ * what it means. `launches_sales_per_price_option` matches the pattern
+ * and is a flow — thirty sales at the early-bird price across the year
+ * really is thirty — and `launches_average_order_value` does not match
+ * it and is an average. The test below fails if one of these keys stops
+ * existing, so a rename cannot quietly drop a figure back to summing.
+ *
+ * The ones whose unit already averages them are in the list too. They
+ * need no behaviour from it, but the list is the project's answer to
+ * "is this a per-unit figure", and leaving them out would mean a unit
+ * changed from `ratio` to `count` silently starts summing.
+ *
+ * **The mean of the months, not the year's totals.** §4 recalculates a
+ * rate from year totals, which is the better arithmetic and is what the
+ * year-to-date card does. This grid has averaged its rates month by
+ * month since it was built, every row's summary is computed from the
+ * twelve cells beside it, and a column that sometimes agrees with the
+ * cells above it and sometimes does not is worse than one that is
+ * always the mean of what the reader can see.
+ */
+export const PER_UNIT_METRICS = new Set([
+  // Social Media — the four from the LinkedIn and YouTube sets.
+  "social_media_reach_per_post",
+  "social_media_impressions_per_post",
+  "social_media_views_per_post",
+  "social_media_watch_time_per_view",
+  "social_media_average_view_duration",
+  // Ads — every one of these is a cost per something.
+  "ads_cpm",
+  "ads_cpc",
+  "ads_cost_per_lead",
+  "ads_cost_per_acquisition",
+  // Launches.
+  "launches_average_order_value",
+  "launches_cost_per_sign_up",
+  "launches_cost_per_sale",
+  // Offers: revenue less costs, over the hours. A year of twelve of
+  // them added is a four-figure hourly rate.
+  "offers_effective_hourly_rate",
+  "offers_overall_effective_hourly_rate",
+  // The rest, one per category.
+  "email_revenue_per_subscriber",
+  "funnels_revenue_per_visitor",
+  "trial_reels_average_views_per_reel",
+  "trial_reels_follows_per_1k_views",
+  "trial_reels_followers_per_hour",
+  "trial_reels_hours_per_buyer",
+  "client_experience_issues_per_10_clients",
+]);
 
 /**
  * A figure whose year total would be a lie: a level, not a flow.
@@ -91,6 +158,28 @@ export const LEVEL_METRICS = new Set([
 ]);
 
 const isLevel = (key: string) => LEVEL_METRICS.has(key.split(":")[0]);
+const isPerUnit = (key: string) => PER_UNIT_METRICS.has(key.split(":")[0]);
+
+/**
+ * One row's Year column: its last reading, its average, or its total.
+ *
+ * Both builders go through here so a figure cannot be a level on the
+ * month-level table and a total on the per-entity one — which is how
+ * cost per lead came to be summed on Ads and averaged nowhere: Ads'
+ * figures hang off a campaign, so they only ever took the entity path.
+ */
+export function summaryFor(
+  key: string,
+  unit: ReportUnit,
+  values: (number | null)[],
+): YearRow["summary"] {
+  if (isLevel(key)) return { value: lastReading(values), kind: "total" };
+  if (isPerUnit(key)) {
+    const present = values.filter((v): v is number => v !== null);
+    return present.length === 0 ? { value: null, kind: "average" } : mean(present);
+  }
+  return summarise(unit, values);
+}
 
 /**
  * The same, for the figures that hang off a row rather than a month.
@@ -124,9 +213,7 @@ export function buildEntityYearRows(
         unit: metric.unit as ReportUnit,
         goodDirection: metric.good_direction,
         values,
-        summary: isLevel(metric.key)
-          ? { value: lastReading(values), kind: "total" as const }
-          : summarise(metric.unit as ReportUnit, values),
+        summary: summaryFor(metric.key, metric.unit as ReportUnit, values),
       });
     }
   }
@@ -140,9 +227,7 @@ export function buildYearRows(
   return metrics
     .map((metric) => {
       const values = history.get(metric.key) ?? new Array(12).fill(null);
-      const summary = isLevel(metric.key)
-        ? { value: lastReading(values), kind: "total" as const }
-        : summarise(metric.unit as ReportUnit, values);
+      const summary = summaryFor(metric.key, metric.unit as ReportUnit, values);
       return {
         key: metric.key,
         label: metric.label,

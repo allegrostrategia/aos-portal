@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  buildYearRows, calendarYear, splitYearRows, summarise, summaryLabel,
+  buildEntityYearRows, buildYearRows, calendarYear, PER_UNIT_METRICS, splitYearRows,
+  summarise, summaryFor, summaryLabel,
 } from "./year-table.ts";
 
 const metric = (key: string, label: string, unit: string) =>
@@ -81,4 +82,71 @@ test("a P&L line nobody has entered does not leave a hole in the headline table"
   const rows = [{ key: "financials_total_revenue", label: "x", unit: "currency", goodDirection: "up",
     values: new Array(12).fill(1), summary: { value: 12, kind: "total" } }] as never[];
   assert.equal(splitYearRows("financials", rows).headline.length, 1);
+});
+
+/**
+ * **"Impressions per post: 3,156 TOTAL"** (Dom, 18 November, from the
+ * LinkedIn year grid). The months averaged 263 and the Year column added
+ * them up, because the only rule in here was the unit's and a count
+ * totals. A figure that is already a division has to average however its
+ * unit prints.
+ */
+test("a per-post figure averages, although its unit is a count", () => {
+  const history = new Map([["social_media_impressions_per_post", [200, 300, 280, null]]]);
+  const [row] = buildYearRows(
+    [metric("social_media_impressions_per_post", "Impressions per post", "count")],
+    history,
+  );
+  assert.equal(row.summary.value, 260, "the sum would have said 780");
+  assert.equal(row.summary.kind, "average");
+  assert.equal(summaryLabel(row), "Average");
+});
+
+test("and so does a cost per lead, which is money", () => {
+  // £12 in January plus £15 in February is not £27 of cost per lead.
+  assert.deepEqual(summaryFor("ads_cost_per_lead", "currency", [12, 15]), {
+    value: 13.5,
+    kind: "average",
+  });
+  // The same figure under a campaign, which is the only way Ads is read.
+  const history = new Map([
+    ["ads_cost_per_lead", new Map([["c1", [12, 15, null] as (number | null)[]]])],
+  ]);
+  const [row] = buildEntityYearRows(
+    [metric("ads_cost_per_lead", "Cost per lead", "currency")],
+    [{ id: "c1", name: "Spring" }],
+    history,
+  );
+  assert.equal(row.summary.value, 13.5);
+  assert.equal(summaryLabel(row), "Average");
+});
+
+test("the average is over the months that have one, and nothing is blank", () => {
+  assert.deepEqual(summaryFor("social_media_views_per_post", "count", [null, null]), {
+    value: null,
+    kind: "average",
+  });
+  assert.equal(summaryFor("social_media_views_per_post", "count", [null, 90, null]).value, 90);
+});
+
+test("a level still wins over the per-unit rule, and a plain count still totals", () => {
+  // Neither list claims the other's figures, and nothing outside them moved.
+  assert.equal(summaryFor("email_list_size_at_month_end", "count", [100, 200]).value, 200);
+  assert.deepEqual(summaryFor("social_media_reach", "count", [10, 20]), {
+    value: 30,
+    kind: "total",
+  });
+});
+
+/**
+ * A flow that reads like a per-unit figure, and is not. Thirty sales at
+ * the early-bird price across a year really is thirty sales — which is
+ * why the list is named rather than a match on `_per_`.
+ */
+test("sales per price option is a total, although its key says per", () => {
+  assert.ok(!PER_UNIT_METRICS.has("launches_sales_per_price_option"));
+  assert.deepEqual(summaryFor("launches_sales_per_price_option", "count", [18, 12]), {
+    value: 30,
+    kind: "total",
+  });
 });

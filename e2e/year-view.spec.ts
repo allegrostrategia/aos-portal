@@ -197,3 +197,61 @@ test("every other page carries the same grid", async ({ page }, info) => {
   await shoot(page, TAB, "03-leads-year", w);
 });
 
+
+/**
+ * **"Impressions per post: 3,156 TOTAL"** (Dom, 18 November, reading the
+ * LinkedIn report).
+ *
+ * A figure that is already a division cannot be added up over a year,
+ * and until today the only rule the Year column had was the unit's: a
+ * percentage and a ratio averaged, and a count, a sum of money and an
+ * hours figure totalled. "Impressions per post" is a count. So were
+ * views per post and reach per post; cost per lead, CPM and CPC are
+ * money; the effective hourly rate is money. All of them were being
+ * summed.
+ *
+ * Two months, because with one the average and the total are the same
+ * number and the test would pass on the bug.
+ */
+test("a per-post figure shows the year's average, not its sum", async ({ page }, info) => {
+  const w = width(info.project.name);
+  const { MONTHS, sql } = await import("../scripts/seed-test-db.mjs");
+
+  sql(`insert into public.report_entities (workspace_id, entity_type, name, sort_order, platform_kind)
+       select id, 'social_platform', 'LinkedIn', 1, 'linkedin'
+         from public.report_workspaces where business_name = 'Northwind Studio';`);
+  const put = (month: string, key: string, value: number) =>
+    sql(`insert into public.report_values (workspace_id, month, metric_key, entity_id, value)
+         select e.workspace_id, '${month}', '${key}', e.id, ${value}
+           from public.report_entities e
+           join public.report_workspaces w on w.id = e.workspace_id
+          where w.business_name = 'Northwind Studio' and e.name = 'LinkedIn';`);
+  // `seed-test-db`'s MONTHS are already full dates, unlike `guard`'s.
+  // 20,000 ÷ 10 = 2,000 in August; 28,400 ÷ 9 = 3,155.6 in September.
+  put(MONTHS.aug, "social_media_impressions", 20_000);
+  put(MONTHS.aug, "social_media_posts_published", 10);
+  put(MONTHS.sep, "social_media_impressions", 28_400);
+  put(MONTHS.sep, "social_media_posts_published", 9);
+
+  await signIn(page, "nina");
+  await page.goto(`/reporting/social-media?month=${MONTHS.sep}`);
+
+  const row = page.locator("tr").filter({ hasText: "Impressions per post" });
+  await expect(row).toBeVisible();
+  const cells = (await row.innerText()).replace(/\s+/g, " ");
+
+  // Both months are there, so the reader can check the Year cell against
+  // them — which is the whole argument for the mean of the months.
+  expect(cells, "August").toContain("2,000");
+  expect(cells, "September").toContain("3,156");
+  // (2,000 + 3,155.6) ÷ 2 = 2,578.
+  expect(cells, "the year's average").toContain("2,578");
+  expect(cells, "and it says so").toContain("AVERAGE");
+  expect(cells, "the sum, which is what it used to say").not.toContain("5,156");
+
+  // The rows around it are untouched: impressions themselves still add up.
+  const impressions = page.locator("tr").filter({ hasText: /^Impressions\b/ }).first();
+  expect((await impressions.innerText()).replace(/\s+/g, " "), "20,000 + 28,400").toContain("48,400");
+
+  await shoot(page, TAB, "04-per-post-averages", w);
+});

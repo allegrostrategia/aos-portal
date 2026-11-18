@@ -243,9 +243,9 @@ export function YearTable({
       <p className="mt-4 text-caption text-ink/55">
         January to December {year}. A blank month is one nobody has filled in yet, not a zero. The
         pill under each month is the change on the month before it, green where that is the
-        direction you want, and the cell is tinted the same way. Rates are
-        averaged over the months that have a figure; everything else is a total, except a running
-        level like followers or list size, which shows its latest reading.
+        direction you want, and the cell is tinted the same way. Rates and
+        per-post figures are averaged over the months that have one; everything else is a total,
+        except a running level like followers or list size, which shows its latest reading.
       </p>
     </Card>
   );
