@@ -18,7 +18,6 @@ import { PublishedLock } from "@/components/reporting/published-lock";
 import { monthIsLocked } from "@/lib/reporting/locked";
 import {
   choosePlatform,
-  looksLikeMeta,
   platformKindOf,
   platformsOf,
 } from "@/lib/reporting/platforms";
@@ -473,6 +472,9 @@ export default async function EnterCategoryPage({
         locked,
         canEdit: ctx.canEdit,
         kind: ctx.workspace.kind,
+        // The file is a Meta export, so on LinkedIn, TikTok or YouTube
+        // there is no card at all — see `uploadFor`.
+        platformKind,
         workspaceId: ctx.workspace.id,
         monthLabel: ctx.month.label,
       })
@@ -580,9 +582,14 @@ export default async function EnterCategoryPage({
           quietSave: category.key === "financials",
           category: category.key,
           platformId: category.key === "social_media" ? platformId : null,
+          // Which platform the file will fill, said out loud because a
+          // client with three platforms has three identical-looking
+          // entry screens. It no longer has to warn that a Meta export
+          // is Instagram's: since 18 November the card is not drawn on a
+          // platform that cannot take one.
           platformFills:
             category.key === "social_media" && platform && platformPills.all.length > 1
-              ? { name: platform.name, takesMeta: looksLikeMeta(platform.name) }
+              ? { name: platform.name }
               : null,
           categoryLabel: category.label,
           workspaceId: ctx.workspace.id,

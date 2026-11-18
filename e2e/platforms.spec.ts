@@ -403,3 +403,37 @@ test("a figure the month already holds is never hidden by a kind", async ({ page
   await expect(saves, "the box is there because the figure is").toBeVisible();
   await expect(saves).toHaveValue("77");
 });
+
+/**
+ * **A Meta export is only offered where it can fill something** (Dom,
+ * 18 November). The file is a Meta Business Suite content export and
+ * LinkedIn's boxes are impressions, members reached, reactions and
+ * reposts — not one of which is in it. The card used to be drawn on
+ * every platform with a sentence underneath guessing from the NAME that
+ * a Meta export was probably not what you meant, which is the kind of
+ * advice a person reads once and a wrong figure survives.
+ */
+test("the file card follows the platform too", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+  await expect(
+    page.getByText("Fill from a file"),
+    "Instagram, which a Meta export is for",
+  ).toBeVisible();
+  // And it says which platform it will fill, since there is more than one.
+  await expect(page.getByText(/These figures will fill/)).toContainText("Instagram");
+
+  await page.goto(
+    `/reporting/enter/social-media?month=${MONTHS.sep}&platform=${await linkedInId()}`,
+  );
+  // The boxes are still there — it is only the shortcut that is gone.
+  await expect(page.locator("#v-social_media_impressions")).toBeVisible();
+  await expect(
+    page.getByText("Fill from a file"),
+    "LinkedIn, which it cannot fill one box of",
+  ).toHaveCount(0);
+
+  await shoot(page, TAB, "12-entry-linkedin-no-file-card", w);
+});

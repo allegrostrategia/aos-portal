@@ -144,14 +144,12 @@ export function mainPlatform(entities: MaybePlatform[]): PlatformRow | null {
 }
 
 /**
- * Does this platform take a Meta content export?
+ * **`looksLikeMeta` was here, and the kind replaced it** (18 November).
  *
- * Used for one sentence on the upload card, never to decide where the
- * figures go — the file fills whichever platform is on screen, because
- * that is the one the person chose. Matching on the name is only ever
- * advice, so a client who renames Instagram to "IG" gets a slightly less
- * helpful card rather than their figures in the wrong place.
+ * It guessed from the platform's name whether a Meta content export was
+ * the right file, for one sentence on the upload card — the single place
+ * in the product that read meaning out of a name, and the one §5.2 named
+ * when it argued for storing the kind instead. `uploadFor` now asks the
+ * kind, and a platform a Meta export cannot fill is not shown the card.
+ * Nothing else ever called it.
  */
-export function looksLikeMeta(name: string): boolean {
-  return /instagram|facebook|\big\b|meta/i.test(name);
-}

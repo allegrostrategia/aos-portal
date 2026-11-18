@@ -45,14 +45,19 @@ export function CsvUpload({
   month: string;
   monthLabel: string;
   /**
-   * Social Media only: the platform these figures will land on, and
-   * whether a Meta export is the right file for it.
+   * Social Media only: the platform these figures will land on.
    *
    * Said out loud because a client with three platforms has three
    * identical-looking entry screens, and the file is the one thing on
    * this page that could plausibly be meant for a different one.
+   *
+   * It used to carry a `takesMeta` flag as well, and a sentence saying
+   * "a Meta export is Instagram's" where the platform's NAME did not
+   * look like Instagram's. The kind replaces both (18 November): a
+   * platform that cannot take a Meta export is not shown this card at
+   * all, so there is nothing left to warn about.
    */
-  fills?: { name: string; takesMeta: boolean } | null;
+  fills?: { name: string } | null;
   /** What is in the boxes now, so a change can be shown as old → new. */
   current: Record<string, number | null>;
   labels: Record<string, string>;
@@ -116,15 +121,7 @@ export function CsvUpload({
 
       {fills ? (
         <p className="mt-2 text-small text-ink/70">
-          {fills.takesMeta ? (
-            <>These figures will fill <strong className="font-medium text-ink">{fills.name}</strong>.</>
-          ) : (
-            <>
-              These figures will fill{" "}
-              <strong className="font-medium text-ink">{fills.name}</strong>, and a Meta export
-              is Instagram&rsquo;s. Switch platform at the top if that is not what you meant.
-            </>
-          )}
+          These figures will fill <strong className="font-medium text-ink">{fills.name}</strong>.
         </p>
       ) : null}
 

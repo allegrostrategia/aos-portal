@@ -34,7 +34,7 @@ export interface EntryFormProps {
   /** Social Media only: the platform these boxes are for. */
   platformId?: string | null;
   /** Social Media only: its name, and whether a Meta export suits it. */
-  platformFills?: { name: string; takesMeta: boolean } | null;
+  platformFills?: { name: string } | null;
   /**
    * Social Media only: the top posts the uploaded file offers.
    *

@@ -2,11 +2,12 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { UploadPlatform } from "@/components/reporting/csv-upload";
+import type { PlatformKind } from "@/lib/reporting/platforms";
 
 /**
  * Whether this screen gets an upload card, and what it needs.
  *
- * Four conditions, and each is a line drawn somewhere else in the
+ * Five conditions, and each is a line drawn somewhere else in the
  * product rather than invented here:
  *
  *   · **Only two screens have a file to upload.** Social Media takes
@@ -30,6 +31,16 @@ import type { UploadPlatform } from "@/components/reporting/csv-upload";
  *     original reason — every "my CSV didn't work" lands on Nina —
  *     weighs most on the people with the shortest relationship. One
  *     line to change if she wants them in.
+ *   · **On Social Media, only a platform Meta owns** (Dom, 18
+ *     November). The file is a Meta Business Suite content export, so
+ *     on LinkedIn, TikTok or YouTube it cannot fill a single box — it
+ *     has no column for impressions, members reached, reactions,
+ *     reposts or watch time. The card used to show on all of them with
+ *     a sentence underneath guessing from the platform's NAME that a
+ *     Meta export was probably not meant for it. The kind says so now,
+ *     and a card that cannot work is not offered rather than argued
+ *     with. A platform nobody has chosen a kind for is out too: the
+ *     entry screen already asks for one, and that is the fix.
  */
 
 const PLATFORM: Record<string, UploadPlatform> = {
@@ -37,11 +48,15 @@ const PLATFORM: Record<string, UploadPlatform> = {
   ads: "meta_ads",
 };
 
+/** The platforms a Meta Business Suite content export can fill. */
+const TAKES_META = new Set<PlatformKind>(["instagram", "facebook"]);
+
 export async function uploadFor({
   category,
   locked,
   canEdit,
   kind,
+  platformKind,
   workspaceId,
   monthLabel,
 }: {
@@ -49,6 +64,8 @@ export async function uploadFor({
   locked: boolean;
   canEdit: boolean;
   kind: "retainer" | "aos_member" | "chiarezza";
+  /** Social Media only: the kind of the platform on screen. */
+  platformKind?: PlatformKind | null;
   workspaceId: string;
   monthLabel: string;
 }): Promise<{
@@ -59,6 +76,7 @@ export async function uploadFor({
   const platform = PLATFORM[category];
   if (!platform) return null;
   if (locked || !canEdit || kind === "chiarezza") return null;
+  if (platform === "meta_content" && !TAKES_META.has(platformKind as PlatformKind)) return null;
 
   const supabase = await createClient();
   const { data } = await supabase
