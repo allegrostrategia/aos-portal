@@ -38,6 +38,17 @@ const figure = (platformName: string, month: string, key: string, value: number)
     where w.business_name = 'Northwind Studio'
       and e.entity_type = 'social_platform' and e.name = '${platformName}';`;
 
+/** LinkedIn's id, for a URL that names the platform rather than clicking to it. */
+async function linkedInId(): Promise<string> {
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  return sql(
+    `select e.id::text from public.report_entities e
+       join public.report_workspaces w on w.id = e.workspace_id
+      where w.business_name = 'Northwind Studio'
+        and e.entity_type = 'social_platform' and e.name = 'LinkedIn';`,
+  ).trim();
+}
+
 test.beforeEach(async () => {
   const { seed, sql } = await import("../scripts/seed-test-db.mjs");
   await seed({ quiet: true });
@@ -58,7 +69,20 @@ test.beforeEach(async () => {
     ${figure("LinkedIn", MONTHS.aug, "social_media_followers_at_month_end", 2840)}
     ${figure("LinkedIn", MONTHS.sep, "social_media_followers_at_month_end", 3120)}
     ${figure("LinkedIn", MONTHS.sep, "social_media_posts_published", 9)}
-    ${figure("LinkedIn", MONTHS.sep, "social_media_reach", 14200)}
+    -- LinkedIn's own figures, not Instagram's under a LinkedIn pill
+    -- (§5.2's per-platform sets, 17 November). It reports impressions
+    -- and members reached rather than reach, and counts a reaction and
+    -- a comment separately. These are inside the SQL string, so they are
+    -- SQL comments: a // here would be sent to Postgres.
+    ${figure("LinkedIn", MONTHS.sep, "social_media_impressions", 28400)}
+    ${figure("LinkedIn", MONTHS.sep, "social_media_members_reached", 14200)}
+    ${figure("LinkedIn", MONTHS.sep, "social_media_reactions", 640)}
+    ${figure("LinkedIn", MONTHS.sep, "social_media_comments", 95)}
+    -- Reposts is deliberately left out: it is one of LinkedIn's core
+    -- figures, and the test below is that a section is unfinished while
+    -- any platform still owes one of ITS OWN.
+    ${figure("LinkedIn", MONTHS.sep, "social_media_link_clicks", 310)}
+    ${figure("LinkedIn", MONTHS.sep, "social_media_profile_visits", 870)}
   `);
 });
 
@@ -82,7 +106,12 @@ test("the pill switches platform, and each one's figures are its own", async ({ 
   expect(linkedIn, "LinkedIn's own followers").toContain("3,120");
   expect(linkedIn, "and not Instagram's").not.toContain("26,420");
   expect(linkedIn, "nor Instagram's reach").not.toContain("184,500");
-  expect(linkedIn, "LinkedIn's reach").toContain("14,200");
+  expect(linkedIn, "LinkedIn's members reached").toContain("14,200");
+  // And in LinkedIn's words, which is §5.2's whole point: it reports
+  // impressions and reach is not one of its figures.
+  expect(linkedIn, "LinkedIn's impressions").toContain("28,400");
+  expect(linkedIn).toContain("Impressions");
+  expect(linkedIn, "a page does not have saves").not.toContain("Save rate");
 
   // Reloaded before the picture only so the open menu is not covering
   // the tabs in it: the pill is a <details>, and following a link inside
@@ -113,8 +142,12 @@ test("a section is finished only when every platform is", async ({ page }, info)
   await signIn(page, "nina");
   await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
 
-  // Instagram has all seven core figures; LinkedIn has three of them.
-  // Before today this read as finished the moment Instagram was done.
+  // Instagram has all seven of ITS core figures; LinkedIn is still
+  // owed reposts, which is one of its own and not one of Instagram's
+  // (§5.2's per-platform sets). Before 11 November this read as
+  // finished the moment Instagram was done; before 17 November it would
+  // have been unfinishable, because Instagram is never asked for
+  // impressions and LinkedIn is never asked for saves.
   const marker = page.locator('[data-section="social_media"]');
   await expect(marker).toHaveAttribute("data-state", "started");
 
@@ -290,4 +323,67 @@ test("a platform with no kind yet is asked for one", async ({ page }, info) => {
   ).not.toContainText(/needs a kind/i);
 
   await shoot(page, TAB, "09-kind-needed", w);
+});
+
+/**
+ * §5.2's per-platform figure sets (Nina, 16 November; built 17
+ * November). The entry screen is the one place the kind decides what is
+ * ON the screen rather than only what it is called.
+ */
+test("the boxes follow the platform, not just their values", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}`);
+  /**
+   * By the id the entry form gives each box, `v-<metric key>`, not by
+   * its label: "Saves" is also the name of a column on every row of
+   * "Top posts this month", three rows down the same page, so a label
+   * match finds four boxes and a strict-mode violation.
+   */
+  await expect(page.locator("#v-social_media_saves"), "Instagram is asked for saves").toBeVisible();
+  await expect(page.locator("#v-social_media_impressions")).toHaveCount(0);
+  await shoot(page, TAB, "10-entry-instagram", w);
+
+  await page.goto(
+    `/reporting/enter/social-media?month=${MONTHS.sep}&platform=${await linkedInId()}`,
+  );
+  await expect(
+    page.locator("#v-social_media_impressions"),
+    "LinkedIn is asked for impressions",
+  ).toBeVisible();
+  await expect(page.locator("#v-social_media_members_reached")).toBeVisible();
+  await expect(page.locator("#v-social_media_reposts")).toBeVisible();
+  await expect(
+    page.locator("#v-social_media_saves"),
+    "and never for saves, which LinkedIn does not have",
+  ).toHaveCount(0);
+
+  // The worked-out panel says what IT is measured against, too: the
+  // same words, against impressions rather than reach.
+  const worked = (
+    await page
+      .locator("aside")
+      .filter({ has: page.getByRole("heading", { name: "Worked out for you" }) })
+      .innerText()
+  ).replace(/\s+/g, " ");
+  expect(worked).toContain("(Reactions + comments + reposts) ÷ impressions");
+  expect(worked, "no save rate on a platform with no saves").not.toContain("Save rate");
+  await shoot(page, TAB, "11-entry-linkedin", w);
+});
+
+test("a figure the month already holds is never hidden by a kind", async ({ page }) => {
+  // The rule that makes a kind safe to correct: a client whose platform
+  // was "Other" and is put right as LinkedIn keeps every figure anybody
+  // entered, visible and editable. Rule 7, applied to a figure.
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  sql(figure("LinkedIn", MONTHS.sep, "social_media_saves", 77));
+
+  await signIn(page, "nina");
+  await page.goto(
+    `/reporting/enter/social-media?month=${MONTHS.sep}&platform=${await linkedInId()}`,
+  );
+  const saves = page.locator("#v-social_media_saves");
+  await expect(saves, "the box is there because the figure is").toBeVisible();
+  await expect(saves).toHaveValue("77");
 });

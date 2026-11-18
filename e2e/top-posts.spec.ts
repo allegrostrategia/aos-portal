@@ -31,12 +31,18 @@ const CONTENT_CSV = `Post ID,Account username,Description,Publish time,Permalink
 test.beforeEach(async () => {
   const { seed, sql } = await import("../scripts/seed-test-db.mjs");
   await seed({ quiet: true });
-  sql(`insert into public.report_entities (workspace_id, entity_type, name, sort_order)
-       select id, 'social_platform', 'Instagram', 1 from public.report_workspaces
-        where business_name = 'Northwind Studio';
-       insert into public.report_entities (workspace_id, entity_type, name, sort_order)
-       select id, 'social_platform', 'LinkedIn', 2 from public.report_workspaces
-        where business_name = 'Northwind Studio';`);
+  // **With their kinds**, since 17 November: a platform with none is a
+  // client nobody has asked yet, and it gets the general figure set — so
+  // without these the LinkedIn screenshot below was Instagram's boxes
+  // under a LinkedIn pill, which is the thing §5.2 exists to stop.
+  sql(`insert into public.report_entities
+         (workspace_id, entity_type, name, sort_order, platform_kind)
+       select id, 'social_platform', 'Instagram', 1, 'instagram'
+         from public.report_workspaces where business_name = 'Northwind Studio';
+       insert into public.report_entities
+         (workspace_id, entity_type, name, sort_order, platform_kind)
+       select id, 'social_platform', 'LinkedIn', 2, 'linkedin'
+         from public.report_workspaces where business_name = 'Northwind Studio';`);
 });
 
 test("the Meta file fills the top three, and the client reads them as links", async ({
