@@ -272,6 +272,19 @@ export const PLATFORM_SETS: Record<PlatformKind, PlatformSet> = {
         label: "Views per video",
         formula: "Views ÷ videos published",
       },
+      /**
+       * **Not in YouTube's set, but it is still drawn.** Impressions
+       * and videos published are both here, so the calc produces a
+       * figure, and a report filters nothing — it shows what the month
+       * HOLDS. So the word has to be right for the platform even where
+       * the set did not ask for it. (18 November, off the demo's
+       * YouTube page, which read "Impressions per post" on a channel
+       * that publishes videos.)
+       */
+      "social_media_impressions_per_post": {
+        label: "Impressions per video",
+        formula: "Impressions ÷ videos published",
+      },
     },
   },
 

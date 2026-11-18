@@ -665,6 +665,7 @@ export default async function CategoryReportPage({
             <TopPostsReport
               posts={topPosts}
               platformName={figures.platform.name}
+              platformKind={platformKind}
               showPlatform={figures.platforms.length > 1}
             />
           ) : null}

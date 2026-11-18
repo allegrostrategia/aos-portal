@@ -78,17 +78,48 @@ test("every figure the database has is asked for by somebody", () => {
   assert.deepEqual(orphaned, [], "social figures no platform is ever asked for");
 });
 
-test("every word a set overrides belongs to a figure that set holds", () => {
+test("every word a set overrides belongs to a figure that kind can show", () => {
+  /**
+   * **Not "a figure the set asks for"**, which is what this said until
+   * 18 November. The entry screen shows the SET; a report shows what
+   * the month HOLDS, and a calc is worked out from whatever is there —
+   * so YouTube, which is asked for impressions and videos published,
+   * gets an impressions-per-post figure it never asked for, and it had
+   * better not be headed "Impressions per post" on a channel. A word
+   * for a figure outside the set is right whenever the report can draw
+   * it; a word for one nothing can produce is the label nobody reads.
+   */
   for (const kind of PLATFORM_KINDS) {
     const set = PLATFORM_SETS[kind];
+    const asked = new Set(set.keys);
     for (const key of Object.keys(set.words ?? {})) {
+      if (asked.has(key)) continue;
+      const metric = SEEDED.get(key);
+      assert.ok(metric, `${kind} renames "${key}", which is not a figure at all`);
+      assert.equal(
+        metric.input,
+        "calc",
+        `${kind} renames "${key}", which it never asks for and nothing works out`,
+      );
       assert.ok(
-        set.keys.includes(key),
-        `${kind} renames "${key}" and never shows it — a label nobody reads`,
+        CALCULABLE[kind]?.includes(key),
+        `${kind} renames "${key}", which cannot be worked out from what it IS asked`,
       );
     }
   }
 });
+
+/**
+ * The worked-out figures a kind's own set can produce without being
+ * asked for them, named rather than derived: `calculate.ts` decides
+ * this and reading it back here would be the same bug twice. The test
+ * above is what keeps the list honest about the words, and
+ * `calculate.test.ts` is what keeps it honest about the numbers.
+ */
+const CALCULABLE: Partial<Record<string, string[]>> = {
+  // Impressions and videos published are both in YouTube's set.
+  youtube: ["social_media_impressions_per_post"],
+};
 
 test("Instagram's set is the set that existed the day before", () => {
   // Nina: "This is today's set. Nothing is lost." Every figure seeded

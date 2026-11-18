@@ -8,7 +8,15 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { IconCircle } from "./icons";
 import { formatValue } from "@/lib/reporting/format";
 import { saveTopPosts, type TopPostState } from "@/lib/reporting/top-post-actions";
-import { POST_TYPES, type PostType, type TopPost } from "@/lib/reporting/top-posts";
+import { type TopPost } from "@/lib/reporting/top-posts";
+import {
+  postFigureLabel,
+  postFiguresFor,
+  postTypeLabel,
+  postTypesFor,
+  type PostFigureKey,
+} from "@/lib/reporting/platform-post-types";
+import type { PlatformKind } from "@/lib/reporting/platforms";
 
 /**
  * The month's top three posts, per platform (Nina, 11 November).
@@ -23,15 +31,6 @@ import { POST_TYPES, type PostType, type TopPost } from "@/lib/reporting/top-pos
  * scanning the list is matching against their own memory of the month.
  */
 
-const TYPE_LABEL: Record<PostType, string> = {
-  reel: "Reel",
-  carousel: "Carousel",
-  photo: "Photo",
-  video: "Video",
-  story: "Story",
-  other: "Post",
-};
-
 const DAY = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",
@@ -43,28 +42,34 @@ function dayOf(date: string | null): string | null {
   return DAY.format(new Date(`${date.slice(0, 10)}T00:00:00Z`));
 }
 
-/** The link's own words, since there is no caption to use. */
-function postLabel(post: Pick<TopPost, "postType" | "postedOn">, rank: number): string {
-  const kind = post.postType ? TYPE_LABEL[post.postType] : "Post";
+/**
+ * The link's own words, since there is no caption to use.
+ *
+ * In the platform's words for them (18 November): a YouTube entry reads
+ * "Short, 4 Sep" rather than "Reel, 4 Sep", and a LinkedIn one "Image"
+ * rather than "Photo". The value stored is the same either way — see
+ * `platform-post-types.ts`.
+ */
+function postLabel(
+  post: Pick<TopPost, "postType" | "postedOn">,
+  rank: number,
+  platformKind: PlatformKind | null,
+): string {
+  const kind = post.postType ? postTypeLabel(post.postType, platformKind) : "Post";
   const day = dayOf(post.postedOn);
   return day ? `${kind}, ${day}` : `${kind} ${rank}`;
 }
 
-const FIGURES: { key: keyof TopPost; label: string }[] = [
-  { key: "reach", label: "Reach" },
-  { key: "views", label: "Views" },
-  { key: "likesPlusComments", label: "Likes + comments" },
-  { key: "saves", label: "Saves" },
-  { key: "shares", label: "Shares" },
-];
-
 export function TopPostsReport({
   posts,
   platformName,
+  platformKind,
   showPlatform,
 }: {
   posts: TopPost[];
   platformName: string;
+  /** Whose words the kinds of post wear. */
+  platformKind: PlatformKind | null;
   /** Only when there is more than one platform to tell apart. */
   showPlatform: boolean;
 }) {
@@ -97,18 +102,26 @@ export function TopPostsReport({
                 rel="noopener noreferrer"
                 className="text-body font-medium text-ink underline decoration-ink/25 underline-offset-4 transition hover:decoration-ink"
               >
-                {postLabel(post, post.rank)}
+                {postLabel(post, post.rank, platformKind)}
               </a>
             </div>
             <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
-              {FIGURES.filter((figure) => post[figure.key] !== null).map((figure) => (
-                <div key={figure.key} className="flex items-baseline gap-1.5">
-                  <dt className="text-caption text-ink/55">{figure.label}</dt>
-                  <dd className="font-num text-small text-ink">
-                    {formatValue(post[figure.key] as number, "count", "GBP")}
-                  </dd>
-                </div>
-              ))}
+              {/* In this platform's order and its words, and never a
+                  figure the post does not hold — a TikTok entry used to
+                  read "Reach 10,933 … Saves 197" on a platform that
+                  reports neither. */}
+              {postFiguresFor(platformKind, [post])
+                .filter((key) => post[key] !== null)
+                .map((key) => (
+                  <div key={key} className="flex items-baseline gap-1.5">
+                    <dt className="text-caption text-ink/55">
+                      {postFigureLabel(key, platformKind)}
+                    </dt>
+                    <dd className="font-num text-small text-ink">
+                      {formatValue(post[key] as number, "count", "GBP")}
+                    </dd>
+                  </div>
+                ))}
             </dl>
           </li>
         ))}
@@ -119,6 +132,21 @@ export function TopPostsReport({
 
 const field =
   "w-full rounded-xl border border-ink/12 bg-cream-deep px-3 py-2 text-small text-ink outline-none transition focus:border-orange focus:bg-card focus:ring-2 focus:ring-orange/30";
+
+/**
+ * What the form calls each figure, which is not what the row does.
+ *
+ * `likes_plus_comments` is the column and `likes` is the field; the
+ * action has parsed `post:1:likes` since 11 November and a published
+ * month's saved form must keep posting the same name.
+ */
+const FIELD: Record<PostFigureKey, string> = {
+  reach: "reach",
+  views: "views",
+  likesPlusComments: "likes",
+  saves: "saves",
+  shares: "shares",
+};
 
 /**
  * Typing the three in, or checking the three the file filled.
@@ -133,6 +161,7 @@ export function TopPostsEntry({
   month,
   platformId,
   platformName,
+  platformKind,
   posts,
   filled,
 }: {
@@ -140,6 +169,8 @@ export function TopPostsEntry({
   month: string;
   platformId: string;
   platformName: string;
+  /** Which kinds of post this platform has, and what it calls them. */
+  platformKind: PlatformKind | null;
   posts: TopPost[];
   /** Posts the upload card has just read, waiting to be kept or ignored. */
   filled?: TopPost[] | null;
@@ -232,33 +263,42 @@ export function TopPostsEntry({
                     className={`${field} w-32`}
                   >
                     <option value="">—</option>
-                    {POST_TYPES.map((type) => (
+                    {/* This platform's kinds of post, plus whatever
+                        these three already are — a select whose value
+                        has no option silently shows the first one, so
+                        without `held` a kind corrected would retype
+                        three posts the moment somebody pressed Save. */}
+                    {postTypesFor(platformKind, (type) =>
+                      shown.some((p) => p.postType === type),
+                    ).map((type) => (
                       <option key={type} value={type}>
-                        {TYPE_LABEL[type]}
+                        {postTypeLabel(type, platformKind)}
                       </option>
                     ))}
                   </select>
                 </label>
-                {(
-                  [
-                    ["reach", "Reach", post?.reach],
-                    ["views", "Views", post?.views],
-                    ["likes", "Likes + comments", post?.likesPlusComments],
-                    ["saves", "Saves", post?.saves],
-                    ["shares", "Shares", post?.shares],
-                  ] as const
-                ).map(([name, label, value]) => (
-                  <label key={name} className="flex flex-col gap-1">
-                    <span className="text-caption text-ink/55">{label}</span>
-                    <input
-                      name={`post:${rank}:${name}`}
-                      inputMode="numeric"
-                      defaultValue={value ?? ""}
-                      key={`${name}-${rank}-${value ?? ""}`}
-                      className={`${field} w-28 font-num`}
-                    />
-                  </label>
-                ))}
+                {/* The boxes follow the platform too: the five columns
+                    are fixed in the table, and which of them this kind
+                    reports — and what it calls them — is not. A column
+                    any of the three posts already holds stays, whatever
+                    the kind says. */}
+                {postFiguresFor(platformKind, shown).map((key) => {
+                  const value = post?.[key] ?? null;
+                  return (
+                    <label key={key} className="flex flex-col gap-1">
+                      <span className="text-caption text-ink/55">
+                        {postFigureLabel(key, platformKind)}
+                      </span>
+                      <input
+                        name={`post:${rank}:${FIELD[key]}`}
+                        inputMode="numeric"
+                        defaultValue={value ?? ""}
+                        key={`${key}-${rank}-${value ?? ""}`}
+                        className={`${field} w-28 font-num`}
+                      />
+                    </label>
+                  );
+                })}
               </div>
             </div>
           );

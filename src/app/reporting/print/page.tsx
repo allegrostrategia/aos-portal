@@ -465,6 +465,7 @@ export default async function ReportPrintPage({
               <TopPostsReport
                 posts={topPosts}
                 platformName={figures.platform.name}
+                platformKind={platformKind}
                 showPlatform={figures.platforms.length > 1}
               />
             </div>

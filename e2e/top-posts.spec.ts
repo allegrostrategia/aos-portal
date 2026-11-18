@@ -133,7 +133,17 @@ test("LinkedIn's are typed, on its own tab", async ({ page }, info) => {
 
   await page.locator('input[name="post:1:url"]').fill("https://example.test/in/one");
   await page.locator('input[name="post:1:reach"]').fill("14200");
-  await page.locator('select[name="post:1:post_type"]').selectOption("photo");
+  // **The kinds follow the platform too** (§5.2 step 3, 18 November).
+  // LinkedIn has no Reel and no Story; it has an Article, a Poll and a
+  // Document, and it calls a photograph an Image.
+  const kind = page.locator('select[name="post:1:post_type"]');
+  const offered = await kind.locator("option").allInnerTexts();
+  expect(offered, "a LinkedIn post cannot be a Reel").not.toContain("Reel");
+  expect(offered, "nor a Story").not.toContain("Story");
+  expect(offered, "LinkedIn's own").toEqual(
+    expect.arrayContaining(["Text", "Image", "Document / carousel", "Video", "Poll", "Article"]),
+  );
+  await kind.selectOption("photo");
   await page.locator('input[name="post:1:posted_on"]').fill("2026-09-09");
   await card.getByRole("button", { name: /save top posts/i }).click();
   await expect(page.getByText(/Top posts saved/i)).toBeVisible();
@@ -143,6 +153,43 @@ test("LinkedIn's are typed, on its own tab", async ({ page }, info) => {
   // And it is LinkedIn's list, not Instagram's.
   await page.goto(`/reporting/social-media?month=${MONTHS.sep}`);
   await expect(page.getByText("Top posts this month")).toHaveCount(0);
+});
+
+/**
+ * The rule that makes a kind safe to correct, on the one control where
+ * getting it wrong would change stored data rather than hide it: a
+ * `<select>` whose value has no matching option renders as the FIRST
+ * one, so the next Save would quietly retype the post.
+ */
+test("a post keeps the kind it has, whatever the platform now offers", async ({ page }) => {
+  const { MONTHS, sql } = await import("../scripts/seed-test-db.mjs");
+
+  // A post entered while this platform was "Other" — or before anybody
+  // said — typed as a Reel, which LinkedIn does not offer.
+  sql(`insert into public.report_top_posts
+         (workspace_id, month, entity_id, rank, url, post_type, reach)
+       select e.workspace_id, '${MONTHS.sep}', e.id, 1,
+              'https://example.test/in/old', 'reel', 7700
+         from public.report_entities e
+         join public.report_workspaces w on w.id = e.workspace_id
+        where w.business_name = 'Northwind Studio'
+          and e.entity_type = 'social_platform' and e.name = 'LinkedIn';`);
+
+  await signIn(page, "nina");
+  const id = (await import("../scripts/seed-test-db.mjs")).sql(
+    `select e.id::text from public.report_entities e
+       join public.report_workspaces w on w.id = e.workspace_id
+      where w.business_name = 'Northwind Studio'
+        and e.entity_type = 'social_platform' and e.name = 'LinkedIn';`,
+  ).trim();
+  await page.goto(`/reporting/enter/social-media?month=${MONTHS.sep}&platform=${id}`);
+
+  const kind = page.locator('select[name="post:1:post_type"]');
+  await expect(kind, "still a Reel, not silently the first option").toHaveValue("reel");
+  expect(
+    await kind.locator("option").allInnerTexts(),
+    "and the word for it is on the list",
+  ).toContain("Reel");
 });
 
 test("a link that is not a link is refused", async ({ page }) => {

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { EntryForm, type EntryFormProps } from "./entry-form";
 import { TopPostsEntry } from "./top-posts";
 import type { TopPost } from "@/lib/reporting/top-posts";
+import type { PlatformKind } from "@/lib/reporting/platforms";
 
 /**
  * Social Media's entry screen: the figures and the top posts together.
@@ -30,6 +31,7 @@ export function SocialEntry({
     month: string;
     platformId: string;
     platformName: string;
+    platformKind: PlatformKind | null;
     posts: TopPost[];
   };
 }) {

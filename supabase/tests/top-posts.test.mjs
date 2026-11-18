@@ -194,6 +194,19 @@ test("clearing a row takes that post off the report", async () => {
   assert.equal(posts[0].rank, 1);
 });
 
+
+
+test("a LinkedIn article saves, which is one of the five new words", async () => {
+  const result = await save(ELIZE, LI, {
+    "post:1:url": "https://www.linkedin.com/pulse/one/",
+    "post:1:post_type": "article",
+    "post:1:reach": "900",
+  });
+  assert.equal(result?.error, undefined, result?.error);
+  const posts = await postsFor(ELIZE, LI);
+  assert.equal(posts[0].postType, "article");
+});
+
 test("a post can only be on this client's own platform", async () => {
   const refused = await save(ELIZE, THEIRS, { "post:1:url": "https://x/1" });
   assert.match(refused?.error ?? "", /isn't this client's/);
@@ -240,4 +253,39 @@ test("a published month refuses a change, as every other table of month content 
 
   const posts = await postsFor(ELIZE, IG);
   assert.equal(posts[0].url, "https://www.instagram.com/p/one/", "unchanged");
+});
+
+/**
+ * §5.2 step 3: a LinkedIn post cannot be a Reel, so the enum had to
+ * learn five words it did not have on 11 November.
+ *
+ * Both directions, as `platform-metrics.test.ts` does for the figures:
+ * every type the code offers must be storable, and every value the
+ * database holds must be a type the code can name. A list in code and
+ * an enum in the schema are two places to say one thing, and this is
+ * what stops them drifting.
+ */
+test("every kind of post the screens offer is a kind the database stores", async () => {
+  const { POST_TYPES } = await import("../../src/lib/reporting/top-posts.ts");
+  const { POST_TYPE_SETS, GENERAL_POST_TYPES, POST_TYPE_LABELS } = await import(
+    "../../src/lib/reporting/platform-post-types.ts"
+  );
+
+  const stored = (
+    await rows(`select unnest(enum_range(null::public.report_post_type))::text as v`)
+  ).map((r) => r.v);
+
+  assert.deepEqual([...POST_TYPES].sort(), [...stored].sort(), "the enum and the list agree");
+
+  const offered = new Set([
+    ...GENERAL_POST_TYPES.types,
+    ...Object.values(POST_TYPE_SETS).flatMap((s) => s.types),
+  ]);
+  for (const type of offered) {
+    assert.ok(stored.includes(type), `${type} is offered but cannot be stored`);
+  }
+  // And nothing is storable that no screen can put a word to.
+  for (const type of stored) {
+    assert.ok(POST_TYPE_LABELS[type], `${type} can be stored but has no label`);
+  }
 });

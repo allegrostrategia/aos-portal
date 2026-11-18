@@ -621,6 +621,7 @@ export default async function EnterCategoryPage({
               month: ctx.month.month,
               platformId: platform.id,
               platformName: platform.name,
+              platformKind,
               posts: topPosts,
             }}
           />

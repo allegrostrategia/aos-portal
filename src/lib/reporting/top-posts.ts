@@ -13,7 +13,22 @@
  * written rather than true with an exception.
  */
 
-export const POST_TYPES = ["reel", "carousel", "photo", "video", "story", "other"] as const;
+/**
+ * Every kind of post the database will store, in enum order.
+ *
+ * **Which of them a given platform is OFFERED is in
+ * `platform-post-types.ts`**, not here — the same division the figures
+ * follow. This list is the constraint; that one is the question.
+ *
+ * The last five were added on 18 November for §5.2's per-platform
+ * lists: LinkedIn has text posts, polls and articles, Facebook has
+ * links, and TikTok and YouTube both have live. Nothing was removed,
+ * because nothing in this project ever is.
+ */
+export const POST_TYPES = [
+  "reel", "carousel", "photo", "video", "story", "other",
+  "text", "link", "poll", "article", "live",
+] as const;
 export type PostType = (typeof POST_TYPES)[number];
 
 export interface TopPost {
@@ -83,14 +98,31 @@ export function isSafeUrl(url: string): boolean {
   return /^https?:\/\/[^\s]+$/i.test(url.trim());
 }
 
-/** Meta's "Post type" column, mapped onto the six we store. */
+/**
+ * Meta's "Post type" column, mapped onto the ones we store.
+ *
+ * **Order is the whole of this function.** "Photo carousel" holds both
+ * words and is a carousel; "Live video" holds both and is live. Each
+ * test is therefore more specific than the ones under it, and a new one
+ * goes in by how specific it is rather than at the end.
+ *
+ * `other` rather than null for a word it does not know: the column said
+ * something, and "we could not place it" is a different answer from
+ * "nobody said". A person can correct it on the screen either way.
+ */
 export function postTypeFrom(raw: string | undefined | null): PostType | null {
   const text = (raw ?? "").trim().toLowerCase();
   if (!text) return null;
   if (text.includes("reel")) return "reel";
   if (text.includes("carousel") || text.includes("album")) return "carousel";
   if (text.includes("story") || text.includes("stories")) return "story";
+  if (text.includes("live")) return "live";
+  if (text.includes("poll")) return "poll";
+  if (text.includes("article")) return "article";
+  if (text.includes("link")) return "link";
   if (text.includes("photo") || text.includes("image")) return "photo";
   if (text.includes("video")) return "video";
+  // Facebook calls a post with no picture in it a status.
+  if (text.includes("text") || text.includes("status")) return "text";
   return "other";
 }
