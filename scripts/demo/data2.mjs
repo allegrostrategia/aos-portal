@@ -291,4 +291,43 @@ export const B_ROLL = [
   "Client call on screen, over the shoulder",
 ];
 
-export const POST_TYPES = ["reel", "carousel", "photo", "video"];
+/**
+ * What kind each demo platform's three top posts were, per platform
+ * (§5.2 step 3, 18 November).
+ *
+ * It was one list of four — reel, carousel, photo, video — dealt out to
+ * all four platforms in turn, so the demo had LinkedIn reels and
+ * YouTube carousels on a screen built to show that a LinkedIn post
+ * cannot be a Reel.
+ *
+ * Kept in step with `src/lib/reporting/platform-post-types.ts` by the
+ * test in `supabase/tests/top-posts.test.mjs`, which refuses a type no
+ * platform of that kind offers. It is not imported from there because
+ * these are the three a demo SHOWS, picked to look like a real month:
+ * a video, a photo and a carousel reads better than three videos.
+ */
+/**
+ * Which of a post's five stored figures each platform actually reports.
+ *
+ * `report_top_posts` has fixed columns, so a demo that filled all five
+ * for all four platforms gave TikTok a reach and YouTube a save. Kept
+ * in step with `platform-post-types.ts` by the test in
+ * `supabase/tests/top-posts.test.mjs`.
+ */
+export const POST_FIGURES_BY_KIND = {
+  instagram: ["reach", "views", "likesPlusComments", "saves", "shares"],
+  linkedin: ["reach", "likesPlusComments", "shares"],
+  tiktok: ["views", "likesPlusComments", "saves", "shares"],
+  facebook: ["reach", "likesPlusComments", "shares"],
+  youtube: ["views", "likesPlusComments"],
+  other: ["reach", "views", "likesPlusComments", "saves", "shares"],
+};
+
+export const POST_TYPES_BY_KIND = {
+  instagram: ["reel", "carousel", "photo"],
+  linkedin: ["text", "photo", "carousel"],
+  tiktok: ["video", "carousel", "video"],
+  facebook: ["photo", "video", "link"],
+  youtube: ["video", "reel", "video"],
+  other: ["photo", "video", "carousel"],
+};

@@ -62,3 +62,47 @@ test("the demo client's report, page by page", async ({ page }, info) => {
   await page.getByRole("heading").first().waitFor();
   await shoot(page, "12-print", width);
 });
+
+/**
+ * Social Media on each of the four, which is the picture §5.2 is for.
+ *
+ * One page photographed four times: the same month, the same client,
+ * four platforms, and the boxes, the cards, the charts, the words and
+ * the kinds of post are different on every one. Before 17 November
+ * these four were identical but for their numbers.
+ *
+ * Nina's document asked for exactly this ("screenshots of Social Media
+ * on every platform"), and it is also the only check on the demo data
+ * that a person can do: the tests below say LinkedIn's figures exist,
+ * not that a LinkedIn page reads like LinkedIn.
+ */
+test("Social Media, on each kind of platform", async ({ page }, info) => {
+  const width = info.project.name === "phone" ? "phone" : "desktop";
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  const workspace = sql(
+    `select id from public.report_workspaces where business_name = 'Demo – Lemon Studio' limit 1;`,
+  ).trim();
+  test.skip(workspace === "", "the demo workspace is not seeded locally");
+
+  const platforms = sql(
+    `select e.id || ' ' || e.platform_kind
+       from public.report_entities e
+      where e.workspace_id = '${workspace}' and e.entity_type = 'social_platform'
+      order by e.sort_order;`,
+  )
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.trim().split(/\s+/) as [string, string]);
+
+  await signIn(page, "nina");
+  let n = 0;
+  for (const [id, kind] of platforms) {
+    n += 1;
+    await page.goto(
+      `/reporting/social-media?workspace=${workspace}&month=${MONTH}&platform=${id}`,
+    );
+    await page.getByRole("heading", { name: "Social Media" }).waitFor();
+    await shoot(page, `13-${n}-social-${kind}`, width);
+  }
+});

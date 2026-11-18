@@ -67,7 +67,34 @@ export const PLATFORMS = [
   { name: "YouTube", kind: "youtube", start: 1_180, end: 2_430, reachPerFollower: 5.5, engagement: 0.057, posts: [3, 6] },
 ];
 
-/** One platform's month, every figure derived from the one above it. */
+/**
+ * One platform's month, every figure derived from the one above it —
+ * **and in that platform's own figures** (§5.2 step 3, 18 November).
+ *
+ * Until today every one of the four returned Instagram's fourteen, so
+ * the demo showed LinkedIn a save rate and YouTube a reach, which is
+ * the exact thing `platform-metric-sets.md` was written to stop. A demo
+ * that disagrees with the product is worse than no demo: it is the
+ * screen Nina shows people.
+ *
+ * The shared skeleton is the same for all of them, because it is the
+ * same business underneath: a follower count on a curve, a number of
+ * posts, something that says how many people saw them, and a funnel of
+ * profile visits → link clicks → DMs where each step is a SHARE of the
+ * one above it, never the other way round.
+ *
+ * What differs is what the platform calls "how many saw it" and how it
+ * counts a reaction, and that is what the switch below is.
+ *
+ * **The arithmetic has to come out right.** A report page works the
+ * rates out from these figures, so the parts of an engagement rate are
+ * split out of one total rather than drawn separately: LinkedIn's
+ * reactions, comments and reposts add up to exactly the interactions
+ * this platform's engagement rate implies, and YouTube's watch time is
+ * its views times its average view duration. Drawn independently they
+ * would have produced a demo whose own worked-out figures contradicted
+ * its typed ones.
+ */
 export function platformMonth(platform, index, total) {
   const t = index / (total - 1);
   // Slightly S-shaped rather than linear, so the chart has a story in it.
@@ -84,35 +111,131 @@ export function platformMonth(platform, index, total) {
 
   const seed = `${platform.name}:${index}`;
   const posts = round(jitter(`${seed}:posts`, (platform.posts[0] + platform.posts[1]) / 2, 0.25));
-  const reach = round(jitter(`${seed}:reach`, followers * platform.reachPerFollower, 0.12));
-  const views = round(reach * jitter(`${seed}:views`, 1.28, 0.08));
+
+  /** How many the month's posts were put in front of, whatever it is called here. */
+  const shownTo = round(jitter(`${seed}:reach`, followers * platform.reachPerFollower, 0.12));
   const engagement = jitter(`${seed}:eng`, platform.engagement, 0.1);
+  /** Everything the engagement rate counts, before it is split up. */
+  const interactions = round(shownTo * engagement);
 
   // The funnel, each step a share of the one above — never the other way
   // round, which is how a "funnel" ends up wider at the bottom.
-  const profileVisits = round(reach * jitter(`${seed}:pv`, 0.048, 0.12));
+  const profileVisits = round(shownTo * jitter(`${seed}:pv`, 0.048, 0.12));
   const linkClicks = round(profileVisits * jitter(`${seed}:lc`, 0.14, 0.15));
   const dms = round(linkClicks * jitter(`${seed}:dm`, 0.26, 0.2));
 
   const gained = Math.max(0, followers - previous) + round(jitter(`${seed}:churn`, followers * 0.004, 0.3));
-  const fromFollowers = round(reach * jitter(`${seed}:own`, 0.32, 0.12));
 
-  return {
+  const base = {
     social_media_followers_at_month_end: followers,
     social_media_posts_published: posts,
-    social_media_reach: reach,
-    social_media_views: views,
-    social_media_likes_plus_comments: round(reach * engagement),
-    social_media_saves: round(reach * jitter(`${seed}:save`, 0.017, 0.2)),
-    social_media_shares: round(reach * jitter(`${seed}:share`, 0.008, 0.25)),
-    social_media_follows_gained: gained,
-    social_media_profile_visits: profileVisits,
-    social_media_link_clicks: linkClicks,
-    social_media_dms_from_content: dms,
-    social_media_keyword_comments: round(dms * jitter(`${seed}:kw`, 1.6, 0.25)),
-    social_media_reach_from_followers: fromFollowers,
-    social_media_reach_from_non_followers: reach - fromFollowers,
   };
+
+  switch (platform.kind) {
+    /**
+     * Impressions and members reached are different numbers and
+     * LinkedIn reports both; a reaction and a comment are counted
+     * separately; reposts stands where shares did. No saves and no
+     * views.
+     */
+    case "linkedin": {
+      const reactions = round(interactions * 0.86);
+      const comments = round(interactions * 0.11);
+      return {
+        ...base,
+        social_media_impressions: shownTo,
+        social_media_members_reached: round(shownTo * jitter(`${seed}:members`, 0.52, 0.1)),
+        social_media_reactions: reactions,
+        social_media_comments: comments,
+        // The remainder, so the three add to exactly `interactions` and
+        // the engagement rate on the page is the one this platform was
+        // given rather than that number plus three roundings.
+        social_media_reposts: Math.max(0, interactions - reactions - comments),
+        social_media_profile_visits: profileVisits,
+        social_media_link_clicks: linkClicks,
+        social_media_dms_from_content: dms,
+      };
+    }
+
+    /** Video views in place of reach, and favourites is TikTok's save. */
+    case "tiktok": {
+      const likes = round(interactions * 0.82);
+      const comments = round(interactions * 0.07);
+      const shares = round(interactions * 0.06);
+      return {
+        ...base,
+        social_media_video_views: shownTo,
+        social_media_likes: likes,
+        social_media_comments: comments,
+        social_media_shares: shares,
+        social_media_favourites: Math.max(0, interactions - likes - comments - shares),
+        social_media_profile_visits: profileVisits,
+      };
+    }
+
+    /**
+     * Post engagements is Facebook's own headline figure, so it is
+     * entered rather than worked out; a page has no saves, and a
+     * profile visit is a page visit. (No Facebook page is in the demo
+     * yet — this is here so that adding one is adding one row.)
+     */
+    case "facebook": {
+      const reactions = round(interactions * 0.78);
+      const comments = round(interactions * 0.13);
+      return {
+        ...base,
+        social_media_reach: shownTo,
+        social_media_post_engagements: interactions,
+        social_media_reactions: reactions,
+        social_media_comments: comments,
+        social_media_shares: Math.max(0, interactions - reactions - comments),
+        social_media_link_clicks: linkClicks,
+        social_media_profile_visits: profileVisits,
+      };
+    }
+
+    /**
+     * Subscribers and videos under the same two keys, then the figures
+     * nothing else here has: watch time, and the two YouTube Studio
+     * hands over rather than making anybody work out. Likes, saves,
+     * shares and profile visits all go.
+     */
+    case "youtube": {
+      const views = shownTo;
+      const clickThrough = pct1(jitter(`${seed}:ctr`, 5.8, 0.12));
+      const duration = Math.round(jitter(`${seed}:dur`, 3.4, 0.14) * 10) / 10;
+      return {
+        ...base,
+        social_media_views: views,
+        // Impressions is what the click-through rate is OF, so it is
+        // read back off it rather than drawn and left to disagree.
+        social_media_impressions: round(views / (clickThrough / 100)),
+        social_media_watch_time: Math.round((views * duration) / 60),
+        social_media_reported_click_through_rate: clickThrough,
+        social_media_average_view_duration: duration,
+      };
+    }
+
+    /** Instagram, and anything with no kind: today's set, unchanged. */
+    default: {
+      const fromFollowers = round(shownTo * jitter(`${seed}:own`, 0.32, 0.12));
+      return {
+        ...base,
+        social_media_reach: shownTo,
+        social_media_views: round(shownTo * jitter(`${seed}:views`, 1.28, 0.08)),
+        social_media_likes_plus_comments: interactions,
+        social_media_saves: round(shownTo * jitter(`${seed}:save`, 0.017, 0.2)),
+        social_media_shares: round(shownTo * jitter(`${seed}:share`, 0.008, 0.25)),
+        social_media_follows_gained: gained,
+        social_media_profile_visits: profileVisits,
+        social_media_link_clicks: linkClicks,
+        social_media_dms_from_content: dms,
+        social_media_keyword_comments: round(dms * jitter(`${seed}:kw`, 1.6, 0.25)),
+        social_media_reach_from_followers: fromFollowers,
+        social_media_reach_from_non_followers: shownTo - fromFollowers,
+      };
+    }
+  }
 }
 
 export function trialReelsMonth(index) {

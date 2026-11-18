@@ -194,7 +194,48 @@ test("clearing a row takes that post off the report", async () => {
   assert.equal(posts[0].rank, 1);
 });
 
+/**
+ * The demo is the screen Nina shows people, so it has to agree with the
+ * product. Before 18 November it dealt one list of four kinds out to
+ * all four platforms in turn, which put reels on LinkedIn and carousels
+ * on YouTube — on a demo of the feature whose name is "a LinkedIn post
+ * cannot be a Reel".
+ *
+ * Two lists in two files is two places to say one thing, and this is
+ * what stops them drifting. The demo's is separate on purpose: these
+ * are the three a demo SHOWS, picked so a month reads like a real one.
+ */
+test("the demo's posts are kinds their own platform offers", async () => {
+  const { POST_TYPES_BY_KIND } = await import("../../scripts/demo/data2.mjs");
+  const { PLATFORMS } = await import("../../scripts/demo/data.mjs");
+  const { POST_TYPE_SETS } = await import("../../src/lib/reporting/platform-post-types.ts");
 
+  for (const [kind, shown] of Object.entries(POST_TYPE_SETS)) {
+    const demo = POST_TYPES_BY_KIND[kind];
+    assert.ok(demo, `the demo has no posts for a ${kind} platform`);
+    for (const type of demo) {
+      assert.ok(shown.types.includes(type), `a ${kind} platform is never offered ${type}`);
+    }
+  }
+  // And every platform the demo actually builds has a list of its own,
+  // rather than falling through to the general one.
+  for (const platform of PLATFORMS) {
+    assert.ok(POST_TYPES_BY_KIND[platform.kind], `${platform.name} falls back to the general list`);
+  }
+});
+
+test("the demo fills only the post figures its platform reports", async () => {
+  const { POST_FIGURES_BY_KIND } = await import("../../scripts/demo/data2.mjs");
+  const { POST_FIGURE_SETS } = await import("../../src/lib/reporting/platform-post-types.ts");
+
+  for (const [kind, set] of Object.entries(POST_FIGURE_SETS)) {
+    assert.deepEqual(
+      POST_FIGURES_BY_KIND[kind],
+      [...set.keys],
+      `the demo and the product disagree about what a ${kind} post reports`,
+    );
+  }
+});
 
 test("a LinkedIn article saves, which is one of the five new words", async () => {
   const result = await save(ELIZE, LI, {

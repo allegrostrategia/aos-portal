@@ -6,7 +6,7 @@
  */
 import { PLATFORMS, months } from "./data.mjs";
 import {
-  OFFERS, CLIENT_ROWS, EXPENSES, STAFF, HOOKS, B_ROLL, POST_TYPES,
+  OFFERS, CLIENT_ROWS, EXPENSES, STAFF, HOOKS, B_ROLL, POST_TYPES_BY_KIND, POST_FIGURES_BY_KIND,
   offerMonth, expenseMonth, launches, stagesFor, launchValues, launchEmailRates,
 } from "./data2.mjs";
 import { NOTES } from "./notes.mjs";
@@ -91,14 +91,26 @@ export function buildRest({ w, ent, row, adminId, MONTHS, currentMonth }) {
   const posts = [];
   MONTHS.forEach((month, i) => {
     PLATFORMS.forEach((p, pi) => {
+      // This platform's own kinds of post: a LinkedIn post cannot be a
+      // Reel (§5.2 step 3). Rotated by the month so the three are not
+      // the same arrangement every time.
+      const kinds = POST_TYPES_BY_KIND[p.kind] ?? POST_TYPES_BY_KIND.other;
+      // And only the figures this platform reports. The five columns
+      // are fixed, so a demo that filled all of them gave TikTok a
+      // reach and YouTube a save — on the screens built to show that
+      // each platform is asked its own questions.
+      const reports = POST_FIGURES_BY_KIND[p.kind] ?? POST_FIGURES_BY_KIND.other;
+      const only = (key, value) => (reports.includes(key) ? value : "null");
       for (let rank = 1; rank <= 3; rank += 1) {
-        const reach = Math.round((28_000 - rank * 6_500) * (0.8 + i * 0.03) * (pi === 0 ? 1 : 0.45));
+        const seen = Math.round((28_000 - rank * 6_500) * (0.8 + i * 0.03) * (pi === 0 ? 1 : 0.45));
         posts.push(`(${w}, ${q(month)}, ${ent("social_platform", p.name)}, ${rank},
           ${q(`https://example.test/${p.name.toLowerCase()}/${month.slice(0, 7)}/${rank}`)},
           ${q(`${month.slice(0, 8)}${String(4 + rank * 6).padStart(2, "0")}`)},
-          '${POST_TYPES[(i + rank) % POST_TYPES.length]}',
-          ${reach}, ${Math.round(reach * 1.3)}, ${Math.round(reach * 0.06)},
-          ${Math.round(reach * 0.018)}, ${Math.round(reach * 0.009)})`);
+          '${kinds[(i + rank - 1) % kinds.length]}',
+          ${only("reach", seen)}, ${only("views", Math.round(seen * 1.3))},
+          ${only("likesPlusComments", Math.round(seen * 0.06))},
+          ${only("saves", Math.round(seen * 0.018))},
+          ${only("shares", Math.round(seen * 0.009))})`);
       }
     });
   });
