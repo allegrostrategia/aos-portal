@@ -226,3 +226,50 @@ test("the scale's top is a number a person would have picked", () => {
   assert.equal(niceCeiling(0), 1);
   assert.equal(niceCeiling(-5), 1);
 });
+
+/**
+ * **Views and impressions never share an axis.**
+ *
+ * A YouTube click-through rate of around 6% means impressions are
+ * roughly fifteen times views, so a chart of both drew the views as
+ * slivers against the floor — two numbers on screen and only one of
+ * them readable. It is the dual-axis problem without the second axis:
+ * two measures of very different scale belong in two charts.
+ *
+ * Written as a rule over every chart rather than a check on YouTube's,
+ * because the pair is the only one in this project where the scales
+ * differ by a factor and the next kind to want both would do it again.
+ * (Dom, 18 November, off the demo.)
+ */
+test("no chart draws views and impressions against the same axis", () => {
+  for (const [where, charts] of ALL_CHARTS) {
+    for (const chart of charts) {
+      const keys = chart.series.map((s) => s.metricKey);
+      const both =
+        keys.includes("social_media_impressions") &&
+        (keys.includes("social_media_views") || keys.includes("social_media_video_views"));
+      assert.ok(!both, `${where}/${chart.id} puts views and impressions on one axis`);
+    }
+  }
+});
+
+test("YouTube draws its views and its reported click-through rate separately", () => {
+  const ids = chartsFor("social_media", "youtube").map((c) => c.id);
+  assert.ok(ids.includes("views-over-time"));
+  assert.ok(ids.includes("click-through-rate"));
+  assert.ok(!ids.includes("views-and-impressions"), "the one that hid the views");
+
+  // The TYPED rate, not the worked-out one: YouTube counts a view
+  // differently from an impression-click, so its own figure and a
+  // computed one would disagree on the same page (Nina, 16 November).
+  const ctr = chartsFor("social_media", "youtube").find((c) => c.id === "click-through-rate");
+  assert.deepEqual(
+    ctr?.series.map((s) => s.metricKey),
+    ["social_media_reported_click_through_rate"],
+  );
+
+  // And LinkedIn's click-through chart is still its own, worked out.
+  const li = chartsFor("social_media", "linkedin").map((c) => c.id);
+  assert.ok(li.includes("engagement-and-clicks"));
+  assert.ok(!li.includes("click-through-rate"), "LinkedIn's is the pair, not a line of its own");
+});

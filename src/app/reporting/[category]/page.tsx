@@ -441,12 +441,19 @@ export default async function CategoryReportPage({
 
           {trendSpecs.length > 0 ? (
             // Three across where there are three, as the mockup draws
-            // them, rather than two and a hole beside the third. Written
-            // out because a Tailwind class cannot be built from a
-            // variable at runtime.
+            // them, rather than two and a hole beside the third. **Two
+            // across where there are four** (18 November), rather than
+            // three and one on its own at a third of the width: YouTube
+            // grew a fourth chart when views and impressions were split
+            // apart, and the orphan read as something half-loaded. Four
+            // in a square is also the bigger drawing, which a line of
+            // twelve monthly points wants. Written out because a
+            // Tailwind class cannot be built from a variable at runtime.
             <div
               className={`mt-6 grid gap-6 ${
-                trendSpecs.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2"
+                trendSpecs.length === 4 || trendSpecs.length < 3
+                  ? "lg:grid-cols-2"
+                  : "lg:grid-cols-3"
               }`}
             >
               {trendSpecs.map((spec) => (
@@ -459,7 +466,7 @@ export default async function CategoryReportPage({
                   // be sliced apart.
                   months={axis}
                   currency={ctx.workspace.currency}
-                  columns={trendSpecs.length >= 3 ? 3 : 2}
+                  columns={trendSpecs.length === 4 || trendSpecs.length < 3 ? 2 : 3}
                   target={
                     spec.targetFor ? (chartTargets.get(`${spec.targetFor}|`) ?? null) : null
                   }

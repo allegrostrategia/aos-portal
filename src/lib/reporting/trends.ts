@@ -329,21 +329,51 @@ export const PLATFORM_TREND_CHARTS: Partial<Record<PlatformKind, TrendChartSpec[
       emptyMessage:
         "Two months of subscriber counts are needed before there is a line to draw.",
     },
+    /**
+     * **Views and impressions were one chart and should not have been**
+     * (Dom, 18 November, off the demo). A click-through rate of around
+     * 6% means impressions are about fifteen times views, so on a
+     * shared axis the views were slivers a reader could not see — a
+     * chart of two numbers that only showed one of them. Two measures
+     * of different scale is the dual-axis problem wearing a disguise,
+     * and the answer is two charts rather than two scales.
+     *
+     * The relationship between them is not lost: the click-through
+     * rate below IS views over impressions, and it is the figure
+     * YouTube Studio reports and Nina would quote.
+     */
     {
-      id: "views-and-impressions",
-      title: "Views and impressions",
+      id: "views-over-time",
+      title: "Views over time",
       icon: "eye",
       tone: "orange",
       months: 6,
       kind: "bars",
       unit: "count",
+      series: [{ metricKey: "social_media_views", label: "Views" }],
+      caption: "The last six months.",
+      emptyMessage: "No views entered for these months yet.",
+    },
+    {
+      id: "click-through-rate",
+      title: "Click-through rate",
+      icon: "target",
+      tone: "blush",
+      months: 12,
+      kind: "line",
+      unit: "percent",
+      // The TYPED one. YouTube counts a view differently from an
+      // impression-click, so its own figure and a worked-out one would
+      // disagree on the same page — settled by Nina on 16 November,
+      // and the reason there are two click-through-rate metrics at all.
       series: [
-        { metricKey: "social_media_views", label: "Views" },
-        { metricKey: "social_media_impressions", label: "Impressions" },
+        { metricKey: "social_media_reported_click_through_rate", label: "Click-through rate" },
       ],
+      area: true,
       caption:
-        "The last six months. An impression is a thumbnail somebody saw; a view is one they opened.",
-      emptyMessage: "No views or impressions entered for these months yet.",
+        "How often a thumbnail somebody saw was one they opened, as YouTube Studio reports it.",
+      emptyMessage:
+        "Two months of click-through rates are needed before there is a line to draw.",
     },
     {
       id: "watch-time",
