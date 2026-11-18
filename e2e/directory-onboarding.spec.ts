@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 import { mkdirSync } from "node:fs";
 
-import { requireLocalStack } from "./helpers.ts";
+import { capture, requireLocalStack } from "./helpers.ts";
 
 /**
  * "Your profile is ready" — the card a member sees when their directory
@@ -62,7 +63,7 @@ const CAST = {
 
 async function shot(page: Page, name: string, w: "phone" | "desktop") {
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/${name}-${w}.png`, fullPage: true });
+  await capture(page, `${OUT}/${name}-${w}.png`);
 }
 
 /**

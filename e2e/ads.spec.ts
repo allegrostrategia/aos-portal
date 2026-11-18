@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 
 import { MONTHS } from "./guard.ts";
 import { expectNothingAdminish, requireLocalStack, shoot, signIn } from "./helpers.ts";

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 
 import { requireLocalStack, signIn } from "./helpers.ts";
 

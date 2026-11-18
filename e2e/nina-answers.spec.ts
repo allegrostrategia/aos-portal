@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 import { mkdirSync } from "node:fs";
 
 import { MONTHS, PEOPLE } from "./guard.ts";
-import { requireLocalStack, signIn } from "./helpers.ts";
+import { capture, requireLocalStack, signIn } from "./helpers.ts";
 
 /**
  * Nina's review, built — the eleven answers she gave on 28 October.
@@ -34,7 +35,7 @@ const OUT = "docs/nina-review/screens-review";
 
 async function shot(page: Page, name: string, w: "phone" | "desktop") {
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/${name}-${w}.png`, fullPage: true });
+  await capture(page, `${OUT}/${name}-${w}.png`);
 }
 
 test.beforeEach(async () => {

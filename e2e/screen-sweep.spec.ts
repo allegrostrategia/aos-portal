@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs";
 
-import { test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { test } from "./quiet.ts";
 
-import { requireLocalStack, signIn } from "./helpers.ts";
+import { capture, requireLocalStack, signIn } from "./helpers.ts";
 
 /**
  * Every screen in the reporting tool, both widths, in one folder.
@@ -27,7 +28,7 @@ const shoot = async (page: Page, name: string, width: string) => {
   mkdirSync(FOLDER, { recursive: true });
   // The whole page: what is below the fold is most of what there is to
   // review, and a viewport shot would hide the half that changed.
-  await page.screenshot({ path: `${FOLDER}/${name}-${width}.png`, fullPage: true });
+  await capture(page, `${FOLDER}/${name}-${width}.png`);
 };
 
 /** The sections, in tab order, with the slug each route uses. */

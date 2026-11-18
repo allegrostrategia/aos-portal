@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 
 import { MONTHS } from "./guard.ts";
 import { expectNothingAdminish, requireLocalStack, shoot, signIn } from "./helpers.ts";

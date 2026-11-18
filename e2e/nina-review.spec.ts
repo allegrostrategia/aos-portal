@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 import { mkdirSync } from "node:fs";
 
 import { MONTHS } from "./guard.ts";
-import { requireLocalStack, signIn } from "./helpers.ts";
+import { capture, requireLocalStack, signIn } from "./helpers.ts";
 
 /**
  * The review pack Nina reads before Stage 3 is switched on.
@@ -30,7 +31,7 @@ const width = (name: string) => (name === "phone" ? "phone" : "desktop") as "pho
 
 async function shot(page: Page, name: string, w: "phone" | "desktop") {
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/${name}-${w}.png`, fullPage: true });
+  await capture(page, `${OUT}/${name}-${w}.png`);
 }
 
 /**

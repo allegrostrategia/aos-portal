@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { A_MISSING_PAGE, expect, expectsConsoleErrors, test } from "./quiet.ts";
 
 import { requireLocalStack, shoot, signIn } from "./helpers.ts";
 
@@ -242,6 +242,7 @@ test("the client sees a published launch's report and none of the planner", asyn
 test("one client cannot open another's launch", async ({ page }) => {
   // Not found and not yours are the same answer — §13: never confirm that
   // another client's record exists.
+  expectsConsoleErrors(page, "the 404 this test is here to get", A_MISSING_PAGE);
   const { sql } = await import("../scripts/seed-test-db.mjs");
   const id = sql(`select l.id from public.report_launches l
                     join public.report_workspaces w on w.id = l.workspace_id

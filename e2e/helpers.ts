@@ -50,7 +50,67 @@ export async function signOut(page: Page) {
 export async function shoot(page: Page, tab: string, name: string, width: "desktop" | "phone") {
   const dir = `${SHOTS}/${tab}`;
   mkdirSync(dir, { recursive: true });
-  await page.screenshot({ path: `${dir}/${name}-${width}.png`, fullPage: true });
+  await capture(page, `${dir}/${name}-${width}.png`);
+}
+
+/**
+ * One full-page screenshot, hydrated first.
+ *
+ * Seven specs grew a `shot` of their own before this existed and every
+ * one of them was `page.screenshot({ fullPage: true })` under a
+ * different folder — so the hydration wait below had to be added in
+ * seven places or in one. This is the one.
+ */
+export async function capture(page: Page, path: string) {
+  await hydrated(page);
+  await page.screenshot({ path, fullPage: true });
+}
+
+/**
+ * Wait until React has taken the page over.
+ *
+ * **Two reasons, and the second is why this is in `shoot`.** A
+ * screenshot of a half-hydrated page is a photograph of a state nobody
+ * looks at for long, with controls that have not been wired up yet. And
+ * Playwright hides the text caret for a screenshot by writing
+ * `caret-color: transparent` into the DOM — so taking one mid-hydration
+ * makes Playwright the "browser extension which messes with the HTML
+ * before React loaded" that the hydration warning talks about, and
+ * React logs a mismatch against markup the server never sent. Nine
+ * tests reported one the day the console guard went in (`quiet.ts`),
+ * every one of them a screenshot-heavy spec, and not one of them a
+ * defect in a page.
+ *
+ * The marker is React's own: hydration attaches a `__reactFiber$…` key
+ * to the DOM nodes it has claimed. Nothing in the app has to cooperate,
+ * which matters — the failure this suite has actually had was the app
+ * not hydrating AT ALL (`hydration.spec.ts`), and a marker the app sets
+ * itself would have been set in that state too.
+ */
+export async function hydrated(page: Page) {
+  await page.waitForFunction(
+    () => {
+      // **`interactive`, not `complete`.** The check below reads a
+      // variable an inline script sets, and every inline script has run
+      // by the time the document is parsed — whereas `complete` also
+      // waits for every image, which on a dev server put ten minutes on
+      // a full run for nothing.
+      if (document.readyState === "loading") return false;
+      const el = document.querySelector("main") ?? document.body;
+      if (el && Object.keys(el).some((k) => k.startsWith("__reactFiber$"))) return true;
+      // **`javaScriptEnabled: false`, which one spec uses on purpose**
+      // (the launch cover, a plain multipart post to a route handler).
+      // There, React is never coming and waiting for it is a 15-second
+      // way of failing. `__next_f` is set by Next's own inline
+      // bootstrap, so its absence after `complete` means no script on
+      // this page ran at all — which is a different thing from one that
+      // has not finished. Playwright's own `evaluate` still works in
+      // that context, which is why this can be asked at all.
+      return !("__next_f" in window);
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
 }
 
 /**

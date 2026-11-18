@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { A_MISSING_PAGE, expect, expectsConsoleErrors, test } from "./quiet.ts";
 
 import { STAGE_2_PORT } from "../playwright.config.ts";
 import { MONTHS, PEOPLE } from "./guard.ts";
@@ -80,6 +80,9 @@ test("the same Overview at stage 3 has all of it, so the test above means someth
 });
 
 test("Stage 3's own pages and tabs have no route at the production flag", async ({ page }) => {
+  // Every route below is meant to 404, which the browser logs as a
+  // console error; the console guard is told so rather than switched off.
+  expectsConsoleErrors(page, "the 404s this test is here to get", A_MISSING_PAGE);
   await signInAtStage2(page, "nina");
 
   for (const path of [
@@ -150,6 +153,7 @@ test("Stage 6's upload card is absent at the production flag", async ({ page }) 
 });
 
 test("Stage 5's additions are absent at the production flag", async ({ page }) => {
+  expectsConsoleErrors(page, "the 404s this test is here to get", A_MISSING_PAGE);
   // **Harder to hide than the stages before it.** Stages 3 and 4 were
   // new routes, invisible by not existing. Stage 5 adds things to
   // screens a person already opens, so each one has to ask the switch —

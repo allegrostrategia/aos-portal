@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs";
 
-import { test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { test } from "./quiet.ts";
 
-import { requireLocalStack, signIn } from "./helpers.ts";
+import { capture, requireLocalStack, signIn } from "./helpers.ts";
 
 /**
  * Every report page, both widths, against the demo client's full year.
@@ -24,7 +25,7 @@ const MONTH = "2026-10";
 
 const shoot = async (page: Page, name: string, width: string) => {
   mkdirSync(FOLDER, { recursive: true });
-  await page.screenshot({ path: `${FOLDER}/${name}-${width}.png`, fullPage: true });
+  await capture(page, `${FOLDER}/${name}-${width}.png`);
 };
 
 const PAGES: [string, string][] = [

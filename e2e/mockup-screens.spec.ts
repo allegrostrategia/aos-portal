@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./quiet.ts";
 import { mkdirSync } from "node:fs";
 import sharp from "sharp";
 
-import { requireLocalStack, signIn } from "./helpers.ts";
+import { capture, hydrated, requireLocalStack, signIn } from "./helpers.ts";
 
 /**
  * The five screens the approved mockups cover, at both widths, for Nina.
@@ -114,6 +115,10 @@ function inkContrast(bg: [number, number, number], alpha: number): number {
  * text colour onto every pixel of it.
  */
 async function worstContrastBehind(page: Page, locator: ReturnType<Page["getByText"]>, alpha: number) {
+  // It hides the element and photographs what is behind it — two DOM
+  // changes — so React has to have finished with the page first, or the
+  // measurement is the thing that breaks hydration.
+  await hydrated(page);
   const box = await locator.boundingBox();
   if (!box) throw new Error("nothing to measure: the element has no box");
 
@@ -135,7 +140,7 @@ async function worstContrastBehind(page: Page, locator: ReturnType<Page["getByTe
 
 async function shot(page: Page, name: string, w: "phone" | "desktop") {
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/${name}-${w}.png`, fullPage: true });
+  await capture(page, `${OUT}/${name}-${w}.png`);
 }
 
 const width = (name: string): "phone" | "desktop" => (name === "phone" ? "phone" : "desktop");
