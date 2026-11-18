@@ -355,6 +355,38 @@ export default async function CategoryReportPage({
   const empty =
     headline.length === 0 && rest.length === 0 && entityRows === 0 && topPosts.length === 0;
 
+  /**
+   * **The note sits above the figures on Social Media** (Dom, 18
+   * November), and under them everywhere else.
+   *
+   * It is written per SECTION — one note for Social Media in a month —
+   * but Social Media is the only page with a platform switcher, so
+   * sitting at the bottom it read as a note about whichever platform
+   * you were looking at. The YouTube page ended a screen of watch time
+   * and subscribers with a paragraph about Instagram reels.
+   *
+   * Above the figures is as high as a card goes: the switcher itself is
+   * in the page header, beside the month. So it is the first thing in
+   * the body and everything platform-specific is below it, which is
+   * what makes it read as the section's note rather than a platform's.
+   *
+   * Only this page moves, because only this page has the problem — the
+   * other ten have nothing to be mistaken for. **Nina's call in the
+   * end**; this is the default until she says otherwise.
+   */
+  const noteOnTop = category.key === "social_media";
+  const strategistNote = (
+    <StrategistNotes
+      notes={notes}
+      canWrite={ctx.canEdit && ctx.workspace.kind === "retainer"}
+      workspaceId={ctx.workspace.id}
+      month={ctx.month.month}
+      category={category.key}
+      mine={mine}
+      emptyMessage="No note on this section this month."
+    />
+  );
+
   return (
     <ReportShell
       ctx={ctx}
@@ -385,6 +417,8 @@ export default async function CategoryReportPage({
         </>
       }
     >
+      {noteOnTop ? <div className="mb-6">{strategistNote}</div> : null}
+
       {!ctx.monthPublished ? (
         // A month that is not out yet, reached by URL or by the picker's
         // own arrow since decision 10 put it there. Saying the section
@@ -880,17 +914,7 @@ export default async function CategoryReportPage({
         </>
       ) : null}
 
-      <div className="mt-6">
-        <StrategistNotes
-          notes={notes}
-          canWrite={ctx.canEdit && ctx.workspace.kind === "retainer"}
-          workspaceId={ctx.workspace.id}
-          month={ctx.month.month}
-          category={category.key}
-          mine={mine}
-          emptyMessage="No note on this section this month."
-        />
-      </div>
+      {noteOnTop ? null : <div className="mt-6">{strategistNote}</div>}
     </ReportShell>
   );
 }

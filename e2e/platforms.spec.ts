@@ -437,3 +437,53 @@ test("the file card follows the platform too", async ({ page }, info) => {
 
   await shoot(page, TAB, "12-entry-linkedin-no-file-card", w);
 });
+
+/**
+ * **The note belongs to the section, not to the platform** (Dom, 18
+ * November). It is written once for Social Media in a month, and
+ * sitting at the bottom of a page with a platform switcher it read as a
+ * note about whichever platform was on screen — the YouTube page ended
+ * a screen of watch time with a paragraph about Instagram reels.
+ */
+test("the strategist's note is above the figures, and there is one of it", async ({ page }) => {
+  const { sql } = await import("../scripts/seed-test-db.mjs");
+  sql(`insert into public.report_notes (workspace_id, month, category, note_type, body, author_id)
+       select w.id, '${MONTHS.sep}-01', 'social_media', 'strategist',
+              'Reels are carrying the account this month.', a.user_id
+         from public.report_workspaces w
+         join public.report_access a
+           on a.workspace_id = w.id and a.role <> 'client'
+        where w.business_name = 'Northwind Studio' limit 1;`);
+
+  await signIn(page, "nina");
+  for (const platform of [null, await linkedInId()]) {
+    await page.goto(
+      `/reporting/social-media?month=${MONTHS.sep}${platform ? `&platform=${platform}` : ""}`,
+    );
+    const heading = page.getByText("Notes from your strategist");
+    await expect(heading, "once, whichever platform").toHaveCount(1);
+
+    // Above everything the switcher changes. The headline figures are
+    // the first thing that is a platform's, so the note is before them.
+    const order = await page.evaluate(() => {
+      const all = [...document.querySelectorAll("main *")];
+      const note = all.findIndex((el) => el.textContent?.trim() === "Notes from your strategist");
+      const kpi = all.findIndex((el) => el.matches("[data-kpi]"));
+      return { note, kpi };
+    });
+    expect(order.note, "the note is on the page").toBeGreaterThan(-1);
+    expect(order.kpi, "and so are the figures").toBeGreaterThan(-1);
+    expect(order.note, "the note comes first").toBeLessThan(order.kpi);
+  }
+
+  // And it has NOT moved on the other ten, which have nothing to be
+  // mistaken for — only Social Media has a switcher.
+  await page.goto(`/reporting/email?month=${MONTHS.sep}`);
+  const elsewhere = await page.evaluate(() => {
+    const all = [...document.querySelectorAll("main *")];
+    const note = all.findIndex((el) => el.textContent?.trim() === "Notes from your strategist");
+    const kpi = all.findIndex((el) => el.matches("[data-kpi]"));
+    return { note, kpi };
+  });
+  expect(elsewhere.note, "still under the figures on Email").toBeGreaterThan(elsewhere.kpi);
+});
