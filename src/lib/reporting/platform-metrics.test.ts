@@ -134,8 +134,16 @@ test("a platform with no kind yet gets the general set", () => {
   assert.equal(platformSetFor(null), GENERAL_SET);
   assert.equal(platformSetFor("other"), GENERAL_SET);
   assert.ok(platformAsks("social_media_reach", null));
-  // Lean on purpose: it serves a platform we know nothing about.
-  assert.ok(!platformAsks("social_media_saves", null));
+  // **Saves, added by Nina on 18 November** — Pinterest is the platform
+  // "Other" was written for, and a save is the whole of how Pinterest is
+  // read. The general engagement rate already counted them, so the set
+  // was computing a figure from a box it never offered.
+  assert.ok(platformAsks("social_media_saves", null));
+  assert.ok(platformAsks("social_media_saves", "other"));
+  // Still lean on purpose: it serves a platform we know nothing about,
+  // and the save RATE is saves ÷ reach, which is Instagram's reading.
+  assert.ok(!platformAsks("social_media_save_rate", null));
+  assert.ok(!platformAsks("social_media_keyword_comments", null));
 });
 
 test("the words follow the platform", () => {

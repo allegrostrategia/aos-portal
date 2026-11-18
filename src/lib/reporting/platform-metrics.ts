@@ -69,6 +69,16 @@ const CTR = "social_media_click_through_rate";
  * A client on Pinterest or Threads is not stuck, and is not asked for a
  * save rate that platform may not have. Nothing is lost by it being
  * short: `held` keeps whatever was entered before.
+ *
+ * **Saves, added by Nina on 18 November.** Pinterest is the platform
+ * "Other" was written for and a save is the whole of how Pinterest is
+ * read; a client on it would have had no box for the one figure that
+ * matters. It also closes a gap this set had from the day it was
+ * written: the general engagement rate is the Instagram formula, saves
+ * among its ingredients, so "Other" was already counting a figure it
+ * never asked anybody for. The save RATE is deliberately not here —
+ * saves ÷ reach is Instagram's reading of it and we do not know what
+ * this platform calls either half. One line if she wants it.
  */
 export const GENERAL_SET: PlatformSet = {
   keys: [
@@ -77,6 +87,7 @@ export const GENERAL_SET: PlatformSet = {
     "social_media_reach",
     "social_media_views",
     "social_media_likes_plus_comments",
+    "social_media_saves",
     "social_media_shares",
     PROFILE_VISITS,
     "social_media_link_clicks",
