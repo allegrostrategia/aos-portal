@@ -267,9 +267,16 @@ export default async function ReportPrintPage({
                 {PANELS.attention}
               </h2>
               <p className="mt-1 font-num text-eyebrow uppercase text-ink/50">{FOCUS_TAG}</p>
+              {/* **Keyed on the line, as the Overview is.** `item.key`
+                  is the TEMPLATE's name — "countUp", "rateDown" — and
+                  two figures that both rose share it, so a month with
+                  two wins rendered a duplicate React key and React is
+                  free to omit or duplicate the row. On the PDF a client
+                  is sent, silently. (18 November, from a console sweep
+                  of every report page.) */}
               <ul className="mt-3 flex flex-col gap-2">
                 {panels.attention.map((item) => (
-                  <li key={item.key} className="text-body text-ink/85">
+                  <li key={item.text} className="text-body text-ink/85">
                     {item.text}
                   </li>
                 ))}
@@ -281,7 +288,7 @@ export default async function ReportPrintPage({
               <h2 className="font-display text-heading font-medium text-ink">{PANELS.wins}</h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {panels.wins.map((item) => (
-                  <li key={item.key} className="text-body text-ink/85">
+                  <li key={item.text} className="text-body text-ink/85">
                     {item.text}
                   </li>
                 ))}
