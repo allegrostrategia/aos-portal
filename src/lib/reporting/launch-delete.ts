@@ -1,8 +1,10 @@
 /**
- * What to say when a stage or a price option still has figures on it.
+ * What to say when a stage, a price option or a source still has figures
+ * on it.
  *
  * `report_launch_values.stage_id` and `.price_id` became
- * `on delete restrict` on 8 October: removing a stage used to take its
+ * `on delete restrict` on 8 October, and `.source_id` was created that way
+ * on 19 November: removing a stage used to take its
  * sign-ups, its attendance and its whole email sequence with it, silently,
  * because a foreign key cascade does not consult RLS or fire a policy.
  * That is reachable on a launch the client has read, since a correction
@@ -29,7 +31,7 @@ const BLOCKED_BY_A_REFERENCE = new Set(["23001", "23503"]);
 
 export function launchDeleteMessage(
   error: { code?: string | null; message?: string | null },
-  what: "stage" | "price option",
+  what: "stage" | "price option" | "source",
   name: string,
 ): string | null {
   if (!error.code || !BLOCKED_BY_A_REFERENCE.has(error.code)) return null;

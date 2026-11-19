@@ -40,6 +40,12 @@ export interface LaunchRow {
   goal_good: number | null;
   goal_better: number | null;
   goal_best: number | null;
+  /** Good/Better/Best on sign-ups (Nina, 19 November). */
+  sign_up_goal_good: number | null;
+  sign_up_goal_better: number | null;
+  sign_up_goal_best: number | null;
+  /** A link to the client's own lead sheet. No names live in aOS. */
+  lead_tracker_url: string | null;
   planner_show_up_rate: number | null;
   planner_conversion_rate: number | null;
   published_at: string | null;
@@ -64,20 +70,52 @@ export interface LaunchStage {
   is_main_selling_stage: boolean;
 }
 
+export type LaunchPricePlan = "full" | "monthly";
+
 export interface LaunchPrice {
   id: string;
   launch_id: string;
   name: string;
+  /**
+   * The full contract value, whichever plan this is.
+   *
+   * For a monthly option that is `instalment_amount` × `instalments`,
+   * worked out on save rather than at read time — so total revenue needs
+   * no special case and the two cannot disagree.
+   */
   price: number;
+  plan: LaunchPricePlan;
+  /** Monthly: how many months. A plan: how many instalments. */
   instalments: number | null;
   instalment_amount: number | null;
   is_main: boolean;
+}
+
+/** One of the client's own named sources, with its sign-up target. */
+export interface LaunchSource {
+  id: string;
+  launch_id: string;
+  name: string;
+  position: number;
+  sign_up_target: number | null;
+}
+
+/** One email of the launch: which stage, which number, and its words. */
+export interface LaunchEmail {
+  id: string;
+  launch_id: string;
+  stage_id: string;
+  number: number;
+  sent_on: string | null;
+  subject: string | null;
+  is_resend: boolean;
 }
 
 interface RawLaunchValue {
   metric_key: string;
   stage_id: string | null;
   price_id: string | null;
+  source_id: string | null;
   day_number: number | null;
   email_number: number | null;
   value: number | string | null;
@@ -102,6 +140,7 @@ export class LaunchValues {
         LaunchValues.key(row.metric_key, {
           stageId: row.stage_id,
           priceId: row.price_id,
+          sourceId: row.source_id,
           day: row.day_number,
           email: row.email_number,
         }),
@@ -124,6 +163,7 @@ export class LaunchValues {
       metricKey,
       at.stageId ?? "",
       at.priceId ?? "",
+      at.sourceId ?? "",
       at.day ?? "",
       at.email ?? "",
     ].join("|");
@@ -142,11 +182,12 @@ export class LaunchValues {
   fields(): LaunchFigures {
     const out: LaunchFigures = {};
     for (const [key, value] of this.byKey) {
-      const [metricKey, stageId, priceId, day, email] = key.split("|");
+      const [metricKey, stageId, priceId, sourceId, day, email] = key.split("|");
       out[
         launchFieldName(metricKey, {
           stageId: stageId || null,
           priceId: priceId || null,
+          sourceId: sourceId || null,
           day: day ? Number(day) : null,
           email: email ? Number(email) : null,
         })
@@ -160,6 +201,8 @@ export interface LaunchDetail {
   launch: LaunchRow;
   stages: LaunchStage[];
   prices: LaunchPrice[];
+  sources: LaunchSource[];
+  emails: LaunchEmail[];
   values: LaunchValues;
 }
 
@@ -187,7 +230,7 @@ export async function getLaunches(workspaceId: string): Promise<LaunchRow[]> {
 export async function getLaunch(launchId: string): Promise<LaunchDetail | null> {
   const supabase = await createClient();
 
-  const [launchRes, stageRes, priceRes, valueRes] = await Promise.all([
+  const [launchRes, stageRes, priceRes, sourceRes, emailRes, valueRes] = await Promise.all([
     supabase.from("report_launches").select("*").eq("id", launchId).maybeSingle<LaunchRow>(),
     supabase
       .from("report_launch_stages")
@@ -202,8 +245,23 @@ export async function getLaunch(launchId: string): Promise<LaunchDetail | null> 
       .order("created_at", { ascending: true })
       .returns<LaunchPrice[]>(),
     supabase
+      .from("report_launch_sources")
+      .select("*")
+      .eq("launch_id", launchId)
+      .order("position", { ascending: true })
+      .returns<LaunchSource[]>(),
+    supabase
+      .from("report_launch_emails")
+      .select("*")
+      .eq("launch_id", launchId)
+      // Stage then number, which is the order they went out in and the
+      // order the table on the report reads.
+      .order("stage_id", { ascending: true })
+      .order("number", { ascending: true })
+      .returns<LaunchEmail[]>(),
+    supabase
       .from("report_launch_values")
-      .select("metric_key, stage_id, price_id, day_number, email_number, value")
+      .select("metric_key, stage_id, price_id, source_id, day_number, email_number, value")
       .eq("launch_id", launchId)
       .returns<RawLaunchValue[]>(),
   ]);
@@ -214,6 +272,8 @@ export async function getLaunch(launchId: string): Promise<LaunchDetail | null> 
     launch: launchRes.data,
     stages: stageRes.data ?? [],
     prices: priceRes.data ?? [],
+    sources: sourceRes.data ?? [],
+    emails: emailRes.data ?? [],
     values: new LaunchValues(valueRes.data ?? []),
   };
 }

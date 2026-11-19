@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { LaunchEntryForm } from "@/components/reporting/launch-entry-form";
+import { dayGrid } from "@/lib/reporting/launch-figures";
+import { shortDate } from "@/lib/reporting/launch-dates";
 import { LaunchLock } from "@/components/reporting/launch-publish";
 import { ReportShell } from "@/components/reporting/report-shell";
 import { SavedBanner } from "@/components/reporting/saved-banner";
@@ -97,6 +99,16 @@ export default async function EnterLaunchPage({
         launch={detail.launch}
         stages={detail.stages}
         prices={detail.prices}
+        sources={detail.sources}
+        emails={detail.emails}
+        // Worked out here rather than in the form: the span comes from
+        // the launch's own stage dates, and the label is formatted by
+        // the module that formats every other date on these screens.
+        days={dayGrid(detail).map((day) => ({
+          day: day.day,
+          date: day.date,
+          label: shortDate(day.date),
+        }))}
         values={detail.values.fields()}
         locked={locked}
         currency={ctx.workspace.currency}

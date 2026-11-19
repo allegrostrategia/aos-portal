@@ -1,6 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
+
+import {
+  STAGE_TYPES,
+  STAGE_TYPE_LABELS,
+  defaultStageName,
+  signUpLabel,
+} from "@/lib/reporting/stage-labels";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -25,15 +32,15 @@ import type { LaunchPrice, LaunchStage } from "@/lib/reporting/launch-queries";
  * ones, and saving a filled one brings two more.
  */
 
-const STAGE_TYPES = [
-  ["challenge", "Challenge"],
-  ["masterclass", "Masterclass"],
-  ["webinar", "Webinar"],
-  ["workshop", "Workshop"],
-  ["waitlist", "Waitlist"],
-  ["open_cart", "Open cart"],
-  ["other", "Other"],
-] as const;
+/**
+ * **Nina's "launch type ticks" are this list** (item 1, 19 November).
+ *
+ * Which is why it is no longer written out here: it is
+ * `STAGE_TYPES`/`STAGE_TYPE_LABELS` in `stage-labels.ts`, beside the
+ * names and the count labels the type now sets. Two copies of the seven
+ * types — one here for the dropdown and one there for the labels — is
+ * exactly how a tick ends up setting a label for six of them.
+ */
 
 const field =
   "rounded-xl border border-ink/12 bg-card px-3 py-2 text-small text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30";
@@ -78,9 +85,14 @@ export function StagesForm({
                     <span className="text-caption uppercase tracking-wide text-ink/55">
                       Stage {position} — empty the name to remove it
                     </span>
+                    {/* The type's own word as the placeholder, never
+                        written over what somebody typed: "Day 1-3
+                        bootcamp" is a better name than "Challenge" and
+                        the tick should not take it away (item 1). */}
                     <input
                       name={`stage:${position}:name`}
                       defaultValue={stage?.name ?? ""}
+                      placeholder={defaultStageName(stage?.stage_type ?? "other")}
                       className={field}
                     />
                   </label>
@@ -91,9 +103,9 @@ export function StagesForm({
                       defaultValue={stage?.stage_type ?? "other"}
                       className={field}
                     >
-                      {STAGE_TYPES.map(([value, label]) => (
+                      {STAGE_TYPES.map((value) => (
                         <option key={value} value={value}>
-                          {label}
+                          {STAGE_TYPE_LABELS[value]}
                         </option>
                       ))}
                     </select>
@@ -135,7 +147,7 @@ export function StagesForm({
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <label className="flex flex-col gap-1">
                     <span className="text-caption uppercase tracking-wide text-ink/55">
-                      Sign-up goal
+                      {signUpLabel(stage?.stage_type ?? "other")} goal
                     </span>
                     <input
                       name={`stage:${position}:sign_up_goal`}
@@ -232,11 +244,29 @@ export function PricesForm({
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-caption uppercase tracking-wide text-ink/55">Price</span>
+                    <span className="text-caption uppercase tracking-wide text-ink/55">
+                      Paid how
+                    </span>
+                    {/* Her item 3: pay in full, or monthly. A select
+                        rather than two radios because it sits in a row of
+                        fields and has to stay one line on a phone. */}
+                    <select
+                      name={`price:${slot}:plan`}
+                      defaultValue={price?.plan ?? "full"}
+                      className={field}
+                    >
+                      <option value="full">Pay in full</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-caption uppercase tracking-wide text-ink/55">
+                      Price <span className="normal-case text-ink/45">in full</span>
+                    </span>
                     <input
                       name={`price:${slot}:price`}
                       inputMode="decimal"
-                      defaultValue={price?.price ?? ""}
+                      defaultValue={price?.plan === "monthly" ? "" : (price?.price ?? "")}
                       className={`${field} w-28 font-num`}
                     />
                   </label>
@@ -244,18 +274,8 @@ export function PricesForm({
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <label className="flex flex-col gap-1">
                     <span className="text-caption uppercase tracking-wide text-ink/55">
-                      Instalments <span className="normal-case text-ink/45">if a plan</span>
-                    </span>
-                    <input
-                      name={`price:${slot}:instalments`}
-                      inputMode="numeric"
-                      defaultValue={price?.instalments ?? ""}
-                      className={`${field} font-num`}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-caption uppercase tracking-wide text-ink/55">
-                      Each instalment
+                      Amount a month{" "}
+                      <span className="normal-case text-ink/45">if monthly</span>
                     </span>
                     <input
                       name={`price:${slot}:instalment_amount`}
@@ -264,7 +284,26 @@ export function PricesForm({
                       className={`${field} font-num`}
                     />
                   </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-caption uppercase tracking-wide text-ink/55">
+                      For how many months
+                    </span>
+                    <input
+                      name={`price:${slot}:instalments`}
+                      inputMode="numeric"
+                      defaultValue={price?.instalments ?? ""}
+                      className={`${field} font-num`}
+                    />
+                  </label>
                 </div>
+                {price?.plan === "monthly" ? (
+                  <p className="mt-2 text-caption text-ink/55">
+                    Worth{" "}
+                    <span className="font-num text-ink/75">{price.price}</span> over{" "}
+                    {price.instalments} month{price.instalments === 1 ? "" : "s"}, which is
+                    what total revenue counts. The monthly amount is what MRR counts.
+                  </p>
+                ) : null}
                 <label className="mt-3 flex items-center gap-2 text-small text-ink/70">
                   <input
                     type="radio"
@@ -290,8 +329,9 @@ export function PricesForm({
           </p>
         </div>
         <p className="text-caption text-ink/50">
-          A payment plan counts at its full contract value, not its instalment —
-          §6.4, so revenue is what the launch will collect.
+          Monthly is an amount times a number of months, and its full value is
+          what total revenue counts (§6.4). The amount a month is what MRR
+          counts, so only the monthly options reach it.
         </p>
       </form>
     </Card>

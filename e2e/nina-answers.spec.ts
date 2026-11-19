@@ -313,7 +313,21 @@ test("decision 12: the client never sees the button, and a member has nobody to 
 
 // ------------------------------- decision 16: what the planner starts with
 
-test("decision 16: conversion is offered from the last finished launch; show-up is not", async ({
+/**
+ * **Half of decision 16 was reversed on 19 November**, and this is the
+ * test that says which half.
+ *
+ * On 28 October Nina asked for the conversion rate of the client's last
+ * finished launch to be offered on a new one, and for show-up to stay
+ * EMPTY on purpose: it swings with the audience far more than conversion
+ * does, and it is the figure that moves sign-ups most.
+ *
+ * Her launch-tracker spec says "Allegro sets default rates", so show-up
+ * starts at our 47% rather than empty. The first half stands untouched —
+ * this client's own conversion still beats the default where there is
+ * one, and is still named on screen.
+ */
+test("decision 16: conversion is offered from the last finished launch; show-up starts at ours", async ({
   page,
 }, info) => {
   const w = width(info.project.name);
@@ -328,9 +342,10 @@ test("decision 16: conversion is offered from the last finished launch; show-up 
   await expect(page.getByText(/filled in from/i)).toBeVisible();
   await expect(page.getByText(/Autumn challenge/)).toBeVisible();
 
-  // Show-up stays empty: it swings with the audience far more than
-  // conversion does, and it is the figure that moves sign-ups most.
-  await expect(page.getByLabel(/show-up rate/i)).toHaveValue("");
+  // Show-up starts at Allegro's own rate (19 November) rather than
+  // empty. A starting point, not a claim: it is typed over as readily as
+  // the conversion beside it.
+  await expect(page.getByLabel(/show-up rate/i)).toHaveValue("47");
 
   await shot(page, "07-planner-suggestion-admin", w);
 });

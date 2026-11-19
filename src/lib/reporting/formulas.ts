@@ -702,7 +702,35 @@ export interface LaunchPriceOption {
   price: Figure;
   sales: Figure;
   isMain?: boolean;
+  /**
+   * Monthly, rather than paid once (Nina, 19 November).
+   *
+   * The two look identical in the three numbers above — a £1,980 plan
+   * over three months and a £165-a-month membership over twelve both
+   * have a contract value, a count and an amount — and they are
+   * different money. Only this says which, and only MRR reads it.
+   */
+  plan?: "full" | "monthly";
+  /** What one month costs, where the plan is monthly. */
+  monthlyAmount?: Figure;
 }
+
+/**
+ * **Allegro's own starting rates** (Nina's item 5, 19 November).
+ *
+ * "Allegro sets default rates" — so a new launch starts with the two
+ * numbers we would plan one against rather than with two empty boxes.
+ * They are the pair §6.6's worked example uses and the pair the mockups
+ * show: 47% of sign-ups turn up, 5% of them buy.
+ *
+ * **A starting point and nothing more.** This client's own conversion
+ * from their last finished launch beats it where there is one
+ * (`suggestedConversionRate`, decision 16), and whoever can edit
+ * the launch can type over either. Both are named on screen rather than
+ * appearing as facts, which is the difference between a default and a
+ * claim.
+ */
+export const ALLEGRO_PLANNER_RATES = { showUp: 47, conversion: 5 } as const;
 
 export const launch = {
   showUpRate: (dayOneAttendees: Figure, signUps: Figure): Result =>
@@ -726,6 +754,26 @@ export const launch = {
 
   revenueStillToCollect: (totalRevenue: Figure, cashCollected: Figure): Result =>
     difference(totalRevenue, cashCollected),
+
+  /**
+   * Monthly recurring revenue this launch brought in (Nina's item 3).
+   *
+   * **The monthly options only, at one month each.** Not the contract
+   * value spread out, and not a share of total revenue: MRR is what
+   * arrives next month if nobody cancels, so a twelve-month membership
+   * at £165 contributes £165 and not £1,980 ÷ 12 — which happens to be
+   * the same number here and would not be on a plan with a deposit.
+   *
+   * A pay-in-full option contributes nothing, which is the point of the
+   * figure. Null when no option is monthly, rather than zero: "this
+   * launch has no recurring revenue" and "nobody has said" are
+   * different, and §4's dash depends on the difference.
+   */
+  mrr: (options: LaunchPriceOption[]): Result => {
+    const monthly = options.filter((o) => o.plan === "monthly");
+    if (monthly.length === 0) return null;
+    return sum(...monthly.map((o) => product(o.sales, o.monthlyAmount ?? null)));
+  },
 
   averageOrderValue: (totalRevenue: Figure, totalSales: Figure): Result =>
     divide(totalRevenue, totalSales),
@@ -769,6 +817,50 @@ export const launch = {
     divide(adSpend, totalSales),
 
   roas: (totalRevenue: Figure, adSpend: Figure): Result => divide(totalRevenue, adSpend),
+
+  /** What is left of the ad budget (Nina's item 8). Negative is overspend. */
+  budgetLeft: (budget: Figure, adSpend: Figure): Result => difference(budget, adSpend),
+
+  costPerClick: (adSpend: Figure, adClicks: Figure): Result => divide(adSpend, adClicks),
+
+  /**
+   * How many sign-ups the budget is supposed to buy.
+   *
+   * Budget ÷ target cost per sign-up, rounded up — the same rounding as
+   * the planner, and for the same reason: a plan that rounds down plans
+   * for a launch that misses.
+   */
+  adSignUpsNeeded: (budget: Figure, targetCostPerSignUp: Figure): Result => {
+    const needed = divide(budget, targetCostPerSignUp);
+    return needed === null ? null : Math.ceil(needed);
+  },
+
+  percentOfSourceTarget: (signUps: Figure, target: Figure): Result =>
+    percentage(signUps, target),
+
+  /**
+   * Her item 5's check: is the launch converting the way it was planned
+   * to?
+   *
+   * **Three outcomes, not two.** "On track" and "behind" are what she
+   * asked for; `null` is the third and it is the one that matters most,
+   * because a launch with no assumption or nothing yet to measure has
+   * not earned either word. A check that said "behind" to a launch
+   * nobody has typed a figure into would be worse than no check.
+   *
+   * The tolerance is deliberate and small. A launch planned at 5% and
+   * running at 4.98% is not behind in any sense a person would act on,
+   * and a badge that flickers between two words on the third decimal
+   * place stops being read. Anything within a tenth of a point counts
+   * as on track.
+   */
+  conversionCheck: (
+    actualPercent: Figure,
+    assumedPercent: Figure,
+  ): "on-track" | "behind" | null => {
+    if (!known(actualPercent) || !known(assumedPercent)) return null;
+    return actualPercent >= assumedPercent - 0.1 ? "on-track" : "behind";
+  },
 
   /**
    * §6.6, the launch planner. Works backwards from a sales goal.

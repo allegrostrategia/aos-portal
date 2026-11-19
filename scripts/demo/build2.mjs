@@ -7,7 +7,8 @@
 import { PLATFORMS, months } from "./data.mjs";
 import {
   OFFERS, CLIENT_ROWS, EXPENSES, STAFF, HOOKS, B_ROLL, POST_TYPES_BY_KIND, POST_FIGURES_BY_KIND,
-  offerMonth, expenseMonth, launches, stagesFor, launchValues, launchEmailRates,
+  offerMonth, expenseMonth, launches, stagesFor, launchValues,
+  pricesFor, priceSales, sourcesFor, dailySignUps, stageValues, emailsFor,
 } from "./data2.mjs";
 import { NOTES } from "./notes.mjs";
 
@@ -129,39 +130,124 @@ export function buildRest({ w, ent, row, adminId, MONTHS, currentMonth }) {
     values ${items.join(",\n      ")};`);
 
   // --- launches ----------------------------------------------------------
+  // **Every figure keyed to what it belongs to** (Nina's item 0,
+  // 19 November). Before today all of these went in at launch level —
+  // no stage, no price, no day — so the launch page read sign-ups per
+  // stage and found none, sales per price option and found none, and
+  // showed four dashes where its headline figures belong. The sub-selects
+  // below are what put each figure in the cell the screen looks in.
   const all = launches(currentMonth);
   out.push(`insert into public.report_launches
-      (workspace_id, name, description, offer_entity_id, status, goal_good, goal_better, goal_best,
+      (workspace_id, name, description, offer_entity_id, status,
+       goal_good, goal_better, goal_best,
+       sign_up_goal_good, sign_up_goal_better, sign_up_goal_best,
+       lead_tracker_url,
        planner_show_up_rate, planner_conversion_rate, published_at, published_by)
     values ${all.map((l) => `(${w}, ${q(l.name)}, ${q(l.description)}, ${ent("offer", l.offer)}, '${l.status}',
-       ${l.goals[0]}, ${l.goals[1]}, ${l.goals[2]}, 47, 5.6,
+       ${l.goals[0]}, ${l.goals[1]}, ${l.goals[2]},
+       ${l.signUpGoals[0]}, ${l.signUpGoals[1]}, ${l.signUpGoals[2]},
+       ${q(l.tracker)},
+       ${l.planner.showUp}, ${l.planner.conversion},
        ${l.status === "completed" ? `${q(`${l.month} 10:00:00+00`)}, ${q(adminId)}` : "null, null"})`).join(",\n      ")};`);
 
   const lid = (name) => `(select id from public.report_launches where workspace_id = ${w} and name = ${q(name)})`;
   for (const l of all) {
+    const stage = (position) =>
+      `(select id from public.report_launch_stages where launch_id = ${lid(l.name)} and position = ${position})`;
+    const price = (name) =>
+      `(select id from public.report_launch_prices where launch_id = ${lid(l.name)} and name = ${q(name)})`;
+    const source = (name) =>
+      `(select id from public.report_launch_sources where launch_id = ${lid(l.name)} and name = ${q(name)})`;
+
     out.push(`insert into public.report_launch_stages
         (launch_id, position, stage_type, name, promo_start, promo_end, live_start, live_end, live_days, sign_up_goal, attendance_goal, is_main_selling_stage)
       values ${stagesFor(l).map((s) => `(${lid(l.name)}, ${s.position}, '${s.stage_type}', ${q(s.name)},
          ${q(s.promo_start ?? null)}, ${q(s.promo_end ?? null)}, ${q(s.live_start ?? null)}, ${q(s.live_end ?? null)},
          ${n(s.live_days)}, ${n(s.sign_up_goal)}, ${n(s.attendance_goal)}, ${s.is_main_selling_stage ? "true" : "false"})`).join(",\n        ")};`);
 
-    out.push(`insert into public.report_launch_prices (launch_id, name, price, instalments, instalment_amount, is_main)
-      values (${lid(l.name)}, ${q("Pay in full")}, ${l.name.startsWith("Mastermind") ? 6_000 : 1_850}, null, null, true),
-             (${lid(l.name)}, ${q("3 instalments")}, ${l.name.startsWith("Mastermind") ? 6_600 : 1_980}, 3, ${l.name.startsWith("Mastermind") ? 2_200 : 660}, false);`);
+    // Her item 3: one paid in full, one paid monthly — which is what
+    // puts a real MRR figure on the demo's launch page.
+    out.push(`insert into public.report_launch_prices
+        (launch_id, name, plan, price, instalments, instalment_amount, is_main)
+      values ${pricesFor(l).map((p) => `(${lid(l.name)}, ${q(p.name)}, '${p.plan}', ${p.price},
+         ${n(p.instalments)}, ${n(p.instalment_amount)}, ${p.is_main ? "true" : "false"})`).join(",\n        ")};`);
 
-    const lv = launchValues(l);
-    const rows = Object.entries(lv).map(([key, value]) => `(${lid(l.name)}, ${q(key)}, ${n(value)}, ${q(adminId)})`);
-    if (rows.length > 0) {
-      out.push(`insert into public.report_launch_values (launch_id, metric_key, value, entered_by)
-        values ${rows.join(",\n        ")};`);
+    const sources = sourcesFor(l);
+    if (sources.length > 0) {
+      out.push(`insert into public.report_launch_sources (launch_id, name, position, sign_up_target)
+        values ${sources.map((src) => `(${lid(l.name)}, ${q(src.name)}, ${src.position}, ${n(src.sign_up_target)})`).join(",\n        ")};`);
     }
-    const emails = launchEmailRates(l).map(
-      (e) => `(${lid(l.name)}, 'launches_email_open_rate', ${e.email_number}, ${e.open_rate}, ${q(adminId)})`,
-    );
+
+    const emails = emailsFor(l);
     if (emails.length > 0) {
-      out.push(`insert into public.report_launch_values (launch_id, metric_key, email_number, value, entered_by)
-        values ${emails.join(",\n        ")};`);
+      out.push(`insert into public.report_launch_emails
+          (launch_id, stage_id, number, sent_on, subject, is_resend)
+        values ${emails.map((e) => `(${lid(l.name)}, ${stage(e.stage)}, ${e.number}, ${q(e.on)}, ${q(e.subject)}, ${e.resend ? "true" : "false"})`).join(",\n        ")};`);
     }
+
+    /**
+     * One insert per shape of figure, because the columns differ.
+     *
+     * A figure is written with exactly the context it is read with —
+     * `stage_id` for a stage's sign-ups, `stage_id` and `day_number` for
+     * attendance, `price_id` for sales per option, `source_id` for a
+     * source, `day_number` alone for the running total. Anything that
+     * belongs to the launch as a whole goes in with none of them.
+     */
+    const value = (columns, rows) => {
+      if (rows.length === 0) return;
+      out.push(`insert into public.report_launch_values (launch_id, ${columns}, value, entered_by)
+        values ${rows.join(",\n        ")};`);
+    };
+
+    value(
+      "metric_key",
+      Object.entries(launchValues(l)).map(
+        ([key, v]) => `(${lid(l.name)}, ${q(key)}, ${n(v)}, ${q(adminId)})`,
+      ),
+    );
+
+    value(
+      "metric_key, stage_id, day_number",
+      stageValues(l).map(
+        (row) =>
+          `(${lid(l.name)}, ${q(row.metric)}, ${stage(row.stage)}, ${n(row.day ?? null)}, ${n(row.value)}, ${q(adminId)})`,
+      ),
+    );
+
+    value(
+      "metric_key, price_id",
+      priceSales(l).map(
+        (row) =>
+          `(${lid(l.name)}, 'launches_sales_per_price_option', ${price(row.name)}, ${n(row.sales)}, ${q(adminId)})`,
+      ),
+    );
+
+    value(
+      "metric_key, source_id",
+      sources.flatMap((src) => [
+        `(${lid(l.name)}, 'launches_sign_ups_from_source', ${source(src.name)}, ${n(src.signUps)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_sales_from_source', ${source(src.name)}, ${n(src.sales)}, ${q(adminId)})`,
+      ]),
+    );
+
+    value(
+      "metric_key, day_number",
+      dailySignUps(l).map(
+        (row) => `(${lid(l.name)}, 'launches_sign_ups', ${row.day}, ${n(row.value)}, ${q(adminId)})`,
+      ),
+    );
+
+    value(
+      "metric_key, stage_id, email_number",
+      emails.flatMap((e) => [
+        `(${lid(l.name)}, 'launches_email_list_size_sent_to', ${stage(e.stage)}, ${e.number}, ${n(e.sentTo)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_open_rate', ${stage(e.stage)}, ${e.number}, ${n(e.open)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_click_rate', ${stage(e.stage)}, ${e.number}, ${n(e.click)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_unique_clicks', ${stage(e.stage)}, ${e.number}, ${n(e.uniqueClicks)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_clicked_no_sign_up', ${stage(e.stage)}, ${e.number}, ${n(e.clickedNoSignUp)}, ${q(adminId)})`,
+      ]),
+    );
   }
 
   // --- targets, so the target lines have something to draw ---------------

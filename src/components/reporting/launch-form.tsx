@@ -11,6 +11,7 @@ import {
   updateLaunchStatus,
   type LaunchState,
 } from "@/lib/reporting/launch-actions";
+import { ALLEGRO_PLANNER_RATES } from "@/lib/reporting/formulas";
 import type { LaunchRow } from "@/lib/reporting/launch-queries";
 
 /**
@@ -117,8 +118,15 @@ export function LaunchForm({
                   <span className="text-caption uppercase tracking-wide text-ink/55">
                     {which}
                   </span>
+                  {/* **An `aria-label`, because the visible word is not
+                      a name on its own.** Two sets of three goals put
+                      two inputs called "good" on one form, which is
+                      ambiguous to a screen reader reading labels and to
+                      a test addressing one. The eye has the legend above
+                      to scope it; assistive technology does not. */}
                   <input
                     name={`goal_${which}`}
+                    aria-label={`Sales goal, ${which}`}
                     inputMode="numeric"
                     defaultValue={launch?.[`goal_${which}`] ?? ""}
                     className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
@@ -127,6 +135,52 @@ export function LaunchForm({
               ))}
             </div>
           </fieldset>
+
+          {/* Her item 4: the same three levels on sign-ups. Two sets of
+              three rather than one, because a launch can hit its sign-up
+              goal and miss its sales goal — which is the most useful
+              thing a launch report can tell somebody, and it cannot be
+              said with one set. */}
+          <fieldset className="contents">
+            <legend className="text-small font-medium text-ink">
+              Sign-up goals <span className="text-ink/45">good, better, best</span>
+            </legend>
+            <div className="grid grid-cols-3 gap-3">
+              {(["good", "better", "best"] as const).map((which) => (
+                <label key={which} className="flex flex-col gap-1.5">
+                  <span className="text-caption uppercase tracking-wide text-ink/55">
+                    {which}
+                  </span>
+                  <input
+                    name={`sign_up_goal_${which}`}
+                    aria-label={`Sign-up goal, ${which}`}
+                    inputMode="numeric"
+                    defaultValue={launch?.[`sign_up_goal_${which}`] ?? ""}
+                    className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
+                  />
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {/* Her item 7. The sheet stays theirs: aOS holds the link and
+              the counts, and not one name. */}
+          <label className="flex flex-col gap-1.5">
+            <span className="text-small font-medium text-ink">
+              Their lead tracker{" "}
+              <span className="text-ink/45">
+                a link to their own sheet — no names are stored here
+              </span>
+            </span>
+            <input
+              name="lead_tracker_url"
+              type="url"
+              inputMode="url"
+              placeholder="https://docs.google.com/spreadsheets/…"
+              defaultValue={launch?.lead_tracker_url ?? ""}
+              className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
+            />
+          </label>
 
           <fieldset className="contents">
             <legend className="text-small font-medium text-ink">
@@ -137,6 +191,22 @@ export function LaunchForm({
             </legend>
             {/* Decision 16: the one figure worth offering, and where it
                 came from. Show-up stays empty on purpose. */}
+            {/* Her item 5: the boxes start at our rates, and say so.
+                A client's own last launch beats them where there is one,
+                which is the sentence below this one. */}
+            {!launch && !suggestedConversion ? (
+              <p className="text-caption text-ink/55">
+                Filled in with our starting rates —{" "}
+                <span className="font-num text-ink/75">
+                  {ALLEGRO_PLANNER_RATES.showUp}%
+                </span>{" "}
+                show-up and{" "}
+                <span className="font-num text-ink/75">
+                  {ALLEGRO_PLANNER_RATES.conversion}%
+                </span>{" "}
+                conversion. Change them if this launch is a different shape.
+              </p>
+            ) : null}
             {!launch && suggestedConversion ? (
               <p className="text-caption text-ink/55">
                 Conversion is filled in from{" "}
@@ -156,7 +226,11 @@ export function LaunchForm({
                 <input
                   name="planner_show_up_rate"
                   inputMode="decimal"
-                  defaultValue={launch?.planner_show_up_rate ?? ""}
+                  defaultValue={
+                    launch
+                      ? (launch.planner_show_up_rate ?? "")
+                      : ALLEGRO_PLANNER_RATES.showUp
+                  }
                   className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                 />
               </label>
@@ -170,7 +244,7 @@ export function LaunchForm({
                   defaultValue={
                     launch
                       ? (launch.planner_conversion_rate ?? "")
-                      : (suggestedConversion?.rate ?? "")
+                      : (suggestedConversion?.rate ?? ALLEGRO_PLANNER_RATES.conversion)
                   }
                   className="rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 font-num text-body text-ink outline-none transition focus:border-orange focus:ring-2 focus:ring-orange/30"
                 />

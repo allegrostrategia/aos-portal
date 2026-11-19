@@ -344,11 +344,18 @@ export async function seed({ quiet = false } = {}) {
   sql(`
     insert into public.report_launches
       (workspace_id, name, description, status, goal_good, goal_better, goal_best,
+       sign_up_goal_good, sign_up_goal_better, sign_up_goal_best, lead_tracker_url,
        planner_show_up_rate, planner_conversion_rate)
     values
       ('${retainerId}', 'Autumn challenge', 'Five days, then the masterclass',
-       'completed', 30, 45, 60, 47, 5),
-      ('${retainerId}', 'Spring relaunch', null, 'planning', 40, 60, 80, 47, 5);
+       'completed', 30, 45, 60,
+       -- Sign-ups beat Good and fall short of Better, so one of the two
+       -- goal panels shows "Goal hit!" and the other shows what is left
+       -- to go. A seed where every goal is met tests half the component.
+       1000, 1500, 2000, 'https://docs.google.com/spreadsheets/d/1NorthwindAutumnLeads/edit',
+       47, 5),
+      ('${retainerId}', 'Spring relaunch', null, 'planning', 40, 60, 80,
+       null, null, null, null, 47, 5);
   `);
 
   const launchId = one(
@@ -366,10 +373,14 @@ export async function seed({ quiet = false } = {}) {
       ('${launchId}', 2, 'masterclass', 'The masterclass', 1, null, 600,
        '2026-09-14', '2026-09-18', '2026-09-19', '2026-09-19', true);
 
-    insert into public.report_launch_prices (launch_id, name, price, instalments, instalment_amount, is_main)
+    insert into public.report_launch_prices
+      (launch_id, name, plan, price, instalments, instalment_amount, is_main)
     values
-      ('${launchId}', 'Pay in full early bird', 500, null, null, true),
-      ('${launchId}', 'Payment plan', 600, 3, 200, false);
+      ('${launchId}', 'Pay in full early bird', 'full', 500, null, null, true),
+      -- Monthly rather than an instalment plan, so MRR is a figure the
+      -- tests can read: 8 sales x £200 a month. The contract value is
+      -- still £600, which is what total revenue counts.
+      ('${launchId}', 'Monthly, 3 months', 'monthly', 600, 3, 200, false);
   `);
 
   const stageOne = one(
@@ -389,12 +400,49 @@ export async function seed({ quiet = false } = {}) {
       where launch_id = '${launchId}' and not is_main;`,
   );
 
+  /**
+   * The three lists Nina's spec of 19 November added, seeded so the
+   * browser suite walks them: the client's own sources, a row per email,
+   * and the sign-ups counted day by day.
+   *
+   * Figures that reconcile, deliberately. The sources add up to the 30
+   * sales and the 1,277 sign-ups of §6.6's worked example, so the
+   * report's own "the sources account for n of m" warning stays quiet
+   * unless something is actually wrong — a seed that trips a warning
+   * teaches a test to expect one.
+   */
+  sql(`
+    insert into public.report_launch_sources (launch_id, name, position, sign_up_target)
+    values
+      ('${launchId}', 'Email list', 1, 600),
+      ('${launchId}', 'Meta ads', 2, 500),
+      ('${launchId}', 'Instagram', 3, 200),
+      ('${launchId}', 'Not sure', 4, null);
+
+    insert into public.report_launch_emails
+      (launch_id, stage_id, number, sent_on, subject, is_resend)
+    values
+      ('${launchId}', '${stageOne}', 1, '2026-09-01', 'The challenge starts Monday', false),
+      ('${launchId}', '${stageOne}', 2, '2026-09-04', 'What we cover on day one', false),
+      ('${launchId}', '${stageOne}', 3, '2026-09-04', 'What we cover on day one', true),
+      ('${launchId}', '${stageTwo}', 1, '2026-09-19', 'Enrolment is open', false);
+  `);
+
+  const source = (name) =>
+    one(`select id from public.report_launch_sources
+          where launch_id = '${launchId}' and name = '${name}';`);
+  const emailList = source("Email list");
+  const metaAds = source("Meta ads");
+  const instagram = source("Instagram");
+  const notSure = source("Not sure");
+
   const lv = (metric, value, at = {}) =>
     `insert into public.report_launch_values
-       (launch_id, metric_key, stage_id, price_id, day_number, email_number, value)
+       (launch_id, metric_key, stage_id, price_id, source_id, day_number, email_number, value)
      values ('${launchId}', '${metric}',
              ${at.stage ? `'${at.stage}'` : "null"},
              ${at.price ? `'${at.price}'` : "null"},
+             ${at.source ? `'${at.source}'` : "null"},
              ${at.day ?? "null"}, ${at.email ?? "null"}, ${value});`;
 
   sql(`
@@ -425,6 +473,41 @@ export async function seed({ quiet = false } = {}) {
     ${lv("launches_sales_from_dm", 3)}
     ${lv("launches_sales_from_referral", 2)}
     ${lv("launches_cash_collected_to_date", 12600)}
+
+    ${lv("launches_sign_ups_from_source", 640, { source: emailList })}
+    ${lv("launches_sales_from_source", 14, { source: emailList })}
+    ${lv("launches_sign_ups_from_source", 420, { source: metaAds })}
+    ${lv("launches_sales_from_source", 8, { source: metaAds })}
+    ${lv("launches_sign_ups_from_source", 180, { source: instagram })}
+    ${lv("launches_sales_from_source", 6, { source: instagram })}
+    ${lv("launches_sign_ups_from_source", 37, { source: notSure })}
+    ${lv("launches_sales_from_source", 2, { source: notSure })}
+
+    ${lv("launches_email_list_size_sent_to", 8900, { stage: stageOne, email: 1 })}
+    ${lv("launches_email_unique_clicks", 412, { stage: stageOne, email: 1 })}
+    ${lv("launches_email_clicked_no_sign_up", 288, { stage: stageOne, email: 1 })}
+    -- Email 3 is the resend, and it already has an open rate above.
+    -- A click rate it did not have, so the resend row is complete.
+    ${lv("launches_email_click_rate", 1.9, { stage: stageOne, email: 3 })}
+
+    -- Her item 8, and the four figures have to be consistent with each
+    -- other: £5,000 budget less £2,400 spent is £2,600 left, £2,400 over
+    -- 3,100 clicks is £0.77 a click, and 420 sign-ups from ads is the
+    -- same number the Meta ads SOURCE claims above. A seed whose ad
+    -- sign-ups disagreed with its ad source would make two panels on one
+    -- page contradict each other.
+    ${lv("launches_ad_budget", 5000)}
+    ${lv("launches_target_cost_per_sign_up", 9)}
+    ${lv("launches_ad_spend", 2400)}
+    ${lv("launches_ad_clicks", 3100)}
+    ${lv("launches_ad_leads", 420)}
+    ${lv("launches_ad_sales", 8)}
+
+    ${lv("launches_sign_ups", 120, { day: 1 })}
+    ${lv("launches_sign_ups", 260, { day: 2 })}
+    ${lv("launches_sign_ups", 310, { day: 3 })}
+    ${lv("launches_sign_ups", 180, { day: 4 })}
+    ${lv("launches_sign_ups", 407, { day: 5 })}
   `);
 
   const out = { config, ids, retainerId, selfServeId, launchId };

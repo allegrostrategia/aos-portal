@@ -63,8 +63,18 @@ const LEAD_INDICATORS = ["lead", "onsite_conversion", "offsite_conversion", "com
 
 export function readMetaAds(
   text: string,
-  /** The month on screen, so a file for another one is refused. */
-  month: string,
+  /**
+   * The month on screen, so a file for another one is refused.
+   *
+   * **Null for a launch** (19 November), which is the one caller with no
+   * month to check against: a launch is a date range of its own that
+   * starts in one month and finishes in another often enough that
+   * refusing a file for "the wrong month" would refuse most real launch
+   * exports. Everything else the reader does is unchanged — the same
+   * columns, the same custom conversions, the same refusal for a content
+   * export handed to the ads screen.
+   */
+  month: string | null,
   /** The client's saved choices: column name to what it counts as. */
   columnMaps: Record<string, "leads" | "purchases" | "ignored"> = {},
 ): AdsImportResult {
@@ -99,7 +109,7 @@ export function readMetaAds(
   // **The file says what range it covers, so a file for another month
   // is refused rather than quietly added to this one** (Dom, 9 Oct).
   const range = rangeFromRows(rows);
-  const covers = coversMonth(range.start, range.end, month);
+  const covers = month === null ? { ok: true as const } : coversMonth(range.start, range.end, month);
   if (!covers.ok) {
     return {
       figures: {}, cannotFill: [], rowsUsed: 0, rowsOutsideMonth: 0,

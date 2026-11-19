@@ -174,10 +174,64 @@ test("the launch report, end to end", async ({ page }, info) => {
   expect(text).toMatch(/430 still live at the end of the pitch/);
   expect(text).toMatch(/72% of the 600 there at the start of the session/);
 
-  // The three goals, and which stage the selling happened on.
-  expect(text).toMatch(/Good 30 of 30\s*100%/);
+  // **Two sets of three goals now** (Nina's item 4, 19 November), and
+  // the reusable panel's own words: what is left to go, and "Goal hit!"
+  // where it has been. The seed is built so one panel does each — 30
+  // sales is exactly Good, and 1,277 sign-ups beats Good and misses
+  // Better by 223.
+  expect(text).toMatch(/GoodGoal hit! 30 of 30\s*100%/);
+  expect(text).toMatch(/Bang on good\./);
   expect(text).toMatch(/Better 30 of 45\s*67%/);
+  expect(text).toMatch(/15 more sales to go\./);
+
+  // **The launch's sign-ups are 1,277, not 2,177.** The stages are
+  // sequential — the 900 who joined the masterclass had already signed
+  // up to the challenge — so adding them up counts most people twice.
+  // The first build did, and this panel disagreed with the running-total
+  // chart directly above it.
+  expect(text).toMatch(/Sign-up goals 1,277 signed up/);
+  expect(text).toMatch(/GoodGoal hit! 1,277 of 1,000\s*128%/);
+  expect(text).toMatch(/223 more sign-ups to go\./);
+  expect(text).not.toMatch(/2,177/);
   expect(text).toMatch(/Where the selling happened/);
+
+  // Her item 3: MRR, from the monthly option alone. 8 sales at £200 a
+  // month — never the £600 contract value, which is what total revenue
+  // counts and what the old instalment plan would have contributed.
+  expect(text).toMatch(/MRR from this launch £1,600/);
+
+  // Her item 6: the client's own sources, each against its own target.
+  // 640 of 600 is 107%; Meta ads' 420 of 500 is 84%.
+  expect(text).toMatch(/Email list/);
+  expect(text).toMatch(/640\s*107% of target/);
+  expect(text).toMatch(/420\s*84% of target/);
+
+  // Her item 8. Every one of these was typed in before today and shown
+  // on no screen at all: £5,000 budget less £2,400 spent is £2,600 left,
+  // £2,400 over 3,100 clicks is £0.77, and the budget was meant to buy
+  // 556 sign-ups at the £9 target.
+  // Uppercase because the card's own labels are: `innerText` applies
+  // `text-transform`, so this is what a reader sees rather than what the
+  // markup says.
+  expect(text).toMatch(/BUDGET £5,000/);
+  expect(text).toMatch(/£2,600 left/);
+  expect(text).toMatch(/COST PER CLICK £0\.77/);
+  expect(text).toMatch(/COST PER SIGN-UP £5\.71/);
+  expect(text).toMatch(/556 the budget was meant to buy/);
+
+  // Her item 7: the running total, 120 + 260 + 310 + 180 + 407.
+  expect(text).toMatch(/Sign-ups as they came in/);
+  expect(text).toMatch(/1,277 in total/);
+
+  // Her item 9: the table, with a resend as its own row.
+  expect(text).toMatch(/The challenge starts Monday/);
+  expect(text).toMatch(/Resend/);
+
+  // And the link to their own sheet, which is where the names live.
+  await expect(page.getByRole("link", { name: "Your lead tracker" })).toHaveAttribute(
+    "href",
+    "https://docs.google.com/spreadsheets/d/1NorthwindAutumnLeads/edit",
+  );
 
   // A stage with one email has no line to read, so its dot carries the
   // number — the masterclass sent one, at 51%.
@@ -210,7 +264,7 @@ test("the planner reads §6.6's own worked example back", async ({ page }, info)
   await shoot(page, TAB, "09-planner", w);
 });
 
-test("the client sees a published launch's report and none of the planner", async ({
+test("the client sees a published launch's report, the plan included", async ({
   page,
 }, info) => {
   const w = width(info.project.name);
@@ -232,10 +286,22 @@ test("the client sees a published launch's report and none of the planner", asyn
 
   const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   expect(text).toMatch(/Total revenue £15,800/);
-  // The planner is a planning tool for a conversation, not a number to
-  // hand somebody — §6.6 is the team's.
-  expect(text).not.toMatch(/Working backwards/);
-  expect(text).not.toMatch(/SIGN-UPS NEEDED/);
+
+  // **The planner is the client's now too** (Nina, 19 November,
+  // reversing the rule that it was the team's panel). Her reason is the
+  // check beside it: a plan nobody can see is not one anybody is held
+  // to. 3.3% actual against 5% assumed is behind, and the badge says so
+  // to the client as well.
+  expect(text).toMatch(/Working backwards/);
+  expect(text).toMatch(/SIGN-UPS NEEDED 600/);
+  expect(text).toMatch(/Conversion, sales ÷ sign-ups 3\.3% against 5% Behind/);
+  // What is still not theirs: changing the rates. The sentence under the
+  // check is the reader's own, and the edit links are absent.
+  expect(text).toMatch(/the ones we planned this launch against/);
+  await expect(page.getByRole("link", { name: /edit launch details/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^enter data$/i })).toHaveCount(0);
+  // Their own sheet, though — it is their list.
+  await expect(page.getByRole("link", { name: "Your lead tracker" })).toBeVisible();
   await shoot(page, TAB, "10-report-client", w);
 });
 
@@ -267,9 +333,17 @@ test("setting a launch up, start to finish", async ({ page }, info) => {
 
   await page.getByLabel("Name", { exact: true }).fill("Winter intensive");
   await page.getByLabel(/^Description/).fill("Two weeks, one workshop");
-  await page.getByLabel(/^good$/i).fill("20");
-  await page.getByLabel(/^better$/i).fill("30");
-  await page.getByLabel(/^best$/i).fill("40");
+  await page.getByLabel("Sales goal, good").fill("20");
+  await page.getByLabel("Sales goal, better").fill("30");
+  await page.getByLabel("Sales goal, best").fill("40");
+  // Her item 4: the same three on sign-ups, which is a second set of
+  // boxes called good, better and best — hence the fuller names.
+  await page.getByLabel("Sign-up goal, good").fill("200");
+  await page.getByLabel("Sign-up goal, better").fill("300");
+  await page.getByLabel("Sign-up goal, best").fill("400");
+  await page.getByLabel(/their lead tracker/i).fill(
+    "https://docs.google.com/spreadsheets/d/1SpringRelaunchLeads/edit",
+  );
   await page.getByLabel(/show-up rate/i).fill("47");
   await page.getByLabel(/conversion rate/i).fill("5");
   await page.getByRole("button", { name: /create this launch/i }).click();
@@ -287,11 +361,26 @@ test("setting a launch up, start to finish", async ({ page }, info) => {
   // so the sentence is in the HTML rather than in a form's state.
   await expect(page.locator("[data-saved]")).toHaveText("Stages saved.");
 
-  // And a price option.
+  // And a price option. **Two of them**, because her item 3 made the
+  // second kind its own thing: one paid in full, one paid monthly as an
+  // amount times a number of months — which is what MRR reads and an
+  // instalment plan is not.
   await page.getByLabel(/^Name — empty it/).first().fill("Pay in full");
-  await page.getByLabel(/^Price$/).first().fill("400");
+  await page.getByLabel(/^Price in full$/).first().fill("400");
+  await page.getByLabel(/^Name — empty it/).nth(1).fill("Monthly, 6 months");
+  // By role, which is how every other select in this suite is reached:
+  // `getByLabel` does not resolve a `<select>` wrapped in its own
+  // `<label>` the way it resolves a text input in one.
+  await page
+    .getByRole("combobox", { name: "Paid how", exact: true })
+    .nth(1)
+    .selectOption("monthly");
+  await page.getByLabel(/^Amount a month/).nth(1).fill("80");
+  await page.getByLabel(/^For how many months$/).nth(1).fill("6");
   await page.getByRole("button", { name: /save the prices/i }).click();
   await expect(page.locator("[data-saved]")).toHaveText("Price options saved.");
+  // The contract value is worked out rather than typed: 80 x 6.
+  await expect(page.getByText(/Worth\s*480\s*over 6 months/)).toBeVisible();
   await shoot(page, TAB, "13-edit-filled", w);
 
   // The goals it was given are on its report.
@@ -308,9 +397,9 @@ test("goals that do not go up are refused in her words", async ({ page }) => {
   await page.getByRole("link", { name: "Autumn challenge" }).click();
   await page.getByRole("link", { name: /edit launch details/i }).click();
 
-  await page.getByLabel(/^good$/i).fill("60");
-  await page.getByLabel(/^better$/i).fill("45");
-  await page.getByLabel(/^best$/i).fill("30");
+  await page.getByLabel("Sales goal, good").fill("60");
+  await page.getByLabel("Sales goal, better").fill("45");
+  await page.getByLabel("Sales goal, best").fill("30");
   await page.getByRole("button", { name: /^save$/i }).click();
   await expect(page.getByText(/go up in that order/i)).toBeVisible();
 });
@@ -354,6 +443,21 @@ test("typing a launch's figures in, and seeing them on its report", async ({ pag
   await expect(page.getByText(/^Five day challenge$/)).toBeVisible();
   await expect(page.getByText(/^Day 5$/)).toBeVisible();
   await expect(page.getByText(/^Email 1$/).first()).toBeVisible();
+
+  // **The box is labelled by the stage's own type** (her item 1): the
+  // challenge asks for challenge sign-ups, the masterclass for
+  // masterclass sign-ups. Before today every stage of every launch said
+  // "Sign-ups".
+  await expect(page.getByLabel("Challenge sign-ups", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Masterclass sign-ups", { exact: true })).toBeVisible();
+
+  // The three lists of 19 November, each with its own words to type.
+  await expect(page.getByLabel(/^Subject line$/).first()).toBeVisible();
+  await expect(page.getByLabel(/^Resend$/).first()).toBeVisible();
+  await expect(page.getByLabel("Clicked, no sign-up", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Sign-ups, day by day/)).toBeVisible();
+  await expect(page.getByLabel(/^Sign-up target$/).first()).toBeVisible();
+  await expect(page.getByText(/Fill the ads from a file/)).toBeVisible();
   await shoot(page, TAB, "15-enter-admin", w);
 
   await page.getByLabel("Replay watchers", { exact: true }).first().fill("310");
@@ -711,4 +815,130 @@ test("a launch with no flagged selling stage still shows what was bought", async
   expect(text).toMatch(/Bought 30|30 Bought/);
 
   await shoot(page, TAB, "13-bought-without-a-flag", w);
+});
+
+/**
+ * A source and its figures, added in the same save (Nina's item 6).
+ *
+ * **The one path in this module that could not work by accident.** A
+ * brand-new source has no id while its boxes are being named, so they
+ * carry `s<slot>` and the save resolves the slot to the row it has just
+ * written. Get that wrong in either direction and the symptom is the
+ * worst kind: the source appears, the two figures beside it vanish, and
+ * nothing says so. Typed through the real screen rather than posted,
+ * because the slot is agreed between the form and the parser.
+ */
+test("a new source and its figures go in together", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+  await page.getByRole("link", { name: /^enter data$/i }).click();
+  await page.waitForURL(/\/enter/);
+
+  // The first blank row, which is the fifth: the seed has four sources.
+  const name = page.getByLabel(/^Source — empty it to remove$/).nth(4);
+  await name.fill("A podcast guest spot");
+  await page.getByLabel(/^Sign-up target$/).nth(4).fill("40");
+  await page.getByLabel(/^Sign-ups$/).nth(4).fill("52");
+  await page.getByLabel(/^Sales$/).nth(4).fill("3");
+
+  await page.getByRole("button", { name: /save this launch's figures/i }).click();
+  await expect(page.getByText("Figures saved.", { exact: true })).toBeVisible();
+
+  // Back on the entry screen, under its own id this time rather than a
+  // slot — which is the half that would silently stop working if the
+  // name and the lookup ever disagreed.
+  await expect(page.getByLabel(/^Source — empty it to remove$/).nth(4)).toHaveValue(
+    "A podcast guest spot",
+  );
+  await expect(page.getByLabel(/^Sign-ups$/).nth(4)).toHaveValue("52");
+  await expect(page.getByLabel(/^Sales$/).nth(4)).toHaveValue("3");
+
+  // And on the report. **By its URL rather than `goBack()`**: a save
+  // redirects to the entry screen it came from, so going back lands on
+  // the entry screen again and reads the boxes instead of the report.
+  await page.goto(page.url().replace(/\/enter.*$/, ""));
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(text).toMatch(/A podcast guest spot/);
+  expect(text).toMatch(/52\s*130% of target/);
+
+  await shoot(page, TAB, "17-a-source-added", w);
+});
+
+/**
+ * An email's words and its figures, likewise in one save (her item 9).
+ *
+ * The row lives in `report_launch_emails` and the figures in
+ * `report_launch_values`, keyed by the same (stage, number) — two
+ * tables, one button. The case worth pinning is the one the obvious
+ * implementation gets wrong: **a row kept because only its figures were
+ * typed.** Without it an email somebody recorded an open rate for and no
+ * subject would be missing from the table altogether, because the table
+ * is built from the rows.
+ */
+test("an email typed with figures but no subject still appears", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+  await page.getByRole("link", { name: /^enter data$/i }).click();
+  await page.waitForURL(/\/enter/);
+
+  // The masterclass's second email: a blank row, figures only.
+  const stage = page.locator("section", { hasText: "The masterclass" }).first();
+  const row = stage.locator("div", { hasText: /^Email 2/ }).first();
+  await row.getByLabel(/^Open %$/).fill("33");
+  await row.getByLabel(/^Click %$/).fill("2.5");
+
+  await page.getByRole("button", { name: /save this launch's figures/i }).click();
+  await expect(page.getByText("Figures saved.", { exact: true })).toBeVisible();
+
+  await page.goto(page.url().replace(/\/enter.*$/, ""));
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  // No subject, so the table names it by its number rather than leaving
+  // it out — and its rates are there to be read.
+  expect(text).toMatch(/Email 2/);
+  expect(text).toMatch(/33%/);
+  expect(text).toMatch(/2\.5%/);
+
+  await shoot(page, TAB, "18-an-email-with-figures-only", w);
+});
+
+/**
+ * Removing a source and clearing its figures, in one save.
+ *
+ * **The ordering trap.** A source's figures are `on delete restrict`, so
+ * removing one that still has figures is refused and said out loud — the
+ * same rule the stages and prices have, and right. But a stage is removed
+ * on a different screen from its figures, while a source and its two
+ * figures are on this one: somebody doing exactly the right thing would
+ * have been refused, because the delete ran before the loop that empties
+ * them. The deletes run last now, and this is what says so.
+ */
+test("a source goes when its figures go with it, in the same save", async ({ page }, info) => {
+  const w = width(info.project.name);
+  await signIn(page, "nina");
+  await page.goto("/reporting/launches");
+  await page.getByRole("link", { name: "Autumn challenge" }).click();
+  await page.getByRole("link", { name: /^enter data$/i }).click();
+  await page.waitForURL(/\/enter/);
+
+  // Instagram is the seed's third source, with 180 sign-ups and 6 sales
+  // on it. Empty all three boxes at once.
+  const row = 2;
+  await page.getByLabel(/^Sign-ups$/).nth(row).fill("");
+  await page.getByLabel(/^Sales$/).nth(row).fill("");
+  await page.getByLabel(/^Source — empty it to remove$/).nth(row).fill("");
+
+  await page.getByRole("button", { name: /save this launch's figures/i }).click();
+  await expect(page.getByText("Figures saved.", { exact: true })).toBeVisible();
+
+  // Gone, and not refused with a message about figures that are no
+  // longer there.
+  await expect(page.getByText(/has figures saved against it/)).toHaveCount(0);
+  const text = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  expect(text).not.toMatch(/Instagram/);
+
+  await shoot(page, TAB, "19-a-source-removed", w);
 });

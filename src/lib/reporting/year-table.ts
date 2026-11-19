@@ -112,6 +112,7 @@ export const PER_UNIT_METRICS = new Set([
   "launches_average_order_value",
   "launches_cost_per_sign_up",
   "launches_cost_per_sale",
+  "launches_cost_per_click",
   // Offers: revenue less costs, over the hours. A year of twelve of
   // them added is a four-figure hourly rate.
   "offers_effective_hourly_rate",

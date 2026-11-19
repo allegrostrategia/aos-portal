@@ -598,3 +598,42 @@ test("every pulled metric either has a source or is named as not having one", as
     assert.ok(!(key in PULLED_COVERAGE), `${key} is both implemented and listed as not`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Nina's item 5 of 19 November: actual against assumed, on track or behind.
+// ---------------------------------------------------------------------------
+
+test("the conversion check has three answers, and the third is silence", () => {
+  assert.equal(launch.conversionCheck(6.2, 5), "on-track");
+  assert.equal(launch.conversionCheck(3.3, 5), "behind");
+
+  // **Null, not "behind".** A launch with no assumption, or nothing yet
+  // to measure, has not earned either word — and a badge saying "behind"
+  // to a launch nobody has typed a figure into would be worse than no
+  // badge at all.
+  assert.equal(launch.conversionCheck(null, 5), null);
+  assert.equal(launch.conversionCheck(4, null), null);
+  assert.equal(launch.conversionCheck(null, null), null);
+});
+
+test("a tenth of a point is not behind", () => {
+  // Planned at 5%, running at 4.98%: nobody would act on that, and a
+  // badge that flips between two words on the third decimal place stops
+  // being read. Anything further out is behind.
+  assert.equal(launch.conversionCheck(4.98, 5), "on-track");
+  assert.equal(launch.conversionCheck(4.9, 5), "on-track");
+  assert.equal(launch.conversionCheck(4.8, 5), "behind");
+});
+
+test("what is left of an ad budget, and what it was meant to buy", () => {
+
+  assert.equal(launch.budgetLeft(5000, 2400), 2600);
+  // Overspend is a negative rather than a zero: the screen says "£200
+  // over" and cannot do that from a floor.
+  assert.equal(launch.budgetLeft(5000, 5200), -200);
+  assert.equal(launch.budgetLeft(null, 2400), null);
+
+  // Rounded up, the same as the planner: you cannot buy 555.5 sign-ups.
+  assert.equal(launch.adSignUpsNeeded(5000, 9), 556);
+  assert.equal(launch.adSignUpsNeeded(5000, null), null);
+});

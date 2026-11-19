@@ -231,12 +231,12 @@ test("figures land in the context they were typed into", async () => {
 
   const result = await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
-    [`launch:launches_sign_ups:${stage.id}:-:-:-`]: 1277,
-    [`launch:launches_live_attendees:${stage.id}:-:1:-`]: 600,
-    [`launch:launches_live_attendees:${stage.id}:-:2:-`]: 540,
-    [`launch:launches_email_open_rate:${stage.id}:-:-:1`]: 42,
-    [`launch:launches_sales_per_price_option:-:${price.id}:-:-`]: 22,
-    [`launch:launches_cash_collected_to_date:-:-:-:-`]: 12600,
+    [`launch:launches_sign_ups:${stage.id}:-:-:-:-`]: 1277,
+    [`launch:launches_live_attendees:${stage.id}:-:-:1:-`]: 600,
+    [`launch:launches_live_attendees:${stage.id}:-:-:2:-`]: 540,
+    [`launch:launches_email_open_rate:${stage.id}:-:-:-:1`]: 42,
+    [`launch:launches_sales_per_price_option:-:${price.id}:-:-:-`]: 22,
+    [`launch:launches_cash_collected_to_date:-:-:-:-:-`]: 12600,
   }))));
   assert.equal(result.key, "figures", "the save came back saying so");
 
@@ -262,7 +262,7 @@ test("an emptied figure is removed, not stored as zero", async () => {
                                where launch_id = '${LAUNCH}' and position = 1`);
   await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
-    [`launch:launches_live_attendees:${stage.id}:-:2:-`]: "",
+    [`launch:launches_live_attendees:${stage.id}:-:-:2:-`]: "",
   }))));
   const left = await rows(`select count(*)::int c from public.report_launch_values
                             where launch_id = '${LAUNCH}' and day_number = 2`);
@@ -272,7 +272,7 @@ test("an emptied figure is removed, not stored as zero", async () => {
 test("a figure that is not a launch metric is refused by the database", async () => {
   const result = await as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
-    "launch:financials_fixed_costs:-:-:-:-": 100,
+    "launch:financials_fixed_costs:-:-:-:-:-": 100,
   })));
   assert.match(result?.error ?? "", /not a launch metric/i);
 });
@@ -282,7 +282,7 @@ test("a worked-out figure cannot be typed in", async () => {
   // worked one disagree the first time an input changes.
   const result = await as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH,
-    "launch:launches_show_up_rate:-:-:-:-": 47,
+    "launch:launches_show_up_rate:-:-:-:-:-": 47,
   })));
   assert.match(result?.error ?? "", /worked out rather than stored/i);
 });
@@ -313,7 +313,9 @@ test("cleared of its figures, the same stage goes", async () => {
                                where stage_id = '${stage.id}'`);
   const cleared = {};
   for (const f of figures) {
-    cleared[`launch:${f.metric_key}:${stage.id}:-:${f.d === -1 ? "-" : f.d}:${f.e === -1 ? "-" : f.e}`] = "";
+    cleared[
+      `launch:${f.metric_key}:${stage.id}:-:-:${f.d === -1 ? "-" : f.d}:${f.e === -1 ? "-" : f.e}`
+    ] = "";
   }
   await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({ launch_id: LAUNCH, ...cleared }))));
 
@@ -399,7 +401,7 @@ test("once published, every one of these is refused", async () => {
   assert.match(
     (await as(ELIZE, () => saveLaunchFigures(null, form({
       launch_id: LAUNCH,
-      [`launch:launches_sign_ups:${stage.id}:-:-:-`]: 9999,
+      [`launch:launches_sign_ups:${stage.id}:-:-:-:-`]: 9999,
     }))))?.error ?? "", LOCKED);
 
   assert.match(
@@ -481,18 +483,25 @@ test("the entry screen's box names are the names this parser reads", async () =>
   // instead of showing up as a box that silently comes back empty —
   // which is precisely how it went wrong the first time, when the box
   // was named with `-` for "none" and its value looked up under `""`.
-  const { launchFieldName } = await import("../../src/lib/reporting/launch-fields.ts");
+  const { launchFieldName, sourceSlot } = await import("../../src/lib/reporting/launch-fields.ts");
 
   assert.equal(launchFieldName("launches_cash_collected_to_date"),
-    "launch:launches_cash_collected_to_date:-:-:-:-");
+    "launch:launches_cash_collected_to_date:-:-:-:-:-");
   assert.equal(launchFieldName("launches_sign_ups", { stageId: "S" }),
-    "launch:launches_sign_ups:S:-:-:-");
+    "launch:launches_sign_ups:S:-:-:-:-");
   assert.equal(launchFieldName("launches_live_attendees", { stageId: "S", day: 3 }),
-    "launch:launches_live_attendees:S:-:3:-");
+    "launch:launches_live_attendees:S:-:-:3:-");
   assert.equal(launchFieldName("launches_email_open_rate", { stageId: "S", email: 2 }),
-    "launch:launches_email_open_rate:S:-:-:2");
+    "launch:launches_email_open_rate:S:-:-:-:2");
   assert.equal(launchFieldName("launches_sales_per_price_option", { priceId: "P" }),
-    "launch:launches_sales_per_price_option:-:P:-:-");
+    "launch:launches_sales_per_price_option:-:P:-:-:-");
+  // The fifth context, added 19 November: one of the client's own sources.
+  assert.equal(launchFieldName("launches_sign_ups_from_source", { sourceId: "SRC" }),
+    "launch:launches_sign_ups_from_source:-:-:SRC:-:-");
+  // And the slot form, for a source being added in the same save as its
+  // figures — the one box name that is not a key.
+  assert.equal(launchFieldName("launches_sales_from_source", { sourceId: sourceSlot(3) }),
+    "launch:launches_sales_from_source:-:-:s3:-:-");
 
   // And a figure saved under a built name comes back under the same one,
   // which is the round trip the screen actually depends on.
@@ -537,7 +546,7 @@ test("a save comes back to the screen it was sent from, keeping the month", asyn
   const back = `/reporting/launches/${LAUNCH}/enter?workspace=${WS}&month=${AUG}`;
   const { url } = await saved(() => as(ELIZE, () => saveLaunchFigures(null, form({
     launch_id: LAUNCH, return_to: back,
-    [`launch:launches_cash_collected_to_date:-:-:-:-`]: 12600,
+    [`launch:launches_cash_collected_to_date:-:-:-:-:-`]: 12600,
   }))));
 
   assert.match(url, /\/enter\?/, "the entry screen, not the setup one");
@@ -777,9 +786,9 @@ test("the last finished launch's real conversion, named", async () => {
   // so a reading against them would give 12% and be visible here.
   await as(NINA, () => saveLaunchFigures(null, form({
     launch_id: id,
-    [`launch:launches_sign_ups:${stageId}:-:-:-`]: 600,
-    [`launch:launches_live_attendees:${stageId}:-:1:-`]: 200,
-    [`launch:launches_sales_per_price_option:-:${priceId}:-:-`]: 24,
+    [`launch:launches_sign_ups:${stageId}:-:-:-:-`]: 600,
+    [`launch:launches_live_attendees:${stageId}:-:-:1:-`]: 200,
+    [`launch:launches_sales_per_price_option:-:${priceId}:-:-:-`]: 24,
   })).catch(() => {}));
 
   await as(NINA, () => updateLaunchStatus(null, form({

@@ -12,6 +12,7 @@ import {
   type ReportIconName,
   toneFor,
 } from "@/components/reporting/icons";
+import { GoalProgress } from "@/components/reporting/goal-progress";
 import { KpiCard } from "@/components/reporting/kpi-card";
 import { LaunchPlanner } from "@/components/reporting/launch-planner";
 import { LaunchPublishControl } from "@/components/reporting/launch-publish";
@@ -22,7 +23,18 @@ import { buttonClasses } from "@/components/ui/button";
 import { STAGE_4 } from "@/lib/reporting/categories";
 import { reportHref, resolveReportContext } from "@/lib/reporting/context";
 import { formatValue } from "@/lib/reporting/format";
-import { launchSummary, stageFigures } from "@/lib/reporting/launch-figures";
+import {
+  adFigures,
+  dayGrid,
+  emailRows,
+  launchSummary,
+  pipelineFigures,
+  plannerFigures,
+  sourceFigures,
+  sourceTotals,
+  stageFigures,
+} from "@/lib/reporting/launch-figures";
+import { shortDate } from "@/lib/reporting/launch-dates";
 import { launchIsRunning, launchLastDay } from "@/lib/reporting/locked";
 import { formatCalendarDate } from "@/lib/time-zone";
 import { signLaunchCover } from "@/lib/reporting/launch-cover";
@@ -63,6 +75,13 @@ export default async function LaunchPage({
 
   const summary = launchSummary(detail);
   const stages = stageFigures(detail);
+  const sources = sourceFigures(detail);
+  const sourceSum = sourceTotals(sources);
+  const ads = adFigures(detail);
+  const pipeline = pipelineFigures(detail);
+  const planner = plannerFigures(detail);
+  const days = dayGrid(detail);
+  const emails = emailRows(detail);
   const currency = ctx.workspace.currency;
   const coverUrl = await signLaunchCover(detail.launch.cover_image_path);
 
@@ -104,6 +123,25 @@ export default async function LaunchPage({
     { label: "Cash collected", value: summary.cashCollected, unit: "currency", goodDirection: "up", icon: "profit" },
   ];
 
+  // **MRR only where a price option is monthly** (Nina's item 3). A
+  // launch selling one thing once has no recurring revenue, and a card
+  // reading "£0" would say something false about it — `mrr` is null
+  // there rather than zero, and the card is absent rather than a dash
+  // nobody can act on.
+  if (summary.mrr !== null) {
+    headline.push({
+      label: "MRR from this launch",
+      value: summary.mrr,
+      unit: "currency",
+      goodDirection: "up",
+      icon: "revenue",
+    });
+  }
+
+  // Seven cards break 4 + 3 rather than 3 + 3 + 1, which is the only
+  // arrangement of seven that does not leave one card alone on a row.
+  const headlineColumns = headline.length > 6 ? "xl:grid-cols-4" : "xl:grid-cols-3";
+
   /**
    * "Running totals, live until 12 October", on a launch still going.
    *
@@ -118,11 +156,25 @@ export default async function LaunchPage({
   const lastDay = launchLastDay(detail.stages);
   const running = launchIsRunning(ctx.workspace, detail.launch.published_at, lastDay);
 
-  const goals = [
-    { label: "Good", target: detail.launch.goal_good, percent: summary.percentOfGood },
-    { label: "Better", target: detail.launch.goal_better, percent: summary.percentOfBetter },
-    { label: "Best", target: detail.launch.goal_best, percent: summary.percentOfBest },
-  ].filter((g) => g.target !== null);
+  /**
+   * Her item 4: the same three levels, asked of two figures.
+   *
+   * Sign-ups first, because they happen first and because a launch that
+   * misses its sales goal usually misses it here — a reader who sees
+   * only the sales row is left to guess whether the offer or the
+   * audience was the problem.
+   */
+  const salesGoals = [
+    { label: "Good" as const, target: detail.launch.goal_good },
+    { label: "Better" as const, target: detail.launch.goal_better },
+    { label: "Best" as const, target: detail.launch.goal_best },
+  ];
+  const signUpGoals = [
+    { label: "Good" as const, target: detail.launch.sign_up_goal_good },
+    { label: "Better" as const, target: detail.launch.sign_up_goal_better },
+    { label: "Best" as const, target: detail.launch.sign_up_goal_best },
+  ];
+  const anyGoal = [...salesGoals, ...signUpGoals].some((g) => g.target !== null);
 
   return (
     <ReportShell
@@ -132,20 +184,41 @@ export default async function LaunchPage({
       title={detail.launch.name}
       tagline={`${detail.launch.description ?? "EVERY LAUNCH, END TO END"} · ${ctx.workspace.business_name}`}
       actions={
-        ctx.canEdit ? (
+        ctx.canEdit || detail.launch.lead_tracker_url ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={reportHref(`/reporting/launches/${id}/edit`, ctx)}
-              className={buttonClasses("secondary", "sm")}
-            >
-              Edit launch details
-            </Link>
-            <Link
-              href={reportHref(`/reporting/launches/${id}/enter`, ctx)}
-              className={buttonClasses("primary", "sm")}
-            >
-              Enter data
-            </Link>
+            {/* Her item 7: a button to their own sheet.
+                **Shown to the client too**, because it is their list —
+                aOS holds the link and the counts, and the names stay in
+                their Drive. `rel="noopener noreferrer"` and a new tab
+                because it leads out of the product, and the column is
+                constrained to http(s) in the database so nothing
+                script-shaped can reach this anchor. */}
+            {detail.launch.lead_tracker_url ? (
+              <a
+                href={detail.launch.lead_tracker_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClasses("secondary", "sm")}
+              >
+                Your lead tracker
+              </a>
+            ) : null}
+            {ctx.canEdit ? (
+              <>
+                <Link
+                  href={reportHref(`/reporting/launches/${id}/edit`, ctx)}
+                  className={buttonClasses("secondary", "sm")}
+                >
+                  Edit launch details
+                </Link>
+                <Link
+                  href={reportHref(`/reporting/launches/${id}/enter`, ctx)}
+                  className={buttonClasses("primary", "sm")}
+                >
+                  Enter data
+                </Link>
+              </>
+            ) : null}
           </div>
         ) : null
       }
@@ -187,7 +260,7 @@ export default async function LaunchPage({
           A list rather than six hand-written cards, so the discs rotate
           through the four tones the way `/reporting` and every category
           page do theirs, rather than this one screen picking its own. */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className={`grid gap-4 sm:grid-cols-2 ${headlineColumns}`}>
         {headline.map((card, index) => (
           <KpiCard
             key={card.label}
@@ -203,39 +276,62 @@ export default async function LaunchPage({
         ))}
       </div>
 
-      {goals.length > 0 ? (
-        <Card className="mt-6">
-          <SectionTitle
-            icon={<IconCircle name="target" tone="gold" />}
-            aside={`${summary.totalSales ?? "—"} sold`}
-          >
-            Good, better, best
-          </SectionTitle>
-          <ul className="flex flex-col gap-4">
-            {goals.map((goal) => (
-              <li key={goal.label}>
-                <div className="flex items-baseline justify-between gap-3 text-small">
-                  <span className="font-medium text-ink">{goal.label}</span>
-                  <span className="font-num text-ink/70">
-                    {summary.totalSales ?? "—"} of {goal.target}
-                    {goal.percent === null ? null : (
-                      <span className="ml-2 text-ink/50">{Math.round(goal.percent)}%</span>
-                    )}
-                  </span>
-                </div>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-cream-deep">
-                  <div
-                    className="h-full rounded-full bg-orange"
-                    style={{ width: `${Math.max(0, Math.min(goal.percent ?? 0, 100))}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {anyGoal ? (
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <SectionTitle
+              icon={<IconCircle name="people" tone="sky" />}
+              aside={`${summary.totalSignUps?.toLocaleString("en-GB") ?? "—"} signed up`}
+            >
+              Sign-up goals
+            </SectionTitle>
+            <GoalProgress now={summary.totalSignUps} levels={signUpGoals} noun="sign-ups" />
+          </Card>
+          <Card>
+            <SectionTitle
+              icon={<IconCircle name="target" tone="gold" />}
+              aside={`${summary.totalSales ?? "—"} sold`}
+            >
+              Sales goals
+            </SectionTitle>
+            <GoalProgress now={summary.totalSales} levels={salesGoals} noun="sales" />
+          </Card>
+        </div>
       ) : null}
 
       <StageTimeline stages={detail.stages} className="mt-6" />
+
+      {/* Her item 7: the climb. A running total rather than the daily
+          counts, because the question a launch asks every morning is
+          "how many now" and not "how many yesterday" — and the daily
+          figures are noisy enough (a quiet Sunday, a spike the day an
+          email went) to hide the trend they add up to.
+
+          The last day with a figure carries its own number, which is the
+          only point on this chart anybody quotes. */}
+      {days.some((d) => d.signUps !== null) ? (
+        <Card className="mt-6">
+          <SectionTitle
+            icon={<IconCircle name="chart" tone="orange" />}
+            aside={`${days.at(-1)?.runningTotal?.toLocaleString("en-GB") ?? "—"} in total`}
+          >
+            Sign-ups as they came in
+          </SectionTitle>
+          <LineChart
+            series={[
+              {
+                label: "Sign-ups to date",
+                points: days.map((d) => d.runningTotal),
+              },
+            ]}
+            unitSuffix=""
+            caption={`Running total from ${shortDate(days[0].date)} to ${shortDate(
+              days[days.length - 1].date,
+            )}, one point a day.`}
+            emptyMessage="No sign-ups counted by day yet."
+          />
+        </Card>
+      ) : null}
 
       {/* §6.2's attendance, one panel per stage with live days.
 
@@ -418,61 +514,301 @@ export default async function LaunchPage({
         <SectionTitle icon={<IconCircle name="email" tone="sky" />}>
           The email sequence
         </SectionTitle>
-        <LineChart
-          // As many points as there are emails, not a fixed twenty. The
-          // first build drew an axis running 1 to 20 under a line that
-          // stopped at 3, which says the sequence petered out rather
-          // than that it was three emails long.
-          series={stages.map((s) => ({
-            label: s.stage.name,
-            points: Array.from({ length: emailsInSequence }, (_u, i) =>
-              detail.values.get("launches_email_open_rate", {
-                stageId: s.stage.id,
-                email: i + 1,
-              }),
-            ),
-          }))}
-          caption="Open rate across the sequence, one line per stage."
-          emptyMessage="No email figures yet. Two or more emails in a stage draw a line."
-        />
+        {/* **Two charts, never one** (her item 9 asks for both rates,
+            and the dataviz rule settles the shape). An open rate runs
+            around 40% and a click rate around 4%: on one pair of axes
+            the click line is a flat smudge along the bottom, and a
+            second y-axis to fix that is the chart mistake this project
+            does not make. Two charts, one scale each.
+
+            Across the LAUNCH rather than per stage: her words, and the
+            order emails went out in is not the stage order when a promo
+            for stage three went before the last email of stage two. */}
+        {emails.length > 0 ? (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <LineChart
+              series={[{ label: "Open rate", points: emails.map((e) => e.openRate) }]}
+              caption={`Open rate across ${emails.length} email${emails.length === 1 ? "" : "s"}, in the order they went.`}
+              emptyMessage="No open rates yet. Two or more emails draw a line."
+            />
+            <LineChart
+              series={[{ label: "Click rate", points: emails.map((e) => e.clickRate) }]}
+              caption="Click rate across the same emails, on its own scale."
+              emptyMessage="No click rates yet. Two or more emails draw a line."
+            />
+          </div>
+        ) : (
+          <LineChart
+            // The old reading, kept for a launch whose emails were typed
+            // before there was a row to describe them: the figures are
+            // keyed by (stage, number) either way, so they still draw.
+            series={stages.map((s) => ({
+              label: s.stage.name,
+              points: Array.from({ length: emailsInSequence }, (_u, i) =>
+                detail.values.get("launches_email_open_rate", {
+                  stageId: s.stage.id,
+                  email: i + 1,
+                }),
+              ),
+            }))}
+            caption="Open rate across the sequence, one line per stage."
+            emptyMessage="No email figures yet. Add the emails on the entry screen and they appear here."
+          />
+        )}
+
+        {/* And the table, which is the half a chart cannot do: a subject
+            line is the thing somebody wants to read next to the rate it
+            got. */}
+        {emails.length > 0 ? (
+          <div className="mt-6 overflow-x-auto border-t border-ink/8 pt-5">
+            <table className="w-full min-w-[34rem] border-collapse text-small">
+              <thead>
+                <tr className="border-b border-ink/10 text-left">
+                  <th className="pb-2 font-medium text-ink/55">Sent</th>
+                  <th className="pb-2 font-medium text-ink/55">Subject</th>
+                  <th className="pb-2 text-right font-medium text-ink/55">Sent to</th>
+                  <th className="pb-2 text-right font-medium text-ink/55">Open</th>
+                  <th className="pb-2 text-right font-medium text-ink/55">Click</th>
+                  <th className="pb-2 text-right font-medium text-ink/55">Clicks</th>
+                  <th className="pb-2 text-right font-medium text-ink/55">No sign-up</th>
+                </tr>
+              </thead>
+              <tbody>
+                {emails.map((row) => (
+                  <tr key={row.email.id} className="border-b border-ink/8 last:border-b-0">
+                    <td className="py-2.5 pr-3 font-num text-ink/70 whitespace-nowrap">
+                      {row.email.sent_on ? shortDate(row.email.sent_on) : "—"}
+                    </td>
+                    <td className="py-2.5 pr-3 text-ink">
+                      {row.email.subject ?? (
+                        <span className="text-ink/45">Email {row.email.number}</span>
+                      )}
+                      {row.email.is_resend ? (
+                        <span className="ml-2 rounded-full bg-cream-deep px-2 py-0.5 text-caption text-ink/70">
+                          Resend
+                        </span>
+                      ) : null}
+                      <span className="mt-0.5 block text-caption text-ink/45">
+                        {row.stageName}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-right font-num text-ink/70">
+                      {row.sentTo?.toLocaleString("en-GB") ?? "—"}
+                    </td>
+                    <td className="py-2.5 text-right font-num text-ink">
+                      {row.openRate === null ? "—" : `${row.openRate}%`}
+                    </td>
+                    <td className="py-2.5 text-right font-num text-ink">
+                      {row.clickRate === null ? "—" : `${row.clickRate}%`}
+                    </td>
+                    <td className="py-2.5 text-right font-num text-ink/70">
+                      {row.uniqueClicks?.toLocaleString("en-GB") ?? "—"}
+                    </td>
+                    <td className="py-2.5 text-right font-num text-ink/70">
+                      {row.clickedNoSignUp?.toLocaleString("en-GB") ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-3 text-caption text-ink/50">
+              &ldquo;No sign-up&rdquo; is how many clicked and did not sign up — the
+              gap between the email working and the page working.
+            </p>
+          </div>
+        ) : null}
       </Card>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <SectionTitle icon={<IconCircle name="leads" tone="orange" />}>
-            Where the sales came from
+      {/* Her item 6: the client's own sources, what each was aiming for
+          and what each did. The donut answers "where did they come
+          from", the table answers "did it work" — and the second needs
+          the target, which the six fixed metrics could never carry. */}
+      {sources.length > 0 ? (
+        <Card className="mt-6">
+          <SectionTitle
+            icon={<IconCircle name="leads" tone="orange" />}
+            aside={`${sourceSum.signUps?.toLocaleString("en-GB") ?? "—"} placed`}
+          >
+            Where they came from
           </SectionTitle>
-          <DonutChart
-            // `colorIndex` is the source's place in the FIXED list, not
-            // in the drawn order — colour follows the thing, never its
-            // rank, so a source that overtakes another between launches
-            // does not swap colours with it.
-            slices={summary.salesBySource
-              .map((s, i) => ({ ...s, colorIndex: i }))
-              .filter((s) => (s.value ?? 0) > 0)
-              .map((s) => ({
-                label: s.label,
-                value: s.value as number,
-                display: String(s.value),
-                colorIndex: s.colorIndex,
-              }))}
-            total={summary.totalSales}
-            totalDisplay={String(summary.totalSales ?? "—")}
-            totalLabel="sales"
-            emptyMessage="No sales recorded by source yet."
-          />
-          {/* §6.4: the sources must add up, and the screen says so when
-              they do not — a warning rather than a refusal, because a real
-              launch has sales nobody can attribute. */}
-          {summary.totalSales !== null && !summary.sourcesAddUp ? (
-            <p className="mt-3 text-small text-ink/70">
-              The sources do not add up to {summary.totalSales} sales. That is
-              worth a look, though some launches genuinely have sales nobody
-              can place.
+
+          {/* 22rem rather than 18: the donut's legend carries the
+              client's OWN source names, which are as long as they chose
+              to make them, and "Email list" came back as "E…" beside the
+              table that spells it out. */}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+            <DonutChart
+              // `colorIndex` is the source's place in the client's OWN
+              // list, not in the drawn order — colour follows the thing,
+              // never its rank, so a source that overtakes another
+              // between months does not swap colours with it.
+              slices={sources
+                .map((row, i) => ({ row, colorIndex: i }))
+                .filter(({ row }) => (row.signUps ?? 0) > 0)
+                .map(({ row, colorIndex }) => ({
+                  label: row.source.name,
+                  value: row.signUps as number,
+                  display: (row.signUps as number).toLocaleString("en-GB"),
+                  colorIndex,
+                }))}
+              total={sourceSum.signUps}
+              totalDisplay={sourceSum.signUps?.toLocaleString("en-GB") ?? "—"}
+              totalLabel="sign-ups"
+              emptyMessage="No sign-ups placed against a source yet."
+            />
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[22rem] border-collapse text-small">
+                <thead>
+                  <tr className="border-b border-ink/10 text-left">
+                    <th className="pb-2 font-medium text-ink/55">Source</th>
+                    <th className="pb-2 text-right font-medium text-ink/55">Target</th>
+                    <th className="pb-2 text-right font-medium text-ink/55">Sign-ups</th>
+                    <th className="pb-2 text-right font-medium text-ink/55">Sales</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sources.map((row) => (
+                    <tr key={row.source.id} className="border-b border-ink/8 last:border-b-0">
+                      <td className="py-2.5 pr-3 text-ink">
+                        {row.source.name}
+                        {/* The share, and the bar that is the share. Both
+                            on the row rather than in a second panel, so
+                            a reader comparing two sources is not
+                            comparing two places. */}
+                        <span className="mt-1 block h-1.5 w-full max-w-[9rem] overflow-hidden rounded-full bg-cream-deep">
+                          <span
+                            className="block h-full rounded-full bg-orange"
+                            style={{
+                              width: `${Math.max(0, Math.min(row.percentOfTarget ?? row.shareOfSignUps ?? 0, 100))}%`,
+                            }}
+                          />
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right font-num text-ink/70">
+                        {row.source.sign_up_target?.toLocaleString("en-GB") ?? "—"}
+                      </td>
+                      <td className="py-2.5 text-right font-num text-ink">
+                        {row.signUps?.toLocaleString("en-GB") ?? "—"}
+                        <span className="ml-2 text-ink/50">
+                          {row.percentOfTarget === null
+                            ? row.shareOfSignUps === null
+                              ? ""
+                              : `${Math.round(row.shareOfSignUps)}% of all`
+                            : `${Math.round(row.percentOfTarget)}% of target`}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right font-num text-ink">
+                        {row.sales?.toLocaleString("en-GB") ?? "—"}
+                        {row.conversion === null ? null : (
+                          <span className="ml-2 text-ink/50">
+                            {Math.round(row.conversion * 10) / 10}%
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-ink/15">
+                    <td className="pt-2.5 font-medium text-ink">Placed against a source</td>
+                    <td className="pt-2.5 text-right font-num text-ink/70">
+                      {sourceSum.target?.toLocaleString("en-GB") ?? "—"}
+                    </td>
+                    <td className="pt-2.5 text-right font-num text-ink">
+                      {sourceSum.signUps?.toLocaleString("en-GB") ?? "—"}
+                    </td>
+                    <td className="pt-2.5 text-right font-num text-ink">
+                      {sourceSum.sales?.toLocaleString("en-GB") ?? "—"}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* A warning rather than a refusal, the same as §6.4's: a real
+              launch has sales nobody can place, and the figure to doubt
+              is the split rather than the total. */}
+          {summary.totalSales !== null &&
+          sourceSum.sales !== null &&
+          sourceSum.sales !== summary.totalSales ? (
+            <p className="mt-4 text-small text-ink/70">
+              The sources account for {sourceSum.sales} of {summary.totalSales} sales.
+              That is worth a look, though some launches genuinely have sales
+              nobody can place.
             </p>
           ) : null}
         </Card>
+      ) : null}
 
+      {/* Her item 8. Every figure in here was typed in before today and
+          shown on no screen at all — the spend and the sign-ups from ads
+          have been in the entry form since 30 September and reached only
+          the team's Compare page. */}
+      {ads.any ? (
+        <Card className="mt-6">
+          <SectionTitle
+            icon={<IconCircle name="ads" tone="blush" />}
+            aside={
+              ads.left === null
+                ? undefined
+                : ads.left < 0
+                  ? `${formatValue(Math.abs(ads.left), "currency", currency)} over`
+                  : `${formatValue(ads.left, "currency", currency)} left`
+            }
+          >
+            What the ads did
+          </SectionTitle>
+          <dl className="grid gap-4 sm:grid-cols-3">
+            {(
+              [
+                ["Budget", ads.budget, "currency"],
+                ["Spent", ads.spent, "currency"],
+                ["Left", ads.left, "currency"],
+                ["Target cost per sign-up", ads.targetCostPerSignUp, "currency"],
+                ["Cost per sign-up", ads.costPerSignUp, "currency"],
+                ["Cost per click", ads.costPerClick, "currency"],
+              ] as const
+            ).map(([label, value, unit]) => (
+              <div key={label} className="rounded-xl bg-cream-deep px-4 py-3">
+                <dt className="text-caption uppercase tracking-wide text-ink/55">{label}</dt>
+                <dd className="font-num text-body text-ink">
+                  {formatValue(value, unit, currency)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-body text-ink/80">
+            <span className="font-num text-ink">
+              {ads.signUps?.toLocaleString("en-GB") ?? "—"}
+            </span>{" "}
+            sign-ups from the ads
+            {ads.signUpsNeeded === null ? (
+              "."
+            ) : (
+              <>
+                {", against "}
+                <span className="font-num text-ink">
+                  {ads.signUpsNeeded.toLocaleString("en-GB")}
+                </span>{" "}
+                the budget was meant to buy at that target.
+              </>
+            )}
+            {ads.clicks === null ? null : (
+              <>
+                {" "}
+                <span className="font-num text-ink">
+                  {ads.clicks.toLocaleString("en-GB")}
+                </span>{" "}
+                link clicks.
+              </>
+            )}
+          </p>
+        </Card>
+      ) : null}
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
           <SectionTitle icon={<IconCircle name="offers" tone="gold" />}>
             What each price option sold
@@ -501,7 +837,49 @@ export default async function LaunchPage({
               <p className="text-small text-ink/55">No price options set yet.</p>
             ) : null}
           </dl>
+          {summary.mrr === null ? null : (
+            <p className="mt-4 border-t border-ink/8 pt-3 text-small text-ink/70">
+              <span className="font-num text-ink">
+                {formatValue(summary.mrr, "currency", currency)}
+              </span>{" "}
+              of that is monthly, so it arrives again next month.
+            </p>
+          )}
         </Card>
+
+        {/* The other half of §6.5, and the other block that has been
+            typed in since September and shown nowhere. */}
+        {pipeline.any ? (
+          <Card>
+            <SectionTitle icon={<IconCircle name="people" tone="sky" />}>
+              DMs and calls
+            </SectionTitle>
+            <dl className="flex flex-col gap-3">
+              {(
+                [
+                  ["DMs sent", pipeline.dmsSent, null],
+                  ["Replies", pipeline.dmReplies, pipeline.replyRate],
+                  ["Discovery calls", pipeline.discoveryCalls, null],
+                  ["Sales calls booked", pipeline.callsBooked, null],
+                  ["Closed on a call", pipeline.callsClosed, pipeline.callToCloseRate],
+                  ["Not interested", pipeline.notInterested, null],
+                ] as const
+              ).map(([label, value, rate]) => (
+                <div key={label} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-small text-ink/70">{label}</dt>
+                  <dd className="font-num text-body text-ink">
+                    {value?.toLocaleString("en-GB") ?? "—"}
+                    {rate === null ? null : (
+                      <span className="ml-2 text-small text-ink/50">
+                        {Math.round(rate)}%
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+        ) : null}
       </div>
 
       {ctx.canPublish && ctx.workspace.kind === "retainer" ? (
@@ -514,14 +892,13 @@ export default async function LaunchPage({
         />
       ) : null}
 
-      {ctx.canEdit ? (
-        <LaunchPlanner
-          className="mt-6"
-          showUpRate={detail.launch.planner_show_up_rate}
-          conversionRate={detail.launch.planner_conversion_rate}
-          goal={detail.launch.goal_good}
-        />
-      ) : null}
+      {/* **Shown to the client as well now** (her item 5). It was the
+          team's panel alone, on the reasoning that a client handed "you
+          need 600 sign-ups" without the conversation is being handed a
+          number rather than a plan. Her answer is the check underneath
+          it: the plan is what the launch is being measured against, and
+          a plan nobody can see is not one anybody is held to. */}
+      <LaunchPlanner className="mt-6" figures={planner} canEdit={ctx.canEdit} />
     </ReportShell>
   );
 }

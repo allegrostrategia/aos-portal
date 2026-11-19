@@ -491,3 +491,262 @@ test("a self-serve launch is still never locked, running or not", async () => {
   );
   assert.equal(locked, false);
 });
+
+// ---------------------------------------------------------------------------
+// The two lists Nina's spec of 19 November added. Same rules, said again
+// because the lock is a trigger per table and a table added without one
+// is a published report that still moves — the exact hole this file was
+// written to close, one table later.
+// ---------------------------------------------------------------------------
+
+let SOURCE;
+
+test("a source and an email row are Elize's to build on a draft", async () => {
+  await unpublish();
+  await asMember(db, ELIZE, async () => {
+    SOURCE = (
+      await db.query(`insert into public.report_launch_sources
+          (launch_id, name, position, sign_up_target)
+        values ('${LAUNCH}', 'Email list', 1, 600) returning id`)
+    ).rows[0].id;
+    await db.query(`insert into public.report_launch_values
+        (launch_id, metric_key, source_id, value)
+      values ('${LAUNCH}', 'launches_sign_ups_from_source', '${SOURCE}', 640)`);
+    await db.query(`insert into public.report_launch_emails
+        (launch_id, stage_id, number, sent_on, subject)
+      values ('${LAUNCH}', '${STAGE}', 1, '2026-09-01', 'The challenge starts Monday')`);
+  });
+
+  const [{ c }] = await rows(
+    `select count(*)::int c from public.report_launch_sources where launch_id = '${LAUNCH}'`,
+  );
+  assert.equal(c, 1);
+});
+
+test("a figure cannot be hung off another launch's source", async () => {
+  await asMember(db, NINA, async () => {
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_values
+          (launch_id, metric_key, source_id, value)
+        values ('${SELF_LAUNCH}', 'launches_sign_ups_from_source', '${SOURCE}', 1)`),
+      /source belongs to a different launch/i,
+    );
+  });
+});
+
+test("one figure per source per metric, not two", async () => {
+  await asMember(db, NINA, async () => {
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_values
+          (launch_id, metric_key, source_id, value)
+        values ('${LAUNCH}', 'launches_sign_ups_from_source', '${SOURCE}', 99)`),
+      /one_per_cell|duplicate key/i,
+    );
+  });
+});
+
+test("a source with figures on it refuses to go, rather than taking them", async () => {
+  // `on delete restrict`, like stage_id and price_id since 8 October: a
+  // cascade consults no policy and fires no trigger, so removing a source
+  // would quietly empty a report somebody has read.
+  await asMember(db, ELIZE, async () => {
+    await assert.rejects(
+      () => db.query(`delete from public.report_launch_sources where id = '${SOURCE}'`),
+      // Postgres's own words for a RESTRICT, which are not the words for
+      // a plain foreign-key violation — the distinction that made
+      // `launchDeleteMessage` match on SQLSTATE rather than on text.
+      /violates RESTRICT setting of foreign key constraint/i,
+    );
+  });
+});
+
+test("cleared of its figures, the same source goes", async () => {
+  await asMember(db, ELIZE, async () => {
+    await db.query(`delete from public.report_launch_values
+                     where source_id = '${SOURCE}'`);
+    await db.query(`delete from public.report_launch_sources where id = '${SOURCE}'`);
+  });
+  const [{ c }] = await rows(
+    `select count(*)::int c from public.report_launch_sources where launch_id = '${LAUNCH}'`,
+  );
+  assert.equal(c, 0);
+});
+
+test("once published, the sources and the emails hold still too", async () => {
+  await asMember(db, NINA, async () => {
+    await db.query(`insert into public.report_launch_sources (launch_id, name, position)
+                    values ('${LAUNCH}', 'Meta ads', 2)`);
+  });
+  await publish();
+
+  await asMember(db, ELIZE, async () => {
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_sources (launch_id, name, position)
+                      values ('${LAUNCH}', 'Instagram', 3)`),
+      LOCKED,
+    );
+    await assert.rejects(
+      () => db.query(`update public.report_launch_sources set sign_up_target = 1
+                       where launch_id = '${LAUNCH}'`),
+      LOCKED,
+    );
+    await assert.rejects(
+      () => db.query(`delete from public.report_launch_sources where launch_id = '${LAUNCH}'`),
+      LOCKED,
+    );
+    await assert.rejects(
+      () => db.query(`update public.report_launch_emails set subject = 'Something else'
+                       where launch_id = '${LAUNCH}'`),
+      LOCKED,
+    );
+    await assert.rejects(
+      () => db.query(`delete from public.report_launch_emails where launch_id = '${LAUNCH}'`),
+      LOCKED,
+    );
+  });
+});
+
+test("and the sign-up goals are held with the sales goals, but the tracker link is not", async () => {
+  // The judgement in the migration, pinned: the goals are figures on the
+  // report and hold still; the lead-tracker link points at somewhere else
+  // and a client whose sheet has moved should not need an unpublish to fix
+  // a button. Flagged for Nina.
+  await asMember(db, ELIZE, async () => {
+    await assert.rejects(
+      () => db.query(`update public.report_launches set sign_up_goal_good = 999
+                       where id = '${LAUNCH}'`),
+      LOCKED,
+    );
+    await db.query(`update public.report_launches
+                       set lead_tracker_url = 'https://docs.google.com/spreadsheets/d/1Moved/edit'
+                     where id = '${LAUNCH}'`);
+  });
+
+  const [l] = await rows(`select lead_tracker_url from public.report_launches
+                           where id = '${LAUNCH}'`);
+  assert.match(l.lead_tracker_url, /1Moved/);
+});
+
+test("the tracker link can only ever be a link", async () => {
+  // Not validation for its own sake: this column is rendered as an anchor
+  // on a page a client opens, so a `javascript:` value would be a script
+  // in their browser put there by whoever typed it.
+  await unpublish();
+  await asMember(db, NINA, async () => {
+    for (const bad of ["javascript:alert(1)", "data:text/html,<script>", "notalink"]) {
+      await assert.rejects(
+        () => db.query(`update public.report_launches set lead_tracker_url = '${bad}'
+                         where id = '${LAUNCH}'`),
+        /lead_tracker_is_a_link/i,
+      );
+    }
+  });
+});
+
+test("a monthly price option needs both halves of what makes it monthly", async () => {
+  await asMember(db, NINA, async () => {
+    // **Two constraints, and the older one is hit first.** A monthly
+    // option with a count and no amount breaks the pair rule that has
+    // been there since 30 September, which is the better message anyway.
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_prices
+          (launch_id, name, plan, price, instalments)
+        values ('${LAUNCH}', 'Monthly, no amount', 'monthly', 600, 3)`),
+      /instalments_pair/i,
+    );
+    // What the new one catches is the case the pair rule allows: monthly
+    // with neither half, which is a monthly option that says nothing
+    // about a month.
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_prices
+          (launch_id, name, plan, price)
+        values ('${LAUNCH}', 'Monthly, no months', 'monthly', 600)`),
+      /monthly_has_both/i,
+    );
+    // And one month is a real option now — the old constraint said two.
+    await db.query(`insert into public.report_launch_prices
+        (launch_id, name, plan, price, instalments, instalment_amount)
+      values ('${LAUNCH}', 'One month', 'monthly', 80, 1, 80)`);
+  });
+});
+
+test("a client reads the sources and the emails of a published launch, and writes neither", async () => {
+  await publish();
+  await asMember(db, CLIENT, async () => {
+    const { rows: seen } = await db.query(
+      `select count(*)::int c from public.report_launch_sources where launch_id = '${LAUNCH}'`,
+    );
+    assert.equal(seen[0].c, 1);
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_sources (launch_id, name, position)
+                      values ('${LAUNCH}', 'Theirs', 9)`),
+      /row-level security|launch report is published/i,
+    );
+  });
+});
+
+/**
+ * **A launch can still be deleted at all.**
+ *
+ * `report_launches_guard_published` is a BEFORE UPDATE **OR DELETE**
+ * trigger, and a BEFORE DELETE trigger that returns null cancels the
+ * delete SILENTLY — no error, no row removed. `20261008120000` got this
+ * right and said so in a comment; restating that function from the older
+ * `return new` body on 19 November put it back, and the only symptom was
+ * rows that quietly stayed: a workspace's cascade swallowed, 1,141
+ * launches left pointing at workspaces that no longer existed.
+ *
+ * Nothing in the app deletes a launch, which is why no test covered it
+ * and why the seed's own teardown was the thing that noticed. This is
+ * that test.
+ */
+test("an unpublished launch really goes when an admin deletes it", async () => {
+  await unpublish();
+  let doomed;
+  await asMember(db, NINA, async () => {
+    doomed = (await db.query(`insert into public.report_launches (workspace_id, name)
+                              values ('${WS}', 'A launch to remove') returning id`)).rows[0].id;
+    await db.query(`delete from public.report_launches where id = '${doomed}'`);
+  });
+
+  const [{ c }] = await rows(
+    `select count(*)::int c from public.report_launches where id = '${doomed}'`,
+  );
+  assert.equal(c, 0, "the delete was swallowed by the guard");
+});
+
+test("and a workspace's cascade takes its launches with it", async () => {
+  // The case the orphans came from: nothing deletes a launch directly,
+  // but deleting a workspace does — through the foreign key, whose
+  // row-level delete the same trigger sees and can silently skip.
+  let ws;
+  await asMember(db, NINA, async () => {
+    ws = (await db.query(`select (public.create_report_workspace(
+      '${CLIENT}','retainer','Doomed Studio','Bella','${AUG}')).id as id`)).rows[0].id;
+    await db.query(`insert into public.report_launches (workspace_id, name)
+                    values ('${ws}', 'Goes with it')`);
+    await db.query(`delete from public.report_workspaces where id = '${ws}'`);
+  });
+
+  const [{ c }] = await rows(
+    `select count(*)::int c from public.report_launches where workspace_id = '${ws}'`,
+  );
+  assert.equal(c, 0, "a launch was orphaned from its deleted workspace");
+});
+
+test("and a team member still cannot delete one at all", async () => {
+  await publish();
+  await asMember(db, ELIZE, async () => {
+    // **No exception, and no row either.** There is no delete policy on
+    // report_launches, so RLS matches nothing and the guard never runs —
+    // which is why the guard's own "that report is published" refusal for
+    // a DELETE is unreachable today and is there for the day somebody
+    // adds one (`20261008120000` says so in as many words). What matters
+    // is the outcome, so that is what this asserts.
+    await db.query(`delete from public.report_launches where id = '${LAUNCH}'`);
+  });
+  const [{ c }] = await rows(
+    `select count(*)::int c from public.report_launches where id = '${LAUNCH}'`,
+  );
+  assert.equal(c, 1, "a team member removed a published launch");
+});

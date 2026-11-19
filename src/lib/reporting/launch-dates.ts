@@ -73,3 +73,15 @@ export function formatLaunchRange(first: string | null, last: string | null): st
 export function launchRange(stages: StageDates[]): string | null {
   return formatLaunchRange(launchFirstDay(stages), launchLastDay(stages));
 }
+
+/**
+ * "5 Jan", for the day grid and the running-total chart (item 7).
+ *
+ * The same formatter the range above uses, so a launch's dates are
+ * spelled one way across the page. UTC, like everything date-shaped
+ * here: these are calendar days, not moments, and a local zone would
+ * move the first one in a launch that starts on the 1st.
+ */
+export function shortDate(date: string): string {
+  return DAY_MONTH.format(at(date));
+}

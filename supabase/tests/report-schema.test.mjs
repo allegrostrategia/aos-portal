@@ -106,7 +106,7 @@ await check("no calc metric is missing its formula", async () =>
 // count is the point either way: a metric that silently fails to seed is
 // a field that never appears on a screen.
 await check("anyone signed in reads the metric list", async () =>
-  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 200);
+  (await count(RETAINER, `select count(*)::int c from public.report_metrics`)) === 211);
 
 // And the eighteen are all on Social Media, all per platform: a figure
 // seeded with no entity type would be stored once a month and silently
@@ -1224,6 +1224,10 @@ const DIVIDES_BUT_TOTALS = new Set([
   // is only ever read on the launch it belongs to.
   "launches_live_attendees_needed",
   "launches_sign_ups_needed",
+  // Ad budget ÷ target cost per sign-up: the same kind of thing as the
+  // two above it. A plan for one launch's ad spend, read only on that
+  // launch, and never a flow that a year could add up.
+  "launches_ad_sign_ups_needed",
 ]);
 
 await check("a new divided figure cannot quietly be summed over the year", async () => {

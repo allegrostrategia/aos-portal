@@ -33,8 +33,14 @@ import { PrintYearTable } from "@/components/reporting/year-rows";
 import { formatChange, formatValue } from "@/lib/reporting/format";
 import { monthOnMonthChange } from "@/lib/reporting/formulas";
 import { FOCUS_TAG, PANELS } from "@/lib/reporting/highlights";
-import { launchRange } from "@/lib/reporting/launch-dates";
-import { launchSummary } from "@/lib/reporting/launch-figures";
+import { launchRange, shortDate } from "@/lib/reporting/launch-dates";
+import {
+  adFigures,
+  dayGrid,
+  emailRows,
+  launchSummary,
+  sourceFigures,
+} from "@/lib/reporting/launch-figures";
 import { getLaunch, getLaunches } from "@/lib/reporting/launch-queries";
 import { monthsEndingAt, shortMonthLabel } from "@/lib/reporting/months";
 import { getMonthFigures, offerBreakdown } from "@/lib/reporting/month-figures";
@@ -164,7 +170,20 @@ export default async function ReportPrintPage({
       launches.map(async (launch) => {
         const detail = await getLaunch(launch.id);
         if (!detail) return null;
-        return { launch, summary: launchSummary(detail), stages: detail.stages };
+        return {
+          launch,
+          summary: launchSummary(detail),
+          stages: detail.stages,
+          // Nina's item 10 of 19 November: the launch's own page goes in
+          // the PDF, so the whole detail is carried rather than four
+          // figures off the top of it.
+          sources: sourceFigures(detail),
+          ads: adFigures(detail),
+          emails: emailRows(detail),
+          days: dayGrid(detail),
+          prices: detail.prices,
+          values: detail.values,
+        };
       }),
     )
   ).filter((card): card is NonNullable<typeof card> => card !== null);
@@ -586,6 +605,210 @@ export default async function ReportPrintPage({
           </div>
         </section>
       ) : null}
+
+      {/* --- a page per launch (Nina, 19 November) --------------------- */}
+      {/* The row above is the summary a reader skims; this is the launch
+          itself, which she asked to be in the document rather than only
+          on the screen. One page each, because a launch is the one thing
+          in this report that is not a month and reads as its own piece.
+
+          Deliberately not the whole screen: no funnel, no cover, no
+          planner. A printed report is read once and not clicked, so what
+          goes in is what somebody would want in front of them in a
+          meeting — the goals, where the people came from, what the ads
+          cost and how the emails did. */}
+      {launchCards
+        // **A launch nobody has typed into gets no page.** The summary
+        // row above still lists it, because a launch being planned is
+        // worth knowing about; a whole page carrying one line of goals
+        // and seven dashes is furniture. The test is whether any figure
+        // exists at all, not whether a particular one does.
+        .filter(
+          (card) =>
+            card.summary.totalSales !== null ||
+            card.summary.totalSignUps !== null ||
+            card.summary.cashCollected !== null ||
+            card.sources.length > 0 ||
+            card.emails.length > 0 ||
+            card.ads.any,
+        )
+        .map((card) => (
+        <section
+          key={`page-${card.launch.id}`}
+          className="mb-9 break-before-page"
+          style={{ breakBefore: "page" }}
+        >
+          <h2 className="font-display text-heading font-medium text-ink">
+            {card.launch.name}
+          </h2>
+          <p className="mt-1 font-num text-caption text-ink/55">
+            {launchRange(card.stages) ?? "No dates set"}
+            {card.launch.description ? ` · ${card.launch.description}` : null}
+          </p>
+
+          <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
+            {(
+              [
+                ["Sign-ups", card.summary.totalSignUps, "count"],
+                ["Sales", card.summary.totalSales, "count"],
+                ["Revenue", card.summary.totalRevenue, "currency"],
+                ["MRR", card.summary.mrr, "currency"],
+                ["Cash collected", card.summary.cashCollected, "currency"],
+                ["Still to collect", card.summary.revenueStillToCollect, "currency"],
+                ["Average order", card.summary.averageOrderValue, "currency"],
+                ["Conversion", card.summary.conversionRate, "percent"],
+              ] as const
+            )
+              // A figure nobody has entered is left out rather than
+              // printed as a dash: on paper a dash is a column of
+              // furniture nobody can act on.
+              .filter(([, value]) => value !== null)
+              .map(([label, value, unit]) => (
+                <div key={label}>
+                  <dt className="text-caption text-ink/60">{label}</dt>
+                  <dd className="font-num text-small text-ink">
+                    {formatValue(value, unit, ctx.workspace.currency)}
+                  </dd>
+                </div>
+              ))}
+          </dl>
+
+          {/* The three goal levels, as sentences rather than as bars —
+              a progress bar prints as a grey box. */}
+          {[
+            { noun: "Sign-ups", now: card.summary.totalSignUps, levels: [
+              ["Good", card.launch.sign_up_goal_good],
+              ["Better", card.launch.sign_up_goal_better],
+              ["Best", card.launch.sign_up_goal_best],
+            ] as const },
+            { noun: "Sales", now: card.summary.totalSales, levels: [
+              ["Good", card.launch.goal_good],
+              ["Better", card.launch.goal_better],
+              ["Best", card.launch.goal_best],
+            ] as const },
+          ]
+            .filter((block) => block.levels.some(([, target]) => target !== null))
+            .map((block) => (
+              <p key={block.noun} className="keep-together mt-4 text-small text-ink/80">
+                <span className="font-medium text-ink">{block.noun}:</span>{" "}
+                {block.levels
+                  .filter(([, target]) => target !== null)
+                  .map(([label, target]) => {
+                    const hit = block.now !== null && block.now >= (target as number);
+                    // Formatted, like every other figure in the
+                    // document: "Good 1000" is the only number on this
+                    // page without a thousands separator.
+                    return `${label} ${formatValue(target, "count")}${hit ? " — hit" : ""}`;
+                  })
+                  .join(", ")}
+                {block.now === null ? null : ` · ${formatValue(block.now, "count")} so far`}
+              </p>
+            ))}
+
+          {card.sources.length > 0 ? (
+            <div className="keep-together mt-5">
+              <h3 className="font-display text-body font-medium text-ink">
+                Where they came from
+              </h3>
+              <table className="mt-2 w-full border-collapse text-small">
+                <thead>
+                  <tr className="border-b border-ink/15 text-left">
+                    <th className="pb-1 font-medium text-ink/60">Source</th>
+                    <th className="pb-1 text-right font-medium text-ink/60">Target</th>
+                    <th className="pb-1 text-right font-medium text-ink/60">Sign-ups</th>
+                    <th className="pb-1 text-right font-medium text-ink/60">Sales</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {card.sources.map((row) => (
+                    <tr key={row.source.id} className="border-b border-ink/10">
+                      <td className="py-1.5 text-ink">{row.source.name}</td>
+                      <td className="py-1.5 text-right font-num text-ink/70">
+                        {row.source.sign_up_target ?? "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-num text-ink">
+                        {row.signUps ?? "—"}
+                        {row.percentOfTarget === null
+                          ? null
+                          : ` (${Math.round(row.percentOfTarget)}%)`}
+                      </td>
+                      <td className="py-1.5 text-right font-num text-ink">
+                        {row.sales ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {card.ads.any ? (
+            <div className="keep-together mt-5">
+              <h3 className="font-display text-body font-medium text-ink">
+                What the ads did
+              </h3>
+              <dl className="mt-2 grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-4">
+                {(
+                  [
+                    ["Budget", card.ads.budget, "currency"],
+                    ["Spent", card.ads.spent, "currency"],
+                    ["Left", card.ads.left, "currency"],
+                    ["Sign-ups", card.ads.signUps, "count"],
+                    ["Cost per sign-up", card.ads.costPerSignUp, "currency"],
+                    ["Cost per click", card.ads.costPerClick, "currency"],
+                  ] as const
+                )
+                  .filter(([, value]) => value !== null)
+                  .map(([label, value, unit]) => (
+                    <div key={label}>
+                      <dt className="text-caption text-ink/60">{label}</dt>
+                      <dd className="font-num text-small text-ink">
+                        {formatValue(value, unit, ctx.workspace.currency)}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          ) : null}
+
+          {card.emails.length > 0 ? (
+            <div className="mt-5">
+              <h3 className="keep-together font-display text-body font-medium text-ink">
+                The emails
+              </h3>
+              <table className="mt-2 w-full border-collapse text-small">
+                <thead>
+                  <tr className="border-b border-ink/15 text-left">
+                    <th className="pb-1 font-medium text-ink/60">Sent</th>
+                    <th className="pb-1 font-medium text-ink/60">Subject</th>
+                    <th className="pb-1 text-right font-medium text-ink/60">Open</th>
+                    <th className="pb-1 text-right font-medium text-ink/60">Click</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {card.emails.map((row) => (
+                    <tr key={row.email.id} className="keep-together border-b border-ink/10">
+                      <td className="py-1.5 pr-3 font-num text-ink/70">
+                        {row.email.sent_on ? shortDate(row.email.sent_on) : "—"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-ink">
+                        {row.email.subject ?? `Email ${row.email.number}`}
+                        {row.email.is_resend ? " (resend)" : null}
+                      </td>
+                      <td className="py-1.5 text-right font-num text-ink">
+                        {row.openRate === null ? "—" : `${row.openRate}%`}
+                      </td>
+                      <td className="py-1.5 text-right font-num text-ink">
+                        {row.clickRate === null ? "—" : `${row.clickRate}%`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
+        ))}
 
       {/* --- the month's own words ------------------------------------ */}
       {notesFor(null).length > 0 ? (

@@ -148,8 +148,16 @@ function buildSql(userId, adminId) {
     delete from public.report_top_posts where workspace_id = ${w};
     delete from public.report_top_items where workspace_id = ${w};
     delete from public.report_launch_values where launch_id in (select id from public.report_launches where workspace_id = ${w});
+    delete from public.report_launch_emails where launch_id in (select id from public.report_launches where workspace_id = ${w});
     delete from public.report_launch_stages where launch_id in (select id from public.report_launches where workspace_id = ${w});
     delete from public.report_launch_prices where launch_id in (select id from public.report_launches where workspace_id = ${w});
+    -- The figures above have to go before the sources, and that is why
+    -- this list is explicit rather than left to the cascade from
+    -- report_launches: source_id is ON DELETE RESTRICT, so a cascade
+    -- that reached a source while its figures still existed would be
+    -- refused. It happens to work in that order today, and happening to
+    -- work is not what a reseed against live should rest on.
+    delete from public.report_launch_sources where launch_id in (select id from public.report_launches where workspace_id = ${w});
     delete from public.report_launches where workspace_id = ${w};
     delete from public.report_values where workspace_id = ${w};
     delete from public.report_targets where workspace_id = ${w};

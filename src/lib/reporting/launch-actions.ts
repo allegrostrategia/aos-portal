@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireReportUser } from "@/lib/auth/report";
 import { createClient } from "@/lib/supabase/server";
 import { launchDeleteMessage } from "./launch-delete.ts";
+import { launchFieldName } from "./launch-fields.ts";
 import { lockedError } from "./locked.ts";
 import { withSaved, type SavedKey } from "./saved-notice.ts";
 import { getWorkspace } from "./queries.ts";
@@ -67,6 +68,24 @@ function numberOrNull(raw: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const LEAD_TRACKER_REFUSAL =
+  "The lead tracker needs to be a link starting http:// or https:// — paste the share link from their sheet.";
+
+/**
+ * The lead tracker link, as typed, or null.
+ *
+ * **Not validated here**, deliberately: the check is a constraint on the
+ * column (`report_launches_lead_tracker_is_a_link`), so every writer goes
+ * through it — this action, a future import, a hand-typed SQL fix — and
+ * not only the form that happens to call this. What this does is the one
+ * thing the database cannot: turn "" into null, because an emptied box
+ * means "there is no sheet" and a blank string would fail a check that is
+ * about links.
+ */
+function trackerUrl(formData: FormData): string | null {
+  return String(formData.get("lead_tracker_url") ?? "").trim() || null;
+}
+
 export async function createLaunch(
   _prev: LaunchState,
   formData: FormData,
@@ -92,6 +111,10 @@ export async function createLaunch(
       goal_good: numberOrNull(formData.get("goal_good")),
       goal_better: numberOrNull(formData.get("goal_better")),
       goal_best: numberOrNull(formData.get("goal_best")),
+      sign_up_goal_good: numberOrNull(formData.get("sign_up_goal_good")),
+      sign_up_goal_better: numberOrNull(formData.get("sign_up_goal_better")),
+      sign_up_goal_best: numberOrNull(formData.get("sign_up_goal_best")),
+      lead_tracker_url: trackerUrl(formData),
       planner_show_up_rate: numberOrNull(formData.get("planner_show_up_rate")),
       planner_conversion_rate: numberOrNull(formData.get("planner_conversion_rate")),
     })
@@ -104,8 +127,14 @@ export async function createLaunch(
     if (/report_launches_name_key|duplicate key/i.test(error.message)) {
       return { error: `There is already a launch called "${name}" for this client.` };
     }
+    if (/sign_up_goals_ascend/i.test(error.message)) {
+      return { error: "The sign-up goals have to go up: good, then better, then best." };
+    }
     if (/goals_ascend/i.test(error.message)) {
       return { error: "Good, better and best have to go up in that order." };
+    }
+    if (/lead_tracker_is_a_link/i.test(error.message)) {
+      return { error: LEAD_TRACKER_REFUSAL };
     }
     return { error: refused(error, "create that launch") };
   }
@@ -150,6 +179,10 @@ export async function updateLaunch(
       goal_good: numberOrNull(formData.get("goal_good")),
       goal_better: numberOrNull(formData.get("goal_better")),
       goal_best: numberOrNull(formData.get("goal_best")),
+      sign_up_goal_good: numberOrNull(formData.get("sign_up_goal_good")),
+      sign_up_goal_better: numberOrNull(formData.get("sign_up_goal_better")),
+      sign_up_goal_best: numberOrNull(formData.get("sign_up_goal_best")),
+      lead_tracker_url: trackerUrl(formData),
       planner_show_up_rate: numberOrNull(formData.get("planner_show_up_rate")),
       planner_conversion_rate: numberOrNull(formData.get("planner_conversion_rate")),
     })
@@ -157,8 +190,14 @@ export async function updateLaunch(
     .select("id");
 
   if (error) {
+    if (/sign_up_goals_ascend/i.test(error.message)) {
+      return { error: "The sign-up goals have to go up: good, then better, then best." };
+    }
     if (/goals_ascend/i.test(error.message)) {
       return { error: "Good, better and best have to go up in that order." };
+    }
+    if (/lead_tracker_is_a_link/i.test(error.message)) {
+      return { error: LEAD_TRACKER_REFUSAL };
     }
     return { error: refused(error, "save that") };
   }
@@ -285,6 +324,20 @@ export async function saveStages(
   savedRedirect(formData, launchId, "stages");
 }
 
+/** What a price option's own constraints mean, in the typist's words. */
+function priceRefusal(error: { message: string }, name: string): string {
+  if (/instalments_positive/i.test(error.message)) {
+    return `"${name}" needs a number of months of at least one.`;
+  }
+  if (/monthly_has_both/i.test(error.message)) {
+    return `"${name}" is monthly, so it needs an amount and a number of months.`;
+  }
+  if (/instalments_pair/i.test(error.message)) {
+    return `"${name}" needs both the amount and the number of months, or neither.`;
+  }
+  return refused(error, "save the prices");
+}
+
 /** The price options, in one save (§6.1). An emptied name removes one. */
 export async function savePrices(
   _prev: LaunchState,
@@ -316,29 +369,52 @@ export async function savePrices(
     const id = String(at("id") ?? "") || null;
     if (name === "") continue;
 
-    const price = numberOrNull(at("price"));
-    if (price === null) return { error: `"${name}" needs a price.` };
+    /**
+     * **Pay in full, or monthly** (Nina's item 3, 19 November).
+     *
+     * A monthly option is typed as an amount and a number of months, and
+     * `price` is still the full contract value — worked out HERE rather
+     * than at read time, so total revenue needs no special case and the
+     * stored contract value can never disagree with the two numbers it
+     * came from. Which also means the person typing is not asked for a
+     * figure they would have to multiply out themselves.
+     */
+    const monthly = String(at("plan") ?? "full") === "monthly";
+    const months = numberOrNull(at("instalments"));
+    const perMonth = numberOrNull(at("instalment_amount"));
+
+    let price: number | null;
+    if (monthly) {
+      if (months === null || perMonth === null) {
+        return { error: `"${name}" is monthly, so it needs an amount and a number of months.` };
+      }
+      price = months * perMonth;
+    } else {
+      price = numberOrNull(at("price"));
+      if (price === null) return { error: `"${name}" needs a price.` };
+    }
 
     const row = {
       launch_id: launchId,
       name,
       price,
-      instalments: numberOrNull(at("instalments")),
-      instalment_amount: numberOrNull(at("instalment_amount")),
+      plan: monthly ? "monthly" : "full",
+      instalments: months,
+      instalment_amount: perMonth,
       is_main: false,
     };
 
     if (id) {
       keep.add(id);
       const { error } = await supabase.from("report_launch_prices").update(row).eq("id", id);
-      if (error) return { error: refused(error, "save the prices") };
+      if (error) return { error: priceRefusal(error, name) };
     } else {
       const { data, error } = await supabase
         .from("report_launch_prices")
         .insert(row)
         .select("id")
         .maybeSingle<{ id: string }>();
-      if (error) return { error: refused(error, "save the prices") };
+      if (error) return { error: priceRefusal(error, name) };
       if (data) keep.add(data.id);
     }
   }
@@ -393,7 +469,23 @@ export async function savePrices(
  * and a box nobody filled in are different things, and §4's dash depends
  * on the difference.
  */
-const FIGURE_FIELD = /^launch:([a-z0-9_]+):([0-9a-f-]+|-):([0-9a-f-]+|-):(\d+|-):(\d+|-)$/;
+const FIGURE_FIELD =
+  /^launch:([a-z0-9_]+):([0-9a-f-]+|-):([0-9a-f-]+|-):([0-9a-f-]+|s\d+|-):(\d+|-):(\d+|-)$/;
+
+/** `source:<slot>:name`, `:target`, `:id` — the client's own source list. */
+const SOURCE_FIELD = /^source:(\d+):(name|target|id)$/;
+
+/** `email:<stage id>:<number>:sent_on|subject|is_resend` — an email's words. */
+const EMAIL_FIELD = /^email:([0-9a-f-]{36}):(\d+):(sent_on|subject|is_resend)$/;
+
+/** Every figure box an email has, so a row is kept when only figures are typed. */
+const EMAIL_FIGURES = [
+  "launches_email_list_size_sent_to",
+  "launches_email_open_rate",
+  "launches_email_click_rate",
+  "launches_email_unique_clicks",
+  "launches_email_clicked_no_sign_up",
+] as const;
 
 export async function saveLaunchFigures(
   _prev: LaunchState,
@@ -405,9 +497,22 @@ export async function saveLaunchFigures(
 
   const supabase = await createClient();
 
+  // **The client's own source list goes first, and that is not a tidying
+  // choice.** A source and the two figures against it are typed on the
+  // same screen and saved by the same button, so a brand-new source has
+  // no id at the moment its figure boxes are named — they carry `s<slot>`
+  // instead. Writing the rows first is what turns those slots into ids
+  // below; doing it afterwards would mean a new source saved with its
+  // figures thrown away, every time, on the one save that matters most.
+  const sources = await saveSources(supabase, launchId, formData);
+  if ("error" in sources) return sources;
+
+  const emails = await saveEmailRows(supabase, launchId, formData);
+  if ("error" in emails) return emails;
+
   const { data: existing } = await supabase
     .from("report_launch_values")
-    .select("id, metric_key, stage_id, price_id, day_number, email_number")
+    .select("id, metric_key, stage_id, price_id, source_id, day_number, email_number")
     .eq("launch_id", launchId)
     .returns<
       {
@@ -415,6 +520,7 @@ export async function saveLaunchFigures(
         metric_key: string;
         stage_id: string | null;
         price_id: string | null;
+        source_id: string | null;
         day_number: number | null;
         email_number: number | null;
       }[]
@@ -424,13 +530,21 @@ export async function saveLaunchFigures(
     metric: string,
     stage: string | null,
     price: string | null,
+    source: string | null,
     day: number | null,
     email: number | null,
-  ) => [metric, stage ?? "", price ?? "", day ?? "", email ?? ""].join("|");
+  ) => [metric, stage ?? "", price ?? "", source ?? "", day ?? "", email ?? ""].join("|");
 
   const bySlot = new Map(
     (existing ?? []).map((row) => [
-      slot(row.metric_key, row.stage_id, row.price_id, row.day_number, row.email_number),
+      slot(
+        row.metric_key,
+        row.stage_id,
+        row.price_id,
+        row.source_id,
+        row.day_number,
+        row.email_number,
+      ),
       row.id,
     ]),
   );
@@ -440,14 +554,23 @@ export async function saveLaunchFigures(
     const match = FIGURE_FIELD.exec(field);
     if (!match) continue;
 
-    const [, metric, stageRaw, priceRaw, dayRaw, emailRaw] = match;
+    const [, metric, stageRaw, priceRaw, sourceRaw, dayRaw, emailRaw] = match;
     const stage = stageRaw === "-" ? null : stageRaw;
     const price = priceRaw === "-" ? null : priceRaw;
     const day = dayRaw === "-" ? null : Number(dayRaw);
     const email = emailRaw === "-" ? null : Number(emailRaw);
 
+    // A slot that resolved to nothing is a source whose name was left
+    // empty — so the figure beside it has nowhere to go, and is dropped
+    // rather than written against the wrong row.
+    let source: string | null = null;
+    if (sourceRaw !== "-") {
+      source = sourceRaw.startsWith("s") ? (sources.slots.get(sourceRaw) ?? null) : sourceRaw;
+      if (source === null) continue;
+    }
+
     const value = numberOrNull(raw);
-    const id = bySlot.get(slot(metric, stage, price, day, email));
+    const id = bySlot.get(slot(metric, stage, price, source, day, email));
 
     if (value === null) {
       if (!id) continue;
@@ -474,6 +597,7 @@ export async function saveLaunchFigures(
           metric_key: metric,
           stage_id: stage,
           price_id: price,
+          source_id: source,
           day_number: day,
           email_number: email,
           value,
@@ -483,8 +607,256 @@ export async function saveLaunchFigures(
     saved += 1;
   }
 
+  // Last, now that anything hanging off a removed source has gone.
+  const removed = await removeSources(supabase, sources.remove);
+  if (removed) return removed;
+
   revalidatePath("/reporting/launches", "layout");
-  savedRedirect(formData, launchId, saved === 0 ? "nothing" : "figures");
+  savedRedirect(
+    formData,
+    launchId,
+    saved === 0 &&
+      !sources.changed &&
+      sources.remove.length === 0 &&
+      !emails.changed
+      ? "nothing"
+      : "figures",
+  );
+}
+
+type Writer = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * The client's own sources: added, renamed, retargeted and removed
+ * (Nina's item 6).
+ *
+ * Slot-numbered rather than id-keyed, the same as the price options and
+ * the stages, so a blank row is HTML rather than a button that only
+ * works once JavaScript arrives. An emptied name removes the source —
+ * and with it, by the foreign key's cascade, the two figures against it.
+ *
+ * Returns the slot-to-id map the figure loop needs, which is the whole
+ * reason this runs first.
+ */
+async function saveSources(
+  supabase: Writer,
+  launchId: string,
+  formData: FormData,
+): Promise<{ slots: Map<string, string>; changed: boolean; remove: { id: string; name: string }[] } | { error: string }> {
+  const slots = [...formData.keys()]
+    .map((key) => SOURCE_FIELD.exec(key))
+    .filter((m): m is RegExpExecArray => m !== null && m[2] === "name")
+    .map((m) => Number(m[1]))
+    .sort((a, b) => a - b);
+
+  const map = new Map<string, string>();
+  if (slots.length === 0) return { slots: map, changed: false, remove: [] };
+
+  const { data: existing } = await supabase
+    .from("report_launch_sources")
+    .select("id, name, position")
+    .eq("launch_id", launchId)
+    .returns<{ id: string; name: string; position: number }[]>();
+
+  const keep = new Set<string>();
+  let changed = false;
+
+  for (const slot of slots) {
+    const at = (field: string) => formData.get(`source:${slot}:${field}`);
+    const name = String(at("name") ?? "").trim();
+    const id = String(at("id") ?? "") || null;
+    if (name === "") continue;
+
+    const row = {
+      launch_id: launchId,
+      name,
+      // The slot IS the position: the form draws them in order and the
+      // order is the client's, so nothing renumbers behind them.
+      position: slot,
+      sign_up_target: numberOrNull(at("target")),
+    };
+
+    if (id) {
+      keep.add(id);
+      map.set(`s${slot}`, id);
+      const { error } = await supabase
+        .from("report_launch_sources")
+        .update(row)
+        .eq("id", id);
+      if (error) return { error: sourceRefusal(error, name) };
+      changed = true;
+    } else {
+      const { data, error } = await supabase
+        .from("report_launch_sources")
+        .insert(row)
+        .select("id")
+        .maybeSingle<{ id: string }>();
+      if (error) return { error: sourceRefusal(error, name) };
+      if (data) {
+        keep.add(data.id);
+        map.set(`s${slot}`, data.id);
+        changed = true;
+      }
+    }
+  }
+
+  /**
+   * **Removals are handed back rather than done here**, and the reason
+   * is an ordering trap this had on the first pass.
+   *
+   * A source's figures are `on delete restrict`, so removing one that
+   * still has figures is refused and said out loud — right, and the same
+   * rule the stages and the prices have. But a stage is removed on a
+   * different screen from its figures, while a source and its two
+   * figures are on this one. Somebody doing exactly the right thing —
+   * clearing both boxes AND emptying the name, in one save — would have
+   * been refused, because the delete ran before the figure loop that
+   * empties them. Worse, the refusal returned early, so the cleared
+   * figures were not saved either and the screen came back unchanged
+   * with a message about figures that were no longer there.
+   *
+   * So the deletes go last, after the figures.
+   */
+  return {
+    slots: map,
+    changed,
+    remove: (existing ?? []).filter((row) => !keep.has(row.id)),
+  };
+}
+
+/** The second half of the above, run once the figures have been written. */
+async function removeSources(
+  supabase: Writer,
+  remove: { id: string; name: string }[],
+): Promise<LaunchState> {
+  for (const row of remove) {
+    const { error } = await supabase
+      .from("report_launch_sources")
+      .delete()
+      .eq("id", row.id);
+    if (error) {
+      return {
+        error:
+          launchDeleteMessage(error, "source", row.name) ??
+          refused(error, "remove a source"),
+      };
+    }
+  }
+  return null;
+}
+
+function sourceRefusal(error: { message: string }, name: string): string {
+  if (/sources_launch_id_name_key|duplicate key/i.test(error.message)) {
+    return `There is already a source called "${name}" on this launch.`;
+  }
+  if (/target_positive/i.test(error.message)) {
+    return `"${name}" cannot have a negative target.`;
+  }
+  return refused(error, "save the sources");
+}
+
+/**
+ * The words typed about each email — when it went, its subject, whether
+ * it was a resend (Nina's item 9).
+ *
+ * **A row exists when anything about that email does**, including only
+ * its figures. The obvious rule — a row when a subject was typed — would
+ * have made an email somebody recorded the open rate of but not the
+ * subject of invisible in the table, because the table is built from
+ * these rows rather than from the figures. So the test is "is any box
+ * for this (stage, number) filled", figures included.
+ *
+ * Returns an error, or whether anything about an email moved — which
+ * the save bar needs: somebody who typed only a subject line changed
+ * something, and "Nothing had changed" would be a lie about a row that
+ * was just written.
+ */
+async function saveEmailRows(
+  supabase: Writer,
+  launchId: string,
+  formData: FormData,
+): Promise<{ changed: boolean } | { error: string }> {
+  const cells = new Map<
+    string,
+    { stage: string; number: number; sent_on: string | null; subject: string | null; is_resend: boolean }
+  >();
+
+  for (const key of formData.keys()) {
+    const match = EMAIL_FIELD.exec(key);
+    if (!match) continue;
+    const [, stage, numberRaw] = match;
+    const number = Number(numberRaw);
+    const cellKey = `${stage}|${number}`;
+    if (cells.has(cellKey)) continue;
+    const at = (field: string) => String(formData.get(`email:${stage}:${number}:${field}`) ?? "").trim();
+    cells.set(cellKey, {
+      stage,
+      number,
+      sent_on: at("sent_on") || null,
+      subject: at("subject") || null,
+      // A checkbox absent from the post is unticked, which is how HTML
+      // sends one — so this is the box's presence, not its value.
+      is_resend: formData.get(`email:${stage}:${number}:is_resend`) !== null,
+    });
+  }
+
+  if (cells.size === 0) return { changed: false };
+
+  const hasFigure = (stage: string, number: number) =>
+    EMAIL_FIGURES.some((metric) => {
+      const raw = formData.get(launchFieldName(metric, { stageId: stage, email: number }));
+      return raw !== null && String(raw).trim() !== "";
+    });
+
+  const { data: existing } = await supabase
+    .from("report_launch_emails")
+    .select("id, stage_id, number")
+    .eq("launch_id", launchId)
+    .returns<{ id: string; stage_id: string; number: number }[]>();
+
+  const byCell = new Map((existing ?? []).map((row) => [`${row.stage_id}|${row.number}`, row.id]));
+
+  let changed = false;
+  for (const [cellKey, cell] of cells) {
+    const said =
+      cell.sent_on !== null ||
+      cell.subject !== null ||
+      cell.is_resend ||
+      hasFigure(cell.stage, cell.number);
+    const id = byCell.get(cellKey);
+
+    if (!said) {
+      if (!id) continue;
+      const { data: removed, error } = await supabase
+        .from("report_launch_emails")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) return { error: refused(error, "remove that email") };
+      if (!removed || removed.length === 0) {
+        return { error: "That email could not be removed — it needs an admin." };
+      }
+      changed = true;
+      continue;
+    }
+
+    const row = {
+      launch_id: launchId,
+      stage_id: cell.stage,
+      number: cell.number,
+      sent_on: cell.sent_on,
+      subject: cell.subject,
+      is_resend: cell.is_resend,
+    };
+
+    const { error } = id
+      ? await supabase.from("report_launch_emails").update(row).eq("id", id)
+      : await supabase.from("report_launch_emails").insert(row);
+    if (error) return { error: refused(error, "save the emails") };
+    changed = true;
+  }
+
+  return { changed };
 }
 
 /**
