@@ -3,6 +3,108 @@
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
 
+## WHERE WE ARE — 19 November 2026
+
+**Launches is built to Nina's launch tracker. One migration, not yet
+applied to live.**
+
+Her final spec came in on the 19th after the gap list of the 18th, with
+a framing that shaped the whole build: *"one more reporting view, not a
+large project."* So it is **one migration** —
+`20261119100000_the_launch_tracker.sql` — adding four columns, one
+enum, two tables, one context column and eleven metrics. Everything
+else is code.
+
+**What her ten items turned out to need, and what they did not:**
+
+- **No launch-type column.** Her ticks — challenge, masterclass,
+  webinar, workshop, waitlist, open cart, other — are
+  `report_launch_stage_type`, value for value, and have been since
+  30 September. What was missing is that the type **set** nothing: every
+  stage of every launch said "Sign-ups" and the stage name was free text
+  somebody retyped. `src/lib/reporting/stage-labels.ts` is the half that
+  was missing, and the migration has no column for it.
+- **Pricing** gained one column, `plan`. An instalment plan and a
+  monthly membership have the same three numbers and different MRR, and
+  nothing stored said which. `price` is still the contract value either
+  way — worked out on save for a monthly option, so total revenue needs
+  no special case.
+- **Sources** are a table (`report_launch_sources`), because the six
+  `launches_sales_from_<channel>` metrics made the list ours rather than
+  theirs, could not carry a target, and counted sales only. Every
+  existing figure was **carried over, not dropped**: the migration
+  creates a source per channel that had one and copies the figure. The
+  six metrics stay, unread.
+- **Emails** are a table too (`report_launch_emails`): the date, the
+  subject and the resend flag had no home. The four rates stay in
+  `report_launch_values` under the same `(stage, number)` key, so
+  nothing moved.
+- **No year view and no lead names**, both her item 10. The lead list
+  stays in the client's own Drive and aOS holds `lead_tracker_url` and
+  counts.
+
+**Three things found by building it, and the first is the one to
+remember:**
+
+1. **The demo's launch figures never reached the launch page.** All 38
+   values on each demo launch were keyed at launch level — no
+   `stage_id`, no `price_id`, no `day_number` — while the page reads
+   sign-ups per stage and sales per price option. So the demo launch
+   page had no funnel, no email chart, no price-option sales and **four
+   dashes where its headline figures belong**. Her item 0, and it had
+   been that way since the demo was built, because `demo-review`
+   screenshots the launches LIST and never a launch. There are
+   screenshots of both demo launches now (`14-1`, `14-2`).
+2. **A whole typed-in section was invisible.** The ad figures and the DM
+   pipeline — nine boxes — had been enterable since 30 September and
+   appeared on no screen except the team's Compare page. Both have
+   panels now.
+3. **Sign-ups were being summed across stages.** The first build added
+   every stage's sign-ups for the goal panel, which counts most people
+   twice: the 900 who joined the masterclass had already signed up to
+   the challenge. The seed's launch read 2,177 where the running-total
+   chart three inches above it said 1,277. It is the day-by-day total
+   where there is one, and otherwise the first stage's — never a sum.
+
+**And one of mine, worth more than the three above it.** This migration
+restates `guard_report_launch_edits` to add the sign-up goals, and I
+restated it from the version that CREATED it rather than from
+`20261008120000`, which had since widened its trigger to `before update
+OR DELETE`. The older body returns `new` throughout, and **a BEFORE
+DELETE trigger that returns null cancels the delete silently**. Applied
+to the local database it made every launch undeletable by anybody,
+service role included, with no error anywhere — a workspace's cascade
+swallowed row by row, leaving 1,141 launches pointing at workspaces that
+no longer existed. On live it would also have removed the
+published-launch delete guard.
+
+Two things to carry forward from it:
+
+1. **Restating a function whole means restating the LATEST one.** The
+   convention is good — the complete list of what a guard does should be
+   readable in one place — and it has this failure mode. Check
+   `pg_get_functiondef` against the migration you are copying from, not
+   the one that introduced the name.
+2. **Nothing in the app deletes a launch**, which is why nothing tested
+   this and why the seed's own teardown is what noticed. Three tests
+   cover it now, including a workspace cascade.
+
+**Two judgements flagged for Nina:**
+
+- **The lead-tracker link is not held by the published lock**, where the
+  three new sign-up goals are. A goal is a figure on the report; the
+  link points somewhere else, and a client whose sheet has moved should
+  not need an unpublish to fix a button.
+- **The planner is now the client's too**, which reverses the rule that
+  it was the team's panel. Her item 5 asked for the check beside it, and
+  a plan nobody can see is not one anybody is held to. Changing the
+  rates is still an editor's job.
+
+Tests: unit 747, db 292 + 131 + 573, and the browser suite. The new
+database tests cover the two tables' RLS, the published lock on both,
+the `restrict` on a source with figures, and that a `javascript:` URL
+cannot reach the lead-tracker column.
+
 ## WHERE WE ARE — 18 November 2026 (later)
 
 **Both step 3 migrations are applied to live.**
@@ -261,9 +363,9 @@ far, in her order:
   live**.
 
 Still to do: **4** (the same number of visuals on every page, Offers as
-the benchmark) and **6** (Launches, held until Nina's launch tracker
-arrives). Item **1**, a figure set per platform, is above under
-17 November.
+the benchmark). Item **1**, a figure set per platform, is above under
+17 November; item **6** (Launches) is above under 19 November — her
+tracker arrived on the 19th and the whole of it is built.
 
 ## WHERE WE ARE — 14 November 2026
 
