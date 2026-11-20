@@ -436,14 +436,24 @@ export async function seed({ quiet = false } = {}) {
   const instagram = source("Instagram");
   const notSure = source("Not sure");
 
+  // `at.email` is still the number a person would say — "the second
+  // email of the challenge" — and the figure is stored against that
+  // email's row, looked up here. Which is the whole point of the 19
+  // November review: renumber that email and its figures follow it.
   const lv = (metric, value, at = {}) =>
     `insert into public.report_launch_values
-       (launch_id, metric_key, stage_id, price_id, source_id, day_number, email_number, value)
+       (launch_id, metric_key, stage_id, price_id, source_id, day_number, email_id, value)
      values ('${launchId}', '${metric}',
              ${at.stage ? `'${at.stage}'` : "null"},
              ${at.price ? `'${at.price}'` : "null"},
              ${at.source ? `'${at.source}'` : "null"},
-             ${at.day ?? "null"}, ${at.email ?? "null"}, ${value});`;
+             ${at.day ?? "null"},
+             ${
+               at.email
+                 ? `(select id from public.report_launch_emails
+                      where stage_id = '${at.stage}' and number = ${at.email})`
+                 : "null"
+             }, ${value});`;
 
   sql(`
     ${lv("launches_sign_ups", 1277, { stage: stageOne })}

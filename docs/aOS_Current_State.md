@@ -12,7 +12,7 @@ Her final spec came in on the 19th after the gap list of the 18th, with
 a framing that shaped the whole build: *"one more reporting view, not a
 large project."* So it is **one migration** —
 `20261119100000_the_launch_tracker.sql` — adding four columns, one
-enum, two tables, one context column and eleven metrics. Everything
+enum, two tables, two context columns and eleven metrics. Everything
 else is code.
 
 **What her ten items turned out to need, and what they did not:**
@@ -37,8 +37,9 @@ else is code.
   six metrics stay, unread.
 - **Emails** are a table too (`report_launch_emails`): the date, the
   subject and the resend flag had no home. The four rates stay in
-  `report_launch_values` under the same `(stage, number)` key, so
-  nothing moved.
+  `report_launch_values`, pointing at the email's row by `email_id` —
+  see the review below, which is the one thing in this migration that
+  changed after Dom read it.
 - **No year view and no lead names**, both her item 10. The lead list
   stays in the client's own Drive and aOS holds `lead_tracker_url` and
   counts.
@@ -88,6 +89,42 @@ Two things to carry forward from it:
 2. **Nothing in the app deletes a launch**, which is why nothing tested
    this and why the seed's own teardown is what noticed. Three tests
    cover it now, including a workspace cascade.
+
+**What Dom's review changed: the email figures are keyed by the email's
+row, not by its number.** The migration went to him with the four rates
+still under their old `(stage, email_number)` key, on the reasoning that
+nothing had to move and the number and the row could not drift apart
+because they were written together. They can, and by the two most
+ordinary edits there are: renumber email 3 to 4, or take email 2 out of
+the middle of a sequence, and an open rate either strands itself against
+a number nothing describes or lands on the email below it. Nobody would
+see it happen — the figure is still there, under the wrong heading.
+
+So `report_launch_values.email_id` references `report_launch_emails`,
+the existing figures were carried onto their rows (creating a row for
+any email that had figures and no description), and `email_number` is
+**retired empty** rather than dropped: held at null by a check
+constraint, because dropping a column is the one step in this file that
+could not be undone on live, and because two keys for one context —
+either of which might be the real one — is the bug the review fixed.
+
+Three things in it worth keeping:
+
+- **The screens still say "stage 2, email 3", because that is what a
+  person can see** and a blank email row has no id when its boxes are
+  drawn. The translation lives in exactly two places: `LaunchValues`
+  takes the email rows and keys by number on the way out, and
+  `saveEmailRows` hands the figure loop a `(stage, number) → id` map on
+  the way in.
+- **An email's figures cascade; a stage's, a price's and a source's
+  restrict.** Not a change of heart about cascades — a difference in
+  what the row is. An open rate is a property of the email, so removing
+  the email is how it goes. Sign-ups from a source happened whatever you
+  later rename it to, so removing the source is refused out loud.
+- **A figure carries both a stage and an email, so the guard checks
+  both**: the email belongs to this launch, and to the stage the figure
+  names. Let those disagree and the challenge's first email is drawn in
+  the webinar's table.
 
 **Two judgements flagged for Nina:**
 

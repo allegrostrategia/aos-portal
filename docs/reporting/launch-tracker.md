@@ -9,8 +9,12 @@ Her framing is at the end of it and it decided the shape of the build:
 > view, not a large project.**
 
 So: one migration, `20261119100000_the_launch_tracker.sql`. Four
-columns, one enum, two tables, one context column, eleven metrics.
+columns, one enum, two tables, two context columns, eleven metrics.
 Everything else is code.
+
+**Dom reviewed it on the 19th and changed one thing**, which is written
+up under item 9: the email figures are keyed by the email's row rather
+than by the number a person types beside it.
 
 ---
 
@@ -158,12 +162,39 @@ did.
 
 `report_launch_emails`: the stage, the number, the date, the subject,
 and whether it was a resend. The four rates stay in
-`report_launch_values` under the same `(stage, number)` key, so nothing
-moved; `launches_email_clicked_no_sign_up` is new.
+`report_launch_values`; `launches_email_clicked_no_sign_up` is new.
+
+**The figures point at the row, not at the number** — `email_id`, added
+on Dom's review of the migration, 19 November. The first cut kept the
+figures under their old `(stage, number)` key, on the reasoning that
+nothing had to move. What that cost: the number is the client's label
+and they edit it, so renumbering email 3 to 4, or removing email 2 from
+the middle of a sequence, either stranded an open rate against a number
+nothing described or landed it on the email below. `email_number` is
+retired empty — held that way by a check constraint rather than dropped,
+because a dropped column cannot come back on live — and the existing
+figures were carried onto their rows by the migration, creating a row
+for any email that had figures and no description.
+
+The screens still address an email as "stage 2, email 3", because that
+is what a person can see and a blank row has no id yet. The translation
+happens in two places and only two: `LaunchValues` takes the email rows
+and keys by number on the way out, and `saveEmailRows` hands the figure
+loop a `(stage, number) → id` map on the way in.
+
+**An email's figures cascade from its row**, where a stage's, a price
+option's and a source's all restrict. The difference is what the row is:
+an open rate is a property of the email, not a figure filed under it, so
+removing the row is how it goes. A source is a label on sign-ups that
+happened whatever you later call them, which is why removing one with
+figures on it is refused out loud instead.
 
 **A row exists when anything about that email does**, figures included —
 otherwise an email somebody recorded an open rate for and no subject for
-would be missing from the table, which is built from the rows.
+would be missing from the table, which is built from the rows. Since the
+19th it is also what the figure has to point at, so a figure typed for an
+email nobody has described makes the row as it saves, empty, rather than
+being dropped for having nowhere to go.
 
 **Two charts, never one.** An open rate runs around 40% and a click rate
 around 4%; on one pair of axes the click line is a smudge along the

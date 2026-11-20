@@ -499,7 +499,7 @@ test("a self-serve launch is still never locked, running or not", async () => {
 // written to close, one table later.
 // ---------------------------------------------------------------------------
 
-let SOURCE;
+let SOURCE, EMAIL;
 
 test("a source and an email row are Elize's to build on a draft", async () => {
   await unpublish();
@@ -512,9 +512,12 @@ test("a source and an email row are Elize's to build on a draft", async () => {
     await db.query(`insert into public.report_launch_values
         (launch_id, metric_key, source_id, value)
       values ('${LAUNCH}', 'launches_sign_ups_from_source', '${SOURCE}', 640)`);
-    await db.query(`insert into public.report_launch_emails
-        (launch_id, stage_id, number, sent_on, subject)
-      values ('${LAUNCH}', '${STAGE}', 1, '2026-09-01', 'The challenge starts Monday')`);
+    EMAIL = (
+      await db.query(`insert into public.report_launch_emails
+          (launch_id, stage_id, number, sent_on, subject)
+        values ('${LAUNCH}', '${STAGE}', 1, '2026-09-01', 'The challenge starts Monday')
+        returning id`)
+    ).rows[0].id;
   });
 
   const [{ c }] = await rows(
@@ -570,6 +573,108 @@ test("cleared of its figures, the same source goes", async () => {
     `select count(*)::int c from public.report_launch_sources where launch_id = '${LAUNCH}'`,
   );
   assert.equal(c, 0);
+});
+
+test("an email's figures follow it when its number changes", async () => {
+  // **The fix Dom asked for on review, 19 November.** The figures were
+  // keyed by (stage, number), so renumbering email 1 — one of the two
+  // things anybody does to an email sequence, the other being removing
+  // one from the middle — left its open rate behind against a number
+  // nothing described, or on top of the email below it. They point at
+  // the row now, and the number is free to be edited.
+  await asMember(db, ELIZE, async () => {
+    await db.query(`insert into public.report_launch_values
+        (launch_id, stage_id, email_id, metric_key, value)
+      values ('${LAUNCH}', '${STAGE}', '${EMAIL}', 'launches_email_open_rate', 42)`);
+    await db.query(`update public.report_launch_emails set number = 4 where id = '${EMAIL}'`);
+  });
+
+  const [f] = await rows(`select e.number, v.value::float v
+                            from public.report_launch_values v
+                            join public.report_launch_emails e on e.id = v.email_id
+                           where v.launch_id = '${LAUNCH}'
+                             and v.metric_key = 'launches_email_open_rate'`);
+  assert.equal(f.number, 4, "it is email 4's open rate now, because email 1 became email 4");
+  assert.equal(f.v, 42, "and it is the same 42 per cent");
+
+  await asMember(db, ELIZE, () =>
+    db.query(`update public.report_launch_emails set number = 1 where id = '${EMAIL}'`));
+});
+
+test("the number a figure used to be keyed by is refused outright", async () => {
+  // `email_number` is kept and held empty rather than dropped: the
+  // column cannot be brought back on live if the carry-over was wrong,
+  // and two keys for one context — either of which might be the real
+  // one — is the bug this review fixed.
+  await asMember(db, NINA, async () => {
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_values
+          (launch_id, stage_id, metric_key, email_number, value)
+        values ('${LAUNCH}', '${STAGE}', 'launches_email_click_rate', 2, 4.2)`),
+      /email_number_retired/i,
+    );
+  });
+});
+
+test("a figure cannot be hung off another launch's email", async () => {
+  await asMember(db, NINA, async () => {
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_values
+          (launch_id, email_id, metric_key, value)
+        values ('${SELF_LAUNCH}', '${EMAIL}', 'launches_email_open_rate', 1)`),
+      /email belongs to a different launch/i,
+    );
+  });
+});
+
+test("nor off the right email and the wrong stage of its own launch", async () => {
+  // An email figure carries both ids and the report draws it under the
+  // stage. Let the two disagree and the challenge's first email is read
+  // in the webinar's table.
+  await asMember(db, NINA, async () => {
+    const other = (
+      await db.query(`insert into public.report_launch_stages
+          (launch_id, position, stage_type, name)
+        values ('${LAUNCH}', 9, 'webinar', 'A second stage') returning id`)
+    ).rows[0].id;
+
+    await assert.rejects(
+      () => db.query(`insert into public.report_launch_values
+          (launch_id, stage_id, email_id, metric_key, value)
+        values ('${LAUNCH}', '${other}', '${EMAIL}', 'launches_email_click_rate', 1)`),
+      /different stage of this launch/i,
+    );
+
+    await db.query(`delete from public.report_launch_stages where id = '${other}'`);
+  });
+});
+
+test("removing an email takes its own figures, and only its own", async () => {
+  // **Cascade, where the stage, the price and the source all restrict.**
+  // An open rate is not a figure filed under an email, it is a property
+  // of one — there is no open rate of an email that was never sent — so
+  // removing the row is how it goes, and leaving five figures pointing
+  // at nothing would be the strand this column was added to prevent.
+  let second;
+  await asMember(db, ELIZE, async () => {
+    second = (
+      await db.query(`insert into public.report_launch_emails
+          (launch_id, stage_id, number, subject)
+        values ('${LAUNCH}', '${STAGE}', 2, 'Doors close tonight') returning id`)
+    ).rows[0].id;
+    await db.query(`insert into public.report_launch_values
+        (launch_id, stage_id, email_id, metric_key, value)
+      values ('${LAUNCH}', '${STAGE}', '${second}', 'launches_email_open_rate', 51)`);
+    await db.query(`delete from public.report_launch_emails where id = '${second}'`);
+  });
+
+  const [gone] = await rows(`select count(*)::int c from public.report_launch_values
+                              where email_id = '${second}'`);
+  assert.equal(gone.c, 0, "its open rate went with it");
+
+  const [kept] = await rows(`select count(*)::int c from public.report_launch_values
+                              where email_id = '${EMAIL}'`);
+  assert.equal(kept.c, 1, "and the email above it kept its own");
 });
 
 test("once published, the sources and the emails hold still too", async () => {

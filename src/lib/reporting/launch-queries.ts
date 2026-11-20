@@ -117,7 +117,7 @@ interface RawLaunchValue {
   price_id: string | null;
   source_id: string | null;
   day_number: number | null;
-  email_number: number | null;
+  email_id: string | null;
   value: number | string | null;
 }
 
@@ -133,16 +133,32 @@ interface RawLaunchValue {
 export class LaunchValues {
   private readonly byKey: Map<string, number | null>;
 
-  constructor(rows: RawLaunchValue[]) {
+  /**
+   * **The email rows are a parameter because a figure now points at an
+   * email's id and every screen addresses it by its number.** Which is
+   * the right way round: the number is the client's label and they
+   * change it, so the key the figure is stored under cannot be it (see
+   * `report_launch_emails.number`). The translation belongs here, once,
+   * rather than in each of the four places that read an open rate.
+   *
+   * An `email_id` with no row in the list is skipped rather than keyed
+   * on the id — it would be a figure pointing at an email of another
+   * launch, which the database guard refuses, and drawing it in a cell
+   * nobody can see would be worse than not drawing it.
+   */
+  constructor(rows: RawLaunchValue[], emails: { id: string; number: number }[] = []) {
+    const numberOf = new Map(emails.map((email) => [email.id, email.number]));
     this.byKey = new Map();
     for (const row of rows) {
+      const email = row.email_id === null ? null : (numberOf.get(row.email_id) ?? null);
+      if (row.email_id !== null && email === null) continue;
       this.byKey.set(
         LaunchValues.key(row.metric_key, {
           stageId: row.stage_id,
           priceId: row.price_id,
           sourceId: row.source_id,
           day: row.day_number,
-          email: row.email_number,
+          email,
         }),
         LaunchValues.toNumber(row.value),
       );
@@ -261,7 +277,7 @@ export async function getLaunch(launchId: string): Promise<LaunchDetail | null> 
       .returns<LaunchEmail[]>(),
     supabase
       .from("report_launch_values")
-      .select("metric_key, stage_id, price_id, source_id, day_number, email_number, value")
+      .select("metric_key, stage_id, price_id, source_id, day_number, email_id, value")
       .eq("launch_id", launchId)
       .returns<RawLaunchValue[]>(),
   ]);
@@ -274,7 +290,7 @@ export async function getLaunch(launchId: string): Promise<LaunchDetail | null> 
     prices: priceRes.data ?? [],
     sources: sourceRes.data ?? [],
     emails: emailRes.data ?? [],
-    values: new LaunchValues(valueRes.data ?? []),
+    values: new LaunchValues(valueRes.data ?? [], emailRes.data ?? []),
   };
 }
 

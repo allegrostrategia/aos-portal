@@ -512,7 +512,7 @@ export async function saveLaunchFigures(
 
   const { data: existing } = await supabase
     .from("report_launch_values")
-    .select("id, metric_key, stage_id, price_id, source_id, day_number, email_number")
+    .select("id, metric_key, stage_id, price_id, source_id, day_number, email_id")
     .eq("launch_id", launchId)
     .returns<
       {
@@ -522,7 +522,7 @@ export async function saveLaunchFigures(
         price_id: string | null;
         source_id: string | null;
         day_number: number | null;
-        email_number: number | null;
+        email_id: string | null;
       }[]
     >();
 
@@ -532,7 +532,7 @@ export async function saveLaunchFigures(
     price: string | null,
     source: string | null,
     day: number | null,
-    email: number | null,
+    email: string | null,
   ) => [metric, stage ?? "", price ?? "", source ?? "", day ?? "", email ?? ""].join("|");
 
   const bySlot = new Map(
@@ -543,7 +543,7 @@ export async function saveLaunchFigures(
         row.price_id,
         row.source_id,
         row.day_number,
-        row.email_number,
+        row.email_id,
       ),
       row.id,
     ]),
@@ -558,7 +558,6 @@ export async function saveLaunchFigures(
     const stage = stageRaw === "-" ? null : stageRaw;
     const price = priceRaw === "-" ? null : priceRaw;
     const day = dayRaw === "-" ? null : Number(dayRaw);
-    const email = emailRaw === "-" ? null : Number(emailRaw);
 
     // A slot that resolved to nothing is a source whose name was left
     // empty — so the figure beside it has nowhere to go, and is dropped
@@ -570,6 +569,42 @@ export async function saveLaunchFigures(
     }
 
     const value = numberOrNull(raw);
+
+    // **The box is named by the email's number and the figure is stored
+    // against its row** (`email_id`, 19 November). A blank email row has
+    // no id at the moment its boxes are drawn — the same problem a new
+    // source has — so the form sends what a person can see, stage 2,
+    // email 3, and `saveEmailRows` above has already turned that into an
+    // id for every email anybody said anything about.
+    //
+    // What is left is a figure for an email with no row at all: an open
+    // rate recorded against the fourth email of a sequence nobody has
+    // described. That used to store itself anyway, because the key was
+    // the number. It still does — the row is created here, empty, as the
+    // email it plainly is — because the alternative is a number somebody
+    // typed being dropped on the floor, and because `report_launch_emails`
+    // is what the email table on the report is drawn from: a figure with
+    // no row would be invisible.
+    let email: string | null = null;
+    if (emailRaw !== "-") {
+      const number = Number(emailRaw);
+      email = emails.ids.get(`${stage}|${number}`) ?? null;
+      if (email === null) {
+        // Nothing typed and no row to clear. Not an error: it is the
+        // ordinary state of the two spare rows every stage is given.
+        if (value === null || !stage) continue;
+        const made = await supabase
+          .from("report_launch_emails")
+          .insert({ launch_id: launchId, stage_id: stage, number })
+          .select("id")
+          .maybeSingle<{ id: string }>();
+        if (made.error) return { error: refused(made.error, "save that") };
+        if (!made.data) return { error: "That figure could not be saved — it needs an admin." };
+        email = made.data.id;
+        emails.ids.set(`${stage}|${number}`, email);
+      }
+    }
+
     const id = bySlot.get(slot(metric, stage, price, source, day, email));
 
     if (value === null) {
@@ -599,7 +634,7 @@ export async function saveLaunchFigures(
           price_id: price,
           source_id: source,
           day_number: day,
-          email_number: email,
+          email_id: email,
           value,
         });
 
@@ -769,13 +804,14 @@ function sourceRefusal(error: { message: string }, name: string): string {
  * Returns an error, or whether anything about an email moved — which
  * the save bar needs: somebody who typed only a subject line changed
  * something, and "Nothing had changed" would be a lie about a row that
- * was just written.
+ * was just written — and the (stage, number) to id map the figure loop
+ * keys its open rates by, which is why this runs before it.
  */
 async function saveEmailRows(
   supabase: Writer,
   launchId: string,
   formData: FormData,
-): Promise<{ changed: boolean } | { error: string }> {
+): Promise<{ changed: boolean; ids: Map<string, string> } | { error: string }> {
   const cells = new Map<
     string,
     { stage: string; number: number; sent_on: string | null; subject: string | null; is_resend: boolean }
@@ -800,8 +836,6 @@ async function saveEmailRows(
     });
   }
 
-  if (cells.size === 0) return { changed: false };
-
   const hasFigure = (stage: string, number: number) =>
     EMAIL_FIGURES.some((metric) => {
       const raw = formData.get(launchFieldName(metric, { stageId: stage, email: number }));
@@ -815,6 +849,16 @@ async function saveEmailRows(
     .returns<{ id: string; stage_id: string; number: number }[]>();
 
   const byCell = new Map((existing ?? []).map((row) => [`${row.stage_id}|${row.number}`, row.id]));
+
+  // Seeded from what is already there, so a screen that sends an email's
+  // figures without its words — none does today, but the figure loop
+  // should not depend on that — still finds the row to key them by.
+  const ids = new Map(byCell);
+
+  // Read after the rows above, not before: `cells` being empty means
+  // this save had no email boxes on it at all, which is every screen but
+  // the entry form.
+  if (cells.size === 0) return { changed: false, ids };
 
   let changed = false;
   for (const [cellKey, cell] of cells) {
@@ -836,6 +880,10 @@ async function saveEmailRows(
       if (!removed || removed.length === 0) {
         return { error: "That email could not be removed — it needs an admin." };
       }
+      // Its figures went with it, by the foreign key's cascade. Which is
+      // only safe because `said` counts the figure boxes too: an email
+      // whose open rate was typed is never the one being removed.
+      ids.delete(cellKey);
       changed = true;
       continue;
     }
@@ -849,14 +897,26 @@ async function saveEmailRows(
       is_resend: cell.is_resend,
     };
 
-    const { error } = id
-      ? await supabase.from("report_launch_emails").update(row).eq("id", id)
-      : await supabase.from("report_launch_emails").insert(row);
-    if (error) return { error: refused(error, "save the emails") };
+    if (id) {
+      const { error } = await supabase.from("report_launch_emails").update(row).eq("id", id);
+      if (error) return { error: refused(error, "save the emails") };
+    } else {
+      const { data, error } = await supabase
+        .from("report_launch_emails")
+        .insert(row)
+        .select("id")
+        .maybeSingle<{ id: string }>();
+      if (error) return { error: refused(error, "save the emails") };
+      // Read back rather than assumed: the id is what the figures beside
+      // it are about to be keyed by, and an insert RLS refused returns no
+      // row and no error. Without this the open rate would be dropped
+      // silently on the save that created the email.
+      if (data) ids.set(cellKey, data.id);
+    }
     changed = true;
   }
 
-  return { changed };
+  return { changed, ids };
 }
 
 /**

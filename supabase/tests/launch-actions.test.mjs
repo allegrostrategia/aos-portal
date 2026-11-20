@@ -240,13 +240,18 @@ test("figures land in the context they were typed into", async () => {
   }))));
   assert.equal(result.key, "figures", "the save came back saying so");
 
-  const stored = await rows(`select metric_key, coalesce(day_number, -1) d,
-                                    coalesce(email_number, -1) e,
-                                    (stage_id is not null) s, (price_id is not null) p,
-                                    value::float v
-                               from public.report_launch_values
-                              where launch_id = '${LAUNCH}'
-                              order by metric_key, d, e`);
+  // The email is read back through its row, which is where its number
+  // lives from 19 November — `email_id` on the figure, `number` on the
+  // email. Reading it any other way would not notice a figure pointing
+  // at the wrong email.
+  const stored = await rows(`select v.metric_key, coalesce(v.day_number, -1) d,
+                                    coalesce(e.number, -1) e,
+                                    (v.stage_id is not null) s, (v.price_id is not null) p,
+                                    v.value::float v
+                               from public.report_launch_values v
+                               left join public.report_launch_emails e on e.id = v.email_id
+                              where v.launch_id = '${LAUNCH}'
+                              order by v.metric_key, d, e`);
   assert.deepEqual(stored.map((r) => [r.metric_key, r.d, r.e, r.s, r.p, r.v]), [
     ["launches_cash_collected_to_date", -1, -1, false, false, 12600],
     ["launches_email_open_rate", -1, 1, true, false, 42],
@@ -307,10 +312,11 @@ test("a stage with figures on it refuses to go, and says what to do", async () =
 test("cleared of its figures, the same stage goes", async () => {
   const [stage] = await rows(`select id from public.report_launch_stages
                                where launch_id = '${LAUNCH}' and position = 1`);
-  const figures = await rows(`select metric_key, coalesce(day_number, -1) d,
-                                     coalesce(email_number, -1) e
-                                from public.report_launch_values
-                               where stage_id = '${stage.id}'`);
+  const figures = await rows(`select v.metric_key, coalesce(v.day_number, -1) d,
+                                     coalesce(e.number, -1) e
+                                from public.report_launch_values v
+                                left join public.report_launch_emails e on e.id = v.email_id
+                               where v.stage_id = '${stage.id}'`);
   const cleared = {};
   for (const f of figures) {
     cleared[

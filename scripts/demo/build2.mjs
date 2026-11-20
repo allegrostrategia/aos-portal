@@ -158,6 +158,13 @@ export function buildRest({ w, ent, row, adminId, MONTHS, currentMonth }) {
       `(select id from public.report_launch_prices where launch_id = ${lid(l.name)} and name = ${q(name)})`;
     const source = (name) =>
       `(select id from public.report_launch_sources where launch_id = ${lid(l.name)} and name = ${q(name)})`;
+    // The email a figure belongs to, by the stage and the number it was
+    // written with. Looked up rather than carried: `email_id` replaced
+    // `email_number` on 19 November, so that an email the client
+    // renumbers takes its open rate with it.
+    const email = (e) =>
+      `(select id from public.report_launch_emails
+         where launch_id = ${lid(l.name)} and stage_id = ${stage(e.stage)} and number = ${e.number})`;
 
     out.push(`insert into public.report_launch_stages
         (launch_id, position, stage_type, name, promo_start, promo_end, live_start, live_end, live_days, sign_up_goal, attendance_goal, is_main_selling_stage)
@@ -239,13 +246,13 @@ export function buildRest({ w, ent, row, adminId, MONTHS, currentMonth }) {
     );
 
     value(
-      "metric_key, stage_id, email_number",
+      "metric_key, stage_id, email_id",
       emails.flatMap((e) => [
-        `(${lid(l.name)}, 'launches_email_list_size_sent_to', ${stage(e.stage)}, ${e.number}, ${n(e.sentTo)}, ${q(adminId)})`,
-        `(${lid(l.name)}, 'launches_email_open_rate', ${stage(e.stage)}, ${e.number}, ${n(e.open)}, ${q(adminId)})`,
-        `(${lid(l.name)}, 'launches_email_click_rate', ${stage(e.stage)}, ${e.number}, ${n(e.click)}, ${q(adminId)})`,
-        `(${lid(l.name)}, 'launches_email_unique_clicks', ${stage(e.stage)}, ${e.number}, ${n(e.uniqueClicks)}, ${q(adminId)})`,
-        `(${lid(l.name)}, 'launches_email_clicked_no_sign_up', ${stage(e.stage)}, ${e.number}, ${n(e.clickedNoSignUp)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_list_size_sent_to', ${stage(e.stage)}, ${email(e)}, ${n(e.sentTo)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_open_rate', ${stage(e.stage)}, ${email(e)}, ${n(e.open)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_click_rate', ${stage(e.stage)}, ${email(e)}, ${n(e.click)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_unique_clicks', ${stage(e.stage)}, ${email(e)}, ${n(e.uniqueClicks)}, ${q(adminId)})`,
+        `(${lid(l.name)}, 'launches_email_clicked_no_sign_up', ${stage(e.stage)}, ${email(e)}, ${n(e.clickedNoSignUp)}, ${q(adminId)})`,
       ]),
     );
   }

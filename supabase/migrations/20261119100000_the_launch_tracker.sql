@@ -2,11 +2,19 @@
 --
 -- NOT YET APPLIED TO LIVE. Shown to Dom first, per §13.
 --
+-- **Reviewed by Dom on 19 November and changed once**: the email figures
+-- were keyed by (stage, number), so renumbering an email or removing one
+-- from the middle of a sequence stranded its figures or moved them onto
+-- the email below. They point at the email's row by id now (§5), the
+-- existing ones were carried over, `email_number` is retired empty, and
+-- the guard checks the email belongs to this launch and to the stage the
+-- figure names.
+--
 -- Nina's final spec, 19 November 2026, after the gap list of the 18th. Her
 -- framing matters for how this is built: **"one more reporting view, not a
 -- large project."** So this is ONE migration for the whole of it, and it
 -- adds as little as the spec can be built on — four columns, one enum, two
--- tables, one context column and eleven metrics. Everything else is code.
+-- tables, two context columns and eleven metrics. Everything else is code.
 --
 -- WHAT IS NOT HERE, AND WHY
 --
@@ -165,12 +173,15 @@ create table public.report_launch_emails (
   launch_id uuid not null references public.report_launches (id) on delete cascade,
   stage_id uuid not null references public.report_launch_stages (id) on delete cascade,
 
-  -- The same number the figures are keyed by, so the row and its figures
-  -- cannot drift apart. Deliberately NOT a foreign key from
-  -- report_launch_values: the figures were keyed this way before this
-  -- table existed, a stage can have figures for an email nobody has
-  -- described yet, and this table is the description rather than the
-  -- figure.
+  -- **The client's label for the email, not the key its figures hang
+  -- off.** The first cut of this had the figures keyed by (stage,
+  -- number) and no foreign key at all, on the reasoning that the
+  -- figures were stored that way before this table existed. Dom caught
+  -- what that costs on review: renumber email 3 to 4, or remove email
+  -- 2 from the middle of a sequence, and its open rate either strands
+  -- itself against a number nothing describes or lands on the email
+  -- below it. So the figures point at `id` (§5) and this number is free
+  -- to be edited, which is what a number a person typed has to be.
   number smallint not null,
 
   sent_on date,
@@ -185,7 +196,7 @@ create table public.report_launch_emails (
 );
 
 comment on table public.report_launch_emails is
-  'One row per launch email: which stage, which number, when it went, its subject line, and whether it was a resend (Nina, 19 Nov 2026). The open and click rates stay in report_launch_values, keyed by the same (stage, number).';
+  'One row per launch email: which stage, which number, when it went, its subject line, and whether it was a resend (Nina, 19 Nov 2026). The open and click rates stay in report_launch_values, pointing at this row by id, so renumbering an email takes its figures with it.';
 
 create index report_launch_emails_launch_idx
   on public.report_launch_emails (launch_id, stage_id, number);
@@ -196,7 +207,7 @@ create trigger report_launch_emails_set_updated_at
   execute function public.set_updated_at();
 
 -- ===========================================================================
--- 5. A figure can now hang off a source
+-- 5. A figure can now hang off a source, and points at its email by id
 -- ===========================================================================
 alter table public.report_launch_values
   add column if not exists source_id uuid
@@ -204,6 +215,32 @@ alter table public.report_launch_values
 
 comment on column public.report_launch_values.source_id is
   'The fifth context a launch figure can hang off: sign-ups and sales per source (Nina, 19 Nov 2026).';
+
+alter table public.report_launch_values
+  add column if not exists email_id uuid
+    references public.report_launch_emails (id) on delete cascade;
+
+comment on column public.report_launch_values.email_id is
+  'Which email this figure belongs to (Dom, 19 Nov 2026). Replaces email_number: the number is the client''s label and they edit it, so a figure keyed by the number was stranded or moved by a renumber.';
+
+-- **CASCADE here, where the stage, the price and the source all
+-- restrict** — and the difference is what the row IS, not a change of
+-- heart about cascades.
+--
+-- A stage, a price option and a source are things a figure is *filed
+-- under*: the sign-ups happened whichever source you later rename or
+-- remove, so dropping the label must never quietly drop the number, and
+-- those three say so out loud instead (`launch-delete.ts`).
+--
+-- An email row is the email. Its open rate is not a figure filed under
+-- it, it is a property of it: there is no open rate of an email that was
+-- never sent. Removing the row is how an editor removes the email, and
+-- leaving five figures behind pointing at nothing would be the strand
+-- this column exists to prevent. The lock still holds on a published
+-- launch — §6 puts `guard_report_published_launch` on the email table
+-- itself, so the delete that would cascade is refused before it starts.
+comment on constraint report_launch_values_email_id_fkey on public.report_launch_values is
+  'Cascade, unlike stage_id, price_id and source_id: an email''s figures are properties of the email rather than figures filed under it, so removing the row is how they go (19 Nov 2026).';
 
 -- **RESTRICT, the same as the stage and price keys**, and for the reason
 -- written over `launch_deletes`: a cascade does not consult RLS and fires
@@ -214,9 +251,98 @@ comment on column public.report_launch_values.source_id is
 comment on constraint report_launch_values_source_id_fkey on public.report_launch_values is
   'Restrict, like stage_id and price_id: removing a source with figures on it is refused and said out loud, never cascaded (19 Nov 2026).';
 
--- One figure per cell, with the new context in the key. Dropped and
+-- One figure per cell, with the new contexts in the key. Dropped and
 -- recreated rather than added to: a unique index cannot be extended.
+--
+-- **Dropped BEFORE the carry-over below, not after**, and that order is
+-- load-bearing. The carry-over empties `email_number` as it fills
+-- `email_id`, so for a moment emails 1 and 2 of a stage are both
+-- `coalesce(email_number, 0) = 0` — under the old index, with
+-- `email_number` in it and `email_id` not, that is a duplicate key and
+-- the whole migration rolls back on the first stage that sent two
+-- emails.
 drop index if exists report_launch_values_one_per_cell;
+
+-- Carrying the email figures onto their rows.
+--
+-- Every figure that was keyed by (stage, number) gets the id of that
+-- email's row, and a row is created where the figure had no row: a stage
+-- could have an open rate for an email nobody had described, because the
+-- figures were keyed by a number rather than by a row that had to exist.
+-- Those rows are the email, with nothing said about it yet.
+--
+-- Safe to run twice — a figure only moves where `email_id` is still
+-- null — and it ends by refusing to leave one behind.
+do $$
+declare
+  v_row record;
+  v_email uuid;
+  v_stranded integer;
+begin
+  -- An email figure with no stage cannot be carried: the email table is
+  -- keyed by (stage, number) and there is no stage to put it under. So
+  -- the migration says how many and stops, rather than dropping a figure
+  -- or inventing a stage for it.
+  --
+  -- **It stopped, the first time it was pointed at live**, on 24 open
+  -- rates — every email figure the demo had. They were the launch-level
+  -- keying of finding 1: no stage, so no screen could read them, and the
+  -- demo reseed in the same hour rewrites every one of them properly.
+  -- They were cleared before this was applied. If this ever raises on a
+  -- real client's figures, the answer is not to clear them: find the
+  -- stage they belong to, set it, and run this again.
+  select count(*) into v_stranded
+    from public.report_launch_values
+   where email_number is not null and stage_id is null;
+  if v_stranded > 0 then
+    raise exception '% launch email figures have no stage and cannot be carried over', v_stranded;
+  end if;
+
+  for v_row in
+    select v.id, v.launch_id, v.stage_id, v.email_number
+      from public.report_launch_values v
+     where v.email_number is not null
+       and v.email_id is null
+     order by v.launch_id, v.stage_id, v.email_number
+  loop
+    select id into v_email
+      from public.report_launch_emails
+     where stage_id = v_row.stage_id and number = v_row.email_number;
+
+    if v_email is null then
+      insert into public.report_launch_emails (launch_id, stage_id, number)
+      values (v_row.launch_id, v_row.stage_id, v_row.email_number)
+      returning id into v_email;
+    end if;
+
+    update public.report_launch_values
+       set email_id = v_email, email_number = null
+     where id = v_row.id;
+  end loop;
+
+  select count(*) into v_stranded
+    from public.report_launch_values where email_number is not null;
+  if v_stranded > 0 then
+    raise exception '% launch email figures were left keyed by number', v_stranded;
+  end if;
+end;
+$$;
+
+-- **The column stays, empty.** Dropping it is the one step in this file
+-- that could not be undone on live, and it buys nothing: the number it
+-- held is on `report_launch_emails.number` now, nothing reads it, and the
+-- check below means nothing can write it again. Two keys for one context,
+-- either of which could be the real one, is the bug this review fixed —
+-- a column that refuses every value is not that.
+alter table public.report_launch_values
+  drop constraint if exists report_launch_values_email_number_retired;
+alter table public.report_launch_values
+  add constraint report_launch_values_email_number_retired
+  check (email_number is null);
+
+comment on column public.report_launch_values.email_number is
+  'Retired 19 Nov 2026 and held empty by report_launch_values_email_number_retired. Its figures were carried onto email_id; the number itself lives on report_launch_emails.number.';
+
 create unique index report_launch_values_one_per_cell
   on public.report_launch_values (
     launch_id,
@@ -224,8 +350,8 @@ create unique index report_launch_values_one_per_cell
     coalesce(stage_id, '00000000-0000-0000-0000-000000000000'::uuid),
     coalesce(price_id, '00000000-0000-0000-0000-000000000000'::uuid),
     coalesce(source_id, '00000000-0000-0000-0000-000000000000'::uuid),
-    coalesce(day_number, 0),
-    coalesce(email_number, 0)
+    coalesce(email_id, '00000000-0000-0000-0000-000000000000'::uuid),
+    coalesce(day_number, 0)
   );
 
 -- And the guard learns the fifth context. Restated whole rather than
@@ -274,12 +400,34 @@ begin
     raise exception 'That source belongs to a different launch';
   end if;
 
+  -- The email, both ways round. Belonging to this launch is the same
+  -- check the other three get; belonging to this STAGE is the one this
+  -- column needs on top, because an email figure carries a stage as well
+  -- as an email and the page reads it under the stage. Let the two
+  -- disagree and the open rate of challenge email 2 is drawn in the
+  -- webinar's table.
+  if new.email_id is not null then
+    if not exists (
+      select 1 from public.report_launch_emails
+      where id = new.email_id and launch_id = new.launch_id
+    ) then
+      raise exception 'That email belongs to a different launch';
+    end if;
+
+    if new.stage_id is not null and not exists (
+      select 1 from public.report_launch_emails
+      where id = new.email_id and stage_id = new.stage_id
+    ) then
+      raise exception 'That email belongs to a different stage of this launch';
+    end if;
+  end if;
+
   return new;
 end;
 $$;
 
 comment on function public.guard_report_launch_value() is
-  'Integrity for a launch figure: a launch metric, never a calc, and a stage, price or source that belongs to this launch (19 Nov 2026).';
+  'Integrity for a launch figure: a launch metric, never a calc, a stage, price or source that belongs to this launch, and an email that belongs to this launch and to the stage the figure names (19 Nov 2026).';
 
 -- ===========================================================================
 -- 6. Access, for both new tables
