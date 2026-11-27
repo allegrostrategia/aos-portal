@@ -20,9 +20,17 @@
   wrong wording. `printf "%v"` makes it the string "<nil>", which falls to
   the member wording in the final `else`.
 
-  The subject line is a separate field on the same dashboard screen and is
-  still Supabase's default, "You've been invited". See
+  The subject line is a separate field on the same dashboard screen, and
+  it is one subject for all four of these: "Your Allegro login is ready",
+  set 27 November 2026 (it was Supabase's default, "You've been invited").
+  Note that the member wording below then repeats it as its first
+  heading — left as Nina wrote it until she says otherwise. See
   docs/nina-review/04-wording.md §1.
+
+  WHAT IS PASTED INTO THE DASHBOARD IS THIS FILE WITHOUT THIS COMMENT.
+  An HTML comment in the template is shipped inside every invitation's
+  source, where a client can view it, and this one is notes to ourselves.
+  Everything from the first {{ if eq }} down is live byte for byte.
 -->
 {{ if eq (printf "%v" .Data.account_kind) "retainer" }}
 

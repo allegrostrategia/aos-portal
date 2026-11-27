@@ -70,6 +70,11 @@ Three things about that worth keeping:
 - **`printf "%v"` before every comparison.** Go's `eq` raises on
   comparing an absent value with a string, and a template that raises
   sends **no email at all** — a worse failure than the wrong wording.
+- **The subject is one field for all four**, and it was Supabase's
+  default until today: every invitation aOS has ever sent arrived as
+  "You've been invited". It now reads **"Your Allegro login is ready"**
+  (Dom, 27 November). The member body still opens with almost the same
+  sentence as its first heading — flagged for Nina, not changed.
 
 **One thing found by building it, on a screen nobody was looking at.**
 Every client card's "Edit details" form rendered `id="business_name"`,
