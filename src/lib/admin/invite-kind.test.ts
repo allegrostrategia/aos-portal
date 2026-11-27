@@ -51,6 +51,27 @@ test("the member wording is still Nina's, word for word", () => {
   assert.ok(TEMPLATE.includes("<p>See you inside wooo!!<br>Nina x</p>"));
 });
 
+test("one heading per branch, and none of them is the subject line", () => {
+  // The subject is "Your Allegro login is ready", one line for all four.
+  // A branch that opens by saying that again says the same thing twice
+  // before anybody has read a sentence — which is what the member
+  // wording did, with two headings of its own on top of it (Nina,
+  // 27 November).
+  const branches = TEMPLATE.slice(TEMPLATE.indexOf("{{ if eq")).split(/\{\{ else(?: if [^}]*)? \}\}/);
+  assert.equal(branches.length, ACCOUNT_KINDS.length, "one block per kind");
+  for (const branch of branches) {
+    assert.equal(
+      (branch.match(/<h2>/g) ?? []).length,
+      1,
+      `a branch has the wrong number of headings: ${branch.slice(0, 60)}`,
+    );
+  }
+  assert.ok(
+    !TEMPLATE.includes("<h2>Your Allegro login is ready"),
+    "that heading is the subject line word for word",
+  );
+});
+
 test("every branch carries the same confirm link", () => {
   const links = TEMPLATE.split("Accept invitation</a>").length - 1;
   assert.equal(

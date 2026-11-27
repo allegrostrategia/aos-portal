@@ -23,8 +23,10 @@
   The subject line is a separate field on the same dashboard screen, and
   it is one subject for all four of these: "Your Allegro login is ready",
   set 27 November 2026 (it was Supabase's default, "You've been invited").
-  Note that the member wording below then repeats it as its first
-  heading — left as Nina wrote it until she says otherwise. See
+  Every branch below therefore has ONE heading, and none of them
+  repeats that subject: with it in the inbox line, a body that opened
+  "Your aOS login is ready" said the same thing twice before anybody
+  had read a sentence (Nina, 27 November). See
   docs/nina-review/04-wording.md §1.
 
   WHAT IS PASTED INTO THE DASHBOARD IS THIS FILE WITHOUT THIS COMMENT.
@@ -64,7 +66,7 @@
 
 {{ else if eq (printf "%v" .Data.account_kind) "team" }}
 
-<h2>Your Allegro login is ready 🍋</h2>
+<h2>You're all set 🍋</h2>
 
 <p>I've set up your login - it opens on the clients you've been assigned and shows you nothing else.</p>
 
@@ -76,9 +78,7 @@
 
 {{ else }}
 
-<h2>Your aOS login is ready 🍋</h2>
-
-<h2>You're in!</h2>
+<h2>You're in! 🍋</h2>
 
 <p>I've set up your login for aOS - everything you're going to come to love over the next few months lives here.</p>
 

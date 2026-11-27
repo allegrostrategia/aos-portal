@@ -73,8 +73,11 @@ Three things about that worth keeping:
 - **The subject is one field for all four**, and it was Supabase's
   default until today: every invitation aOS has ever sent arrived as
   "You've been invited". It now reads **"Your Allegro login is ready"**
-  (Dom, 27 November). The member body still opens with almost the same
-  sentence as its first heading — flagged for Nina, not changed.
+  (Dom, 27 November), and the bodies were changed to suit it — every
+  branch has one heading and none of them repeats the subject, so the
+  member email starts at "You're in! 🍋" and the team one at "You're
+  all set 🍋". A test holds the one-heading rule, since the template
+  is the one piece of wording no deploy can see.
 
 **One thing found by building it, on a screen nobody was looking at.**
 Every client card's "Edit details" form rendered `id="business_name"`,

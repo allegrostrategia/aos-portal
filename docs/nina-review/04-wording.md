@@ -61,9 +61,7 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 
 > **Subject:** Your Allegro login is ready
 >
-> ## Your aOS login is ready 🍋
->
-> ## You're in!
+> ## You're in! 🍋
 >
 > I've set up your login for aOS - everything you're going to come to love over the next few months lives here.
 >
@@ -76,7 +74,7 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 
 **And one you have not seen, because nobody had thought about it:** when Elize or anyone else on the team is given access to a client, that creates a login too, through the same template. She was being told her aOS login was ready and that everything she was going to come to love lived there, about a tool she works in. She now gets:
 
-> ## Your Allegro login is ready 🍋
+> ## You're all set 🍋
 >
 > I've set up your login - it opens on the clients you've been assigned and shows you nothing else.
 >
@@ -91,9 +89,7 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 
 **The subject line is fixed, 27 November.** It was Supabase's default — these landed in the inbox as **"You've been invited"**, which the last two versions of this page complained about. It now reads **"Your Allegro login is ready"**, one subject for all four wordings, because it has to make sense to a member, a retainer client, a Chiarezza attendee and Elize alike.
 
-**One thing that follows from that, and it is a two-minute change if it grates.** The member version opens with "Your aOS login is ready 🍋" as its first heading, so a member now sees that subject and then almost the same sentence again at the top of the email. The three new wordings have one heading each. Say the word and the member body starts at "You're in!" instead, the way the rest of them start at their own first line.
-
-**And it still opens with two headings in a row.** "Your aOS login is ready 🍋" and then "You're in!", both as large as each other. That reads as a mistake rather than a flourish, and with the new subject it is the third time in four lines. The three new wordings have one heading each for that reason; the member one is left exactly as you wrote it until you say otherwise.
+**And the bodies were changed to suit it, 27 November.** With that line in the inbox, a body that opened "Your aOS login is ready 🍋" said the same thing twice before anybody read a sentence — and the member version said it twice over, with two headings of its own. Every one of the four now has a single heading and none of them repeats the subject: the member email starts at "You're in! 🍋", and Elize's at "You're all set 🍋". Your words everywhere else, untouched.
 
 **The sender's name is fixed.** It went out as "Allegro Stategia" — missing the *r* — until this was last written; the live setting now reads **Allegro Strategia** &lt;noreply@allegrostrategia.com&gt;, so that one is done.
 
@@ -270,7 +266,7 @@ Money is split by size rather than by which figure it is, because there is no on
 
 Three things, and only the first is urgent:
 
-1. **The member invitation's two headings** (§1) — now that the subject says "Your Allegro login is ready", the member version says nearly the same thing again in its first line. Yours to decide; the subject itself is done.
+1. **Nothing outstanding on the invitation** (§1) — the subject, all four wordings and the headings are set. Worth sending yourself one before the first real client, which is the one thing nobody has done.
 2. **Two headings in a row** at the top of that same invitation (§1).
 3. **"Your The Freedom Experience…"** in the launch subject (§4), if it grates.
 
