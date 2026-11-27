@@ -8,16 +8,30 @@ import { Field } from "@/components/ui/form";
 import {
   assignReportTeamMember,
   endReportClientAccess,
-  inviteReportClient,
   restoreReportClientAccess,
   saveWorkspaceSettings,
+  sendReportClientInvitation,
+  setUpReportClient,
   type EndAccessState,
   type ReportInviteState,
 } from "@/lib/admin/report-users";
 
+/**
+ * Setting a client up — and not inviting them (Nina, 27 November).
+ *
+ * This form used to send the invitation as it created the workspace, so
+ * the first email a client ever got from aOS arrived before there was
+ * anything in their report to read. It now creates the workspace only;
+ * the invitation is a button on their card, pressed when their figures
+ * are in.
+ *
+ * Which is why there is no email field hint about the invitation and the
+ * button says what it does. The one thing this screen must not do is
+ * look like it sends something.
+ */
 export function NewClientForm() {
   const [state, action] = useActionState<ReportInviteState, FormData>(
-    inviteReportClient,
+    setUpReportClient,
     null,
   );
 
@@ -70,7 +84,61 @@ export function NewClientForm() {
         ) : null}
       </div>
 
-      <Footer state={state} label="Send invitation" />
+      <p className="text-caption text-ink/55">
+        No email goes out and no login is created yet. You will get a
+        &ldquo;Send invitation&rdquo; button on their card for that.
+      </p>
+
+      <Footer state={state} label="Set up client" />
+    </form>
+  );
+}
+
+/**
+ * The second press of the two Nina asked for: the login and the email.
+ *
+ * Two presses, like ending and restoring access, and for the same reason
+ * written out there: this one sends a real person the first thing they
+ * ever receive from aOS and there is no recalling it. The question
+ * carries the address and whether anything is published yet, which is
+ * what she split the flow in two to be sure of.
+ *
+ * The address is deliberately NOT posted — the action reads it off the
+ * workspace. A form in a list of every client is the last place to take
+ * an email address from.
+ */
+export function SendInvitationForm({
+  workspaceId,
+  contactName,
+  email,
+}: {
+  workspaceId: string;
+  /** Shown here; the action still reads its own copy off the workspace. */
+  contactName: string;
+  email: string;
+}) {
+  const [state, action] = useActionState<ReportInviteState, FormData>(
+    sendReportClientInvitation,
+    null,
+  );
+
+  const confirming = Boolean(state?.needsConfirm);
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="workspace_id" value={workspaceId} />
+      <input type="hidden" name="confirm" value={confirming ? "1" : ""} />
+      <p className="text-caption text-ink/55">
+        {contactName} at {email} gets a login that opens on this report and
+        shows no other part of aOS. Send it once their figures are in — they
+        can sign in the moment it arrives.
+      </p>
+      <EndFooter
+        state={state}
+        confirming={confirming}
+        labels={["Send invitation", "Yes, send the invitation"]}
+        confirmTone="neutral"
+      />
     </form>
   );
 }
@@ -81,12 +149,22 @@ export function AssignTeamForm({ workspaceId }: { workspaceId: string }) {
     null,
   );
 
+  // See `fieldId` below: one of these per client card, so the ids have to
+  // carry the client.
+  const fieldId = (name: string) => `${workspaceId}-${name}`;
+
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="workspace_id" value={workspaceId} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Their name" name="display_name" required />
-        <Field label="Their email address" name="email" type="email" required />
+        <Field label="Their name" name="display_name" id={fieldId("display_name")} required />
+        <Field
+          label="Their email address"
+          name="email"
+          id={fieldId("email")}
+          type="email"
+          required
+        />
       </div>
       <p className="text-caption text-ink/55">
         They can enter and edit this client&rsquo;s figures and write notes. They
@@ -129,6 +207,7 @@ export function EditWorkspaceForm({
   firstMonth,
   targetHourlyRate,
   contactName,
+  pendingContact,
 }: {
   workspaceId: string;
   businessName: string;
@@ -143,21 +222,60 @@ export function EditWorkspaceForm({
    * there was nothing to rename rather than reading an empty string as one.
    */
   contactName: string | null;
+  /**
+   * The contact an invitation has not gone to yet, or null once it has.
+   *
+   * Exclusive with `contactName` in practice and in the database —
+   * `report_workspaces_pending_only_before_the_login`. Rendered because
+   * otherwise a mistyped address at set-up could only be fixed in SQL,
+   * and this form exists because that was true of the first month once.
+   */
+  pendingContact: { name: string; email: string } | null;
 }) {
   const [state, action] = useActionState<ReportInviteState, FormData>(
     saveWorkspaceSettings,
     null,
   );
 
+  /**
+   * **The id carries the client, and the name does not.**
+   *
+   * One of these forms per card, on a screen that lists every client, so
+   * `id="business_name"` was on the page once per client — and a
+   * duplicate id makes every one of those labels point at the FIRST
+   * card's input. Clicking "Currency" on the third client focused the
+   * first client's box, and a screen reader read the same field out as
+   * many times as there are clients. Exactly what the comment on
+   * `Field`'s `id` prop was written about on 13 November, one screen
+   * over; found here on 27 November by a browser test that could not
+   * reach a field inside its own form.
+   *
+   * `name` stays as it is — that is what the action reads.
+   */
+  const fieldId = (name: string) => `${workspaceId}-${name}`;
+
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="workspace_id" value={workspaceId} />
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Business name" name="business_name" defaultValue={businessName} required />
-        <Field label="Currency" name="currency" defaultValue={currency} required />
+        <Field
+          label="Business name"
+          name="business_name"
+          id={fieldId("business_name")}
+          defaultValue={businessName}
+          required
+        />
+        <Field
+          label="Currency"
+          name="currency"
+          id={fieldId("currency")}
+          defaultValue={currency}
+          required
+        />
         <Field
           label="First month with figures"
           name="first_month"
+          id={fieldId("first_month")}
           type="month"
           defaultValue={firstMonth.slice(0, 7)}
           required
@@ -167,6 +285,7 @@ export function EditWorkspaceForm({
       <Field
         label="Target hourly rate"
         name="target_hourly_rate"
+        id={fieldId("target_hourly_rate")}
         type="number"
         defaultValue={targetHourlyRate === null ? "" : String(targetHourlyRate)}
         hint="Drawn as the dashed line on their effective hourly rate chart. Leave blank for none."
@@ -175,10 +294,32 @@ export function EditWorkspaceForm({
         <Field
           label="Client contact's name"
           name="contact_name"
+          id={fieldId("contact_name")}
           defaultValue={contactName}
           required
           hint="How they are addressed in their report email, and what signs their replies."
         />
+      )}
+      {pendingContact === null ? null : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Client contact's name"
+            name="pending_client_name"
+            id={fieldId("pending_client_name")}
+            defaultValue={pendingContact.name}
+            required
+            hint="Goes on their login when you invite them."
+          />
+          <Field
+            label="Email address for the invitation"
+            name="pending_client_email"
+            id={fieldId("pending_client_email")}
+            type="email"
+            defaultValue={pendingContact.email}
+            required
+            hint="Where Send invitation will send it. Nothing has been sent yet."
+          />
+        </div>
       )}
       <Footer state={state} label="Save details" />
     </form>

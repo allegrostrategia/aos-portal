@@ -30,6 +30,16 @@ export interface ReportClientRow {
   access_end_date: string | null;
   target_hourly_rate: number | null;
   hidden_categories: string[];
+  /**
+   * Null while the client has been set up and not yet invited (27 Nov
+   * 2026). **This is what "Not invited yet" is read from**, and not the
+   * absence of a grant: a client whose access was later ended has no
+   * live grant either, and the two states are nothing like each other.
+   */
+  owner_user_id: string | null;
+  /** Who the invitation will go to, until it goes. Both null after. */
+  pending_client_email: string | null;
+  pending_client_name: string | null;
 }
 
 export interface ReportGrantRow {
@@ -75,7 +85,9 @@ export async function getReportClientData(
       (from, to) =>
         supabase
           .from("report_workspaces")
-          .select("id, kind, business_name, currency, first_month, access_end_date, target_hourly_rate, hidden_categories")
+          .select(
+            "id, kind, business_name, currency, first_month, access_end_date, target_hourly_rate, hidden_categories, owner_user_id, pending_client_email, pending_client_name",
+          )
           .order("business_name")
           .order("id")
           .range(from, to)

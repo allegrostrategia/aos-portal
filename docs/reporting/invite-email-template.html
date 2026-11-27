@@ -1,0 +1,83 @@
+<!--
+  Supabase → Authentication → Emails → Invite user → Message body.
+
+  THE ONLY PIECE OF WORDING IN aOS THAT NO DEPLOY TOUCHES. It is kept
+  here so it can be read, reviewed and tested; the live copy is in the
+  dashboard and this file is not loaded by anything at runtime.
+  `src/lib/admin/invite-kind.test.ts` asserts that every account kind the
+  code sends has a branch below and that the confirm link is identical in
+  all of them.
+
+  Nina's member wording is reproduced EXACTLY as it was read out of the
+  live project on 27 November 2026 — same words, same markup, same link —
+  and is what an invitation with no `account_kind` still gets, so every
+  link already in somebody's inbox reads as it did.
+
+  Why `printf "%v"`: `.Data.account_kind` is absent on any invitation sent
+  before 27 November and on any sent by something that forgets to pass it.
+  Go's `eq` raises on comparing an absent value with a string, and a
+  template that raises sends NO EMAIL AT ALL — a worse failure than the
+  wrong wording. `printf "%v"` makes it the string "<nil>", which falls to
+  the member wording in the final `else`.
+
+  The subject line is a separate field on the same dashboard screen and is
+  still Supabase's default, "You've been invited". See
+  docs/nina-review/04-wording.md §1.
+-->
+{{ if eq (printf "%v" .Data.account_kind) "retainer" }}
+
+<h2>Your reporting login is ready 🍋</h2>
+
+<p>I've set up your login for your Allegro reports - this is where your numbers live from now on.</p>
+
+<p>Every month we go through where the month went, what we make of it, and what we're suggesting next. You'll get an email the moment a new one is ready, and this login is how you read it.</p>
+
+<p>Click below to set your password & you're good to go</p>
+
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password">Accept invitation</a></p>
+
+<p>Any thoughts as you read, you can reply underneath the report itself and we'll pick it up there.</p>
+
+<p>Speak soon!<br>Nina x</p>
+
+{{ else if eq (printf "%v" .Data.account_kind) "chiarezza" }}
+
+<h2>Your Chiarezza login is ready 🍋</h2>
+
+<p>I've set up your login for your Chiarezza numbers - this is where everything we worked through lives.</p>
+
+<p>Fill in your months as you go and the report builds itself. It's yours to read whenever you like.</p>
+
+<p>Click below to set your password & you're good to go</p>
+
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password">Accept invitation</a></p>
+
+<p>Enjoy it!<br>Nina x</p>
+
+{{ else if eq (printf "%v" .Data.account_kind) "team" }}
+
+<h2>Your Allegro login is ready 🍋</h2>
+
+<p>I've set up your login - it opens on the clients you've been assigned and shows you nothing else.</p>
+
+<p>Click below to set your password & you're good to go</p>
+
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password">Accept invitation</a></p>
+
+<p>Thank you!<br>Nina x</p>
+
+{{ else }}
+
+<h2>Your aOS login is ready 🍋</h2>
+
+<h2>You're in!</h2>
+
+<p>I've set up your login for aOS - everything you're going to come to love over the next few months lives here.</p>
+
+<p>Click below to set your password & you're good to go</p>
+
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password">Accept invitation</a></p>
+
+<p>See you inside wooo!!<br>Nina x</p>
+
+{{ end }}

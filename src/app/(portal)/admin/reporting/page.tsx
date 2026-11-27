@@ -14,6 +14,7 @@ import {
   EditWorkspaceForm,
   EndAccessForm,
   RestoreAccessForm,
+  SendInvitationForm,
 } from "./forms";
 
 export const metadata: Metadata = {
@@ -114,7 +115,7 @@ export default async function AdminReportingPage() {
       <PageHeader
         title="Reporting clients"
         tagline="WHO THE TOOL REPORTS ON"
-        intro="Each client gets a login that shows their report and nothing else. Creating one sends the invitation and sets up their workspace in the same step."
+        intro="Each client gets a login that shows their report and nothing else. Setting one up creates their workspace only — you invite them from their card once their figures are in."
       />
 
       <div className="flex flex-col gap-6">
@@ -124,6 +125,8 @@ export default async function AdminReportingPage() {
             <p className="text-body text-ink/70">
               Add the first one below. You will need their email address, the
               name of their business, and the first month you have figures for.
+              Nothing is emailed when you do — the invitation is a separate
+              press, for when their report has something in it.
             </p>
           </Card>
         ) : null}
@@ -165,7 +168,11 @@ export default async function AdminReportingPage() {
                     {workspace.business_name}
                   </h2>
                   <p className="mt-1 text-small text-ink/60">
-                    {people?.client ? `${people.client.name} · ` : null}
+                    {people?.client
+                      ? `${people.client.name} · `
+                      : workspace.pending_client_name
+                        ? `${workspace.pending_client_name} · `
+                        : null}
                     from {monthLabel(workspace.first_month)}
                     {workspace.access_end_date
                       ? ` · access ends ${workspace.access_end_date}`
@@ -239,6 +246,28 @@ export default async function AdminReportingPage() {
                     </dd>
                   </div>
                 ) : null}
+                {/* **Read from `owner_user_id`, not from the absence of a
+                    grant.** A client whose access was ended has no live grant
+                    either, and "not invited yet" against one of those would be
+                    a lie about a client who has been reading their report for
+                    six months. */}
+                {workspace.owner_user_id === null ? (
+                  <div className="min-w-60">
+                    <dt className="text-caption text-ink/55">Invitation</dt>
+                    <dd data-not-invited={workspace.id} className="text-body text-orange">
+                      Not invited yet
+                      {published === 0 ? (
+                        // Nina's nudge, and deliberately not a refusal: a
+                        // client who asked to see the shape of it before the
+                        // figures land is a real reason to send it early.
+                        <span className="block text-caption text-ink/55">
+                          Nothing published yet. They&rsquo;ll see
+                          &ldquo;being prepared&rdquo;.
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="min-w-40">
                   <dt className="text-caption text-ink/55">Team</dt>
                   <dd className="text-body text-ink">
@@ -260,10 +289,39 @@ export default async function AdminReportingPage() {
                     currency={workspace.currency}
                     firstMonth={workspace.first_month}
                     contactName={people?.client?.name ?? null}
+                    pendingContact={
+                      workspace.pending_client_name && workspace.pending_client_email
+                        ? {
+                            name: workspace.pending_client_name,
+                            email: workspace.pending_client_email,
+                          }
+                        : null
+                    }
                     targetHourlyRate={workspace.target_hourly_rate}
                   />
                 </div>
               </details>
+
+              {/* Only where there is nobody to read the report yet. An
+                  invited client's card has no send button on it at all, so the
+                  question "has this gone out?" is answered by whether the
+                  control is there — the action refuses a second send anyway. */}
+              {workspace.owner_user_id === null &&
+              workspace.pending_client_name &&
+              workspace.pending_client_email ? (
+                <details className="group mt-3 border-t border-ink/8 pt-3">
+                  <summary className="cursor-pointer list-none text-small text-ink/70 underline underline-offset-4 transition hover:text-ink">
+                    Send invitation
+                  </summary>
+                  <div className="mt-3">
+                    <SendInvitationForm
+                      workspaceId={workspace.id}
+                      contactName={workspace.pending_client_name}
+                      email={workspace.pending_client_email}
+                    />
+                  </div>
+                </details>
+              ) : null}
 
               <details className="group mt-3 border-t border-ink/8 pt-3">
                 <summary className="cursor-pointer list-none text-small text-ink/70 underline underline-offset-4 transition hover:text-ink">
@@ -329,11 +387,13 @@ export default async function AdminReportingPage() {
           );
         })}
         <Card>
-          <SectionTitle>Add a reporting client</SectionTitle>
+          <SectionTitle>Set up a reporting client</SectionTitle>
           <p className="mb-4 text-body text-ink/70">
-            This sends an invitation and creates their workspace together, so a
-            client can never exist with nobody able to reach it. They get a
-            login that opens on their report and shows no other part of aOS.
+            This creates their workspace and nothing else: no login, no email.
+            Enter their figures, publish the months you want them to see, then
+            press <strong>Send invitation</strong> on their card. That is the
+            first thing they ever receive from aOS, and it should not arrive
+            before there is anything to read.
           </p>
           <NewClientForm />
         </Card>

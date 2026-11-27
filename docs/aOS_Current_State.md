@@ -1,7 +1,85 @@
-# aOS — current state (28 October 2026)
+# aOS — current state (27 November 2026)
 *If this chat ever needs to hand off to a fresh one: drop in this file plus `CLAUDE.md`, the Build Brief, the Training Library doc, and whatever the latest Dom Build Plan looks like (that file is now owned by Claude Code directly, not maintained here). This document is the "where we actually left off," not the full spec.*
 
 > **Editing note (3 Sep):** several updates to this file between 1–3 Sep were reported as made and silently weren't — the edit scripts used string replacement without checking the target matched, so a stale anchor printed success and changed nothing. This file was rebuilt from the git log on 3 Sep. **Assert the anchor exists before editing this file, or rewrite it whole.**
+
+## WHERE WE ARE — 27 November 2026
+
+**A reporting client can now exist before their login does, and the
+invitation email no longer tells all four kinds of person the same
+thing.** One migration, `20261127100000_a_client_before_their_login.sql`,
+not yet applied to live.
+
+**Nina's rule, 27 November: no reporting client is invited before their
+data is in.** The invitation is the first thing a client ever receives
+from aOS, and it was sent by the same press that created the workspace —
+so "set them up, enter two months, then let them in" was not a sequence
+the product could perform. It is two presses now:
+
+1. **Set up client** — the workspace, with the contact's name and address
+   written down, no login and no email. The team enters figures and
+   publishes against it immediately.
+2. **Send invitation**, on that client's card — makes the login, grants
+   it the client role and sends the email. Two presses of its own, like
+   ending access: the first names the address and says whether anything
+   is published yet.
+
+Until then the card says **Not invited yet**, with "Nothing published
+yet. They'll see 'being prepared'." under it where that is true.
+
+**What it cost in the schema, and what it did not.** `owner_user_id`
+stops being `not null`, which was the promise that a workspace can never
+exist with nobody able to reach it. It is replaced rather than dropped:
+`report_workspaces_has_a_client` says a workspace knows either who its
+client **is** or who it is **going to be**. Nothing else moved —
+`report_can_view()` and `report_can_edit()` are grant-based and never
+read the owner, so an uninvited workspace admits exactly who an invited
+one with no grant would, and `publish-send.ts` has refused to email a
+workspace with no client grant since 5 October, in a sentence that turns
+out to be exactly right for this ("add their login and send again").
+
+**The pending contact is a waiting room, not a second address book.**
+`pending_client_email` and `pending_client_name` are cleared in the same
+statement that sets the owner, and a constraint makes that the only
+possible state. Two copies of a contact that can disagree is the shape of
+bug this codebase has now paid for twice.
+
+**And the email itself said the wrong thing to three people out of
+four.** One Supabase template serves every invitation aOS sends, and it
+read *"Your aOS login is ready… everything you're going to come to love
+over the next few months lives here."* True for a member. Wrong for a
+retainer client, who is not joining a membership and has one screen;
+wrong for a Chiarezza attendee; and wrong for **Elize**, who works here —
+nobody had noticed that assigning a team member sends her the same
+email. Every `inviteUserByEmail` call now passes
+`{ account_kind }` in the user metadata, which Supabase exposes to the
+template as `{{ .Data.account_kind }}`, and the template branches on it.
+
+Three things about that worth keeping:
+
+- **The template lives in the dashboard, so nothing in a deploy can see
+  it.** The text Dom pastes is kept at
+  `docs/reporting/invite-email-template.html` and
+  `invite-kind.test.ts` asserts the code and that file agree — every kind
+  the code sends has a branch, and every branch carries the same confirm
+  link. It cannot prove the dashboard holds that file; it can prove the
+  file he was given is right.
+- **The member wording is the `else`**, word for word as Nina wrote it.
+  An invitation sent before today carries no `account_kind` at all and
+  still reads exactly as it did.
+- **`printf "%v"` before every comparison.** Go's `eq` raises on
+  comparing an absent value with a string, and a template that raises
+  sends **no email at all** — a worse failure than the wrong wording.
+
+**One thing found by building it, on a screen nobody was looking at.**
+Every client card's "Edit details" form rendered `id="business_name"`,
+`id="currency"`, `id="first_month"` — so on a page listing every client,
+all of those labels pointed at the **first** card's inputs. Clicking
+"Currency" on the third client focused the first client's box. That is
+the exact failure the comment on `Field`'s `id` prop was written about on
+13 November, one screen over, and it was live here the whole time. The
+ids carry the workspace now. It was found by a browser test that could
+not reach a field inside its own form.
 
 ## WHERE WE ARE — 19 November 2026
 

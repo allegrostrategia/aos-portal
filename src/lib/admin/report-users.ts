@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/member";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { accountKindForWorkspace, inviteData } from "./invite-kind";
 import { isSendableOrigin, localOriginRefusal } from "./invite-origin";
 import { validateReportClient } from "./report-client-input";
 
@@ -30,16 +31,29 @@ import { validateReportClient } from "./report-client-input";
 export type ReportInviteState = {
   error?: string;
   notice?: string;
+  /** Set by `sendReportClientInvitation` on the first press. */
+  needsConfirm?: boolean;
 } | null;
 
 /**
- * Invite a reporting client and create their workspace in one go.
+ * Step one: the client, with no login and no email (Nina, 27 November).
  *
- * `create_report_workspace()` grants the client their own access in the same
- * transaction, so there is no window in which a workspace exists that nobody
- * can reach.
+ * **She does not want a reporting client invited before their data is
+ * in.** Until today the only press that created a client also sent them
+ * the first thing they ever receive from aOS, so "set them up, enter two
+ * months, then invite them" was not a thing the product could do. These
+ * two actions are that sentence.
+ *
+ * What this one does NOT do, and each absence is the point: no auth user,
+ * no `report_access` grant, no email, and no origin check — nothing is
+ * sent, so there is no link that could point at localhost.
+ *
+ * The team can enter figures and publish against the workspace
+ * immediately. `publish-send.ts` already refuses to email a workspace
+ * with no client grant and says so ("add their login and send again"),
+ * which it has done since 5 October for a different reason.
  */
-export async function inviteReportClient(
+export async function setUpReportClient(
   _prev: ReportInviteState,
   formData: FormData,
 ): Promise<ReportInviteState> {
@@ -60,6 +74,136 @@ export async function inviteReportClient(
   const { email, displayName, businessName, kind, firstMonth, accessEndDate, currency } =
     checked.plan;
 
+  // The admin's own session, not the service role: `set_up_report_client`
+  // checks `is_portal_admin()`, which reads auth.uid().
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("set_up_report_client", {
+    p_kind: kind,
+    p_business_name: businessName,
+    p_client_name: displayName,
+    p_client_email: email,
+    p_first_month: firstMonth,
+    p_currency: currency,
+    ...(accessEndDate ? { p_access_end_date: accessEndDate } : {}),
+  });
+
+  if (error) {
+    if (/pending_email_shape/i.test(error.message)) {
+      return { error: `${email} does not look like an email address.` };
+    }
+    return { error: `Couldn't set them up: ${error.message}` };
+  }
+
+  revalidatePath("/admin/reporting");
+
+  return {
+    notice:
+      `${businessName} is set up and ready for figures. ${displayName} has not been ` +
+      `invited yet — send that from their card when you want them to see it.`,
+  };
+}
+
+/**
+ * Step two: the login, the grant and the email.
+ *
+ * **The address comes from the workspace, never from the form.** This is
+ * submitted by a button on a card in a list of every client, so a posted
+ * address would be an invitation anybody who can reach a Server Action
+ * could point anywhere. The row holds what Nina typed at set-up and the
+ * database only lets an admin change it.
+ *
+ * **Two presses**, the same shape as ending and restoring access below.
+ * This one sends a real person their first email from aOS and there is no
+ * recalling it, so the first press names the address and says whether
+ * there is anything published for them to read yet — which is the exact
+ * thing Nina split this flow in two to control.
+ *
+ * The rollback is the one from the old one-step version, and it matters
+ * more here: an auth user with no workspace can set a password, reach
+ * nothing, and cannot be invited again.
+ */
+export async function sendReportClientInvitation(
+  _prev: ReportInviteState,
+  formData: FormData,
+): Promise<ReportInviteState> {
+  await requireAdmin();
+
+  const workspaceId = String(formData.get("workspace_id") ?? "").trim();
+  if (!workspaceId) return { error: "Which client?" };
+
+  const supabase = await createClient();
+
+  const { data: workspace, error: readError } = await supabase
+    .from("report_workspaces")
+    .select("id, kind, business_name, owner_user_id, pending_client_email, pending_client_name")
+    .eq("id", workspaceId)
+    .maybeSingle<{
+      id: string;
+      kind: "retainer" | "aos_member" | "chiarezza";
+      business_name: string;
+      owner_user_id: string | null;
+      pending_client_email: string | null;
+      pending_client_name: string | null;
+    }>();
+
+  if (readError) return { error: `Couldn't read that client: ${readError.message}` };
+  if (!workspace) return { error: "That client could not be found." };
+
+  if (workspace.owner_user_id) {
+    return {
+      error: `${workspace.business_name} already has a client login. Nothing was sent.`,
+    };
+  }
+  if (!workspace.pending_client_email || !workspace.pending_client_name) {
+    return {
+      error:
+        `${workspace.business_name} has no contact to invite. Add their name and ` +
+        `address under Edit details first.`,
+    };
+  }
+  if (workspace.kind === "aos_member") {
+    return {
+      error:
+        "An aOS member already has a login. Their reporting attaches to their member record.",
+    };
+  }
+
+  const email = workspace.pending_client_email;
+  const contactName = workspace.pending_client_name;
+
+  if (String(formData.get("confirm") ?? "") !== "1") {
+    // Said before it is sent, not after: this is the first thing the
+    // client ever receives from aOS, and whether a month is waiting for
+    // them is the whole question.
+    const { count, error: countError } = await supabase
+      .from("report_periods")
+      .select("month", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .not("published_at", "is", null);
+
+    // **A failed read must not read as "nothing published".** That is the
+    // one fact this question exists to carry, and getting it wrong the
+    // quiet way would say "they will see being prepared" about a client
+    // with six months waiting. Same rule as the first-month check in
+    // `saveWorkspaceSettings`.
+    const published =
+      countError || count === null
+        ? `I couldn't check what is published for them${countError ? ` (${countError.message})` : ""}. `
+        : count > 0
+          ? `${count === 1 ? "One month is" : `${count} months are`} published, so ` +
+            `there is something there when they sign in. `
+          : `Nothing is published yet, so they will sign in and see "being prepared". `;
+
+    return {
+      needsConfirm: true,
+      error:
+        `This emails ${contactName} at ${email} and creates their login. ` +
+        published +
+        `Press again to send it.`,
+    };
+  }
+
   const origin = (await headers()).get("origin") ?? env.siteUrl;
   if (!origin) {
     return { error: "NEXT_PUBLIC_SITE_URL isn't set, so the invitation link would point nowhere." };
@@ -72,6 +216,10 @@ export async function inviteReportClient(
 
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${origin}/auth/confirm?next=/set-password`,
+    // Which of the invitation template's branches they get. A reporting
+    // client is not joining a membership, and the one template used to
+    // tell them they were — see invite-kind.ts.
+    data: inviteData(accountKindForWorkspace(workspace.kind)),
   });
 
   if (error) {
@@ -94,32 +242,28 @@ export async function inviteReportClient(
     return { error: "Supabase accepted the invitation but returned no user." };
   }
 
-  const supabase = await createClient();
-
-  const { error: rpcError } = await supabase.rpc("create_report_workspace", {
-    p_owner_user_id: userId,
-    p_kind: kind,
-    p_business_name: businessName,
-    p_owner_display_name: displayName,
-    p_first_month: firstMonth,
-    p_currency: currency,
-    ...(accessEndDate ? { p_access_end_date: accessEndDate } : {}),
+  const { error: rpcError } = await supabase.rpc("invite_report_client_login", {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
   });
 
   if (rpcError) {
-    // Without this we'd leave an auth user who can set a password and then
-    // reach nothing at all — no members row, no reporting grant — and whose
-    // address can't be invited again.
+    // Without this we would leave an auth user who can set a password and
+    // then reach nothing at all — no members row, no reporting grant — and
+    // whose address cannot be invited again. The likeliest cause is the
+    // second of two presses a second apart, which the row lock in
+    // `invite_report_client_login` turns into this refusal.
     await admin.auth.admin.deleteUser(userId);
     return {
-      error: `The invitation was rolled back. Creating the workspace failed: ${rpcError.message}`,
+      error: `The invitation was rolled back. Giving them access failed: ${rpcError.message}`,
     };
   }
 
   revalidatePath("/admin/reporting");
+  revalidatePath("/reporting", "layout");
 
   return {
-    notice: `Invitation sent to ${email}. ${businessName}'s workspace is ready for data.`,
+    notice: `Invitation sent to ${email}. ${contactName} can set a password and read ${workspace.business_name}'s report.`,
   };
 }
 
@@ -166,6 +310,10 @@ export async function assignReportTeamMember(
 
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${origin}/auth/confirm?next=/set-password`,
+      // Elize is not a client and not a member. Without this she was
+      // told her aOS login was ready and that everything she was going
+      // to come to love lived there, about a tool she works in.
+      data: inviteData("team"),
     });
     if (error) return { error: `Couldn't send the invitation: ${error.message}` };
 
@@ -215,6 +363,13 @@ export async function saveWorkspaceSettings(
   // Absent when the workspace has no client login yet, in which case the
   // field is not rendered and there is no name to correct.
   const contactNameRaw = formData.get("contact_name");
+  // And the other way round: before the invitation goes, the contact is
+  // two columns on the workspace rather than a grant, and they are the
+  // address the invitation will be sent to. A typo at set-up was
+  // unfixable through the product without this — the same hole the first
+  // paragraph of this docblock is about, one step earlier.
+  const pendingNameRaw = formData.get("pending_client_name");
+  const pendingEmailRaw = formData.get("pending_client_email");
   // Blank clears it. §5.9's dashed line on the hourly-rate chart is the
   // only thing that reads it, and until 5 October nothing could set it at
   // all — so the line could never appear on anybody's report.
@@ -229,6 +384,25 @@ export async function saveWorkspaceSettings(
     return { error: "The client contact needs a name." };
   }
   if (!businessName) return { error: "A client needs a business name." };
+
+  const pendingName = pendingNameRaw === null ? null : String(pendingNameRaw).trim();
+  const pendingEmail =
+    pendingEmailRaw === null ? null : String(pendingEmailRaw).trim().toLowerCase();
+
+  if (pendingName !== null && pendingName === "") {
+    return { error: "The client contact needs a name." };
+  }
+  // The same shape the database checks. Said here so it is a sentence
+  // rather than a constraint name, and checked there so it is true of
+  // every writer.
+  if (pendingEmail !== null && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pendingEmail)) {
+    return { error: `${pendingEmail || "That"} does not look like an email address.` };
+  }
+  // Both or neither: they are one contact, and the database refuses half
+  // of one.
+  if ((pendingName === null) !== (pendingEmail === null)) {
+    return { error: "A contact who has not been invited yet needs both a name and an address." };
+  }
   if (!/^[A-Z]{3}$/.test(currency)) {
     return { error: "Currency should be a three-letter code, like GBP." };
   }
@@ -302,6 +476,13 @@ export async function saveWorkspaceSettings(
       currency,
       first_month: firstMonth,
       target_hourly_rate: targetHourlyRate,
+      // Only ever on a client who has not been invited: the form renders
+      // these two for nobody else, and
+      // `report_workspaces_pending_only_before_the_login` refuses them on
+      // a workspace that has a login.
+      ...(pendingName !== null && pendingEmail !== null
+        ? { pending_client_name: pendingName, pending_client_email: pendingEmail }
+        : {}),
     })
     .eq("id", workspaceId)
     .select("id");

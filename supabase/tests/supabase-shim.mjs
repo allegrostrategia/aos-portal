@@ -769,6 +769,66 @@ export function createShimClient(db, uid) {
           authLog.push({ kind: "update_user", id, attributes });
           return { data: { user: { id } }, error: null };
         },
+        /**
+         * Every account there is. The Auth API has no "get user by
+         * email", which is why the team-assignment action lists them all
+         * and filters — so a shim without this makes that action throw
+         * rather than fail, and the throw is what found it.
+         */
+        async listUsers() {
+          if (uid !== null) throw new Error("auth.admin needs the service role");
+          const { rows } = await db.query(`select id, email from auth.users order by email`);
+          return { data: { users: rows }, error: null };
+        },
+        /**
+         * An invitation. GoTrue sends the email; what matters to a test is
+         * the row that appears in `auth.users` — every grant made next
+         * points at it by foreign key — and the metadata that went with
+         * it, which is the only thing the invitation email knows about who
+         * it is for (`src/lib/admin/invite-kind.ts`).
+         *
+         * The already-registered refusal is real, not a convenience: it is
+         * the one error of these that the actions have a sentence for, and
+         * a stub that always succeeded would let that sentence rot.
+         */
+        async inviteUserByEmail(email, options = {}) {
+          if (uid !== null) throw new Error("auth.admin needs the service role");
+          authLog.push({
+            kind: "invite",
+            email,
+            data: options.data ?? null,
+            redirectTo: options.redirectTo ?? null,
+          });
+          const existing = await db.query(
+            `select id from auth.users where lower(email) = lower($1)`,
+            [email],
+          );
+          if (existing.rows.length > 0) {
+            return {
+              data: { user: null },
+              error: {
+                message: "A user with this email address has already been registered",
+              },
+            };
+          }
+          const { rows } = await db.query(
+            `insert into auth.users (id, email) values (gen_random_uuid(), $1) returning id`,
+            [email],
+          );
+          return { data: { user: { id: rows[0].id, email } }, error: null };
+        },
+        /**
+         * Used by one path and only one: rolling an invitation back when
+         * the grant that was supposed to follow it failed. A test that
+         * cannot see the row go cannot tell a rollback from a stranded
+         * login nobody can invite again.
+         */
+        async deleteUser(id) {
+          if (uid !== null) throw new Error("auth.admin needs the service role");
+          authLog.push({ kind: "delete_user", id });
+          await db.query(`delete from auth.users where id = $1`, [id]);
+          return { data: { user: null }, error: null };
+        },
       },
     },
     from,

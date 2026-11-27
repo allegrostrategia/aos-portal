@@ -14,12 +14,50 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 
 ## 1. The invitation to a new reporting client
 
-**When:** the moment you add a client in the admin panel. It's the first thing they ever receive from aOS.
-**Who:** the client contact you named.
+**When:** when you press **Send invitation** on their card — which is now a separate press from setting them up. **Updated 27 November:** adding a client used to send this immediately, so the first thing they ever received from aOS arrived before there was anything in their report. Setting one up now creates their workspace only; you enter their figures, publish the months you want them to see, and invite them when it is ready. Their card says "Not invited yet" until you do, and tells you if nothing is published.
+**Who:** the client contact you named at set-up.
 
 **This one lives in the Supabase dashboard rather than in our code** — Authentication → Emails → Invite user. So it's the only email on this list that can be changed without a deploy, and the only one nobody has watched arrive.
 
-**Your new wording is in and live.** Read back out of the live project on 3 November, this is exactly what is configured:
+**It now says three different things, because it goes to three different kinds of person.** One template, and the app tells it which you are. Until 27 November everybody got the member wording below — including retainer clients, who are not joining a membership and have one screen, and Elize, who works here. The exact text is in `docs/reporting/invite-email-template.html` and a test holds the code and that file to each other.
+
+**What a retainer client gets:**
+
+> **Subject:** You've been invited
+>
+> ## Your reporting login is ready 🍋
+>
+> I've set up your login for your Allegro reports - this is where your numbers live from now on.
+>
+> Every month we go through where the month went, what we make of it, and what we're suggesting next. You'll get an email the moment a new one is ready, and this login is how you read it.
+>
+> Click below to set your password & you're good to go
+>
+> [Accept invitation]
+>
+> Any thoughts as you read, you can reply underneath the report itself and we'll pick it up there.
+>
+> Speak soon!
+> Nina x
+
+**What a Chiarezza attendee gets:**
+
+> **Subject:** You've been invited
+>
+> ## Your Chiarezza login is ready 🍋
+>
+> I've set up your login for your Chiarezza numbers - this is where everything we worked through lives.
+>
+> Fill in your months as you go and the report builds itself. It's yours to read whenever you like.
+>
+> Click below to set your password & you're good to go
+>
+> [Accept invitation]
+>
+> Enjoy it!
+> Nina x
+
+**What an aOS member gets — unchanged, exactly as you wrote it:**
 
 > **Subject:** You've been invited
 >
@@ -36,11 +74,24 @@ Emails are plain text, one blank line between paragraphs, no header image and no
 > See you inside wooo!!
 > Nina x
 
+**And one you have not seen, because nobody had thought about it:** when Elize or anyone else on the team is given access to a client, that creates a login too, through the same template. She was being told her aOS login was ready and that everything she was going to come to love lived there, about a tool she works in. She now gets:
+
+> ## Your Allegro login is ready 🍋
+>
+> I've set up your login - it opens on the clients you've been assigned and shows you nothing else.
+>
+> Click below to set your password & you're good to go
+>
+> [Accept invitation]
+>
+> Thank you!
+> Nina x
+
 **Two things still need you, and the first is the one that matters.**
 
-**The subject line was never changed.** "Your aOS login is ready 🍋" is the first *heading inside the email*, not its subject — the subject field is still Supabase's default, so this lands in their inbox as **"You've been invited"** from Allegro Strategia, which is the problem the old version of this page described and it is still there. Changing it is one field in the same dashboard screen, no deploy: Authentication → Emails → Invite user → Subject. Say the word and Dom will set it to "Your aOS login is ready 🍋", or to whatever you'd rather it said.
+**The subject line was never changed.** "Your aOS login is ready 🍋" is the first *heading inside the email*, not its subject — the subject field is still Supabase's default, so this lands in their inbox as **"You've been invited"** from Allegro Strategia, which is the problem the old version of this page described and it is still there. It is one field in the same dashboard screen, no deploy, and it is now one subject for all four wordings: Authentication → Emails → Invite user → Subject. Say what you'd like it to say.
 
-**It opens with two headings in a row.** "Your aOS login is ready 🍋" and then "You're in!", both as large as each other. That reads as a mistake rather than a flourish. If the subject becomes the first line, the body wants to start at "You're in!".
+**The member version opens with two headings in a row.** "Your aOS login is ready 🍋" and then "You're in!", both as large as each other. That reads as a mistake rather than a flourish. The three new ones have one heading each for that reason; the member one is left exactly as you wrote it until you say otherwise.
 
 **The sender's name is fixed.** It went out as "Allegro Stategia" — missing the *r* — until this was last written; the live setting now reads **Allegro Strategia** &lt;noreply@allegrostrategia.com&gt;, so that one is done.
 

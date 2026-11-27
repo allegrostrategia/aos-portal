@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/member";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { inviteData } from "./invite-kind";
 import { isSendableOrigin, localOriginRefusal } from "./invite-origin";
 
 export type InviteState = {
@@ -77,6 +78,10 @@ export async function inviteMember(
 
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${origin}/auth/confirm?next=/set-password`,
+    // What the invitation email reads as. One template serves every
+    // invitation this codebase sends, and this is the only thing in it
+    // that knows a member from a reporting client — see invite-kind.ts.
+    data: inviteData("member"),
   });
 
   if (error) {
